@@ -1,0 +1,6 @@
+@Projet_Coeliaque_PWA.Server_HostAddress = http://localhost:5161
+
+GET {{Projet_Coeliaque_PWA.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

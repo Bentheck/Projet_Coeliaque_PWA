@@ -1,0 +1,136 @@
+﻿/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
+for details on configuring this project to bundle and minify static web assets. */
+
+a.navbar-brand {
+    white-space: normal;
+    text-align: center;
+    word-break: break-all;
+}
+
+a {
+    color: #0077cc;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
+}
+
+.nav-pills .nav-link.active, .nav-pills .show > .nav-link {
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
+}
+
+.border-top {
+    border-top: 1px solid #e5e5e5;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.box-shadow {
+    box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
+}
+
+button.accept-policy {
+    font-size: 1rem;
+    line-height: inherit;
+}
+
+.footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    white-space: nowrap;
+    line-height: 60px;
+}
+
+body {
+    background: #f8fafc;
+}
+
+.navbar {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    font-size: 1.07rem;
+    background: #fff;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    font-size: 1.15rem;
+}
+
+main.container {
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+    padding: 2rem 2.3rem 2rem 2.3rem;
+    margin-top: 2rem;
+}
+
+footer {
+    font-size: 0.96rem;
+    opacity: 0.8;
+    background: #f8fafc;
+    border-top: 1px solid #e5e5e5;
+}
+
+.card, .rounded-4 {
+    border-radius: 1rem !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07) !important;
+}
+
+.table thead th {
+    background: #f6f8fa;
+    border-bottom: 2px solid #e5e5e5;
+}
+
+.btn-outline-primary, .btn-outline-danger, .btn-outline-secondary {
+    border-width: 2px;
+}
+
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid #eee;
+    padding-top: 1.05rem;
+    padding-bottom: 1.05rem;
+}
+
+.list-group-flush > .list-group-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:active, .dropdown-item:focus {
+    background-color: #e9ecef;
+    color: #20253a;
+}
+
+.modal-header.bg-primary, .modal-header.text-white {
+    border-radius: 1rem 1rem 0 0;
+}
+
+html, body, #root {
+    height: 100%;
+    min-height: 100vh;
+}
+
+body {
+    background: #f8fafc;
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.app-main-content {
+    flex: 1 0 auto; /* Grow to take available space */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Center vertically if needed */
+}
