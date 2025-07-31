@@ -1,6 +1,8 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
+import CreatableSelect from "react-select/creatable";
+import type { SingleValue } from "react-select";
 
 // --- Interfaces ---
 const UNIT_OPTIONS = [
@@ -53,6 +55,9 @@ export default function FactureEdit() {
     const [modalTypeItem, setModalTypeItem] = useState("");
     const [modalForm, setModalForm] = useState(emptyItem);
 
+    // All unique item types across all factures
+    const [allTypeItems, setAllTypeItems] = useState<string[]>([]);
+
     // --- Load Facture ---
     useEffect(() => {
         setLoading(true);
@@ -65,6 +70,29 @@ export default function FactureEdit() {
             .catch(err => setError(err.message))
             .finally(() => setLoading(false));
     }, [id]);
+
+    // --- Load all typeItems for dropdowns ---
+    useEffect(() => {
+        fetch("/api/factures", { credentials: "include" })
+            .then(async res => {
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            })
+            .then((allFactures: Facture[]) => {
+                const types = new Set<string>();
+                allFactures.forEach(f =>
+                    f.items.forEach(i => {
+                        if (i.typeItem && i.typeItem.trim())
+                            types.add(i.typeItem.trim());
+                    })
+                );
+                setAllTypeItems([...types]);
+            })
+            .catch(() => setAllTypeItems([]));
+    }, []);
+
+    // Options for react-select
+    const typeOptions = allTypeItems.map(type => ({ label: type, value: type }));
 
     // --- Facture field change ---
     function handleFactureChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -203,7 +231,7 @@ export default function FactureEdit() {
                                     <thead className="table-light text-center">
                                         <tr>
                                             <th>Nom du produit</th>
-                                            <th>Type de produit</th>
+                                            <th style={{ minWidth: 200, width: 250 }}>Type de produit</th>
                                             <th>Quantité</th>
                                             <th>Prix</th>
                                             <th>Poids</th>
@@ -222,10 +250,19 @@ export default function FactureEdit() {
                                                         placeholder="Produit" />
                                                 </td>
                                                 <td>
-                                                    <input className="form-control border-black rounded-2"
-                                                        value={item.typeItem}
-                                                        onChange={e => handleItemChange(i, "typeItem", e.target.value)}
-                                                        placeholder="Type" />
+                                                    <CreatableSelect
+                                                        isClearable
+                                                        options={typeOptions}
+                                                        value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
+                                                        onChange={(option: SingleValue<{ label: string; value: string }>) =>
+                                                            handleItemChange(i, "typeItem", option?.value || "")
+                                                        }
+                                                        placeholder="Type…"
+                                                        styles={{
+                                                            container: base => ({ ...base, minWidth: 0 }),
+                                                            menu: base => ({ ...base, zIndex: 9999 })
+                                                        }}
+                                                    />
                                                 </td>
                                                 <td>
                                                     <input className="form-control border-black rounded-2"
@@ -310,11 +347,18 @@ export default function FactureEdit() {
                             <>
                                 <Form.Group className="mb-3">
                                     <Form.Label className="fw-bold">Type de produit</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        required
-                                        value={modalTypeItem}
-                                        onChange={e => setModalTypeItem(e.target.value)}
+                                    <CreatableSelect
+                                        isClearable
+                                        options={typeOptions}
+                                        value={modalTypeItem ? { value: modalTypeItem, label: modalTypeItem } : null}
+                                        onChange={(option: SingleValue<{ label: string; value: string }>) =>
+                                            setModalTypeItem(option?.value || "")
+                                        }
+                                        placeholder="Choisissez ou ajoutez un type…"
+                                        styles={{
+                                            container: base => ({ ...base, minWidth: 0 }),
+                                            menu: base => ({ ...base, zIndex: 9999 })
+                                        }}
                                     />
                                 </Form.Group>
                                 <div className="d-flex justify-content-end">

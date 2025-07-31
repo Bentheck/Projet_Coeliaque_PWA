@@ -1,10 +1,12 @@
 ﻿import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
+import './app.css';
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Factures from "./pages/Factures/Factures";
 import FactureEdit from './pages/Factures/FactureEdit';
 import Comparatif from "./pages/Comparatif/Comparatif";
+import ComparatifEdit from "./pages/Comparatif/ComparatifEdit";
 import Rapports from "./pages/Comparatif/Rapports";
 import Epicerie from "./pages/ListeEpicerie/Epicerie";
 import NouvelleEpicerie from "./pages/ListeEpicerie/NouvelleEpicerie";
@@ -14,6 +16,8 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/User/login";
 import Register from "./pages/User/register";
 import Logout from "./pages/User/logout";
+import RapportsDisplay from "./pages/Comparatif/RapportsDisplay";
+
 
 export default function App() {
     const [user, setUser] = useState<any>(null);
@@ -45,7 +49,9 @@ export default function App() {
                     <Route path="/factures" element={<Factures />} />
                     <Route path="/factures/:id" element={<FactureEdit />} />
                     <Route path="/comparatif" element={<Comparatif />} />
+                    <Route path="/comparatif/:id" element={<ComparatifEdit />} />
                     <Route path="/rapports" element={<Rapports />} />
+                    <Route path="/rapports/:annee" element={<RapportsDisplay />} />
                     <Route path="/epicerie" element={<Epicerie />} />
                     <Route path="/epicerie/nouvelle" element={<NouvelleEpicerie />} />
                     <Route path="/login" element={<Login onLogin={refreshStatus} />} />

@@ -8,7 +8,6 @@ interface Facture {
     factureId: string;
     date: string;   // ISO string
     magasin: string;
-    // Add items etc if you want
 }
 
 const emptyFacture: Omit<Facture, "id"> = {
@@ -19,8 +18,7 @@ const emptyFacture: Omit<Facture, "id"> = {
 };
 
 const Factures: React.FC = () => {
-    const navigate = useNavigate(); // <-- Moved here!
-
+    const navigate = useNavigate();
     const [factures, setFactures] = useState<Facture[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -103,11 +101,17 @@ const Factures: React.FC = () => {
 
     // ----- Render -----
     return (
-        <div className="container py-3">
-            <h2>Mes Factures</h2>
-            <button className="btn btn-primary mb-3" onClick={startCreate}>
-                Nouvelle Facture
-            </button>
+        <div className="container" style={{ maxWidth: 700 }}>
+            <div className="d-flex flex-column align-items-center mb-3">
+                <h2 className="mb-2">Mes Factures</h2>
+                <button
+                    className="btn btn-primary"
+                    style={{ minWidth: 170 }}
+                    onClick={startCreate}
+                >
+                    Nouvelle Facture
+                </button>
+            </div>
 
             {error && <div className="alert alert-danger">{error}</div>}
 
@@ -147,30 +151,35 @@ const Factures: React.FC = () => {
             ) : factures.length === 0 ? (
                 <div className="alert alert-secondary text-center">Aucune facture trouvée.</div>
             ) : (
-                factures.map(facture => (
-                    <div key={facture.id} className="card mb-3 border-0 shadow-sm">
-                        <div className="card-body d-flex justify-content-between align-items-center">
-                            <div>
-                                <b>ID:</b> {facture.factureId} <br />
-                                <b>Année:</b> {facture.annee} <br />
-                                <b>Date:</b> {facture.date?.slice(0, 10)} <br />
-                                <b>Magasin:</b> {facture.magasin}
-                            </div>
+                factures.map(facture =>
+                    <div key={facture.id} className="card mb-2 border-0 shadow-sm">
+                        <div className="card-body d-flex align-items-start" style={{ columnGap: "1rem" }}>
+                            <span style={{ flex: 1 }}>
+                                <div>
+                                    <b>Date :</b> {facture.date?.slice(0, 10)} &nbsp;|&nbsp;
+                                    <b>ID :</b> {facture.factureId}
+                                </div>
+                                <div>
+                                    <b>Magasin :</b> {facture.magasin}
+                                </div>
+                            </span>
                             <div className="d-flex gap-2">
                                 <button
                                     className="btn btn-outline-primary btn-sm"
                                     onClick={() => navigate(`/factures/${facture.id}`)}
                                 >
-                                    Modifier
+                                    <i className="bi bi-eye"></i> Voir
                                 </button>
-                                <button className="btn btn-outline-danger btn-sm"
-                                    onClick={() => handleDelete(facture)}>
-                                    Supprimer
+                                <button
+                                    className="btn btn-outline-danger btn-sm"
+                                    onClick={() => handleDelete(facture)}
+                                >
+                                    <i className="bi bi-trash"></i> Supprimer
                                 </button>
                             </div>
                         </div>
                     </div>
-                ))
+                )
             )}
         </div>
     );

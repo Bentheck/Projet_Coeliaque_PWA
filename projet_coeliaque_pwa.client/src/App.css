@@ -69,7 +69,7 @@ main.container {
     border-radius: 1rem;
     box-shadow: 0 2px 16px rgba(0,0,0,0.04);
     padding: 2rem 2.3rem 2rem 2.3rem;
-    margin-top: 2rem;
+
 }
 
 footer {
@@ -133,4 +133,88 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center; /* Center vertically if needed */
+}
+
+/* PRINTING */
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+
+    #print-section, #print-section * {
+        visibility: visible !important;
+    }
+
+    #print-section {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+    }
+
+    nav, footer, .btn, .no-print, .d-print-none {
+        display: none !important;
+    }
+
+    @page {
+        size: A3 landscape;
+        margin: 10mm;
+    }
+}
+
+/* Main comparative table style */
+.comparatif-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 24px;
+}
+
+    .comparatif-table th,
+    .comparatif-table td {
+        border: 1px solid #ccc;
+        padding: 6px 4px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+/* Header style for 'Produit Sans Gluten' columns */
+.comparatif-header-sg {
+    background: #b53e3e;
+    color: white;
+    font-weight: bold;
+    font-size: 1.08em;
+}
+
+.comparatif-th-sg {
+    background: #fbe5e5;
+}
+
+/* Header style for 'Produit Comparatif Avec Gluten' columns */
+.comparatif-header-ag {
+    background: #919191;
+    color: white;
+    font-weight: bold;
+    font-size: 1.08em;
+}
+
+.comparatif-th-ag {
+    background: #f4f4f4;
+}
+
+/* Header style for total columns */
+.comparatif-header-total {
+    background: #d8eac6;
+}
+
+.double-divider {
+    border-right: 2px solid #333 !important;
+}
+
+/* Responsive tweaks if you want */
+@media (max-width: 700px) {
+    .comparatif-table {
+        font-size: 11px;
+    }
 }
