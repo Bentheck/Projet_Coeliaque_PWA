@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Projet_Coeliaque_PWA.Server.Data; // adjust namespace as needed
+using Projet_Coeliaque_PWA.Server.Data;
+using System.Security.Claims;
 
 [Authorize]
 [ApiController]
@@ -21,12 +22,12 @@ public class MembershipController : ControllerBase
     [HttpGet("status")]
     public async Task<IActionResult> GetMembershipStatus()
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null)
             return Unauthorized();
 
         var membership = await _dbContext.Memberships
-            .Where(m => m.UserId == user.Id)
+            .Where(m => m.UserId == userId)
             .OrderByDescending(m => m.EndDate)
             .FirstOrDefaultAsync();
 

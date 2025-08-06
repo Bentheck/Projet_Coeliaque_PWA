@@ -16,6 +16,9 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
 
             // For reports: ProductComparisonRow is usually not an EF entity, but you can still map if needed.
             CreateMap<ProductComparisonRow, ProductComparisonRowDto>().ReverseMap();
+
+            CreateMap<ListeEpicerie, ListeEpicerieDTO>().ReverseMap();
+            CreateMap<ListeEpicerieItem, ListeEpicerieItemDTO>().ReverseMap();
         }
     }
 }

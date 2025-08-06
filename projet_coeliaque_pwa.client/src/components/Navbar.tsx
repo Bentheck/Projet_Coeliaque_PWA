@@ -43,12 +43,12 @@ export default function Navbar({ user, membershipStatus }: { user: any, membersh
                             </a>
                             <ul className="dropdown-menu" aria-labelledby="epicerieDropdown">
                                 <li>
-                                    <Link className="dropdown-item" to="/epicerie">
+                                    <Link className="dropdown-item" to="/ListeEpicerie">
                                         <i className="bi bi-cart-check me-2"></i> Mes listes d'épicerie
                                     </Link>
                                 </li>
                                 <li>
-                                    <Link className="dropdown-item" to="/epicerie/nouvelle">
+                                    <Link className="dropdown-item" to="/ListeEpicerie">
                                         <i className="bi bi-cart-plus me-2"></i> Nouvelle liste
                                     </Link>
                                 </li>

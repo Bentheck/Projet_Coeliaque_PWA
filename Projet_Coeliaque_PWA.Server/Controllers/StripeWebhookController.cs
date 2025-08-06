@@ -45,22 +45,24 @@ public class StripeWebhookController : ControllerBase
         if (stripeEvent.Type == "checkout.session.completed")
         {
             var session = stripeEvent.Data.Object as Session;
-            var userId = session.Metadata["user_id"];
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user != null)
+            if (session != null && session.Metadata.ContainsKey("user_id"))
             {
-                var now = DateTime.UtcNow;
-                var newMembership = new Membership
+                var userId = session.Metadata["user_id"];
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null)
                 {
-                    UserId = user.Id,
-                    StartDate = now,
-                    EndDate = now.AddYears(1)
-                };
-                _dbContext.Memberships.Add(newMembership);
-                await _dbContext.SaveChangesAsync();
+                    var now = DateTime.UtcNow;
+                    var newMembership = new Membership
+                    {
+                        UserId = user.Id,
+                        StartDate = now,
+                        EndDate = now.AddYears(1)
+                    };
+                    _dbContext.Memberships.Add(newMembership);
+                    await _dbContext.SaveChangesAsync();
+                }
             }
         }
-        // Handle other events similarly...
 
         return Ok();
     }

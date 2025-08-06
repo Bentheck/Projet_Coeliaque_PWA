@@ -18,11 +18,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
+        private readonly IMembershipService _membershipService;
 
-        public FacturesController(ApplicationDbContext db, IMapper mapper)
+        public FacturesController(ApplicationDbContext db, IMapper mapper, IMembershipService membershipService)
         {
             _db = db;
             _mapper = mapper;
+            _membershipService = membershipService;
         }
 
         // GET: api/factures

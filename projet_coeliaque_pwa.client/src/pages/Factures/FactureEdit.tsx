@@ -315,7 +315,108 @@ export default function FactureEdit() {
                                     </tbody>
                                 </Table>
                             </div>
-                            {/* For mobile view, you can duplicate the mobile card logic from your Razor page if you want */}
+                            {/* Mobile/Tablet version: show cards instead of table on <1200px */}
+                            <div className="d-block d-xl-none">
+                                <div className="row g-3">
+                                    {facture.items.map((item, i) => (
+                                        <div className="col-12" key={i}>
+                                            <div className="card border border-dark shadow-sm rounded-3">
+                                                <div className="card-body py-2 px-3">
+                                                    <div className="mb-2 d-flex justify-content-between">
+                                                        <span className="fw-bold">{item.item}</span>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline-danger"
+                                                            className="rounded-pill px-2 py-0"
+                                                            style={{ lineHeight: 1 }}
+                                                            onClick={() => handleRemoveItem(i)}
+                                                        >
+                                                            <i className="bi bi-x-lg"></i>
+                                                        </Button>
+                                                    </div>
+                                                    <div className="mb-1 small text-muted">
+                                                        <b>Type:</b>{" "}
+                                                        <CreatableSelect
+                                                            isClearable
+                                                            menuPlacement="top"
+                                                            options={typeOptions}
+                                                            value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
+                                                            onChange={(option: SingleValue<{ label: string; value: string }>) =>
+                                                                handleItemChange(i, "typeItem", option?.value || "")
+                                                            }
+                                                            placeholder="Type…"
+                                                            styles={{
+                                                                control: base => ({ ...base, minHeight: 24, fontSize: 14 }),
+                                                                valueContainer: base => ({ ...base, padding: "0 6px" }),
+                                                                input: base => ({ ...base, margin: 0, padding: 0 }),
+                                                                indicatorsContainer: base => ({ ...base, height: 20 }),
+                                                                menu: base => ({ ...base, zIndex: 9999 })
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="mb-1">
+                                                        <label className="form-label small mb-0">Quantité</label>
+                                                        <input
+                                                            className="form-control form-control-sm border-black rounded-2"
+                                                            type="number"
+                                                            value={item.quantite}
+                                                            onChange={e => handleItemChange(i, "quantite", +e.target.value)}
+                                                            placeholder="Quantité"
+                                                        />
+                                                    </div>
+                                                    <div className="mb-1">
+                                                        <label className="form-label small mb-0">Prix</label>
+                                                        <input
+                                                            className="form-control form-control-sm border-black rounded-2"
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={item.prix}
+                                                            onChange={e => handleItemChange(i, "prix", +e.target.value)}
+                                                            placeholder="Prix"
+                                                        />
+                                                    </div>
+                                                    <div className="mb-1">
+                                                        <label className="form-label small mb-0">Poids</label>
+                                                        <input
+                                                            className="form-control form-control-sm border-black rounded-2"
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={item.poidsValeur}
+                                                            onChange={e => handleItemChange(i, "poidsValeur", +e.target.value)}
+                                                            placeholder="Poids"
+                                                        />
+                                                    </div>
+                                                    <div className="mb-1">
+                                                        <label className="form-label small mb-0">Unité</label>
+                                                        <select
+                                                            className="form-select form-select-sm border-black rounded-2"
+                                                            value={item.poidsUnite}
+                                                            onChange={e => handleItemChange(i, "poidsUnite", e.target.value)}
+                                                        >
+                                                            <option value="">-- Unité --</option>
+                                                            {UNIT_OPTIONS.map(u => (
+                                                                <option key={u} value={u}>{u}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-check mt-2">
+                                                        <input
+                                                            className="form-check-input border-dark"
+                                                            type="checkbox"
+                                                            id={`onsale${i}`}
+                                                            checked={item.wasOnSale}
+                                                            onChange={e => handleItemChange(i, "wasOnSale", e.target.checked)}
+                                                        />
+                                                        <label className="form-check-label small" htmlFor={`onsale${i}`}>
+                                                            En solde ?
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                         <div className="d-flex justify-content-end gap-2">
                             <Button type="submit" className="btn btn-primary rounded-pill px-4">

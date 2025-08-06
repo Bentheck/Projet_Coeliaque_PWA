@@ -16,21 +16,23 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     public class ComparatifYearsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
         private readonly IMapper _mapper;
+        private readonly IMembershipService _membershipService;
 
-        public ComparatifYearsController(ApplicationDbContext db, UserManager<IdentityUser> userManager, IMapper mapper)
+        public ComparatifYearsController(ApplicationDbContext db, IMapper mapper, IMembershipService membershipService)
         {
             _db = db;
-            _userManager = userManager;
             _mapper = mapper;
+            _membershipService = membershipService;
         }
 
         // GET: api/comparatifyears
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ComparatifYearDto>>> GetComparatifYears()
         {
-            var userId = _userManager.GetUserId(User);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
             var years = await _db.ComparatifYears
                 .Include(y => y.Lines)
                 .Where(y => y.UserId == userId)
@@ -44,7 +46,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<ComparatifYearDto>> GetComparatifYear(int id)
         {
-            var userId = _userManager.GetUserId(User);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
             var year = await _db.ComparatifYears
                 .Include(y => y.Lines)
                 .FirstOrDefaultAsync(y => y.Id == id && y.UserId == userId);
@@ -58,7 +62,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpPost]
         public async Task<ActionResult<ComparatifYearDto>> CreateComparatifYear(ComparatifYearDto dto)
         {
-            var userId = _userManager.GetUserId(User);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
             var entity = _mapper.Map<ComparatifYear>(dto);
             entity.UserId = userId;
             entity.Lines = new List<ProductComparison>(); // Start empty!
@@ -74,7 +80,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateComparatifYear(int id, ComparatifYearDto dto)
         {
-            var userId = _userManager.GetUserId(User);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
             if (id != dto.Id) return BadRequest();
 
             var entity = await _db.ComparatifYears
@@ -133,7 +141,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteComparatifYear(int id)
         {
-            var userId = _userManager.GetUserId(User);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
             var year = await _db.ComparatifYears
                 .Include(y => y.Lines)
                 .FirstOrDefaultAsync(y => y.Id == id && y.UserId == userId);
@@ -151,7 +161,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpPost("{id}/lines")]
         public async Task<ActionResult<ProductComparisonDto>> AddLine(int id, ProductComparisonDto dto)
         {
-            var userId = _userManager.GetUserId(User);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
 
             var year = await _db.ComparatifYears
                 .FirstOrDefaultAsync(y => y.Id == id && y.UserId == userId);
@@ -171,7 +183,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpPut("{yearId}/lines/{lineId}")]
         public async Task<IActionResult> UpdateLine(int yearId, int lineId, ProductComparisonDto dto)
         {
-            var userId = _userManager.GetUserId(User);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
 
             var line = await _db.ProductComparisons
                 .Include(l => l.ComparatifYear)
@@ -194,8 +208,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpDelete("{yearId}/lines/{lineId}")]
         public async Task<IActionResult> DeleteLine(int yearId, int lineId)
         {
-            var userId = _userManager.GetUserId(User);
-
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
             var line = await _db.ProductComparisons
                 .Include(l => l.ComparatifYear)
                 .FirstOrDefaultAsync(l => l.Id == lineId && l.ComparatifYearId == yearId && l.ComparatifYear.UserId == userId);
@@ -211,6 +226,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<ActionResult<List<string>>> GetAvailableTypesForYear(int annee)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!await _membershipService.HasActiveMembershipAsync(userId))
+                return Forbid("Membership required.");
             var types = await _db.FactureItems
                 .Where(fi => fi.Facture.UserId == userId && fi.Facture.Annee == annee)
                 .Select(fi => fi.TypeItem)

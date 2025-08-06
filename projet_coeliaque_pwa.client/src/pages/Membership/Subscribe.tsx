@@ -1,35 +1,40 @@
 ﻿import React, { useState } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe('pk_test_51RTnmkRtAySSxpaZUfWBLiftBpBYG60P0VJV1VzDSRlgbxqalkSphY59SkuaTapC5ltjNyKst1Fk9KFTprrJ6pPd00H1K8tPLK');
 
 const Subscribe: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement subscription logic (API call)
-    setSubmitted(true);
-  };
+    const handleSubscribe = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
 
-  return (
-    <div className="subscribe-page">
-      <h1>Subscribe</h1>
-      {submitted ? (
-        <p>Thank you for subscribing!</p>
-      ) : (
-        <form onSubmit={handleSubmit}>
-          <label htmlFor="email">Email address:</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-          />
-          <button type="submit">Subscribe</button>
-        </form>
-      )}
-    </div>
-  );
+        const response = await fetch('/api/subscribe/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+
+        const stripe = await stripePromise;
+        if (stripe) {
+            await stripe.redirectToCheckout({ sessionId: data.sessionId });
+        } else {
+            alert("Stripe failed to initialize.");
+        }
+        setLoading(false);
+    };
+
+    return (
+        <div>
+            <h1>Abonnement</h1>
+            <form onSubmit={handleSubscribe}>
+                <button type="submit" disabled={loading}>
+                    {loading ? "Redirection vers Stripe..." : "S'abonner"}
+                </button>
+            </form>
+        </div>
+    );
 };
 
 export default Subscribe;

@@ -13,8 +13,8 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<ProductComparison> ProductComparisons { get; set; }
         public DbSet<Membership> Memberships { get; set; }
         public DbSet<SavedReport> SavedReports { get; set; }
-        public DbSet<GroceryList> GroceryLists { get; set; }
-        public DbSet<GroceryListItem> GroceryListItems { get; set; }
+        public DbSet<ListeEpicerie> ListeEpicerie { get; set; }
+        public DbSet<ListeEpicerieItem> ListeEpicerieItems { get; set; }
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         { }

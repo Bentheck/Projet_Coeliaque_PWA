@@ -8,9 +8,12 @@ import FactureEdit from './pages/Factures/FactureEdit';
 import Comparatif from "./pages/Comparatif/Comparatif";
 import ComparatifEdit from "./pages/Comparatif/ComparatifEdit";
 import Rapports from "./pages/Comparatif/Rapports";
-import Epicerie from "./pages/ListeEpicerie/Epicerie";
-import NouvelleEpicerie from "./pages/ListeEpicerie/NouvelleEpicerie";
+import ListeEpicerieIndex from "./pages/ListeEpicerie/ListesEpicerieIndex";
+import ListeEpicerieEdit from "./pages/ListeEpicerie/ListeEpicerieEdit";
+import ListeEpicerieView from "./pages/ListeEpicerie/ListeEpicerieView";
 import Subscribe from "./pages/Membership/Subscribe";
+import SubscribeSuccess from './pages/Membership/SubscribeSuccess';
+import SubscribeCancel from './pages/Membership/SubscribeCancel';
 import Membership from "./pages/Membership/Membership";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/User/login";
@@ -52,14 +55,17 @@ export default function App() {
                     <Route path="/comparatif/:id" element={<ComparatifEdit />} />
                     <Route path="/rapports" element={<Rapports />} />
                     <Route path="/rapports/:annee" element={<RapportsDisplay />} />
-                    <Route path="/epicerie" element={<Epicerie />} />
-                    <Route path="/epicerie/nouvelle" element={<NouvelleEpicerie />} />
                     <Route path="/login" element={<Login onLogin={refreshStatus} />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/subscribe" element={<Subscribe />} />
+                    <Route path="/subscribe/success" element={<SubscribeSuccess />} />
+                    <Route path="/subscribe/cancel" element={<SubscribeCancel />} />
                     <Route path="/membership" element={<Membership />} />
                     <Route path="/logout" element={<Logout onLogout={refreshStatus} />} />
                     <Route path="*" element={<NotFound />} />
+                    <Route path="/ListeEpicerie" element={<ListeEpicerieIndex />} />
+                    <Route path="/ListeEpicerie/edit/:id?" element={<ListeEpicerieEdit />} />
+                    <Route path="/ListeEpicerie/view/:id" element={<ListeEpicerieView />} />
                 </Routes>
             </Layout>
         </Router>
