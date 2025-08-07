@@ -1,6 +1,9 @@
 ﻿import { Link } from "react-router-dom";
+import { useAuth } from "./AuthContext"; // Adjust path as needed
 
-export default function Navbar({ user, membershipStatus }: { user: any, membershipStatus: string | null }) {
+export default function Navbar() {
+    const { user, membershipStatus } = useAuth();
+
     return (
         <nav className="navbar navbar-expand-lg navbar-white bg-white sticky-top mb-4 shadow-sm">
             <div className="container">
@@ -85,9 +88,9 @@ export default function Navbar({ user, membershipStatus }: { user: any, membersh
                             </>
                         ) : (
                             <>
-                                    <li className="nav-item">
-                                        <Link className="nav-link" to="/login">
-                                                <i className="bi bi-door-open"></i> Login
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="/login">
+                                        <i className="bi bi-door-open"></i> Login
                                     </Link>
                                 </li>
                                 <li className="nav-item">

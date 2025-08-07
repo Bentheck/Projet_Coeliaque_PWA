@@ -20,6 +20,9 @@ import Login from "./pages/User/login";
 import Register from "./pages/User/register";
 import Logout from "./pages/User/logout";
 import RapportsDisplay from "./pages/Comparatif/RapportsDisplay";
+import MembershipGuard from "./components/MembershipGuard";
+import AuthGuard from "./components/AuthGuard";
+import { AuthProvider } from "./components/AuthContext";
 
 
 export default function App() {
@@ -45,29 +48,31 @@ export default function App() {
     }, [refreshStatus]);
 
     return (
-        <Router>
-            <Layout user={user} membershipStatus={membershipStatus}>
-                <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/factures" element={<Factures />} />
-                    <Route path="/factures/:id" element={<FactureEdit />} />
-                    <Route path="/comparatif" element={<Comparatif />} />
-                    <Route path="/comparatif/:id" element={<ComparatifEdit />} />
-                    <Route path="/rapports" element={<Rapports />} />
-                    <Route path="/rapports/:annee" element={<RapportsDisplay />} />
-                    <Route path="/login" element={<Login onLogin={refreshStatus} />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/subscribe" element={<Subscribe />} />
-                    <Route path="/subscribe/success" element={<SubscribeSuccess />} />
-                    <Route path="/subscribe/cancel" element={<SubscribeCancel />} />
-                    <Route path="/membership" element={<Membership />} />
-                    <Route path="/logout" element={<Logout onLogout={refreshStatus} />} />
-                    <Route path="*" element={<NotFound />} />
-                    <Route path="/ListeEpicerie" element={<ListeEpicerieIndex />} />
-                    <Route path="/ListeEpicerie/edit/:id?" element={<ListeEpicerieEdit />} />
-                    <Route path="/ListeEpicerie/view/:id" element={<ListeEpicerieView />} />
-                </Routes>
-            </Layout>
-        </Router>
+        <AuthProvider>
+            <Router>
+                <Layout user={user} membershipStatus={membershipStatus}>
+                    <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/factures" element={<AuthGuard><MembershipGuard> <Factures /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/factures/:id" element={<AuthGuard><MembershipGuard>  <FactureEdit /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/comparatif" element={<AuthGuard><MembershipGuard>  <Comparatif /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/comparatif/:id" element={<AuthGuard><MembershipGuard>  <ComparatifEdit /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/rapports" element={<AuthGuard><MembershipGuard>  <Rapports /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/rapports/:annee" element={<AuthGuard><MembershipGuard>  <RapportsDisplay /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/subscribe" element={<AuthGuard><Subscribe /></AuthGuard>} />
+                        <Route path="/subscribe/success" element={<AuthGuard><SubscribeSuccess /></AuthGuard>} />
+                        <Route path="/subscribe/cancel" element={<AuthGuard><SubscribeCancel /></AuthGuard>} />
+                        <Route path="/membership" element={<AuthGuard><MembershipGuard>  <Membership /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/logout" element={<Logout />} />
+                        <Route path="*" element={<NotFound />} />
+                        <Route path="/ListeEpicerie" element={<AuthGuard><MembershipGuard>  <ListeEpicerieIndex /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/ListeEpicerie/edit/:id?" element={<AuthGuard><MembershipGuard>  <ListeEpicerieEdit /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/ListeEpicerie/view/:id" element={<AuthGuard><MembershipGuard> <ListeEpicerieView /> </MembershipGuard></AuthGuard>} />
+                    </Routes>
+                </Layout>
+            </Router>
+        </AuthProvider>
     );
 }

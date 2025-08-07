@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Projet_Coeliaque_PWA.Server.Data;
@@ -33,6 +33,8 @@ namespace Projet_Coeliaque_PWA.Server
 
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
+            builder.Services.AddTransient<IEmailSender, DevEmailSender>();
+
             builder.Services.AddSession(options =>
             {
                 options.IdleTimeout = TimeSpan.FromMinutes(90);
@@ -61,7 +63,7 @@ namespace Projet_Coeliaque_PWA.Server
             app.UseAuthorization();
 
             // API endpoints
-            app.MapIdentityApi<IdentityUser>(); // <-- This exposes /api/account/* endpoints!
+            //app.MapIdentityApi<IdentityUser>(); // <-- This exposes /api/account/* endpoints!
             app.MapControllers();
 
             app.MapStaticAssets();

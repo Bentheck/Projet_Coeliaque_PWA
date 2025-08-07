@@ -1,18 +1,20 @@
 ﻿import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../components/AuthContext";
 
-export default function Logout({ onLogout }: { onLogout: () => void }) {
+export default function Logout() {
     const navigate = useNavigate();
+    const { refresh } = useAuth();
 
     useEffect(() => {
         fetch('/api/account/logout', {
             method: 'POST',
             credentials: 'include',
         }).finally(() => {
-            onLogout(); // Clear user in parent
+            refresh();        // Update auth context globally
             navigate('/login');
         });
-    }, [navigate, onLogout]);
+    }, [navigate, refresh]);
 
     return (
         <div className="text-center mt-5">

@@ -4,6 +4,7 @@ export default function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [registered, setRegistered] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -15,14 +16,25 @@ export default function Register() {
             body: JSON.stringify({ email, password })
         });
         if (res.ok) {
-            window.location.href = '/'; // or redirect to login
+            setRegistered(true);
         } else {
             const data = await res.json();
-            // Identity errors array is in data, not as "errors" directly
-            const firstError = Array.isArray(data) ? data[0]?.description : data.errors?.[0]?.description;
+            const firstError = Array.isArray(data) ? data[0]?.description : data.errors?.[0];
             setError(firstError ?? 'Erreur lors de l’inscription.');
         }
     };
+
+    if (registered) {
+        return (
+            <div className="card p-4 mx-auto my-5" style={{ maxWidth: 400 }}>
+                <h2>Inscription réussie !</h2>
+                <div className="alert alert-success">
+                    Un lien de confirmation a été envoyé à votre adresse email.<br />
+                    Veuillez confirmer votre compte avant de vous connecter.
+                </div>
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit} className="card p-4 mx-auto my-5" style={{ maxWidth: 400 }}>
