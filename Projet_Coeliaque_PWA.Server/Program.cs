@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Projet_Coeliaque_PWA.Server.Data;
@@ -59,7 +59,7 @@ namespace Projet_Coeliaque_PWA.Server
             app.UseHttpsRedirection();
             app.UseRouting();
 
-            app.UseAuthentication();   // <-- Make sure to add this!
+            app.UseAuthentication();
             app.UseAuthorization();
 
             // API endpoints
