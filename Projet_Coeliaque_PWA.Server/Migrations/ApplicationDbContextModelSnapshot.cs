@@ -22,6 +22,55 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FreeItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("DefaultPrix")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<double?>("DefaultQuantite")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsFavorite")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Item")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastUsedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PoidsUnite")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("PoidsValeur")
+                        .HasColumnType("float");
+
+                    b.Property<string>("TypeItem")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("WasOnSale")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FreeItems");
+                });
+
             modelBuilder.Entity("ListeEpicerie", b =>
                 {
                     b.Property<int>("Id")
@@ -54,7 +103,13 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("FactureItemId")
+                    b.Property<string>("CustomName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("FactureItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("FreeItemId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsFavorite")
@@ -66,9 +121,14 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Property<double>("Quantity")
                         .HasColumnType("float");
 
+                    b.Property<bool>("WasOnSale")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("FactureItemId");
+
+                    b.HasIndex("FreeItemId");
 
                     b.HasIndex("ListeEpicerieId");
 
@@ -471,9 +531,11 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                 {
                     b.HasOne("Projet_Coeliaque_PWA.Server.Models.FactureItem", "FactureItem")
                         .WithMany()
-                        .HasForeignKey("FactureItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("FactureItemId");
+
+                    b.HasOne("FreeItem", "FreeItem")
+                        .WithMany()
+                        .HasForeignKey("FreeItemId");
 
                     b.HasOne("ListeEpicerie", "ListeEpicerie")
                         .WithMany("Items")
@@ -482,6 +544,8 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .IsRequired();
 
                     b.Navigation("FactureItem");
+
+                    b.Navigation("FreeItem");
 
                     b.Navigation("ListeEpicerie");
                 });

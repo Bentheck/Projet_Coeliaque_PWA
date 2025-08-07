@@ -46,12 +46,12 @@ export default function Navbar() {
                             </a>
                             <ul className="dropdown-menu" aria-labelledby="epicerieDropdown">
                                 <li>
-                                    <Link className="dropdown-item" to="/ListeEpicerie">
+                                    <Link className="dropdown-item" to="/liste-epicerie">
                                         <i className="bi bi-cart-check me-2"></i> Mes listes d'épicerie
                                     </Link>
                                 </li>
                                 <li>
-                                    <Link className="dropdown-item" to="/ListeEpicerie">
+                                    <Link className="dropdown-item" to="/liste-epicerie">
                                         <i className="bi bi-cart-plus me-2"></i> Nouvelle liste
                                     </Link>
                                 </li>

@@ -67,9 +67,9 @@ export default function App() {
                         <Route path="/membership" element={<AuthGuard><MembershipGuard>  <Membership /> </MembershipGuard></AuthGuard>} />
                         <Route path="/logout" element={<Logout />} />
                         <Route path="*" element={<NotFound />} />
-                        <Route path="/ListeEpicerie" element={<AuthGuard><MembershipGuard>  <ListeEpicerieIndex /> </MembershipGuard></AuthGuard>} />
-                        <Route path="/ListeEpicerie/edit/:id?" element={<AuthGuard><MembershipGuard>  <ListeEpicerieEdit /> </MembershipGuard></AuthGuard>} />
-                        <Route path="/ListeEpicerie/view/:id" element={<AuthGuard><MembershipGuard> <ListeEpicerieView /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/liste-epicerie" element={<AuthGuard><MembershipGuard>  <ListeEpicerieIndex /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/liste-epicerie/edit/:id?" element={<AuthGuard><MembershipGuard>  <ListeEpicerieEdit /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/liste-epicerie/view/:id" element={<AuthGuard><MembershipGuard> <ListeEpicerieView /> </MembershipGuard></AuthGuard>} />
                     </Routes>
                 </Layout>
             </Router>

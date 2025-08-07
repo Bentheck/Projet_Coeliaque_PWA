@@ -15,6 +15,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<SavedReport> SavedReports { get; set; }
         public DbSet<ListeEpicerie> ListeEpicerie { get; set; }
         public DbSet<ListeEpicerieItem> ListeEpicerieItems { get; set; }
+        public DbSet<FreeItem> FreeItems => Set<FreeItem>();
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         { }

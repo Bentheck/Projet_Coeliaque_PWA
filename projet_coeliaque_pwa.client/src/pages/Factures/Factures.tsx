@@ -63,27 +63,44 @@ const Factures: React.FC = () => {
         setFormData(emptyFacture);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
 
-        const method = formMode === "edit" ? "PUT" : "POST";
-        const url = formMode === "edit"
+        const isEdit = formMode === "edit";
+        const url = isEdit
             ? `/api/factures/${current!.id}`
-            : "/api/factures";
+            : "/api/factures"; // or "/api/factures/header" if you used the header-only endpoint
 
-        fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(formData)
-        })
-            .then(async res => {
-                if (!res.ok) throw new Error(await res.text());
+        // If your backend still complains about Items on create, send items: []
+        const payload = isEdit ? formData : { ...formData, items: [] };
+
+        try {
+            const res = await fetch(url, {
+                method: isEdit ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) throw new Error(await res.text());
+
+            if (isEdit) {
                 handleCancel();
                 fetchFactures();
-            })
-            .catch(err => setError(err.message));
+                return;
+            }
+
+            // Create flow: get new id and jump to edit page
+            const created = await res.json();
+            const newId = created?.id ?? created?.Id; // System.Text.Json sends camelCase by default
+            if (!newId) throw new Error("Réponse inattendue: id manquant.");
+
+            handleCancel(); // close form
+            navigate(`/factures/${newId}`);
+        } catch (err: any) {
+            setError(err.message ?? "Erreur lors de l’enregistrement.");
+        }
     };
 
     const handleDelete = (facture: Facture) => {

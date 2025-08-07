@@ -10,7 +10,7 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         public string FactureId { get; set; }
         public DateTime Date { get; set; }
         public string Magasin { get; set; }
-        public List<FactureItemDto> Items { get; set; }
+        public List<FactureItemDto>? Items { get; set; } = new();
     }
 
     public class FactureItemDto

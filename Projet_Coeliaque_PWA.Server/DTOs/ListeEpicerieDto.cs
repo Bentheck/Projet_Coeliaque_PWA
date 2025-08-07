@@ -11,8 +11,24 @@
     public class ListeEpicerieItemDTO
     {
         public int Id { get; set; }
-        public int FactureItemId { get; set; }
+        public int? FactureItemId { get; set; }
+        public int? FreeItemId { get; set; }
+        public string? CustomName { get; set; }
         public double Quantity { get; set; }
         public bool IsFavorite { get; set; }
+        public bool WasOnSale { get; set; }
+    }
+
+    public class FreeItemDTO
+    {
+        public int Id { get; set; }
+        public string Item { get; set; } = "";
+        public string TypeItem { get; set; } = "";
+        public double? DefaultQuantite { get; set; }
+        public decimal? DefaultPrix { get; set; }
+        public double? PoidsValeur { get; set; }
+        public string? PoidsUnite { get; set; }
+        public bool IsFavorite { get; set; }
+        public bool WasOnSale { get; set; }
     }
 }
