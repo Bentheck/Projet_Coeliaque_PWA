@@ -30,5 +30,6 @@
         public string? PoidsUnite { get; set; }
         public bool IsFavorite { get; set; }
         public bool WasOnSale { get; set; }
+        public string? Magasin { get; set; }
     }
 }

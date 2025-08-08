@@ -49,6 +49,9 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Property<DateTime?>("LastUsedUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Magasin")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PoidsUnite")
                         .HasColumnType("nvarchar(max)");
 
