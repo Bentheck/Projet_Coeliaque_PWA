@@ -124,8 +124,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             // Cache-busting version that tolerates null
             var versionTicks = (profile.AvatarUpdatedUtc ?? DateTime.UtcNow).Ticks;
-            var url = "/" + profile.AvatarPath + $"?v={versionTicks}";
-            return Ok(new { avatarUrl = url });
+            var abs = AbsoluteContentUrl(profile.AvatarPath) + $"?v={versionTicks}";
+            return Ok(new { avatarUrl = abs });
         }
 
         [HttpDelete]
@@ -173,6 +173,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return true;
 
             return false;
+        }
+
+        private string AbsoluteContentUrl(string? relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath)) return "";
+            var normalized = relativePath.Replace("\\", "/").TrimStart('/');
+            var req = HttpContext?.Request;
+            var scheme = req?.Scheme ?? "https";
+            var host = req?.Host.Value ?? "localhost";
+            var pathBase = req?.PathBase.Value?.TrimEnd('/') ?? "";
+            return $"{scheme}://{host}{pathBase}/{normalized}";
         }
     }
 }

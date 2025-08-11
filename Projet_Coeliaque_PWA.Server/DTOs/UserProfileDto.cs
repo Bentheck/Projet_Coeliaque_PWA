@@ -5,7 +5,7 @@
         public string UserId { get; set; } = default!;
         public string DisplayName { get; set; } = "";
         public string? Bio { get; set; }
-        public string? AvatarPath { get; set; }
+        public string? AvatarUrl { get; set; }
         public DateTime? AvatarUpdatedUtc { get; set; }
         public string? Location { get; set; }
         public string? Website { get; set; }
@@ -19,7 +19,7 @@
     {
         public string DisplayName { get; set; } = "";
         public string? Bio { get; set; }
-        public string? AvatarPath { get; set; }
+        public string? AvatarUrl { get; set; }
         public DateTime? AvatarUpdatedUtc { get; set; }
         public string? Location { get; set; }
         public string? Website { get; set; }

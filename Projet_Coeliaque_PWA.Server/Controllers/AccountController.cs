@@ -185,31 +185,36 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
             }
 
-            // Run independent queries concurrently
-            var membershipTask = _membershipService.GetCurrentMembershipAsync(uid);
-            var claimsTask = _userManager.GetClaimsAsync(user);
-            var profileTask = _db.UserProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == uid);
-            var forumAdminTask = _db.Set<ForumAdmin>().AsNoTracking().AnyAsync(a => a.UserId == uid);
-            var superAdminTask = _userManager.IsInRoleAsync(user, "SuperAdmin");
+            // --- SEQUENTIAL EF QUERIES (same _db instance) ---
+            var membership = await _membershipService.GetCurrentMembershipAsync(uid);
 
-            await Task.WhenAll(membershipTask, claimsTask, profileTask, forumAdminTask, superAdminTask);
+            var profile = await _db.UserProfiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.UserId == uid);
 
-            var membership = membershipTask.Result;
-            var membershipStatus =
-                (membership != null && DateTime.UtcNow >= membership.StartDate && DateTime.UtcNow <= membership.EndDate)
-                    ? "Active" : "Inactive";
+            var isForumAdmin = await _db.Set<ForumAdmin>()
+                .AsNoTracking()
+                .AnyAsync(a => a.UserId == uid);
 
-            var claims = claimsTask.Result;
-            var profile = profileTask.Result;
-            var displayNameClaim = claims.FirstOrDefault(c => c.Type == "display_name")?.Value;
+            // --- Identity ops (separate store; still fine sequentially) ---
+            var isSuperAdmin = await _userManager.IsInRoleAsync(user, "SuperAdmin");
+            var claims = await _userManager.GetClaimsAsync(user);
 
+            // Display name preference: profile.DisplayName -> claim("display_name")
             var displayName = !string.IsNullOrWhiteSpace(profile?.DisplayName)
                 ? profile!.DisplayName
-                : displayNameClaim;
+                : claims.FirstOrDefault(c => c.Type == "display_name")?.Value;
 
-            var avatarUrl = !string.IsNullOrWhiteSpace(profile?.AvatarPath)
-                ? "/" + profile!.AvatarPath.Replace("\\", "/").TrimStart('/')
-                : null;
+            string? avatarUrl = null;
+            if (!string.IsNullOrWhiteSpace(profile?.AvatarPath))
+            {
+                var v = (profile!.AvatarUpdatedUtc ?? DateTime.UtcNow).Ticks;
+                avatarUrl = AbsoluteContentUrl(profile.AvatarPath) + $"?v={v}"; // ABSOLUTE + cache-bust
+            }
+
+            var membershipStatus =
+                (membership != null && DateTime.UtcNow >= membership.StartDate && DateTime.UtcNow <= membership.EndDate)
+                ? "Active" : "Inactive";
 
             return Ok(new
             {
@@ -222,9 +227,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     avatarUrl
                 },
                 membershipStatus,
-                isSuperAdmin = superAdminTask.Result,
-                isForumAdmin = forumAdminTask.Result
+                isSuperAdmin,
+                isForumAdmin
             });
+        }
+
+        private string AbsoluteContentUrl(string? relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath)) return "";
+            var normalized = relativePath.Replace("\\", "/").TrimStart('/');
+            var req = HttpContext?.Request;
+            var scheme = req?.Scheme ?? "https";
+            var host = req?.Host.Value ?? "localhost";
+            var pathBase = req?.PathBase.Value?.TrimEnd('/') ?? "";
+            return $"{scheme}://{host}{pathBase}/{normalized}";
         }
     }
 }

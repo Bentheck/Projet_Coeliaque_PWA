@@ -92,6 +92,8 @@ namespace Projet_Coeliaque_PWA.Server
 
             app.UseHttpsRedirection();
 
+            app.UseStaticFiles();
+
             app.UseRouting();
 
             app.UseSession();
