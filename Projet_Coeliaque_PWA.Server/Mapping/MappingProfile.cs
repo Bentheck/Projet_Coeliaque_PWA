@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
+using System.Linq;
 
 namespace Projet_Coeliaque_PWA.Server.Mapping
 {
@@ -8,22 +9,19 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
     {
         public MappingProfile()
         {
-            // Factures
+            // ---- existing maps (your code) ----
             CreateMap<Facture, FactureDto>().ReverseMap();
             CreateMap<FactureItem, FactureItemDto>().ReverseMap();
-
-            // Comparatif
             CreateMap<ComparatifYear, ComparatifYearDto>().ReverseMap();
             CreateMap<ProductComparison, ProductComparisonDto>().ReverseMap();
             CreateMap<ProductComparisonRow, ProductComparisonRowDto>().ReverseMap();
 
-            // Listes d'épicerie
             CreateMap<ListeEpicerie, ListeEpicerieDTO>()
                 .ForMember(d => d.Items, o => o.MapFrom(s => s.Items));
 
             CreateMap<ListeEpicerieDTO, ListeEpicerie>()
                 .ForMember(d => d.UserId, o => o.Ignore())
-                .ForMember(d => d.Items, o => o.Ignore()); // items handled manually in controller
+                .ForMember(d => d.Items, o => o.Ignore());
 
             CreateMap<ListeEpicerieItem, ListeEpicerieItemDTO>();
             CreateMap<ListeEpicerieItemDTO, ListeEpicerieItem>()
@@ -31,10 +29,32 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ForMember(d => d.FactureItem, o => o.Ignore())
                 .ForMember(d => d.FreeItem, o => o.Ignore());
 
-            // Free items
             CreateMap<FreeItem, FreeItemDTO>()
                 .ReverseMap()
-                .ForMember(d => d.UserId, o => o.Ignore()); // set from context/controller
+                .ForMember(d => d.UserId, o => o.Ignore());
+
+            // ---- Forum maps ----
+
+            // Category → includes computed ThreadCount
+            CreateMap<ForumCategory, ForumCategoryDto>()
+                .ForMember(d => d.ThreadCount, o => o.MapFrom(s => s.Threads.Count()));
+
+            // Thread list item (everything EF can do; names filled later)
+            CreateMap<ForumThread, ForumThreadListItemDto>()
+                .ForMember(d => d.PostCount, o => o.MapFrom(s => s.Posts.Count(p => !p.IsDeleted)))
+                .ForMember(d => d.CreatedBy, o => o.Ignore())
+                .ForMember(d => d.LastBy, o => o.Ignore());
+
+            // Thread meta (names filled later)
+            CreateMap<ForumThread, ForumThreadDto>()
+                .ForMember(d => d.PostCount, o => o.MapFrom(s => s.Posts.Count(p => !p.IsDeleted)))
+                .ForMember(d => d.CreatedBy, o => o.Ignore())
+                .ForMember(d => d.LastBy, o => o.Ignore());
+
+            // Posts (names filled later)
+            CreateMap<ForumPost, ForumPostDto>()
+                .ForMember(d => d.CreatedBy, o => o.Ignore())
+                .ForMember(d => d.EditedBy, o => o.Ignore());
         }
     }
 }

@@ -3,23 +3,35 @@ import { useEffect, useState, useCallback } from "react";
 import './app.css';
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
+
 import Factures from "./pages/Factures/Factures";
 import FactureEdit from './pages/Factures/FactureEdit';
+
 import Comparatif from "./pages/Comparatif/Comparatif";
 import ComparatifEdit from "./pages/Comparatif/ComparatifEdit";
+
 import Rapports from "./pages/Comparatif/Rapports";
+import RapportsDisplay from "./pages/Comparatif/RapportsDisplay";
+
 import ListeEpicerieIndex from "./pages/ListeEpicerie/ListesEpicerieIndex";
 import ListeEpicerieEdit from "./pages/ListeEpicerie/ListeEpicerieEdit";
 import ListeEpicerieView from "./pages/ListeEpicerie/ListeEpicerieView";
+
+import ForumIndex from "./pages/Forum/ForumIndex";
+import ForumCategory from "./pages/Forum/ForumCategory";
+import ForumThread from "./pages/Forum/ForumThread";
+
+import NotFound from "./pages/NotFound";
+
+import Login from "./pages/User/login";
+import Register from "./pages/User/register";
+import Logout from "./pages/User/logout";
+
 import Subscribe from "./pages/Membership/Subscribe";
 import SubscribeSuccess from './pages/Membership/SubscribeSuccess';
 import SubscribeCancel from './pages/Membership/SubscribeCancel';
 import Membership from "./pages/Membership/Membership";
-import NotFound from "./pages/NotFound";
-import Login from "./pages/User/login";
-import Register from "./pages/User/register";
-import Logout from "./pages/User/logout";
-import RapportsDisplay from "./pages/Comparatif/RapportsDisplay";
+
 import MembershipGuard from "./components/MembershipGuard";
 import AuthGuard from "./components/AuthGuard";
 import { AuthProvider } from "./components/AuthContext";
@@ -70,6 +82,9 @@ export default function App() {
                         <Route path="/liste-epicerie" element={<AuthGuard><MembershipGuard>  <ListeEpicerieIndex /> </MembershipGuard></AuthGuard>} />
                         <Route path="/liste-epicerie/edit/:id?" element={<AuthGuard><MembershipGuard>  <ListeEpicerieEdit /> </MembershipGuard></AuthGuard>} />
                         <Route path="/liste-epicerie/view/:id" element={<AuthGuard><MembershipGuard> <ListeEpicerieView /> </MembershipGuard></AuthGuard>} />
+                        <Route path="/forum" element={<ForumIndex />} />
+                        <Route path="/forum/c/:categoryId" element={<ForumCategory />} />
+                        <Route path="/forum/t/:threadId" element={<ForumThread />} />
                     </Routes>
                 </Layout>
             </Router>

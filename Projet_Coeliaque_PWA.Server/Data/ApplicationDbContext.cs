@@ -16,6 +16,9 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<ListeEpicerie> ListeEpicerie { get; set; }
         public DbSet<ListeEpicerieItem> ListeEpicerieItems { get; set; }
         public DbSet<FreeItem> FreeItems => Set<FreeItem>();
+        public DbSet<ForumCategory> ForumCategories { get; set; } = default!;
+        public DbSet<ForumThread> ForumThreads { get; set; } = default!;
+        public DbSet<ForumPost> ForumPosts { get; set; } = default!;
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         { }

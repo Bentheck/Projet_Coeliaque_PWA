@@ -469,6 +469,115 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.ToTable("FactureItems");
                 });
 
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ForumCategories");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumPost", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EditedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EditedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ThreadId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ThreadId");
+
+                    b.ToTable("ForumPosts");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumThread", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastPostByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("LastPostUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("ForumThreads");
+                });
+
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ProductComparison", b =>
                 {
                     b.Property<int>("Id")
@@ -643,6 +752,28 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Navigation("Facture");
                 });
 
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumPost", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.ForumThread", "Thread")
+                        .WithMany("Posts")
+                        .HasForeignKey("ThreadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Thread");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumThread", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.ForumCategory", "Category")
+                        .WithMany("Threads")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ProductComparison", b =>
                 {
                     b.HasOne("Projet_Coeliaque_PWA.Server.Models.ComparatifYear", "ComparatifYear")
@@ -667,6 +798,16 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Facture", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumCategory", b =>
+                {
+                    b.Navigation("Threads");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumThread", b =>
+                {
+                    b.Navigation("Posts");
                 });
 #pragma warning restore 612, 618
         }

@@ -10,14 +10,31 @@ export default function Navbar() {
                 <Link className="navbar-brand" to="/">
                     <i className="bi bi-bootstrap"></i> Site Coeliaque
                 </Link>
-                <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+
+                <button
+                    className="navbar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#mainNavbar"
+                    aria-controls="mainNavbar"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation"
+                >
                     <span className="navbar-toggler-icon"></span>
                 </button>
+
                 <div className="collapse navbar-collapse" id="mainNavbar">
                     <ul className="navbar-nav me-auto">
                         {/* Calculateur Dropdown */}
                         <li className="nav-item dropdown">
-                            <a className="nav-link dropdown-toggle" href="#" id="calculatorDropdown" role="button" data-bs-toggle="dropdown">
+                            <a
+                                className="nav-link dropdown-toggle"
+                                href="#"
+                                id="calculatorDropdown"
+                                role="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                            >
                                 <i className="bi bi-calculator"></i> Calculateur
                             </a>
                             <ul className="dropdown-menu" aria-labelledby="calculatorDropdown">
@@ -39,13 +56,22 @@ export default function Navbar() {
                                 </li>
                             </ul>
                         </li>
-                        {/* Épicerie Dropdown */}
-                             <li>
-                                    <Link className="nav-link" to="/liste-epicerie">
-                                        <i className="bi bi-cart-check me-1"></i> Mes listes d'épicerie
-                                    </Link>
-                                </li>                           
+
+                        {/* Épicerie */}
+                        <li className="nav-item">
+                            <Link className="nav-link" to="/liste-epicerie">
+                                <i className="bi bi-cart-check me-1"></i> Mes listes d'épicerie
+                            </Link>
+                        </li>
+
+                        {/* Forum */}
+                        <li className="nav-item">
+                            <Link className="nav-link" to="/forum">
+                                <i className="bi bi-chat-dots me-1"></i> Forum
+                            </Link>
+                        </li>
                     </ul>
+
                     <ul className="navbar-nav ms-auto">
                         {user ? (
                             <>
@@ -57,7 +83,14 @@ export default function Navbar() {
                                     </li>
                                 )}
                                 <li className="nav-item dropdown">
-                                    <a className="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown">
+                                    <a
+                                        className="nav-link dropdown-toggle"
+                                        href="#"
+                                        id="userMenu"
+                                        role="button"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                    >
                                         <i className="bi bi-person-circle"></i> {user.name}
                                     </a>
                                     <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
