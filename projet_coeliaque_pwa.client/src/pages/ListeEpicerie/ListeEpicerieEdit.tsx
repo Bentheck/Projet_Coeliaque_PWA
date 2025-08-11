@@ -368,7 +368,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 console.error("Save failed:", text);
                 return;
             }
-            navigate("/ListeEpicerie");
+            navigate("/Liste-Epicerie");
         } catch (e) { console.error(e); }
     };
 
@@ -796,7 +796,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                 <th style={{ minWidth: 180 }}>Produit</th>
                                 <th>Type</th>
                                 <th>Magasin</th>
-                                <th>Date</th>
+                                <th>Date ajout</th>
                                 <th className="text-end">Prix</th>
                                 <th>Poids</th>
                                 <th className="text-center">Spécial</th>

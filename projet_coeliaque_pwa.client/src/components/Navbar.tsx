@@ -40,23 +40,11 @@ export default function Navbar() {
                             </ul>
                         </li>
                         {/* Épicerie Dropdown */}
-                        <li className="nav-item dropdown">
-                            <a className="nav-link dropdown-toggle" href="#" id="epicerieDropdown" role="button" data-bs-toggle="dropdown">
-                                <i className="bi bi-cart4"></i> Épicerie
-                            </a>
-                            <ul className="dropdown-menu" aria-labelledby="epicerieDropdown">
-                                <li>
-                                    <Link className="dropdown-item" to="/liste-epicerie">
-                                        <i className="bi bi-cart-check me-2"></i> Mes listes d'épicerie
+                             <li>
+                                    <Link className="nav-link" to="/liste-epicerie">
+                                        <i className="bi bi-cart-check me-1"></i> Mes listes d'épicerie
                                     </Link>
-                                </li>
-                                <li>
-                                    <Link className="dropdown-item" to="/liste-epicerie">
-                                        <i className="bi bi-cart-plus me-2"></i> Nouvelle liste
-                                    </Link>
-                                </li>
-                            </ul>
-                        </li>
+                                </li>                           
                     </ul>
                     <ul className="navbar-nav ms-auto">
                         {user ? (

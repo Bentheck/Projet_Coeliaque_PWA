@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
     [ApiController]
-    [Route("api/factureitems")]
+    [Route("api/[controller]")]
     [Authorize]
     public class FactureItemsController : ControllerBase
     {
@@ -44,7 +44,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         // GET /api/factureitems?type=Boulangerie&q=pain
-        // Returns: id, item, typeItem, prix, magasin, date, wasOnSale
+        // Returns: id, item, typeItem, prix, magasin, date, wasOnSale, poidsValeur, poidsUnite, quantite, isFavorite
         [HttpGet]
         public async Task<ActionResult<object>> Get([FromQuery] string? type, [FromQuery] string? q, CancellationToken ct = default)
         {
@@ -71,7 +71,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     prix = fi.Prix,
                     magasin = fi.Facture.Magasin,
                     date = fi.Facture.Date,   // ISO-friendly
-                    wasOnSale = fi.WasOnSale
+                    wasOnSale = fi.WasOnSale,
+                    poidsValeur = fi.PoidsValeur,
+                    poidsUnite = fi.PoidsUnite,
+                    quantite = fi.Quantite,
+                    isFavorite = fi.IsFavorite
                 })
                 .ToListAsync(ct);
 
@@ -79,6 +83,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         // GET /api/factureitems/{id}
+        // Returns: id, item, typeItem, prix, magasin, date, wasOnSale, poidsValeur, poidsUnite, quantite, isFavorite
         [HttpGet("{id:int}")]
         public async Task<ActionResult<object>> GetOne(int id, CancellationToken ct = default)
         {
@@ -93,7 +98,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     prix = fi.Prix,
                     magasin = fi.Facture.Magasin,
                     date = fi.Facture.Date,
-                    wasOnSale = fi.WasOnSale
+                    wasOnSale = fi.WasOnSale,
+                    poidsValeur = fi.PoidsValeur,
+                    poidsUnite = fi.PoidsUnite,
+                    quantite = fi.Quantite,
+                    isFavorite = fi.IsFavorite
                 })
                 .FirstOrDefaultAsync(ct);
 

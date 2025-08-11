@@ -8,18 +8,33 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
     {
         public MappingProfile()
         {
+            // Factures
             CreateMap<Facture, FactureDto>().ReverseMap();
             CreateMap<FactureItem, FactureItemDto>().ReverseMap();
 
+            // Comparatif
             CreateMap<ComparatifYear, ComparatifYearDto>().ReverseMap();
             CreateMap<ProductComparison, ProductComparisonDto>().ReverseMap();
-
-            // For reports: ProductComparisonRow is usually not an EF entity, but you can still map if needed.
             CreateMap<ProductComparisonRow, ProductComparisonRowDto>().ReverseMap();
 
-            CreateMap<ListeEpicerie, ListeEpicerieDTO>().ReverseMap();          
-            CreateMap<ListeEpicerieItem, ListeEpicerieItemDTO>().ReverseMap();
-            CreateMap<FreeItem, FreeItemDTO>().ReverseMap();
+            // Listes d'épicerie
+            CreateMap<ListeEpicerie, ListeEpicerieDTO>()
+                .ForMember(d => d.Items, o => o.MapFrom(s => s.Items));
+
+            CreateMap<ListeEpicerieDTO, ListeEpicerie>()
+                .ForMember(d => d.UserId, o => o.Ignore())
+                .ForMember(d => d.Items, o => o.Ignore()); // items handled manually in controller
+
+            CreateMap<ListeEpicerieItem, ListeEpicerieItemDTO>();
+            CreateMap<ListeEpicerieItemDTO, ListeEpicerieItem>()
+                .ForMember(d => d.ListeEpicerie, o => o.Ignore())
+                .ForMember(d => d.FactureItem, o => o.Ignore())
+                .ForMember(d => d.FreeItem, o => o.Ignore());
+
+            // Free items
+            CreateMap<FreeItem, FreeItemDTO>()
+                .ReverseMap()
+                .ForMember(d => d.UserId, o => o.Ignore()); // set from context/controller
         }
     }
 }

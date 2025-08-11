@@ -3,9 +3,10 @@
     public class ListeEpicerieDTO
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
         public DateTime Created { get; set; }
-        public List<ListeEpicerieItemDTO> Items { get; set; }
+        public bool Completed { get; set; }
+        public List<ListeEpicerieItemDTO> Items { get; set; } = new();
     }
 
     public class ListeEpicerieItemDTO
@@ -17,6 +18,7 @@
         public double Quantity { get; set; }
         public bool IsFavorite { get; set; }
         public bool WasOnSale { get; set; }
+        public bool IsChecked { get; set; }
     }
 
     public class FreeItemDTO

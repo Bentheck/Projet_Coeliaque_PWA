@@ -6,6 +6,7 @@ public class ListeEpicerie
     public string UserId { get; set; }
     public string Name { get; set; }
     public DateTime Created { get; set; } = DateTime.UtcNow;
+    public bool Completed { get; set; }
     public ICollection<ListeEpicerieItem> Items { get; set; }
 }
 
@@ -30,6 +31,7 @@ public class ListeEpicerieItem
     public double Quantity { get; set; }
     public bool IsFavorite { get; set; }
     public bool WasOnSale { get; set; }
+    public bool IsChecked { get; set; }
 }
 
 

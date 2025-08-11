@@ -82,6 +82,9 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Completed")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
@@ -114,6 +117,9 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     b.Property<int?>("FreeItemId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsChecked")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsFavorite")
                         .HasColumnType("bit");
