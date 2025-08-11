@@ -34,6 +34,8 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/User/login";
 import Register from "./pages/User/register";
 import Logout from "./pages/User/logout";
+import UserProfileView from "./pages/User/UserProfileView";
+import UserProfileEdit from "./pages/User/UserProfileEdit";
 
 import Subscribe from "./pages/Membership/Subscribe";
 import SubscribeSuccess from "./pages/Membership/SubscribeSuccess";
@@ -200,6 +202,10 @@ export default function App() {
                                 </AuthGuard>
                             }
                         />
+
+                        {/* User Profile */}
+                        <Route path="/u/:userId" element={<UserProfileView />} />
+                        <Route path="/u/me/edit" element={<AuthGuard><UserProfileEdit /></AuthGuard>} />
 
                         {/* Auth & membership */}
                         <Route path="/login" element={<Login />} />

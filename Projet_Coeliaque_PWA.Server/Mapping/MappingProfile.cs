@@ -35,6 +35,8 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ForMember(d => d.UserId, o => o.Ignore());
 
             // ---------- Forum DTOs (pure projection with navs) ----------
+            CreateMap<UserProfile, UserProfileDto>().ReverseMap();
+
             CreateMap<ForumCategory, ForumCategoryDto>()
                 .ForMember(d => d.ThreadCount, o => o.MapFrom(s => s.Threads.Count()));
 

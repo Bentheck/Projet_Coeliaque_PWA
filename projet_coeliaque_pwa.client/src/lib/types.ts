@@ -1,4 +1,17 @@
 ﻿// src/lib/types.ts
+export type UserProfileDto = {
+    userId: string;
+    displayName: string;
+    bio?: string | null;
+    avatarUrl?: string | null;
+    location?: string | null;
+    website?: string | null;
+    joinedUtc: string;
+    lastSeenUtc?: string | null;
+    threadCount: number;
+    postCount: number;
+};
+
 export type ForumCategoryDto = {
     id: number;
     slug: string;

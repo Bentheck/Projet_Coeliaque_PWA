@@ -23,6 +23,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<ForumPost> ForumPosts { get; set; } = default!;
         public DbSet<ForumThreadModerator> ForumThreadModerators { get; set; } = default!;
         public DbSet<ForumAdmin> ForumAdmins { get; set; } = default!;
+        public DbSet<UserProfile> UserProfiles { get; set; } = default!;
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
@@ -141,6 +142,26 @@ namespace Projet_Coeliaque_PWA.Server.Data
                     .WithMany()
                     .HasForeignKey(x => x.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<UserProfile>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.Property(x => x.Id)
+                 .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                b.Property(x => x.UserId).IsRequired();
+                b.Property(x => x.DisplayName).IsRequired().HasMaxLength(32);
+                b.Property(x => x.Bio).HasMaxLength(1024);
+
+                b.HasOne<IdentityUser>(x => x.User)
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasIndex(x => x.UserId).IsUnique();
+                b.HasIndex(x => x.DisplayName).IsUnique();
             });
 
             // Optional seed example

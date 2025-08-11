@@ -1,6 +1,10 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
+﻿// Controllers/AccountController.cs
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Projet_Coeliaque_PWA.Server.Data;
+using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
 using System.Security.Claims;
 using System.Web;
@@ -14,21 +18,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IMembershipService _membershipService;
-        private readonly Services.IEmailSender _emailSender;
+        private readonly IEmailSender _emailSender;
+        private readonly ApplicationDbContext _db;
         private readonly string _frontendUrl;
 
         public AccountController(
             SignInManager<IdentityUser> signInManager,
             UserManager<IdentityUser> userManager,
             IMembershipService membershipService,
-            Services.IEmailSender emailSender,
+            IEmailSender emailSender,
+            ApplicationDbContext db,
             IConfiguration config)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _membershipService = membershipService;
             _emailSender = emailSender;
-            _frontendUrl = config["FrontendUrl"];
+            _db = db;
+            _frontendUrl = config["FrontendUrl"] ?? "/";
         }
 
         public class LoginRequest
@@ -43,39 +50,38 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             public string Password { get; set; } = "";
         }
 
-        // POST: api/account/register
+        /// <summary>POST: api/account/register</summary>
+        [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req)
         {
+            if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+                return BadRequest(new { error = "Email et mot de passe sont requis." });
+
             var user = new IdentityUser { UserName = req.Email, Email = req.Email };
             var result = await _userManager.CreateAsync(user, req.Password);
 
-            if (result.Succeeded)
-            {
-                // Generate email confirmation token
-                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                var encodedToken = HttpUtility.UrlEncode(token);
-                // SPA: You can use a frontend route and let it call the API, or use this API for direct confirmation
-                var confirmationUrl = $"{Request.Scheme}://{Request.Host}/api/account/confirm-email?userId={user.Id}&token={encodedToken}";
-                // Send the confirmation email
-                await _emailSender.SendEmailAsync(
-                    user.Email,
-                    "Confirmez votre compte",
-                    $"Merci de vous être inscrit !<br/>Pour activer votre compte, cliquez sur le lien suivant : <a href=\"{confirmationUrl}\">Confirmer l’email</a>");
+            if (!result.Succeeded)
+                return BadRequest(new { errors = result.Errors.Select(e => e.Description).ToArray() });
 
-                // DO NOT sign in user right away! Require confirmation first.
-                return Ok(new { message = "Inscription réussie. Veuillez confirmer votre adresse email." });
-            }
-            else
-            {
-                var errors = result.Errors.Select(e => e.Description).ToArray();
-                return BadRequest(new { errors });
-            }
+            // Generate email confirmation token + link to API confirm endpoint
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = HttpUtility.UrlEncode(token);
+            var confirmationUrl = $"{Request.Scheme}://{Request.Host}/api/account/confirm-email?userId={user.Id}&token={encodedToken}";
+
+            await _emailSender.SendEmailAsync(
+                user.Email!,
+                "Confirmez votre compte",
+                $"Merci de vous être inscrit !<br/>Pour activer votre compte, cliquez sur le lien suivant : <a href=\"{confirmationUrl}\">Confirmer l’email</a>");
+
+            // Do not sign in before confirmation
+            return Ok(new { message = "Inscription réussie. Veuillez confirmer votre adresse email." });
         }
 
-        // GET: api/account/confirm-email?userId=...&token=...
+        /// <summary>GET: api/account/confirm-email?userId=...&token=...</summary>
+        [AllowAnonymous]
         [HttpGet("confirm-email")]
-        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
         {
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
@@ -83,39 +89,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var result = await _userManager.ConfirmEmailAsync(user, token);
             if (result.Succeeded)
-            {
-                // You can redirect to a SPA page (eg. /login?confirmed=true) if you want
                 return Redirect($"{_frontendUrl}/login?confirmed=1");
-            }
-            else
-            {
-                return Redirect($"{_frontendUrl}/login?confirmederror=1");
-            }
+
+            return Redirect($"{_frontendUrl}/login?confirmederror=1");
         }
 
-        // POST: api/account/login
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest req)
-        {
-            var user = await _userManager.FindByEmailAsync(req.Email);
-            if (user == null)
-                return Unauthorized(new { error = "Utilisateur introuvable." });
-
-            if (!await _userManager.IsEmailConfirmedAsync(user))
-                return Unauthorized(new { error = "EmailNotConfirmed" });
-
-            var result = await _signInManager.PasswordSignInAsync(user.UserName, req.Password, false, false);
-            if (result.Succeeded)
-            {
-                return Ok(new { message = "Connexion réussie." });
-            }
-            else
-            {
-                return Unauthorized(new { error = "Mot de passe incorrect." });
-            }
-        }
-
-        // POST: api/account/resend-confirmation
+        /// <summary>POST: api/account/resend-confirmation</summary>
+        [AllowAnonymous]
         [HttpPost("resend-confirmation")]
         public async Task<IActionResult> ResendConfirmation([FromBody] LoginRequest req)
         {
@@ -131,14 +111,34 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var confirmationUrl = $"{Request.Scheme}://{Request.Host}/api/account/confirm-email?userId={user.Id}&token={encodedToken}";
 
             await _emailSender.SendEmailAsync(
-                user.Email,
+                user.Email!,
                 "Confirmez votre compte",
                 $"Pour activer votre compte, cliquez sur le lien suivant : <a href=\"{confirmationUrl}\">Confirmer l’email</a>");
 
             return Ok(new { message = "Un nouveau lien de confirmation a été envoyé." });
         }
 
-        // POST: api/account/logout
+        /// <summary>POST: api/account/login</summary>
+        [AllowAnonymous]
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest req)
+        {
+            var user = await _userManager.FindByEmailAsync(req.Email);
+            if (user == null)
+                return Unauthorized(new { error = "Utilisateur introuvable." });
+
+            if (!await _userManager.IsEmailConfirmedAsync(user))
+                return Unauthorized(new { error = "EmailNotConfirmed" });
+
+            var result = await _signInManager.PasswordSignInAsync(user.UserName!, req.Password, isPersistent: false, lockoutOnFailure: false);
+            if (result.Succeeded)
+                return Ok(new { message = "Connexion réussie." });
+
+            return Unauthorized(new { error = "Mot de passe incorrect." });
+        }
+
+        /// <summary>POST: api/account/logout</summary>
+        [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
@@ -146,26 +146,84 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { message = "Déconnexion réussie." });
         }
 
-        // GET: api/account/status
+        /// <summary>GET: api/account/status</summary>
         [HttpGet("status")]
         public async Task<IActionResult> Status()
         {
-            if (!User.Identity.IsAuthenticated)
-                return Ok(new { user = (object?)null, membershipStatus = (string?)null });
+            if (!(User?.Identity?.IsAuthenticated ?? false))
+            {
+                return Ok(new
+                {
+                    user = (object?)null,
+                    membershipStatus = (string?)null,
+                    isSuperAdmin = false,
+                    isForumAdmin = false
+                });
+            }
 
-            var user = await _userManager.GetUserAsync(User);
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(uid))
+            {
+                return Ok(new
+                {
+                    user = (object?)null,
+                    membershipStatus = (string?)null,
+                    isSuperAdmin = false,
+                    isForumAdmin = false
+                });
+            }
+
+            var user = await _userManager.FindByIdAsync(uid);
             if (user == null)
-                return Ok(new { user = (object?)null, membershipStatus = (string?)null });
+            {
+                return Ok(new
+                {
+                    user = (object?)null,
+                    membershipStatus = (string?)null,
+                    isSuperAdmin = false,
+                    isForumAdmin = false
+                });
+            }
 
-            var membership = await _membershipService.GetCurrentMembershipAsync(user.Id);
+            // Run independent queries concurrently
+            var membershipTask = _membershipService.GetCurrentMembershipAsync(uid);
+            var claimsTask = _userManager.GetClaimsAsync(user);
+            var profileTask = _db.UserProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == uid);
+            var forumAdminTask = _db.Set<ForumAdmin>().AsNoTracking().AnyAsync(a => a.UserId == uid);
+            var superAdminTask = _userManager.IsInRoleAsync(user, "SuperAdmin");
 
-            var status = (membership != null && DateTime.UtcNow >= membership.StartDate && DateTime.UtcNow <= membership.EndDate)
-                ? "Active" : "Inactive";
+            await Task.WhenAll(membershipTask, claimsTask, profileTask, forumAdminTask, superAdminTask);
+
+            var membership = membershipTask.Result;
+            var membershipStatus =
+                (membership != null && DateTime.UtcNow >= membership.StartDate && DateTime.UtcNow <= membership.EndDate)
+                    ? "Active" : "Inactive";
+
+            var claims = claimsTask.Result;
+            var profile = profileTask.Result;
+            var displayNameClaim = claims.FirstOrDefault(c => c.Type == "display_name")?.Value;
+
+            var displayName = !string.IsNullOrWhiteSpace(profile?.DisplayName)
+                ? profile!.DisplayName
+                : displayNameClaim;
+
+            var avatarUrl = !string.IsNullOrWhiteSpace(profile?.AvatarPath)
+                ? "/" + profile!.AvatarPath.Replace("\\", "/").TrimStart('/')
+                : null;
 
             return Ok(new
             {
-                user = new { name = user.UserName, email = user.Email },
-                membershipStatus = status
+                user = new
+                {
+                    id = user.Id,
+                    name = user.UserName,
+                    email = user.Email,
+                    displayName,
+                    avatarUrl
+                },
+                membershipStatus,
+                isSuperAdmin = superAdminTask.Result,
+                isForumAdmin = forumAdminTask.Result
             });
         }
     }

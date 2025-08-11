@@ -71,8 +71,6 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         }
     }
 
-
-
     // Inputs can stay as positional records (not used in ProjectTo)
     public record CreateThreadInput(int CategoryId, string Title, string Body);
     public record CreatePostInput(string Body);

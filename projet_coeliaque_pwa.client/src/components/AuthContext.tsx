@@ -1,8 +1,17 @@
 ﻿import React, { createContext, useContext, useState, useEffect } from "react";
 
+type AuthUser = {
+    id?: string;
+    name?: string;
+    email?: string;
+    displayName?: string;
+} | null;
+
 type AuthInfo = {
-    user: any | null;
+    user: AuthUser;
     membershipStatus: string | null;
+    isForumAdmin: boolean;
+    isSuperAdmin: boolean;
     loading: boolean;
     refresh: () => void;
 };
@@ -10,6 +19,8 @@ type AuthInfo = {
 const AuthContext = createContext<AuthInfo>({
     user: null,
     membershipStatus: null,
+    isForumAdmin: false,
+    isSuperAdmin: false,
     loading: true,
     refresh: () => { },
 });
@@ -17,33 +28,40 @@ const AuthContext = createContext<AuthInfo>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<any | null>(null);
+    const [user, setUser] = useState<AuthUser>(null);
     const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
+    const [isForumAdmin, setIsForumAdmin] = useState(false);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [key, setKey] = useState(0);
 
-    // The function to call to trigger a refresh
     const refresh = () => setKey(k => k + 1);
 
     useEffect(() => {
         setLoading(true);
         fetch("/api/account/status", { credentials: "include" })
-            .then(res => res.json())
+            .then(res => res.ok ? res.json() : null)
             .then(data => {
-                setUser(data.user);
-                setMembershipStatus(data.membershipStatus);
+                setUser(data?.user ?? null);
+                setMembershipStatus(data?.membershipStatus ?? null);
+                setIsForumAdmin(!!data?.isForumAdmin);
+                setIsSuperAdmin(!!data?.isSuperAdmin);
             })
             .catch(() => {
                 setUser(null);
                 setMembershipStatus(null);
+                setIsForumAdmin(false);
+                setIsSuperAdmin(false);
             })
             .finally(() => setLoading(false));
-    }, [key]);  // depend on key
+    }, [key]);
 
     return (
         <AuthContext.Provider value={{
             user,
             membershipStatus,
+            isForumAdmin,
+            isSuperAdmin,
             loading,
             refresh
         }}>

@@ -1,9 +1,9 @@
 ﻿import Navbar from './Navbar';
 
-export default function Layout({ children, user, membershipStatus }: { children: React.ReactNode, user: any, membershipStatus: string | null }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
     return (
         <>
-            <Navbar user={user} membershipStatus={membershipStatus} />
+            <Navbar />
             <main className="container">
                 {children}
             </main>
