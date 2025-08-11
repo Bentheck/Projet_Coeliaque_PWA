@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Identity;
+using System;
 using System.Collections.Generic;
 
 namespace Projet_Coeliaque_PWA.Server.Models
@@ -23,15 +24,18 @@ namespace Projet_Coeliaque_PWA.Server.Models
 
         public string Title { get; set; } = default!;
         public string CreatedByUserId { get; set; } = default!;
+        public IdentityUser? CreatedBy { get; set; }
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 
         public DateTime LastPostUtc { get; set; } = DateTime.UtcNow;
         public string? LastPostByUserId { get; set; }
+        public IdentityUser? LastPostBy { get; set; }
 
         public bool IsLocked { get; set; }
         public bool IsPinned { get; set; }
 
         public ICollection<ForumPost> Posts { get; set; } = new List<ForumPost>();
+        public ICollection<ForumThreadModerator> Moderators { get; set; } = new List<ForumThreadModerator>();
     }
 
     public class ForumPost
@@ -42,10 +46,23 @@ namespace Projet_Coeliaque_PWA.Server.Models
 
         public string Body { get; set; } = default!;
         public string CreatedByUserId { get; set; } = default!;
+        public IdentityUser? CreatedBy { get; set; }
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 
         public DateTime? EditedUtc { get; set; }
         public string? EditedByUserId { get; set; }
+        public IdentityUser? EditedBy { get; set; }
         public bool IsDeleted { get; set; }  // keep basic soft-delete
+    }
+
+    public class ForumThreadModerator
+    {
+        public int ThreadId { get; set; }
+        public ForumThread Thread { get; set; } = default!;
+
+        public string UserId { get; set; } = default!;
+        public IdentityUser User { get; set; } = default!;
+
+        public DateTime AssignedUtc { get; set; } = DateTime.UtcNow;
     }
 }

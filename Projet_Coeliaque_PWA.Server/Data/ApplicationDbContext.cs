@@ -16,24 +16,27 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<ListeEpicerie> ListeEpicerie { get; set; }
         public DbSet<ListeEpicerieItem> ListeEpicerieItems { get; set; }
         public DbSet<FreeItem> FreeItems => Set<FreeItem>();
+
+        // Forum
         public DbSet<ForumCategory> ForumCategories { get; set; } = default!;
         public DbSet<ForumThread> ForumThreads { get; set; } = default!;
         public DbSet<ForumPost> ForumPosts { get; set; } = default!;
+        public DbSet<ForumThreadModerator> ForumThreadModerators { get; set; } = default!;
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options)
-        { }
+            : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // ---------- Existing mappings ----------
             modelBuilder.Entity<Facture>()
                 .HasMany(f => f.Items)
                 .WithOne(i => i.Facture)
                 .HasForeignKey(i => i.FactureId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // NEW: User - Facture relationship
             modelBuilder.Entity<Facture>()
                 .HasOne(f => f.User)
                 .WithMany()
@@ -51,7 +54,89 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 .WithMany()
                 .HasForeignKey(y => y.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ---------- Forum: Category ----------
+            modelBuilder.Entity<ForumCategory>(b =>
+            {
+                b.Property(x => x.Slug).IsRequired().HasMaxLength(64);
+                b.Property(x => x.Name).IsRequired().HasMaxLength(128);
+                b.Property(x => x.Description).HasMaxLength(1024);
+                b.HasIndex(x => x.Slug).IsUnique();
+
+                b.HasMany(x => x.Threads)
+                    .WithOne(t => t.Category)
+                    .HasForeignKey(t => t.CategoryId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------- Forum: Thread ----------
+            modelBuilder.Entity<ForumThread>(b =>
+            {
+                b.Property(x => x.Title).IsRequired().HasMaxLength(200);
+                b.Property(x => x.CreatedByUserId).IsRequired();
+
+                b.HasIndex(x => new { x.CategoryId, x.IsPinned, x.LastPostUtc });
+
+                b.HasMany(x => x.Posts)
+                    .WithOne(p => p.Thread)
+                    .HasForeignKey(p => p.ThreadId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasMany(x => x.Moderators)
+                    .WithOne(m => m.Thread)
+                    .HasForeignKey(m => m.ThreadId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // use navs:
+                b.HasOne(x => x.CreatedBy)
+                    .WithMany()
+                    .HasForeignKey(x => x.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                b.HasOne(x => x.LastPostBy)
+                    .WithMany()
+                    .HasForeignKey(x => x.LastPostByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ---------- Forum: Post ----------
+            modelBuilder.Entity<ForumPost>(b =>
+            {
+                b.Property(x => x.Body).IsRequired();
+                b.Property(x => x.CreatedByUserId).IsRequired();
+
+                b.HasIndex(x => new { x.ThreadId, x.CreatedUtc });
+
+                // use navs:
+                b.HasOne(x => x.CreatedBy)
+                    .WithMany()
+                    .HasForeignKey(x => x.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                b.HasOne(x => x.EditedBy)
+                    .WithMany()
+                    .HasForeignKey(x => x.EditedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ---------- Forum: Thread Moderators ----------
+            modelBuilder.Entity<ForumThreadModerator>(b =>
+            {
+                b.HasKey(x => new { x.ThreadId, x.UserId });
+
+                b.HasOne<IdentityUser>(x => x.User)
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                b.HasIndex(x => new { x.ThreadId, x.UserId }).IsUnique();
+            });
+
+            // Optional seed example
+            // modelBuilder.Entity<ForumCategory>().HasData(
+            //     new ForumCategory { Id = 1, Slug = "general", Name = "Général", Description = "Discussions générales" },
+            //     new ForumCategory { Id = 2, Slug = "recettes", Name = "Recettes", Description = "Idées et recettes" }
+            // );
         }
     }
 }
-
