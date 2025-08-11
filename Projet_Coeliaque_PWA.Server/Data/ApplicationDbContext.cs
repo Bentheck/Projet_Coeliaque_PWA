@@ -22,6 +22,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<ForumThread> ForumThreads { get; set; } = default!;
         public DbSet<ForumPost> ForumPosts { get; set; } = default!;
         public DbSet<ForumThreadModerator> ForumThreadModerators { get; set; } = default!;
+        public DbSet<ForumAdmin> ForumAdmins { get; set; } = default!;
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
@@ -130,6 +131,16 @@ namespace Projet_Coeliaque_PWA.Server.Data
                     .OnDelete(DeleteBehavior.Restrict);
 
                 b.HasIndex(x => new { x.ThreadId, x.UserId }).IsUnique();
+            });
+
+            // Forum Admins
+            modelBuilder.Entity<ForumAdmin>(b =>
+            {
+                b.HasKey(x => x.UserId); // one record per user
+                b.HasOne(x => x.User)
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Optional seed example

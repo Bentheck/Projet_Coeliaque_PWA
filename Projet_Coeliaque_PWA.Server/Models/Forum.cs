@@ -65,4 +65,12 @@ namespace Projet_Coeliaque_PWA.Server.Models
 
         public DateTime AssignedUtc { get; set; } = DateTime.UtcNow;
     }
+
+    public class ForumAdmin
+    {
+        // Use UserId as PK (one row per admin)
+        public string UserId { get; set; } = default!;
+        public IdentityUser User { get; set; } = default!;
+        public DateTime AddedUtc { get; set; } = DateTime.UtcNow;
+    }
 }

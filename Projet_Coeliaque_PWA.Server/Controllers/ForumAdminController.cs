@@ -15,7 +15,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 {
     [ApiController]
     [Route("api/forum/admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "IsForumAdmin")]
     public class ForumAdminController : ControllerBase
     {
         private readonly ApplicationDbContext _db;

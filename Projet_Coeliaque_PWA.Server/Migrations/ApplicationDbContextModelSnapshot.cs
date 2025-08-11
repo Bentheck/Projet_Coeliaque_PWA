@@ -469,6 +469,19 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.ToTable("FactureItems");
                 });
 
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumAdmin", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("AddedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("ForumAdmins");
+                });
+
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumCategory", b =>
                 {
                     b.Property<int>("Id")
@@ -786,6 +799,17 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .IsRequired();
 
                     b.Navigation("Facture");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumAdmin", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumPost", b =>

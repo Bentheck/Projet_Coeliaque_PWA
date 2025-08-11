@@ -1,4 +1,4 @@
-﻿// DTOs/ForumAdminDtos.cs
+﻿using System;
 using System.Collections.Generic;
 
 namespace Projet_Coeliaque_PWA.Server.DTOs
@@ -10,4 +10,8 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
     public record SetDeletedInput(bool Deleted);
     public record SetModeratorsInput(List<string> UserIds);
     public record ModeratorDto(string UserId, string DisplayName);
+
+    // Forum admins (DB-backed)
+    public record ForumAdminDto(string UserId, string DisplayName, DateTime AddedUtc);
+    public record UpsertForumAdminInput(string? UserId, string? Email);
 }
