@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Identity; // <-- add this
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
 using System.Linq;
@@ -34,7 +35,7 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ReverseMap()
                 .ForMember(d => d.UserId, o => o.Ignore());
 
-            // ---------- Forum DTOs (pure projection with navs) ----------
+            // ---------- Forum DTOs ----------
             CreateMap<UserProfile, UserProfileDto>().ReverseMap();
 
             CreateMap<ForumCategory, ForumCategoryDto>()
@@ -60,7 +61,6 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ForMember(d => d.EditedBy, o => o.MapFrom(s =>
                     s.EditedBy != null ? (s.EditedBy.UserName ?? s.EditedBy.Email ?? "Utilisateur") : null));
 
-            // Moderators
             CreateMap<ForumThreadModerator, ModeratorDto>()
                 .ForMember(d => d.UserId, o => o.MapFrom(s => s.UserId))
                 .ForMember(d => d.DisplayName, o => o.MapFrom(s =>
@@ -80,6 +80,32 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ForMember(d => d.Name, o => o.MapFrom(s => s.Name.Trim()))
                 .ForMember(d => d.Description, o => o.MapFrom(s =>
                     string.IsNullOrWhiteSpace(s.Description) ? null : s.Description!.Trim()));
+
+            // ---------- NEW: Membership & search DTOs ----------
+            // Membership -> DTO (map Start/End to *Utc fields; IsActive is computed by the entity getter)
+            CreateMap<Membership, MembershipDto>()
+                .ForMember(d => d.StartDateUtc, o => o.MapFrom(s => s.StartDate))
+                .ForMember(d => d.EndDateUtc, o => o.MapFrom(s => s.EndDate));
+
+            // Upsert payload -> Membership (only apply provided values; never touch UserId here)
+            CreateMap<UpsertMembershipInput, Membership>()
+                .ForMember(d => d.UserId, o => o.Ignore())
+                .ForMember(d => d.StartDate, o =>
+                {
+                    o.Condition(src => src.StartDateUtc.HasValue);
+                    o.MapFrom(src => src.StartDateUtc!.Value);
+                })
+                .ForMember(d => d.EndDate, o =>
+                {
+                    o.Condition(src => src.EndDateUtc.HasValue);
+                    o.MapFrom(src => src.EndDateUtc!.Value);
+                });
+
+            // IdentityUser -> search result DTO (for autocomplete)
+            CreateMap<IdentityUser, UserSearchResultDto>()
+                .ForCtorParam("UserId", o => o.MapFrom(s => s.Id))
+                .ForCtorParam("Email", o => o.MapFrom(s => s.Email ?? string.Empty))
+                .ForCtorParam("DisplayName", o => o.MapFrom(s => s.UserName ?? s.Email ?? "Utilisateur"));
         }
     }
 }
