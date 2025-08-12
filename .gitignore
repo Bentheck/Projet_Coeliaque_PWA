@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 
 **/appsettings.json
+/Projet_Coeliaque_PWA.Server/wwwroot/avatars/
