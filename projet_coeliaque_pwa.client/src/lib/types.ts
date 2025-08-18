@@ -1,5 +1,4 @@
-﻿// src/lib/types.ts
-export type UserProfileDto = {
+﻿export type UserProfileDto = {
     userId: string;
     displayName: string;
     bio?: string | null;
@@ -43,6 +42,10 @@ export type ForumThreadDto = {
     isLocked: boolean;
     isPinned: boolean;
     postCount: number;
+
+    // NEW for voting on thread:
+    score: number;     // total score
+    myVote: number;    // -1 | 0 | 1 (current user)
 };
 
 export type ForumPostDto = {
@@ -67,5 +70,23 @@ export type ForumAdminDto = {
     displayName: string;
     addedUtc: string;
 };
+
+export interface ForumPostTreeDto {
+    id: number;
+    body: string;
+    createdUtc: string;
+    createdBy: string;
+    editedUtc?: string | null;
+    editedBy?: string | null;
+    parentPostId?: number | null;
+    replies: ForumPostTreeDto[];
+
+    // NEW for voting on posts:
+    score: number;    // total score
+    myVote: number;   // -1 | 0 | 1 (current user)
+
+    // Optional server-provided count (can differ from loaded replies length)
+    repliesCount?: number;
+}
 
 export type ModeratorDto = { userId: string; displayName: string };

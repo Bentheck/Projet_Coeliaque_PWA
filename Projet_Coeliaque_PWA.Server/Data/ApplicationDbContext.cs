@@ -24,6 +24,8 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<ForumThreadModerator> ForumThreadModerators { get; set; } = default!;
         public DbSet<ForumAdmin> ForumAdmins { get; set; } = default!;
         public DbSet<UserProfile> UserProfiles { get; set; } = default!;
+        public DbSet<ForumThreadVote> ForumThreadVotes => Set<ForumThreadVote>();
+        public DbSet<ForumPostVote> ForumPostVotes => Set<ForumPostVote>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
@@ -163,6 +165,28 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 b.HasIndex(x => x.UserId).IsUnique();
                 b.HasIndex(x => x.DisplayName).IsUnique();
             });
+
+            modelBuilder.Entity<ForumPost>()
+                .HasOne(p => p.Parent)
+                .WithMany(p => p.Replies)
+                .HasForeignKey(p => p.ParentPostId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ForumThreadVote>()
+            .HasIndex(x => new { x.ThreadId, x.UserId })
+            .IsUnique();
+
+            modelBuilder.Entity<ForumThreadVote>()
+                .Property(x => x.Value)
+                .HasConversion<short>(); // store as smallint
+
+            modelBuilder.Entity<ForumPostVote>()
+                .HasIndex(x => new { x.PostId, x.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<ForumPostVote>()
+                .Property(x => x.Value)
+                .HasConversion<short>();
 
             // Optional seed example
             // modelBuilder.Entity<ForumCategory>().HasData(

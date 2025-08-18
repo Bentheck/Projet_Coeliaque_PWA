@@ -24,6 +24,8 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         public int PostCount { get; init; }
         public bool IsLocked { get; init; }
         public bool IsPinned { get; init; }
+        // (Optional) You can add Score here too if you want to show it in the list
+        // public int Score { get; init; }
     }
 
     public record class ForumThreadDto
@@ -38,6 +40,10 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         public bool IsLocked { get; init; }
         public bool IsPinned { get; init; }
         public int PostCount { get; init; }
+
+        // NEW (thread voting)
+        public int Score { get; init; }
+        public int MyVote { get; init; }
     }
 
     public record class ForumPostDto
@@ -48,6 +54,29 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         public string CreatedBy { get; init; } = "";    // filled after projection
         public DateTime? EditedUtc { get; init; }
         public string? EditedBy { get; init; }          // filled after projection
+
+        // NEW (flat replies list case)
+        public int Score { get; init; }
+        public int MyVote { get; init; }
+        public int RepliesCount { get; init; }
+    }
+
+    public record class ForumPostTreeDto
+    {
+        public int Id { get; init; }
+        public string Body { get; init; } = "";
+        public DateTime CreatedUtc { get; init; }
+        public string CreatedBy { get; init; } = "—";
+        public DateTime? EditedUtc { get; init; }
+        public string? EditedBy { get; init; }
+        public int? ParentPostId { get; init; }
+
+        // NEW (voting + quick number)
+        public int Score { get; init; }
+        public int MyVote { get; init; }
+        public int RepliesCount { get; set; }
+
+        public List<ForumPostTreeDto> Replies { get; init; } = new();
     }
 
     // Paged wrapper as a simple class (no AutoMapper projection here anyway)
@@ -71,7 +100,7 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         }
     }
 
-    // Inputs can stay as positional records (not used in ProjectTo)
+    // Inputs
     public record CreateThreadInput(int CategoryId, string Title, string Body);
-    public record CreatePostInput(string Body);
+    public record CreatePostInput(string Body, int? ParentPostId);
 }

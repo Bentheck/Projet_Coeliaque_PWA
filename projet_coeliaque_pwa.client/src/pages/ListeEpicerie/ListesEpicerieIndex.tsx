@@ -18,7 +18,7 @@ const ListesEpicerieIndex: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [q, setQ] = useState("");
     const [sortBy, setSortBy] = useState<SortKey>("recent");
-    const [status, setStatus] = useState<StatusFilter>("all");
+    const [status, setStatus] = useState<StatusFilter>("active");
     const [pending, setPending] = useState<Record<number, boolean>>({}); // saving state per card
 
     const load = async (signal?: AbortSignal) => {
@@ -161,18 +161,27 @@ const ListesEpicerieIndex: React.FC = () => {
                         <div className="col-auto">
                             <ul className="nav nav-pills">
                                 <li className="nav-item">
-                                    <button className={`nav-link ${status === "all" ? "active" : ""}`} onClick={() => setStatus("all")}>
-                                        Toutes <span className="badge text-bg-light ms-1">{counts.total}</span>
-                                    </button>
-                                </li>
-                                <li className="nav-item">
-                                    <button className={`nav-link ${status === "active" ? "active" : ""}`} onClick={() => setStatus("active")}>
+                                    <button
+                                        className={`nav-link ${status === "active" ? "active" : ""}`}
+                                        onClick={() => setStatus("active")}
+                                    >
                                         Actives <span className="badge text-bg-light ms-1">{counts.active}</span>
                                     </button>
                                 </li>
                                 <li className="nav-item">
-                                    <button className={`nav-link ${status === "completed" ? "active" : ""}`} onClick={() => setStatus("completed")}>
+                                    <button
+                                        className={`nav-link ${status === "completed" ? "active" : ""}`}
+                                        onClick={() => setStatus("completed")}
+                                    >
                                         Complétées <span className="badge text-bg-light ms-1">{counts.completed}</span>
+                                    </button>
+                                </li>
+                                <li className="nav-item">
+                                    <button
+                                        className={`nav-link ${status === "all" ? "active" : ""}`}
+                                        onClick={() => setStatus("all")}
+                                    >
+                                        Toutes <span className="badge text-bg-light ms-1">{counts.total}</span>
                                     </button>
                                 </li>
                             </ul>
