@@ -18,12 +18,12 @@ const ForumThreads: React.FC = () => {
     const load = async () => {
         try {
             setLoading(true); setErr(null);
-            // you can expose a public GET /api/forum/admin/categories/{id} if you want the name,
-            // for now we derive it from list:
             const cats = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
             setCat(cats.find(c => c.id === cid) || null);
 
-            const res = await fetchJSON<PagedResult<ForumThreadListItemDto>>(`/api/forum/threads?categoryId=${cid}&page=${page}&pageSize=20`);
+            const res = await fetchJSON<PagedResult<ForumThreadListItemDto>>(
+                `/api/forum/threads?categoryId=${cid}&page=${page}&pageSize=20`
+            );
             setData(res);
         } catch (e: any) {
             setErr("Impossible de charger les fils.");
@@ -34,17 +34,27 @@ const ForumThreads: React.FC = () => {
     };
 
     useEffect(() => { load(); /* eslint-disable-next-line */ }, [cid, page]);
-
     const setPage = (p: number) => setSearchParams({ page: String(p) });
+
+    const fmt = (iso: string) =>
+        new Date(iso).toLocaleString("fr-CA", { dateStyle: "medium", timeStyle: "short" });
 
     return (
         <div className="container py-3">
-            <div className="d-flex flex-wrap justify-content-between align-items-end mb-3">
-                <div>
-                    <h1 className="h4 mb-1">{cat?.name || `Catégorie #${cid}`}</h1>
-                    <div className="text-muted small">{cat?.description || "—"}</div>
+            {/* Header with back-to-categories and New Thread */}
+            <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div className="d-flex align-items-start gap-2">
+                    <Link to="/forum" className="btn btn-outline-secondary">
+                        <i className="bi bi-arrow-left me-2" />
+                        Catégories
+                    </Link>
+                    <div>
+                        <h1 className="h4 mb-1">{cat?.name || `Catégorie #${cid}`}</h1>
+                        <div className="text-muted small">{cat?.description || "—"}</div>
+                    </div>
                 </div>
                 <Link className="btn btn-primary" to={`/forum/new?categoryId=${cid}`}>
+                    <i className="bi bi-plus-circle me-2" />
                     Nouveau fil
                 </Link>
             </div>
@@ -52,10 +62,19 @@ const ForumThreads: React.FC = () => {
             {err && <div className="alert alert-danger">{err}</div>}
 
             {loading ? (
-                <div className="list-group">
+                <div className="row g-3">
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div className="list-group-item" key={i}>
-                            <div className="placeholder-glow"><span className="placeholder col-7" /></div>
+                        <div className="col-12" key={i}>
+                            <div className="card shadow-sm">
+                                <div className="card-body">
+                                    <div className="placeholder-glow mb-2">
+                                        <span className="placeholder col-8" />
+                                    </div>
+                                    <div className="placeholder-glow">
+                                        <span className="placeholder col-5" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -63,24 +82,43 @@ const ForumThreads: React.FC = () => {
                 <div className="alert alert-info">Aucun fil.</div>
             ) : (
                 <>
-                    <div className="list-group mb-3">
+                    {/* Threads as cards */}
+                    <div className="row g-3">
                         {data.items.map(t => (
-                            <Link to={`/forum/t/${t.id}`} className="list-group-item list-group-item-action" key={t.id}>
-                                <div className="d-flex w-100 justify-content-between">
-                                    <h5 className="mb-1">
-                                        {t.isPinned && <span className="badge bg-warning text-dark me-2">Épinglé</span>}
-                                        {t.isLocked && <span className="badge bg-secondary me-2">Verrouillé</span>}
-                                        {t.title}
-                                    </h5>
-                                    <small className="text-muted">
-                                        Dernier: {new Date(t.lastPostUtc).toLocaleString("fr-CA")} par {t.lastBy}
-                                    </small>
-                                </div>
-                                <small className="text-muted">Par {t.createdBy} • {new Date(t.createdUtc).toLocaleString("fr-CA")} • {t.postCount} message{t.postCount !== 1 ? "s" : ""}</small>
-                            </Link>
+                            <div className="col-12" key={t.id}>
+                                <Link to={`/forum/t/${t.id}`} className="text-decoration-none">
+                                    <div className="card shadow-sm h-100 border-0 hover-shadow">
+                                        <div className="card-body">
+                                            <div className="d-flex justify-content-between align-items-start gap-3">
+                                                <h5 className="mb-1 text-dark">
+                                                    {t.isPinned && (
+                                                        <span className="badge bg-warning text-dark me-2">Épinglé</span>
+                                                    )}
+                                                    {t.isLocked && (
+                                                        <span className="badge bg-secondary me-2">Verrouillé</span>
+                                                    )}
+                                                    {t.title}
+                                                </h5>
+                                                <small className="text-muted text-end">
+                                                    Dernier&nbsp;: {fmt(t.lastPostUtc)}
+                                                    <br />
+                                                    par {t.lastBy}
+                                                </small>
+                                            </div>
+                                            <div className="mt-1 text-muted small">
+                                                Par {t.createdBy} • {fmt(t.createdUtc)} • {t.postCount} message
+                                                {t.postCount !== 1 ? "s" : ""}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Link>
+                            </div>
                         ))}
                     </div>
-                    <Pagination page={data.page} totalPages={data.totalPages} onPage={setPage} />
+
+                    <div className="mt-3">
+                        <Pagination page={data.page} totalPages={data.totalPages} onPage={setPage} />
+                    </div>
                 </>
             )}
         </div>

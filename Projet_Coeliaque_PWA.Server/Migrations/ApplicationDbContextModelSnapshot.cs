@@ -546,6 +546,9 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("ParentPostId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ThreadId")
                         .HasColumnType("int");
 
@@ -555,9 +558,42 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     b.HasIndex("EditedByUserId");
 
+                    b.HasIndex("ParentPostId");
+
                     b.HasIndex("ThreadId", "CreatedUtc");
 
                     b.ToTable("ForumPosts");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumPostVote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<short>("Value")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("VotedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("PostId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ForumPostVotes");
                 });
 
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumThread", b =>
@@ -625,6 +661,37 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .IsUnique();
 
                     b.ToTable("ForumThreadModerators");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumThreadVote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ThreadId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<short>("Value")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("VotedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ThreadId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ForumThreadVotes");
                 });
 
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ProductComparison", b =>
@@ -880,6 +947,11 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .HasForeignKey("EditedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.ForumPost", "Parent")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentPostId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Projet_Coeliaque_PWA.Server.Models.ForumThread", "Thread")
                         .WithMany("Posts")
                         .HasForeignKey("ThreadId")
@@ -890,7 +962,28 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     b.Navigation("EditedBy");
 
+                    b.Navigation("Parent");
+
                     b.Navigation("Thread");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumPostVote", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.ForumPost", "Post")
+                        .WithMany("Votes")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumThread", b =>
@@ -931,6 +1024,25 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Thread");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumThreadVote", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.ForumThread", "Thread")
+                        .WithMany("Votes")
+                        .HasForeignKey("ThreadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Thread");
@@ -980,11 +1092,20 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Navigation("Threads");
                 });
 
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumPost", b =>
+                {
+                    b.Navigation("Replies");
+
+                    b.Navigation("Votes");
+                });
+
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumThread", b =>
                 {
                     b.Navigation("Moderators");
 
                     b.Navigation("Posts");
+
+                    b.Navigation("Votes");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Modal, Button, Form, Row, Col, Table } from "react-bootstrap";
+import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import Select from "react-select";
 import type { SingleValue } from "react-select";
 
@@ -20,35 +20,43 @@ interface ComparatifYearDto {
     lines: ProductComparisonDto[];
 }
 
-const UNIT_OPTIONS = [
-    "mg", "g", "kg", "lb", "oz", "ml", "l", "fl oz"
-];
+const UNIT_OPTIONS = ["mg", "g", "kg", "lb", "oz", "ml", "l", "fl oz"];
 
-const emptyLine: Omit<ProductComparisonDto, "id" | "comparatifYearId"> = {
-    typeItem: "",
-    marque: "",
-    prix: 0,
-    poidsValeur: 0,
-    poidsUnite: "",
-    magasin: "",
-};
+type FCEl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 const ComparatifEdit: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+
     const [year, setYear] = useState<ComparatifYearDto | null>(null);
     const [lines, setLines] = useState<ProductComparisonDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Add wizard
-    const [showAdd, setShowAdd] = useState(false);
-    const [addStep, setAddStep] = useState(1);
-    const [addType, setAddType] = useState("");
-    const [addForm, setAddForm] = useState(emptyLine);
+    // Add line modal/wizard state
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [modalStep, setModalStep] = useState(1);
+    const [modalTypeItem, setModalTypeItem] = useState("");
+    const [modalForm, setModalForm] = useState<Omit<ProductComparisonDto, "id" | "comparatifYearId" | "typeItem">>({
+        marque: "",
+        prix: 0,
+        poidsValeur: 0,
+        poidsUnite: "",
+        magasin: "",
+    });
 
-    // Type options
-    const [typeOptions, setTypeOptions] = useState<string[]>([]);
+    // Mobile detection for native select (<600px)
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const mq = window.matchMedia("(max-width: 599.98px)");
+        const apply = () => setIsMobile(mq.matches);
+        apply();
+        mq.addEventListener?.("change", apply);
+        return () => mq.removeEventListener?.("change", apply);
+    }, []);
+
+    // Type options (for the given year)
+    const [typeOptionsList, setTypeOptionsList] = useState<string[]>([]);
     useEffect(() => {
         if (!year) return;
         fetch(`/api/comparatifyears/types?annee=${year.annee}`, { credentials: "include" })
@@ -56,12 +64,16 @@ const ComparatifEdit: React.FC = () => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
-            .then(setTypeOptions)
-            .catch(() => setTypeOptions([]));
+            .then((types: string[]) => setTypeOptionsList(types || []))
+            .catch(() => setTypeOptionsList([]));
     }, [year]);
-    const typeSelectOptions = typeOptions.map(type => ({ label: type, value: type }));
+    const typeSelectOptions = typeOptionsList.map(t => ({ label: t, value: t }));
+    const allowedTypeOptionsFor = (index: number) =>
+        typeOptionsList.filter(
+            opt => !lines.some((l, j) => l.typeItem === opt && j !== index) || lines[index].typeItem === opt
+        );
 
-    // --- Load year and set lines editable copy ---
+    // Load year + lines
     useEffect(() => {
         setLoading(true);
         fetch(`/api/comparatifyears/${id}`, { credentials: "include" })
@@ -77,7 +89,7 @@ const ComparatifEdit: React.FC = () => {
             .finally(() => setLoading(false));
     }, [id]);
 
-    // --- Change handlers ---
+    // Inline changes
     function handleLineChange(idx: number, field: keyof ProductComparisonDto, value: any) {
         setLines(prev => {
             const arr = [...prev];
@@ -85,86 +97,25 @@ const ComparatifEdit: React.FC = () => {
             return arr;
         });
     }
-    function handleInputChange(idx: number, e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-        const { name, value } = e.target;
-        handleLineChange(idx, name as keyof ProductComparisonDto, value);
-    }
 
     function handleDeleteLine(idx: number) {
         if (!year) return;
         if (!window.confirm("Supprimer cette ligne?")) return;
-        const line = lines[idx];
-        fetch(`/api/comparatifyears/${year.id}/lines/${line.id}`, {
+        const target = lines[idx];
+        fetch(`/api/comparatifyears/${year.id}/lines/${target.id}`, {
             method: "DELETE",
             credentials: "include",
         })
             .then(async res => {
                 if (!res.ok) throw new Error(await res.text());
                 setLines(prev => prev.filter((_, i) => i !== idx));
-                setYear(y =>
-                    y
-                        ? { ...y, lines: y.lines.filter((_, i) => i !== idx) }
-                        : y
-                );
+                setYear(y => (y ? { ...y, lines: y.lines.filter((_, i) => i !== idx) } : y));
             })
             .catch(err => setError(err.message));
     }
 
-    // --- Add Line Modal Wizard ---
-    function openAddWizard() {
-        setShowAdd(true);
-        setAddStep(1);
-        setAddType("");
-        setAddForm(emptyLine);
-    }
-    function closeAddWizard() {
-        setShowAdd(false);
-        setAddStep(1);
-        setAddType("");
-        setAddForm(emptyLine);
-    }
-    function handleNextStep() {
-        setAddForm(prev => ({ ...prev, typeItem: addType }));
-        setAddStep(2);
-    }
-    function handleBackStep() {
-        setAddStep(1);
-    }
-    function handleAddFormChange(
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-    ) {
-        const { name, value } = e.target;
-        setAddForm(prev => ({
-            ...prev,
-            [name]: name === "prix" || name === "poidsValeur" ? Number(value) : value
-        }));
-    }
-    function handleAddSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        if (!year) return;
-        fetch(`/api/comparatifyears/${year.id}/lines`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ ...addForm, typeItem: addType }),
-        })
-            .then(async res => {
-                if (!res.ok) throw new Error(await res.text());
-                closeAddWizard();
-                setLoading(true);
-                fetch(`/api/comparatifyears/${id}`, { credentials: "include" })
-                    .then(res => res.json())
-                    .then((data: ComparatifYearDto) => {
-                        setYear(data);
-                        setLines(data.lines.map(l => ({ ...l })));
-                    })
-                    .finally(() => setLoading(false));
-            })
-            .catch(err => setError(err.message));
-    }
-
-    // --- Save all edits ---
-    function handleSaveAll(e: React.FormEvent) {
+    // Save all
+    function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!year) return;
         setError(null);
@@ -176,14 +127,61 @@ const ComparatifEdit: React.FC = () => {
         })
             .then(async res => {
                 if (!res.ok) throw new Error(await res.text());
-                setLoading(true);
-                fetch(`/api/comparatifyears/${id}`, { credentials: "include" })
-                    .then(res => res.json())
-                    .then((data: ComparatifYearDto) => {
-                        setYear(data);
-                        setLines(data.lines.map(l => ({ ...l })));
-                    })
-                    .finally(() => setLoading(false));
+                navigate("/comparatif");
+            })
+            .catch(err => setError(err.message));
+    }
+
+    // Add line wizard
+    function openAddModal() {
+        setShowAddModal(true);
+        setModalStep(1);
+        setModalTypeItem("");
+        setModalForm({ marque: "", prix: 0, poidsValeur: 0, poidsUnite: "", magasin: "" });
+    }
+    function closeAddModal() {
+        setShowAddModal(false);
+        setModalStep(1);
+        setModalTypeItem("");
+    }
+    function nextStep() {
+        setModalStep(2);
+    }
+    function backStep() {
+        setModalStep(1);
+    }
+    const handleModalChange: React.ChangeEventHandler<FCEl> = (e) => {
+        const { name, value } = e.target as FCEl & { name: string; value: string };
+        setModalForm(prev => ({
+            ...prev,
+            [name]: name === "prix" || name === "poidsValeur" ? Number(value) : value,
+        }));
+    };
+    function handleAddLineSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!year) return;
+        fetch(`/api/comparatifyears/${year.id}/lines`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+                typeItem: modalTypeItem,
+                marque: modalForm.marque,
+                prix: modalForm.prix,
+                poidsValeur: modalForm.poidsValeur,
+                poidsUnite: modalForm.poidsUnite,
+                magasin: modalForm.magasin,
+            }),
+        })
+            .then(async res => {
+                if (!res.ok) throw new Error(await res.text());
+                return fetch(`/api/comparatifyears/${id}`, { credentials: "include" });
+            })
+            .then(res => res.json())
+            .then((data: ComparatifYearDto) => {
+                setYear(data);
+                setLines(data.lines.map(l => ({ ...l })));
+                closeAddModal();
             })
             .catch(err => setError(err.message));
     }
@@ -192,170 +190,335 @@ const ComparatifEdit: React.FC = () => {
     if (!year) return <div>Not found</div>;
 
     return (
-        <div className="container py-3" style={{ maxWidth: 1100 }}>
-            <div className="mb-3 d-flex align-items-center gap-2">
-                <button
-                    className="btn btn-secondary rounded-pill px-4"
-                    onClick={() => navigate("/comparatif")}
-                >
-                    <i className="bi bi-arrow-return-left me-2"></i>Retour
-                </button>
-                <h3 className="mb-0">Comparatif {year.annee}</h3>
-            </div>
-            {error && <div className="alert alert-danger">{error}</div>}
-
-            <Button
-                className="mb-3 rounded-pill px-4"
-                variant="success"
-                onClick={openAddWizard}
-            >
-                <i className="bi bi-plus-circle me-2"></i>Ajouter une ligne
-            </Button>
-
-            <form onSubmit={handleSaveAll} autoComplete="off">
-                <div className="card shadow-sm rounded-4">
-                    <div className="card-body p-0">
-                        <Table bordered hover className="align-middle mb-0">
-                            <thead className="table-light">
-                                <tr>
-                                    <th style={{ minWidth: 200 }}>Type</th>
-                                    <th>Marque</th>
-                                    <th>Prix</th>
-                                    <th>Poids</th>
-                                    <th>Unité</th>
-                                    <th>Magasin</th>
-                                    <th style={{ width: 90 }}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {lines.map((item, i) => (
-                                    <tr key={item.id}>
-                                        <td>
-                                            <Select
-                                                isClearable
-                                                options={typeSelectOptions.filter(opt =>
-                                                    !lines.some((l, j) => l.typeItem === opt.value && j !== i)
-                                                    || item.typeItem === opt.value
-                                                )}
-                                                value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
-                                                onChange={(option: SingleValue<{ label: string; value: string }>) =>
-                                                    handleLineChange(i, "typeItem", option?.value || "")
-                                                }
-                                                placeholder="Type…"
-                                                styles={{
-                                                    container: base => ({ ...base, minWidth: 0 }),
-                                                    menu: base => ({ ...base, zIndex: 9999 })
-                                                }}
-                                            />
-                                        </td>
-                                        <td>
-                                            <input className="form-control"
-                                                value={item.marque}
-                                                onChange={e => handleLineChange(i, "marque", e.target.value)}
-                                                required
-                                            />
-                                        </td>
-                                        <td>
-                                            <input className="form-control"
-                                                type="number"
-                                                step="0.01"
-                                                value={item.prix}
-                                                onChange={e => handleLineChange(i, "prix", +e.target.value)}
-                                                required
-                                            />
-                                        </td>
-                                        <td>
-                                            <input className="form-control"
-                                                type="number"
-                                                step="0.01"
-                                                value={item.poidsValeur}
-                                                onChange={e => handleLineChange(i, "poidsValeur", +e.target.value)}
-                                                required
-                                            />
-                                        </td>
-                                        <td>
-                                            <select className="form-select"
-                                                value={item.poidsUnite}
-                                                onChange={e => handleLineChange(i, "poidsUnite", e.target.value)}
-                                                required
-                                            >
-                                                <option value="">-- Unité --</option>
-                                                {UNIT_OPTIONS.map(u => (
-                                                    <option key={u} value={u}>{u}</option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <input className="form-control"
-                                                value={item.magasin}
-                                                onChange={e => handleLineChange(i, "magasin", e.target.value)}
-                                                required
-                                            />
-                                        </td>
-                                        <td className="text-center">
-                                            <button type="button"
-                                                className="btn btn-outline-danger btn-sm rounded-pill px-3"
-                                                onClick={() => handleDeleteLine(i)}>
-                                                <i className="bi bi-x-lg"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </Table>
+        <div className="container py-3">
+            <div className="card shadow-sm rounded-4 mx-auto" style={{ maxWidth: 1200 }}>
+                <div className="card-body">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                        <h2 className="mb-0">
+                            <i className="bi bi-sliders me-2"></i>Modifier Comparatif — {year.annee}
+                        </h2>
+                        <div>
+                            <Button
+                                variant="success"
+                                size="sm"
+                                className="rounded-pill px-3"
+                                onClick={openAddModal}
+                                type="button"
+                            >
+                                <i className="bi bi-plus-circle"></i> Ajouter une ligne
+                            </Button>
+                        </div>
                     </div>
-                </div>
-                <div className="d-flex justify-content-end gap-2 mt-3">
-                    <Button type="submit" className="btn btn-primary rounded-pill px-4">
-                        <i className="bi bi-save me-2"></i>Enregistrer
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        className="rounded-pill px-4"
-                        type="button"
-                        onClick={() => navigate("/comparatif")}
-                    >
-                        <i className="bi bi-arrow-return-left me-2"></i>Annuler
-                    </Button>
-                </div>
-            </form>
 
-            {/* Wizard Modal */}
-            <Modal show={showAdd} onHide={closeAddWizard} centered size="lg">
+                    {error && <div className="alert alert-danger">{error}</div>}
+
+                    <form onSubmit={handleSubmit} autoComplete="off">
+                        {/* Desktop (>=1200px) table */}
+                        <div className="d-none d-xl-block mb-3">
+                            <Table bordered hover className="align-middle">
+                                <thead className="table-light text-center">
+                                    <tr>
+                                        <th style={{ minWidth: 220 }}>Type de produit</th>
+                                        <th>Marque</th>
+                                        <th style={{ width: 140 }}>Prix</th>
+                                        <th style={{ width: 160 }}>Poids</th>
+                                        <th style={{ width: 140 }}>Unité</th>
+                                        <th>Magasin</th>
+                                        <th style={{ width: 90 }}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {lines.map((item, i) => (
+                                        <tr key={item.id}>
+                                            <td>
+                                                <Select
+                                                    isClearable
+                                                    options={typeSelectOptions.filter(
+                                                        opt =>
+                                                            !lines.some((l, j) => l.typeItem === opt.value && j !== i) ||
+                                                            item.typeItem === opt.value
+                                                    )}
+                                                    value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
+                                                    onChange={(opt: SingleValue<{ label: string; value: string }>) =>
+                                                        handleLineChange(i, "typeItem", opt?.value || "")
+                                                    }
+                                                    placeholder="Type…"
+                                                    styles={{
+                                                        container: base => ({ ...base, minWidth: 0 }),
+                                                        menu: base => ({ ...base, zIndex: 9999 }),
+                                                    }}
+                                                />
+                                            </td>
+                                            <td>
+                                                <input
+                                                    className="form-control border-black rounded-2"
+                                                    value={item.marque}
+                                                    onChange={e => handleLineChange(i, "marque", e.target.value)}
+                                                    placeholder="Marque"
+                                                />
+                                            </td>
+                                            <td>
+                                                <input
+                                                    className="form-control border-black rounded-2"
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={item.prix}
+                                                    onChange={e => handleLineChange(i, "prix", +e.target.value)}
+                                                    placeholder="Prix"
+                                                />
+                                            </td>
+                                            <td>
+                                                <input
+                                                    className="form-control border-black rounded-2"
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={item.poidsValeur}
+                                                    onChange={e => handleLineChange(i, "poidsValeur", +e.target.value)}
+                                                    placeholder="Poids"
+                                                />
+                                            </td>
+                                            <td>
+                                                <select
+                                                    className="form-select border-black rounded-2"
+                                                    value={item.poidsUnite}
+                                                    onChange={e => handleLineChange(i, "poidsUnite", e.target.value)}
+                                                >
+                                                    <option value="">-- Unité --</option>
+                                                    {UNIT_OPTIONS.map(u => (
+                                                        <option key={u} value={u}>
+                                                            {u}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input
+                                                    className="form-control border-black rounded-2"
+                                                    value={item.magasin}
+                                                    onChange={e => handleLineChange(i, "magasin", e.target.value)}
+                                                    placeholder="Magasin"
+                                                />
+                                            </td>
+                                            <td className="text-center">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-danger btn-sm rounded-pill px-3"
+                                                    onClick={() => handleDeleteLine(i)}
+                                                >
+                                                    <i className="bi bi-x-lg"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        </div>
+
+                        {/* Mobile / Tablet (<1200px): card list */}
+                        <div className="d-block d-xl-none">
+                            <div className="row g-3">
+                                {lines.map((item, i) => (
+                                    <div className="col-12" key={item.id}>
+                                        <div className="card border border-dark shadow-sm rounded-3">
+                                            <div className="card-body py-2 px-3">
+                                                <div className="mb-2 d-flex justify-content-between align-items-start">
+                                                    <div className="me-2">
+                                                        <div className="fw-bold">{item.marque || <span className="text-muted">Marque</span>}</div>
+                                                        <div className="small text-muted">{item.typeItem || "Type…"}</div>
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline-danger"
+                                                        className="rounded-pill px-2 py-0"
+                                                        style={{ lineHeight: 1 }}
+                                                        onClick={() => handleDeleteLine(i)}
+                                                        aria-label="Supprimer"
+                                                        title="Supprimer"
+                                                    >
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </Button>
+                                                </div>
+
+                                                {/* Type */}
+                                                <div className="mb-1">
+                                                    <label className="form-label small mb-0">Type</label>
+                                                    {isMobile ? (
+                                                        <select
+                                                            className="form-select form-select-sm border-black rounded-2"
+                                                            value={item.typeItem}
+                                                            onChange={e => handleLineChange(i, "typeItem", e.target.value)}
+                                                        >
+                                                            <option value="">Type…</option>
+                                                            {allowedTypeOptionsFor(i).map(t => (
+                                                                <option key={t} value={t}>
+                                                                    {t}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <Select
+                                                            isClearable
+                                                            menuPlacement="top"
+                                                            options={typeSelectOptions.filter(
+                                                                opt =>
+                                                                    !lines.some((l, j) => l.typeItem === opt.value && j !== i) ||
+                                                                    item.typeItem === opt.value
+                                                            )}
+                                                            value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
+                                                            onChange={(opt: SingleValue<{ label: string; value: string }>) =>
+                                                                handleLineChange(i, "typeItem", opt?.value || "")
+                                                            }
+                                                            placeholder="Type…"
+                                                            styles={{
+                                                                control: base => ({ ...base, minHeight: 28, fontSize: 14 }),
+                                                                valueContainer: base => ({ ...base, padding: "0 6px" }),
+                                                                input: base => ({ ...base, margin: 0, padding: 0 }),
+                                                                indicatorsContainer: base => ({ ...base, height: 24 }),
+                                                                menu: base => ({ ...base, zIndex: 9999 }),
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                {/* Marque */}
+                                                <div className="mb-1">
+                                                    <label className="form-label small mb-0">Marque</label>
+                                                    <input
+                                                        className="form-control form-control-sm border-black rounded-2"
+                                                        value={item.marque}
+                                                        onChange={e => handleLineChange(i, "marque", e.target.value)}
+                                                        placeholder="Marque"
+                                                    />
+                                                </div>
+
+                                                {/* Prix */}
+                                                <div className="mb-1">
+                                                    <label className="form-label small mb-0">Prix</label>
+                                                    <input
+                                                        className="form-control form-control-sm border-black rounded-2"
+                                                        type="number"
+                                                        step="0.01"
+                                                        inputMode="decimal"
+                                                        value={item.prix}
+                                                        onChange={e => handleLineChange(i, "prix", +e.target.value)}
+                                                        placeholder="Prix"
+                                                    />
+                                                </div>
+
+                                                {/* Poids */}
+                                                <div className="mb-1">
+                                                    <label className="form-label small mb-0">Poids</label>
+                                                    <input
+                                                        className="form-control form-control-sm border-black rounded-2"
+                                                        type="number"
+                                                        step="0.01"
+                                                        inputMode="decimal"
+                                                        value={item.poidsValeur}
+                                                        onChange={e => handleLineChange(i, "poidsValeur", +e.target.value)}
+                                                        placeholder="Poids"
+                                                    />
+                                                </div>
+
+                                                {/* Unité */}
+                                                <div className="mb-1">
+                                                    <label className="form-label small mb-0">Unité</label>
+                                                    <select
+                                                        className="form-select form-select-sm border-black rounded-2"
+                                                        value={item.poidsUnite}
+                                                        onChange={e => handleLineChange(i, "poidsUnite", e.target.value)}
+                                                    >
+                                                        <option value="">-- Unité --</option>
+                                                        {UNIT_OPTIONS.map(u => (
+                                                            <option key={u} value={u}>
+                                                                {u}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Magasin */}
+                                                <div className="mb-1">
+                                                    <label className="form-label small mb-0">Magasin</label>
+                                                    <input
+                                                        className="form-control form-control-sm border-black rounded-2"
+                                                        value={item.magasin}
+                                                        onChange={e => handleLineChange(i, "magasin", e.target.value)}
+                                                        placeholder="Magasin"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="d-flex justify-content-end gap-2">
+                            <Button type="submit" className="btn btn-primary rounded-pill px-4">
+                                <i className="bi bi-save me-2"></i>Enregistrer
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                className="rounded-pill px-4"
+                                type="button"
+                                onClick={() => navigate("/comparatif")}
+                            >
+                                <i className="bi bi-arrow-return-left me-2"></i>Annuler
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {/* Add Line Modal Wizard — fullscreen on small screens */}
+            <Modal show={showAddModal} onHide={closeAddModal} centered size="xl" fullscreen="sm-down">
                 <Modal.Header closeButton>
                     <Modal.Title>
                         <i className="bi bi-plus-circle me-2"></i>Ajouter une ligne
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <Form onSubmit={handleAddSubmit} autoComplete="off">
-                        {addStep === 1 ? (
+                    <Form onSubmit={handleAddLineSubmit} autoComplete="off">
+                        {modalStep === 1 ? (
                             <>
                                 <Form.Group className="mb-3">
-                                    <Form.Label className="fw-bold">Type d'article</Form.Label>
-                                    <Select
-                                        isClearable
-                                        options={typeSelectOptions.filter(opt =>
-                                            !lines.some(l => l.typeItem === opt.value)
-                                        )}
-                                        value={addType ? { value: addType, label: addType } : null}
-                                        onChange={(option: SingleValue<{ label: string; value: string }>) =>
-                                            setAddType(option?.value || "")
-                                        }
-                                        placeholder="Choisissez un type…"
-                                        styles={{
-                                            container: base => ({ ...base, minWidth: 0, width: 240 }),
-                                            control: base => ({ ...base, minWidth: 0, width: 240 }),
-                                            menu: base => ({ ...base, zIndex: 9999 })
-                                        }}
-                                    />
+                                    <Form.Label className="fw-bold">Type de produit</Form.Label>
+                                    {isMobile ? (
+                                        <Form.Select
+                                            value={modalTypeItem}
+                                            onChange={e => setModalTypeItem(e.target.value)}
+                                        >
+                                            <option value="">Choisissez un type…</option>
+                                            {typeOptionsList
+                                                .filter(opt => !lines.some(l => l.typeItem === opt))
+                                                .map(t => (
+                                                    <option key={t} value={t}>
+                                                        {t}
+                                                    </option>
+                                                ))}
+                                        </Form.Select>
+                                    ) : (
+                                        <Select
+                                            isClearable
+                                            options={typeSelectOptions.filter(opt => !lines.some(l => l.typeItem === opt.value))}
+                                            value={modalTypeItem ? { value: modalTypeItem, label: modalTypeItem } : null}
+                                            onChange={(opt: SingleValue<{ label: string; value: string }>) =>
+                                                setModalTypeItem(opt?.value || "")
+                                            }
+                                            placeholder="Choisissez un type…"
+                                            styles={{
+                                                container: base => ({ ...base, minWidth: 0 }),
+                                                menu: base => ({ ...base, zIndex: 9999 }),
+                                            }}
+                                        />
+                                    )}
                                 </Form.Group>
                                 <div className="d-flex justify-content-end">
                                     <Button
                                         type="button"
                                         className="btn btn-primary rounded-pill px-4"
-                                        disabled={!addType}
-                                        onClick={handleNextStep}
+                                        disabled={!modalTypeItem.trim()}
+                                        onClick={() => setModalStep(2)}
                                     >
                                         Suivant <i className="bi bi-arrow-right ms-2"></i>
                                     </Button>
@@ -370,8 +533,9 @@ const ComparatifEdit: React.FC = () => {
                                             type="text"
                                             name="marque"
                                             required
-                                            value={addForm.marque}
-                                            onChange={handleAddFormChange}
+                                            value={modalForm.marque}
+                                            onChange={handleModalChange}
+                                            className="border-black rounded-3"
                                         />
                                     </Col>
                                     <Col md={3}>
@@ -379,10 +543,12 @@ const ComparatifEdit: React.FC = () => {
                                         <Form.Control
                                             type="number"
                                             step="0.01"
+                                            inputMode="decimal"
                                             name="prix"
                                             required
-                                            value={addForm.prix}
-                                            onChange={handleAddFormChange}
+                                            value={modalForm.prix}
+                                            onChange={handleModalChange}
+                                            className="border-black rounded-3"
                                         />
                                     </Col>
                                     <Col md={3}>
@@ -390,28 +556,32 @@ const ComparatifEdit: React.FC = () => {
                                         <Form.Control
                                             type="number"
                                             step="0.01"
+                                            inputMode="decimal"
                                             name="poidsValeur"
                                             required
-                                            value={addForm.poidsValeur}
-                                            onChange={handleAddFormChange}
+                                            value={modalForm.poidsValeur}
+                                            onChange={handleModalChange}
+                                            className="border-black rounded-3"
                                         />
                                     </Col>
                                 </Row>
                                 <Row className="g-2 mb-3">
                                     <Col md={6}>
                                         <Form.Label className="fw-bold">Unité</Form.Label>
-                                        <Form.Control
-                                            as="select"
+                                        <Form.Select
                                             name="poidsUnite"
                                             required
-                                            value={addForm.poidsUnite}
-                                            onChange={handleAddFormChange}
+                                            value={modalForm.poidsUnite}
+                                            onChange={handleModalChange}
+                                            className="border-black rounded-3"
                                         >
                                             <option value="">-- Unité --</option>
                                             {UNIT_OPTIONS.map(u => (
-                                                <option key={u} value={u}>{u}</option>
+                                                <option key={u} value={u}>
+                                                    {u}
+                                                </option>
                                             ))}
-                                        </Form.Control>
+                                        </Form.Select>
                                     </Col>
                                     <Col md={6}>
                                         <Form.Label className="fw-bold">Magasin</Form.Label>
@@ -419,27 +589,20 @@ const ComparatifEdit: React.FC = () => {
                                             type="text"
                                             name="magasin"
                                             required
-                                            value={addForm.magasin}
-                                            onChange={handleAddFormChange}
+                                            value={modalForm.magasin}
+                                            onChange={handleModalChange}
+                                            className="border-black rounded-3"
                                         />
                                     </Col>
                                 </Row>
                                 <div className="d-flex justify-content-between">
-                                    <Button
-                                        type="button"
-                                        className="btn btn-secondary rounded-pill px-4"
-                                        onClick={handleBackStep}
-                                    >
+                                    <Button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setModalStep(1)}>
                                         <i className="bi bi-arrow-left me-2"></i>Précédent
                                     </Button>
                                     <Button
                                         type="submit"
                                         className="btn btn-success rounded-pill px-4"
-                                        disabled={
-                                            !addForm.marque.trim() ||
-                                            !addForm.poidsUnite.trim() ||
-                                            !addForm.magasin.trim()
-                                        }
+                                        disabled={!modalForm.marque.trim() || !modalForm.poidsUnite.trim() || !modalTypeItem.trim()}
                                     >
                                         <i className="bi bi-plus-circle me-2"></i>Ajouter
                                     </Button>

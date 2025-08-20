@@ -1,5 +1,4 @@
-﻿// src/lib/types.ts
-export type UserProfileDto = {
+﻿export type UserProfileDto = {
     userId: string;
     displayName: string;
     bio?: string | null;
@@ -38,11 +37,15 @@ export type ForumThreadDto = {
     title: string;
     createdUtc: string;
     createdBy: string;
+    createdByUserId: string;   // NEW
     lastPostUtc: string;
     lastBy: string;
     isLocked: boolean;
     isPinned: boolean;
     postCount: number;
+    score: number;
+    myVote: number;
+    canEditTitle: boolean;     // NEW
 };
 
 export type ForumPostDto = {
@@ -66,6 +69,22 @@ export type ForumAdminDto = {
     userId: string;
     displayName: string;
     addedUtc: string;
+};
+
+export type ForumPostTreeDto = {
+    id: number;
+    body: string;
+    createdUtc: string;
+    createdBy: string;
+    createdByUserId: string;   // NEW
+    editedUtc?: string | null;
+    editedBy?: string | null;
+    parentPostId?: number | null;
+    score: number;
+    myVote: number;
+    repliesCount: number;
+    replies: ForumPostTreeDto[];
+    canEdit: boolean;          // NEW
 };
 
 export type ModeratorDto = { userId: string; displayName: string };

@@ -6,7 +6,7 @@ interface Facture {
     id: number;
     annee: number;
     factureId: string;
-    date: string;   // ISO string
+    date: string; // ISO string
     magasin: string;
 }
 
@@ -47,7 +47,7 @@ const Factures: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({
             ...prev,
-            [e.target.name]: e.target.value
+            [e.target.name]: e.target.value,
         }));
     };
 
@@ -68,11 +68,9 @@ const Factures: React.FC = () => {
         setError(null);
 
         const isEdit = formMode === "edit";
-        const url = isEdit
-            ? `/api/factures/${current!.id}`
-            : "/api/factures"; // or "/api/factures/header" if you used the header-only endpoint
+        const url = isEdit ? `/api/factures/${current!.id}` : "/api/factures";
 
-        // If your backend still complains about Items on create, send items: []
+        // If backend needs items on create, send items: []
         const payload = isEdit ? formData : { ...formData, items: [] };
 
         try {
@@ -93,10 +91,10 @@ const Factures: React.FC = () => {
 
             // Create flow: get new id and jump to edit page
             const created = await res.json();
-            const newId = created?.id ?? created?.Id; // System.Text.Json sends camelCase by default
+            const newId = created?.id ?? created?.Id;
             if (!newId) throw new Error("Réponse inattendue: id manquant.");
 
-            handleCancel(); // close form
+            handleCancel();
             navigate(`/factures/${newId}`);
         } catch (err: any) {
             setError(err.message ?? "Erreur lors de l’enregistrement.");
@@ -105,10 +103,7 @@ const Factures: React.FC = () => {
 
     const handleDelete = (facture: Facture) => {
         if (!window.confirm("Supprimer cette facture?")) return;
-        fetch(`/api/factures/${facture.id}`, {
-            method: "DELETE",
-            credentials: "include",
-        })
+        fetch(`/api/factures/${facture.id}`, { method: "DELETE", credentials: "include" })
             .then(async res => {
                 if (!res.ok) throw new Error(await res.text());
                 fetchFactures();
@@ -119,6 +114,15 @@ const Factures: React.FC = () => {
     // ----- Render -----
     return (
         <div className="container" style={{ maxWidth: 700 }}>
+            {/* Responsive tweak: hide .btn-text under 600px */}
+            <style>{`
+        @media (max-width: 600px) {
+          .only-icons-under-600 .btn-text { display: none !important; }
+          .only-icons-under-600 .btn i { margin-right: 0 !important; }
+          .only-icons-under-600 .btn.btn-sm { padding: .375rem .5rem; }
+        }
+      `}</style>
+
             <div className="d-flex flex-column align-items-center mb-3">
                 <h2 className="mb-2">Mes Factures</h2>
                 <button
@@ -136,23 +140,41 @@ const Factures: React.FC = () => {
                 <form className="mb-4" onSubmit={handleSubmit}>
                     <div className="mb-2">
                         <label>Année</label>
-                        <input name="annee" type="number" value={formData.annee}
-                            onChange={handleChange} className="form-control" />
+                        <input
+                            name="annee"
+                            type="number"
+                            value={formData.annee}
+                            onChange={handleChange}
+                            className="form-control"
+                        />
                     </div>
                     <div className="mb-2">
                         <label>Facture ID</label>
-                        <input name="factureId" value={formData.factureId}
-                            onChange={handleChange} className="form-control" />
+                        <input
+                            name="factureId"
+                            value={formData.factureId}
+                            onChange={handleChange}
+                            className="form-control"
+                        />
                     </div>
                     <div className="mb-2">
                         <label>Date</label>
-                        <input name="date" type="date" value={formData.date}
-                            onChange={handleChange} className="form-control" />
+                        <input
+                            name="date"
+                            type="date"
+                            value={formData.date}
+                            onChange={handleChange}
+                            className="form-control"
+                        />
                     </div>
                     <div className="mb-2">
                         <label>Magasin</label>
-                        <input name="magasin" value={formData.magasin}
-                            onChange={handleChange} className="form-control" />
+                        <input
+                            name="magasin"
+                            value={formData.magasin}
+                            onChange={handleChange}
+                            className="form-control"
+                        />
                     </div>
                     <button type="submit" className="btn btn-success me-2">
                         {formMode === "edit" ? "Enregistrer" : "Créer"}
@@ -168,35 +190,40 @@ const Factures: React.FC = () => {
             ) : factures.length === 0 ? (
                 <div className="alert alert-secondary text-center">Aucune facture trouvée.</div>
             ) : (
-                factures.map(facture =>
+                factures.map(facture => (
                     <div key={facture.id} className="card mb-2 border-0 shadow-sm">
                         <div className="card-body d-flex align-items-start" style={{ columnGap: "1rem" }}>
                             <span style={{ flex: 1 }}>
-                                <div>
-                                    <b>Date :</b> {facture.date?.slice(0, 10)} &nbsp;|&nbsp;
-                                    <b>ID :</b> {facture.factureId}
-                                </div>
-                                <div>
-                                    <b>Magasin :</b> {facture.magasin}
-                                </div>
+                                <div><b>ID :</b> {facture.factureId}</div>
+                                <div><b>Date :</b> {facture.date?.slice(0, 10)}</div>                                
+                                <div><b>Magasin :</b> {facture.magasin}</div>
                             </span>
-                            <div className="d-flex gap-2">
+
+                            {/* Action buttons; text hides under 600px */}
+                            <div className="d-flex gap-2 only-icons-under-600">
                                 <button
                                     className="btn btn-outline-primary btn-sm"
                                     onClick={() => navigate(`/factures/${facture.id}`)}
+                                    aria-label="Voir la facture"
+                                    title="Voir la facture"
                                 >
-                                    <i className="bi bi-eye"></i> Voir
+                                    <i className="bi bi-eye" aria-hidden="true"></i>{" "}
+                                    <span className="btn-text">Voir</span>
                                 </button>
+
                                 <button
                                     className="btn btn-outline-danger btn-sm"
                                     onClick={() => handleDelete(facture)}
+                                    aria-label="Supprimer la facture"
+                                    title="Supprimer la facture"
                                 >
-                                    <i className="bi bi-trash"></i> Supprimer
+                                    <i className="bi bi-trash" aria-hidden="true"></i>{" "}
+                                    <span className="btn-text">Supprimer</span>
                                 </button>
                             </div>
                         </div>
                     </div>
-                )
+                ))
             )}
         </div>
     );

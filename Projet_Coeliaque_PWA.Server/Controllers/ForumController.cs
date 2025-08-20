@@ -1,14 +1,17 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using AutoMapper;
+﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Ganss.Xss;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -19,15 +22,42 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
         private readonly UserManager<IdentityUser> _um;
+        private readonly HtmlSanitizer _sanitizer;
 
         public ForumController(ApplicationDbContext db, IMapper mapper, UserManager<IdentityUser> um)
         {
             _db = db;
             _mapper = mapper;
             _um = um;
+
+            // Server-side HTML sanitizer (align with your client allowlist)
+            _sanitizer = new HtmlSanitizer();
+            _sanitizer.AllowedTags.Clear();
+            _sanitizer.AllowedTags.UnionWith(new[]
+            {
+                "p","b","strong","i","em","u","ul","ol","li","a","code","pre",
+                "blockquote","br","span","h1","h2","h3","h4","img"
+            });
+            _sanitizer.AllowedAttributes.Clear();
+            _sanitizer.AllowedAttributes.UnionWith(new[]
+            {
+                "href","target","rel","class","dir","src","alt","width","height"
+            });
+            _sanitizer.AllowedSchemes.Add("data"); // allow data: for pasted images if you use them
         }
 
-        // GET /api/forum/categories
+        // ---------- helpers ----------
+        private async Task<bool> IsAdminAsync(string? userId)
+            => !string.IsNullOrEmpty(userId) && await _db.ForumAdmins.AnyAsync(a => a.UserId == userId);
+
+        private async Task<bool> IsModeratorAsync(int threadId, string? userId)
+            => !string.IsNullOrEmpty(userId) && await _db.ForumThreadModerators.AnyAsync(m => m.ThreadId == threadId && m.UserId == userId);
+
+        private static bool IsOwner(string? userId, string? ownerId)
+            => !string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(ownerId) && userId == ownerId;
+
+        // --------------------- Categories & thread list ---------------------
+
         [HttpGet("categories")]
         public async Task<ActionResult> GetCategories()
         {
@@ -39,7 +69,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(list);
         }
 
-        // GET /api/forum/threads?categoryId=1&page=1&pageSize=20
         [HttpGet("threads")]
         public async Task<ActionResult> GetThreads([FromQuery] int categoryId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
@@ -63,43 +92,168 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new PagedResult<ForumThreadListItemDto>(items, page, pageSize, total, (int)Math.Ceiling(total / (double)pageSize)));
         }
 
-        // GET /api/forum/threads/{id}
+        // --------------------- Thread (enriched with Score/MyVote/ownership) ---------------------
+
         [HttpGet("threads/{id:int}")]
         public async Task<ActionResult> GetThread(int id)
         {
+            var userId = _um.GetUserId(User); // can be null
+
             var dto = await _db.ForumThreads
                 .AsNoTracking()
                 .Where(t => t.Id == id)
-                .ProjectTo<ForumThreadDto>(_mapper.ConfigurationProvider)
+                .Select(t => new ForumThreadDto
+                {
+                    Id = t.Id,
+                    CategoryId = t.CategoryId,
+                    Title = t.Title,
+                    CreatedUtc = t.CreatedUtc,
+                    CreatedBy = t.CreatedBy != null ? (t.CreatedBy.UserName ?? t.CreatedBy.Email ?? "Utilisateur") : "Utilisateur",
+                    CreatedByUserId = t.CreatedByUserId,
+                    LastPostUtc = t.LastPostUtc,
+                    LastBy = t.LastPostBy != null ? (t.LastPostBy.UserName ?? t.LastPostBy.Email ?? "—") : "—",
+                    IsLocked = t.IsLocked,
+                    IsPinned = t.IsPinned,
+                    PostCount = t.Posts.Count(p => !p.IsDeleted),
+                    Score = 0,
+                    MyVote = 0,
+                    CanEditTitle = false
+                })
                 .FirstOrDefaultAsync();
 
-            return dto == null ? NotFound() : Ok(dto);
+            if (dto == null) return NotFound();
+
+            // Compute score + my vote
+            var score = await _db.ForumThreadVotes
+                .Where(v => v.ThreadId == id)
+                .SumAsync(v => (int?)v.Value) ?? 0;
+
+            var myVote = 0;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                myVote = await _db.ForumThreadVotes
+                    .Where(v => v.ThreadId == id && v.UserId == userId)
+                    .Select(v => (int)v.Value)
+                    .FirstOrDefaultAsync();
+            }
+
+            var canEditTitle = IsOwner(userId, dto.CreatedByUserId)
+                               || await IsAdminAsync(userId)
+                               || await IsModeratorAsync(id, userId);
+
+            dto = dto with { Score = score, MyVote = myVote, CanEditTitle = canEditTitle };
+            return Ok(dto);
         }
 
-        // GET /api/forum/threads/{id}/posts?page=1&pageSize=20
+        // --------------------- Posts as TREE with sorting & voting ---------------------
+
+        /// <summary>
+        /// sort: "top" (default) | "new" | "old"
+        /// Paging applies to top-level comments; children are fetched in full beneath each visible top-level comment.
+        /// </summary>
         [HttpGet("threads/{id:int}/posts")]
-        public async Task<ActionResult> GetPosts(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<ActionResult> GetPosts(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string sort = "top")
         {
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 20;
+            sort = (sort ?? "top").ToLowerInvariant();
+            if (sort != "top" && sort != "new" && sort != "old") sort = "top";
 
-            var baseQ = _db.ForumPosts
+            var userId = _um.GetUserId(User);
+            var isAdmin = await IsAdminAsync(userId);
+            var isMod = await IsModeratorAsync(id, userId);
+
+            var all = await _db.ForumPosts
                 .AsNoTracking()
                 .Where(p => p.ThreadId == id && !p.IsDeleted)
-                .OrderBy(p => p.CreatedUtc);
-
-            var total = await baseQ.CountAsync();
-
-            var items = await baseQ
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ProjectTo<ForumPostDto>(_mapper.ConfigurationProvider)
+                .Include(p => p.CreatedBy)
+                .Include(p => p.EditedBy)
+                .OrderBy(p => p.CreatedUtc) // base order; we'll re-order below
                 .ToListAsync();
 
-            return Ok(new PagedResult<ForumPostDto>(items, page, pageSize, total, (int)Math.Ceiling(total / (double)pageSize)));
+            var allIds = all.Select(p => p.Id).ToList();
+
+            // scores for all posts in thread
+            var scoreMap = await _db.ForumPostVotes
+                .Where(v => allIds.Contains(v.PostId))
+                .GroupBy(v => v.PostId)
+                .Select(g => new { PostId = g.Key, Score = g.Sum(x => (int)x.Value) })
+                .ToDictionaryAsync(x => x.PostId, x => x.Score);
+
+            // current user's votes
+            Dictionary<int, int> myVotes = new();
+            if (!string.IsNullOrEmpty(userId))
+            {
+                myVotes = await _db.ForumPostVotes
+                    .Where(v => allIds.Contains(v.PostId) && v.UserId == userId)
+                    .ToDictionaryAsync(v => v.PostId, v => (int)v.Value);
+            }
+
+            // Build nodes
+            var nodes = all.Select(p => new ForumPostTreeDto
+            {
+                Id = p.Id,
+                Body = p.Body,
+                CreatedUtc = p.CreatedUtc,
+                CreatedBy = p.CreatedBy?.UserName ?? "—",
+                CreatedByUserId = p.CreatedByUserId,
+                EditedUtc = p.EditedUtc,
+                EditedBy = p.EditedBy?.UserName,
+                ParentPostId = p.ParentPostId,
+                Score = scoreMap.TryGetValue(p.Id, out var s) ? s : 0,
+                MyVote = myVotes.TryGetValue(p.Id, out var mv) ? mv : 0,
+                RepliesCount = 0,
+                Replies = new List<ForumPostTreeDto>(),
+                CanEdit = IsOwner(userId, p.CreatedByUserId) || isAdmin || isMod
+            }).ToList();
+
+            // Pre-group direct replies by parent id
+            var byParent = nodes
+                .Where(n => n.ParentPostId != null)
+                .GroupBy(n => n.ParentPostId!.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Fill RepliesCount (direct children count) for every node
+            foreach (var n in nodes)
+                n.RepliesCount = byParent.TryGetValue(n.Id, out var kids) ? kids.Count : 0;
+
+            // Sorting helpers
+            static IOrderedEnumerable<ForumPostTreeDto> SortNodes(IEnumerable<ForumPostTreeDto> src, string kind)
+                => kind switch
+                {
+                    "new" => src.OrderByDescending(x => x.CreatedUtc),
+                    "old" => src.OrderBy(x => x.CreatedUtc),
+                    _ => src.OrderByDescending(x => x.Score).ThenByDescending(x => x.CreatedUtc) // top
+                };
+
+            // Top-level posts
+            var topAll = SortNodes(nodes.Where(n => n.ParentPostId == null), sort).ToList();
+
+            // Pagination over top-level only
+            var totalTop = topAll.Count;
+            var totalPages = (int)Math.Ceiling(totalTop / (double)pageSize);
+            var pageTop = topAll
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            // Recursively attach children (each level sorted with same rule)
+            void Attach(ForumPostTreeDto parent)
+            {
+                if (!byParent.TryGetValue(parent.Id, out var children)) return;
+                foreach (var c in SortNodes(children, sort))
+                {
+                    parent.Replies.Add(c);
+                    Attach(c);
+                }
+            }
+            foreach (var n in pageTop) Attach(n);
+
+            return Ok(new PagedResult<ForumPostTreeDto>(pageTop, page, pageSize, totalTop, totalPages));
         }
 
-        // POST /api/forum/threads   body: { categoryId, title, body }
+        // --------------------- Create thread / reply (HTML sanitized) ---------------------
+
         [Authorize]
         [HttpPost("threads")]
         public async Task<ActionResult> CreateThread([FromBody] CreateThreadInput input)
@@ -113,7 +267,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var userId = _um.GetUserId(User)!;
             var now = DateTime.UtcNow;
 
-            var t = new Models.ForumThread
+            var t = new ForumThread
             {
                 CategoryId = input.CategoryId,
                 Title = input.Title.Trim(),
@@ -123,10 +277,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 LastPostByUserId = userId
             };
 
-            var p = new Models.ForumPost
+            var p = new ForumPost
             {
                 Thread = t,
-                Body = input.Body.Trim(),
+                Body = _sanitizer.Sanitize(input.Body.Trim()),
                 CreatedByUserId = userId,
                 CreatedUtc = now
             };
@@ -138,7 +292,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return CreatedAtAction(nameof(GetThread), new { id = t.Id }, new { id = t.Id });
         }
 
-        // POST /api/forum/threads/{id}/posts   body: { body }
         [Authorize]
         [HttpPost("threads/{id:int}/posts")]
         public async Task<IActionResult> Reply(int id, [FromBody] CreatePostInput input)
@@ -150,13 +303,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (thread == null) return NotFound();
             if (thread.IsLocked) return Conflict("Ce fil est verrouillé.");
 
+            if (input.ParentPostId.HasValue)
+            {
+                var parent = await _db.ForumPosts
+                    .FirstOrDefaultAsync(p => p.Id == input.ParentPostId.Value && p.ThreadId == id && !p.IsDeleted);
+                if (parent == null) return BadRequest("Message parent introuvable.");
+            }
+
             var userId = _um.GetUserId(User)!;
             var now = DateTime.UtcNow;
 
-            var post = new Models.ForumPost
+            var post = new ForumPost
             {
                 ThreadId = id,
-                Body = input.Body.Trim(),
+                ParentPostId = input.ParentPostId,
+                Body = _sanitizer.Sanitize(input.Body.Trim()),
                 CreatedByUserId = userId,
                 CreatedUtc = now
             };
@@ -167,6 +328,160 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             thread.LastPostByUserId = userId;
 
             await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // --------------------- Voting endpoints ---------------------
+
+        public record VoteInput(int Value); // -1, 0, or 1
+
+        [Authorize]
+        [HttpPost("threads/{id:int}/vote")]
+        public async Task<ActionResult> VoteThread(int id, [FromBody] VoteInput input)
+        {
+            if (input is null || (input.Value != -1 && input.Value != 0 && input.Value != 1))
+                return BadRequest("Vote invalide.");
+
+            var thread = await _db.ForumThreads.FirstOrDefaultAsync(t => t.Id == id);
+            if (thread == null) return NotFound();
+
+            var userId = _um.GetUserId(User)!;
+            var vote = await _db.ForumThreadVotes.FirstOrDefaultAsync(v => v.ThreadId == id && v.UserId == userId);
+
+            if (input.Value == 0)
+            {
+                if (vote != null) _db.ForumThreadVotes.Remove(vote);
+            }
+            else
+            {
+                if (vote == null)
+                {
+                    vote = new ForumThreadVote { ThreadId = id, UserId = userId, Value = (sbyte)input.Value };
+                    _db.ForumThreadVotes.Add(vote);
+                }
+                else
+                {
+                    vote.Value = (sbyte)input.Value;
+                    vote.VotedUtc = DateTime.UtcNow;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+
+            var score = await _db.ForumThreadVotes.Where(v => v.ThreadId == id).SumAsync(v => (int?)v.Value) ?? 0;
+            return Ok(new { score, myVote = input.Value });
+        }
+
+        [Authorize]
+        [HttpPost("posts/{postId:int}/vote")]
+        public async Task<ActionResult> VotePost(int postId, [FromBody] VoteInput input)
+        {
+            if (input is null || (input.Value != -1 && input.Value != 0 && input.Value != 1))
+                return BadRequest("Vote invalide.");
+
+            var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == postId);
+            if (post == null) return NotFound();
+
+            var userId = _um.GetUserId(User)!;
+            var vote = await _db.ForumPostVotes.FirstOrDefaultAsync(v => v.PostId == postId && v.UserId == userId);
+
+            if (input.Value == 0)
+            {
+                if (vote != null) _db.ForumPostVotes.Remove(vote);
+            }
+            else
+            {
+                if (vote == null)
+                {
+                    vote = new ForumPostVote { PostId = postId, UserId = userId, Value = (sbyte)input.Value };
+                    _db.ForumPostVotes.Add(vote);
+                }
+                else
+                {
+                    vote.Value = (sbyte)input.Value;
+                    vote.VotedUtc = DateTime.UtcNow;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+
+            var score = await _db.ForumPostVotes.Where(v => v.PostId == postId).SumAsync(v => (int?)v.Value) ?? 0;
+            return Ok(new { score, myVote = input.Value });
+        }
+
+        // --------------------- NEW: edit/delete posts + edit thread title ---------------------
+
+        public record UpdatePostInput(string Body);
+        public record UpdateThreadTitleInput(string Title);
+
+        [Authorize]
+        [HttpPut("posts/{postId:int}")]
+        public async Task<IActionResult> EditPost(int postId, [FromBody] UpdatePostInput input)
+        {
+            if (input == null || string.IsNullOrWhiteSpace(input.Body))
+                return BadRequest("Contenu requis.");
+
+            var post = await _db.ForumPosts.Include(p => p.Thread).FirstOrDefaultAsync(p => p.Id == postId);
+            if (post == null || post.IsDeleted) return NotFound();
+
+            var userId = _um.GetUserId(User)!;
+            var canEdit = IsOwner(userId, post.CreatedByUserId)
+                          || await IsAdminAsync(userId)
+                          || await IsModeratorAsync(post.ThreadId, userId);
+
+            if (!canEdit) return Forbid();
+
+            post.Body = _sanitizer.Sanitize(input.Body.Trim());
+            post.EditedByUserId = userId;
+            post.EditedUtc = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [Authorize]
+        [HttpDelete("posts/{postId:int}")]
+        public async Task<IActionResult> DeletePost(int postId)
+        {
+            var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == postId);
+            if (post == null || post.IsDeleted) return NotFound();
+
+            var userId = _um.GetUserId(User)!;
+            var canDelete = IsOwner(userId, post.CreatedByUserId)
+                            || await IsAdminAsync(userId)
+                            || await IsModeratorAsync(post.ThreadId, userId);
+
+            if (!canDelete) return Forbid();
+
+            post.IsDeleted = true;
+            post.Body = "[supprimé]";
+            post.EditedByUserId = userId;
+            post.EditedUtc = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [Authorize]
+        [HttpPut("threads/{id:int}")]
+        public async Task<IActionResult> EditThreadTitle(int id, [FromBody] UpdateThreadTitleInput input)
+        {
+            if (input == null || string.IsNullOrWhiteSpace(input.Title))
+                return BadRequest("Titre requis.");
+
+            var thread = await _db.ForumThreads.FirstOrDefaultAsync(t => t.Id == id);
+            if (thread == null) return NotFound();
+
+            var userId = _um.GetUserId(User)!;
+            var canEdit = IsOwner(userId, thread.CreatedByUserId)
+                          || await IsAdminAsync(userId)
+                          || await IsModeratorAsync(id, userId);
+
+            if (!canEdit) return Forbid();
+
+            thread.Title = input.Title.Trim();
+            await _db.SaveChangesAsync();
+
             return NoContent();
         }
     }

@@ -9,7 +9,7 @@ export default function Navbar() {
     const displayLabel =
         (user && (user.displayName || user.name || user.email)) || "Compte";
 
-    // Profile URL (does not link back to forum)
+    // Profile URL
     const myProfileUrl =
         user?.id ? `/u/${user.id}` :
             (user as any)?.userId ? `/u/${(user as any).userId}` :
@@ -19,7 +19,7 @@ export default function Navbar() {
         <nav className="navbar navbar-expand-lg navbar-light bg-white sticky-top mb-4 shadow-sm">
             <div className="container">
                 <Link className="navbar-brand" to="/">
-                    <i className="bi bi-bootstrap"></i> Site Coeliaque
+                    <i className="bi bi-bootstrap"></i> Service Coeliaque
                 </Link>
 
                 <button
@@ -69,11 +69,46 @@ export default function Navbar() {
                             </ul>
                         </li>
 
-                        {/* Épicerie */}
-                        <li className="nav-item">
-                            <Link className="nav-link" to="/liste-epicerie">
+                        {/* Épicerie (now a dropdown) */}
+                        <li className="nav-item dropdown">
+                            <a
+                                className="nav-link dropdown-toggle"
+                                href="#"
+                                id="groceryDropdown"
+                                role="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                            >
                                 <i className="bi bi-cart-check me-1"></i> Mes listes d'épicerie
-                            </Link>
+                            </a>
+                            <ul className="dropdown-menu" aria-labelledby="groceryDropdown">
+                                <li>
+                                    <Link className="dropdown-item" to="/liste-epicerie?status=active">
+                                        Actives
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link className="dropdown-item" to="/liste-epicerie?status=completed">
+                                        Complétées
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link className="dropdown-item" to="/liste-epicerie?status=all">
+                                        Toutes
+                                    </Link>
+                                </li>
+                                <li><hr className="dropdown-divider" /></li>
+                                <li>
+                                    <Link className="dropdown-item" to="/liste-epicerie">
+                                        Ouvrir l’index
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link className="dropdown-item" to="/liste-epicerie/edit">
+                                        Nouvelle liste
+                                    </Link>
+                                </li>
+                            </ul>
                         </li>
 
                         {/* Forum */}
@@ -127,7 +162,6 @@ export default function Navbar() {
                                     </li>
                                 )}
 
-                                {/* SuperAdmin button next to username */}
                                 {isSuperAdmin && (
                                     <li className="nav-item my-2 my-lg-0">
                                         <Link
@@ -140,7 +174,6 @@ export default function Navbar() {
                                     </li>
                                 )}
 
-                                {/* User menu */}
                                 <li className="nav-item dropdown my-2 my-lg-0 ms-lg-2">
                                     <a
                                         className="nav-link dropdown-toggle"
@@ -153,26 +186,13 @@ export default function Navbar() {
                                         <i className="bi bi-person-circle"></i> {displayLabel}
                                     </a>
                                     <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                                        {user?.avatarUrl ? (
-                                            <img
-                                                src={user.avatarUrl}
-                                                alt=""
-                                                width={24}
-                                                height={24}
-                                                className="rounded-circle me-1 border"
-                                                style={{ objectFit: "cover" }}
-                                            />
-                                        ) : (
-                                            <i className="bi bi-person-circle me-1"></i>
-                                        )}
-                                        {user?.displayName || user?.name || user?.email || "Compte"}
-                                        {myProfileUrl && (
-                                            <li>
+                                        <li>
+                                            {myProfileUrl && (
                                                 <Link className="dropdown-item" to={myProfileUrl}>
                                                     <i className="bi bi-person-badge me-2"></i> Mon profil
                                                 </Link>
-                                            </li>
-                                        )}
+                                            )}
+                                        </li>
                                         <li>
                                             <Link className="dropdown-item" to="/u/me/edit">
                                                 <i className="bi bi-pencil-square me-2"></i> Éditer mon profil

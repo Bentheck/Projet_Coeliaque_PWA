@@ -5,7 +5,7 @@ import { Modal, Button } from "react-bootstrap";
 const UNIT_OPTIONS = [
     "g", "kg", "mg", "lb", "oz",
     "ml", "l", "fl oz",
-    "un", "dozen"
+    "un", "dozen",
 ];
 
 type FactureItemRow = {
@@ -45,8 +45,8 @@ type ListeEpicerieItemDto = {
     freeItemId?: number | null;
     customName?: string | null;
     quantity: number;
-    isFavorite: boolean;   // list-level
-    wasOnSale: boolean;    // list-level
+    isFavorite: boolean; // list-level
+    wasOnSale: boolean;  // list-level
 };
 
 type ListeEpicerieDto = {
@@ -60,15 +60,21 @@ type ListeEpicerieDto = {
 async function fetchJSON<T = any>(input: RequestInfo, init?: RequestInit): Promise<T> {
     const res = await fetch(input, { credentials: "include", ...init });
     const ct = res.headers.get("content-type") || "";
+
     if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`HTTP ${res.status} ${typeof input === "string" ? input : ""}\n${text.slice(0, 200)}`);
     }
     if (res.status === 204 || res.status === 205) return null as unknown as T;
+
     if (ct.includes("application/json")) return res.json();
+
     const text = await res.text();
     if (!text) return null as unknown as T;
-    try { return JSON.parse(text); } catch {
+
+    try {
+        return JSON.parse(text);
+    } catch {
         throw new Error(`Expected JSON but got ${ct || "unknown"}: ${text.slice(0, 200)}`);
     }
 }
@@ -85,7 +91,7 @@ const ListeEpicerieEdit: React.FC = () => {
     const [selectedFactureType, setSelectedFactureType] = useState<string>("");
     const [factureItems, setFactureItems] = useState<FactureItemRow[]>([]);
     const [factureById, setFactureById] = useState<Record<number, FactureItemRow>>({});
-    const [hideFactureOnSale, setHideFactureOnSale] = useState(false); // filter toggle
+    const [hideFactureOnSale, setHideFactureOnSale] = useState(false);
 
     // Free items modal
     const [showFreeModal, setShowFreeModal] = useState(false);
@@ -93,7 +99,7 @@ const ListeEpicerieEdit: React.FC = () => {
     const [selectedFreeType, setSelectedFreeType] = useState<string>("");
     const [freeItems, setFreeItems] = useState<FreeItem[]>([]);
     const [freeById, setFreeById] = useState<Record<number, FreeItem>>({});
-    const [hideFreeOnSale, setHideFreeOnSale] = useState(false); // filter toggle
+    const [hideFreeOnSale, setHideFreeOnSale] = useState(false);
 
     // Create free item form
     const [newFreeItemName, setNewFreeItemName] = useState("");
@@ -135,20 +141,33 @@ const ListeEpicerieEdit: React.FC = () => {
                     id ? fetchJSON<ListeEpicerieDto>(`/api/ListeEpicerie/${id}`) : Promise.resolve(null),
                 ]);
                 if (ignore) return;
+
                 setFactureTypes(ftypes ?? []);
                 setFreeTypes(freetypes ?? []);
                 if (current) setListe(current);
-                if (!selectedFactureType && ftypes?.length) setSelectedFactureType(ftypes[0].type);
-            } catch (e) { console.error(e); }
+
+                // Tentative initial selection; will be validated below
+                if (!selectedFactureType && (ftypes?.length ?? 0) > 0) {
+                    setSelectedFactureType(ftypes![0].type);
+                }
+            } catch (e) {
+                console.error(e);
+            }
         })();
-        return () => { ignore = true; };
-    }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+        return () => {
+            ignore = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id]);
 
     // Load facture items for selected type
     useEffect(() => {
         let ignore = false;
         (async () => {
-            if (!selectedFactureType) { setFactureItems([]); return; }
+            if (!selectedFactureType) {
+                setFactureItems([]);
+                return;
+            }
             try {
                 const qs = `?type=${encodeURIComponent(selectedFactureType)}`;
                 const rows = await fetchJSON<FactureItemRow[]>(`/api/factureitems${qs}`);
@@ -159,16 +178,23 @@ const ListeEpicerieEdit: React.FC = () => {
                     for (const it of rows ?? []) next[it.id] = it;
                     return next;
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+            }
         })();
-        return () => { ignore = true; };
+        return () => {
+            ignore = true;
+        };
     }, [selectedFactureType]);
 
-    // Load free items for selected type (empty until a type is chosen)
+    // Load free items for selected type
     useEffect(() => {
         let ignore = false;
         (async () => {
-            if (!selectedFreeType) { setFreeItems([]); return; }
+            if (!selectedFreeType) {
+                setFreeItems([]);
+                return;
+            }
             try {
                 const qs = `?type=${encodeURIComponent(selectedFreeType)}`;
                 const rows = await fetchJSON<FreeItem[]>(`/api/freeitems${qs}`);
@@ -179,23 +205,31 @@ const ListeEpicerieEdit: React.FC = () => {
                     for (const it of rows ?? []) next[it.id] = it;
                     return next;
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+            }
         })();
-        return () => { ignore = true; };
+        return () => {
+            ignore = true;
+        };
     }, [selectedFreeType]);
 
     // Ensure caches have details for IDs present in the list
     useEffect(() => {
-        const missingFacture = Array.from(new Set(
-            liste.items
-                .map(x => x.factureItemId)
-                .filter((id): id is number => !!id && !factureById[id])
-        ));
-        const missingFree = Array.from(new Set(
-            liste.items
-                .map(x => x.freeItemId)
-                .filter((id): id is number => !!id && !freeById[id])
-        ));
+        const missingFacture = Array.from(
+            new Set(
+                liste.items
+                    .map(x => x.factureItemId)
+                    .filter((id): id is number => !!id && !factureById[id])
+            )
+        );
+        const missingFree = Array.from(
+            new Set(
+                liste.items
+                    .map(x => x.freeItemId)
+                    .filter((id): id is number => !!id && !freeById[id])
+            )
+        );
 
         const load = async () => {
             try {
@@ -209,11 +243,15 @@ const ListeEpicerieEdit: React.FC = () => {
                         setFreeById(prev => ({ ...prev, [id]: row }));
                     }),
                 ]);
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+            }
         };
+
         if (missingFacture.length || missingFree.length) load();
     }, [liste.items, factureById, freeById]);
 
+    // Known stores for datalist (from currently loaded rows)
     const knownStores = useMemo(() => {
         const set = new Set<string>();
         factureItems.forEach(i => i.magasin && set.add(i.magasin));
@@ -221,32 +259,35 @@ const ListeEpicerieEdit: React.FC = () => {
         return Array.from(set).sort();
     }, [factureItems, freeItems]);
 
+    // Adders
     const addFromFacture = (factureItemId: number) => {
         if (liste.items.some(i => i.factureItemId === factureItemId)) return;
         const src = factureById[factureItemId];
         setListe(prev => ({
             ...prev,
-            items: [...prev.items, {
-                factureItemId,
-                quantity: 1,
-                isFavorite: false,
-                wasOnSale: src?.wasOnSale ?? false
-            }]
+            items: [
+                ...prev.items,
+                { factureItemId, quantity: 1, isFavorite: false, wasOnSale: src?.wasOnSale ?? false },
+            ],
         }));
     };
 
     const addFromFree = (fi: FreeItem) => {
         setListe(prev => ({
             ...prev,
-            items: [...prev.items, {
-                freeItemId: fi.id,
-                quantity: fi.defaultQuantite ?? 1,
-                isFavorite: fi.isFavorite,
-                wasOnSale: fi.wasOnSale
-            }]
+            items: [
+                ...prev.items,
+                {
+                    freeItemId: fi.id,
+                    quantity: (fi.defaultQuantite ?? 1) || 1,
+                    isFavorite: fi.isFavorite,
+                    wasOnSale: fi.wasOnSale,
+                },
+            ],
         }));
     };
 
+    // Create new free item (instant refresh + types update)
     const addNewFreeItem = async () => {
         if (!newFreeItemName.trim() || !newFreeItemType.trim()) return;
 
@@ -263,7 +304,7 @@ const ListeEpicerieEdit: React.FC = () => {
             defaultPrix: Number.isFinite(price) ? price : null,
             poidsValeur: Number.isFinite(weight) ? weight : null,
             poidsUnite: newFreeItemWeightUnit || null,
-            isFavorite: false
+            isFavorite: false,
         };
 
         try {
@@ -271,7 +312,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
@@ -280,16 +321,42 @@ const ListeEpicerieEdit: React.FC = () => {
                 return;
             }
 
-            if (selectedFreeType) {
-                const items = await fetchJSON<FreeItem[]>(`/api/freeitems?type=${encodeURIComponent(selectedFreeType)}`);
-                setFreeItems(items ?? []);
-                setFreeById(prev => {
-                    const next = { ...prev };
-                    for (const it of items ?? []) next[it.id] = it;
-                    return next;
-                });
+            let created: FreeItem | null = null;
+            try {
+                const ct = res.headers.get("content-type") || "";
+                if (ct.includes("application/json")) {
+                    created = (await res.json()) as FreeItem;
+                }
+            } catch {
+                /* ignore */
             }
 
+            // Always refresh type list
+            const types = await fetchJSON<FreeItemType[]>("/api/freeitems/types");
+            setFreeTypes(types ?? []);
+
+            const createdType = (created?.typeItem ?? newFreeItemType).trim();
+
+            if (!selectedFreeType) {
+                if (createdType) setSelectedFreeType(createdType);
+            } else if (createdType === selectedFreeType) {
+                if (created) {
+                    setFreeItems(prev => [created!, ...prev]);
+                    setFreeById(prev => ({ ...prev, [created!.id]: created! }));
+                } else {
+                    const items = await fetchJSON<FreeItem[]>(
+                        `/api/freeitems?type=${encodeURIComponent(selectedFreeType)}&_=${Date.now()}`
+                    );
+                    setFreeItems(items ?? []);
+                    setFreeById(prev => {
+                        const next = { ...prev };
+                        for (const it of items ?? []) next[it.id] = it;
+                        return next;
+                    });
+                }
+            }
+
+            // Reset form
             setNewFreeItemName("");
             setNewFreeItemType(selectedFreeType || "");
             setNewFreeItemStore("");
@@ -304,21 +371,21 @@ const ListeEpicerieEdit: React.FC = () => {
     };
 
     // delete a free item from modal (also remove from current grocery list if present)
-    const deleteFreeItem = async (id: number) => {
-        const usedCount = liste.items.filter(x => x.freeItemId === id).length;
+    const deleteFreeItem = async (fid: number) => {
+        const usedCount = liste.items.filter(x => x.freeItemId === fid).length;
+
         if (usedCount > 0) {
-            const ok = confirm(`Cet article est présent ${usedCount} fois dans la liste.\nVoulez-vous le retirer de la liste et le supprimer ?`);
+            const ok = confirm(
+                `Cet article est présent ${usedCount} fois dans la liste.\nVoulez-vous le retirer de la liste et le supprimer ?`
+            );
             if (!ok) return;
-            setListe(prev => ({ ...prev, items: prev.items.filter(x => x.freeItemId !== id) }));
+            setListe(prev => ({ ...prev, items: prev.items.filter(x => x.freeItemId !== fid) }));
         } else {
             const ok = confirm("Supprimer ce produit libre ?");
             if (!ok) return;
         }
 
-        const res = await fetch(`/api/freeitems/${id}`, {
-            method: "DELETE",
-            credentials: "include"
-        });
+        const res = await fetch(`/api/freeitems/${fid}`, { method: "DELETE", credentials: "include" });
         if (!res.ok) {
             console.error("Delete failed", await res.text().catch(() => ""));
             return;
@@ -329,12 +396,12 @@ const ListeEpicerieEdit: React.FC = () => {
             fetchJSON<FreeItemType[]>("/api/freeitems/types"),
             selectedFreeType
                 ? fetchJSON<FreeItem[]>(`/api/freeitems?type=${encodeURIComponent(selectedFreeType)}`)
-                : Promise.resolve([])
+                : Promise.resolve([]),
         ]);
         setFreeTypes(types ?? []);
         setFreeItems(items ?? []);
         setFreeById(prev => {
-            const { [id]: _gone, ...rest } = prev;
+            const { [fid]: _gone, ...rest } = prev;
             return rest;
         });
     };
@@ -342,15 +409,12 @@ const ListeEpicerieEdit: React.FC = () => {
     const updateQtyAtIndex = (idx: number, quantity: number) => {
         setListe(prev => ({
             ...prev,
-            items: prev.items.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, quantity) } : it)
+            items: prev.items.map((it, i) => (i === idx ? { ...it, quantity: Math.max(1, quantity) } : it)),
         }));
     };
 
     const removeAtIndex = (idx: number) => {
-        setListe(prev => ({
-            ...prev,
-            items: prev.items.filter((_, i) => i !== idx)
-        }));
+        setListe(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
     };
 
     const save = async () => {
@@ -361,7 +425,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 method,
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify(liste)
+                body: JSON.stringify(liste),
             });
             if (!res.ok) {
                 const text = await res.text().catch(() => "");
@@ -369,12 +433,15 @@ const ListeEpicerieEdit: React.FC = () => {
                 return;
             }
             navigate("/Liste-Epicerie");
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const openEditFree = (freeId: number) => {
         const src = freeById[freeId] || freeItems.find(f => f.id === freeId);
         if (!src) return;
+
         setEditFreeId(src.id);
         setEditName(src.item || "");
         setEditType(src.typeItem || "");
@@ -390,6 +457,7 @@ const ListeEpicerieEdit: React.FC = () => {
 
     const saveEditFree = async () => {
         if (editFreeId == null) return;
+
         const qty = Number(editQty);
         const price = Number(editPrice);
         const weight = Number(editWeight);
@@ -404,7 +472,7 @@ const ListeEpicerieEdit: React.FC = () => {
             poidsValeur: Number.isFinite(weight) ? weight : null,
             poidsUnite: editUnit || null,
             isFavorite: editFav,
-            wasOnSale: editOnSale
+            wasOnSale: editOnSale,
         };
 
         try {
@@ -412,8 +480,9 @@ const ListeEpicerieEdit: React.FC = () => {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
             });
+
             if (!res.ok) {
                 const text = await res.text().catch(() => "");
                 console.error("Update free item failed:", text);
@@ -421,7 +490,9 @@ const ListeEpicerieEdit: React.FC = () => {
             }
 
             if (selectedFreeType) {
-                const items = await fetchJSON<FreeItem[]>(`/api/freeitems?type=${encodeURIComponent(selectedFreeType)}`);
+                const items = await fetchJSON<FreeItem[]>(
+                    `/api/freeitems?type=${encodeURIComponent(selectedFreeType)}`
+                );
                 setFreeItems(items ?? []);
                 setFreeById(prev => {
                     const next = { ...prev };
@@ -441,8 +512,8 @@ const ListeEpicerieEdit: React.FC = () => {
                         poidsValeur: payload.poidsValeur ?? undefined,
                         poidsUnite: payload.poidsUnite ?? undefined,
                         isFavorite: payload.isFavorite,
-                        wasOnSale: payload.wasOnSale
-                    }
+                        wasOnSale: payload.wasOnSale,
+                    },
                 }));
             }
 
@@ -461,20 +532,94 @@ const ListeEpicerieEdit: React.FC = () => {
         />
     );
 
+    // --- FILTER FACTURE TYPES TO ONLY THOSE WITH REMAINING ITEMS ---
+    const availableFactureTypes = useMemo(() => {
+        const used = new Map<string, number>();
+        for (const li of liste.items) {
+            if (!li.factureItemId) continue;
+            const row = factureById[li.factureItemId];
+            const t = row?.typeItem;
+            if (!t) continue;
+            used.set(t, (used.get(t) || 0) + 1);
+        }
+        return (factureTypes ?? [])
+            .map(ft => ({ ...ft, remaining: ft.count - (used.get(ft.type) || 0) }))
+            .filter(ft => ft.remaining > 0);
+    }, [factureTypes, liste.items, factureById]);
+
+    // Keep selected facture type valid
+    useEffect(() => {
+        if (availableFactureTypes.length === 0) {
+            if (selectedFactureType) setSelectedFactureType("");
+            return;
+        }
+        const stillExists = availableFactureTypes.some(t => t.type === selectedFactureType);
+        if (!stillExists) {
+            setSelectedFactureType(availableFactureTypes[0].type);
+        }
+    }, [availableFactureTypes, selectedFactureType]);
+
+    // Facture list state for messaging/availability
+    const factureListState = useMemo(() => {
+        const all = factureItems;
+        const afterSale = factureItems.filter(i => !(hideFactureOnSale && i.wasOnSale));
+
+        const alreadyIds = new Set(
+            liste.items
+                .filter(li => typeof li.factureItemId === "number")
+                .map(li => li.factureItemId as number)
+        );
+
+        const available = afterSale.filter(i => !alreadyIds.has(i.id));
+        return { all, afterSale, available };
+    }, [factureItems, hideFactureOnSale, liste.items]);
+
     // Grouped views
     const factureRows = useMemo(
         () => liste.items.map((it, idx) => ({ it, idx })).filter(x => !!x.it.factureItemId),
         [liste.items]
     );
-
     const freeRows = useMemo(
         () => liste.items.map((it, idx) => ({ it, idx })).filter(x => !!x.it.freeItemId),
         [liste.items]
     );
 
+    // ===== NEW: total price (display only) =====
+    const totalPrice = useMemo(() => {
+        let sum = 0;
+
+        for (const { it } of factureRows) {
+            const src = it.factureItemId ? factureById[it.factureItemId] : undefined;
+            const price = typeof src?.prix === "number" ? src.prix : 0;
+            const qty = Math.max(1, Number(it.quantity) || 1);
+            sum += price * qty;
+        }
+
+        for (const { it } of freeRows) {
+            const src = it.freeItemId
+                ? (freeById[it.freeItemId] || freeItems.find(f => f.id === it.freeItemId))
+                : undefined;
+            const price = typeof src?.defaultPrix === "number" ? Number(src.defaultPrix) : 0;
+            const qty = Math.max(1, Number(it.quantity) || 1);
+            sum += price * qty;
+        }
+
+        return sum;
+    }, [factureRows, freeRows, factureById, freeById, freeItems]);
+
     return (
         <div className="container my-3">
             <div className="d-flex align-items-center gap-2 mb-3">
+                {/* NEW: Retour */}
+                <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => navigate(-1)}
+                    title="Retour"
+                >
+                    ← Retour
+                </button>
+
                 <input
                     className="form-control"
                     value={liste.name}
@@ -482,7 +627,16 @@ const ListeEpicerieEdit: React.FC = () => {
                     placeholder="Nom de la liste"
                     style={{ maxWidth: 420 }}
                 />
-                <button className="btn btn-primary" onClick={save}>Enregistrer</button>
+                <button className="btn btn-primary" onClick={save}>
+                    Enregistrer
+                </button>
+            </div>
+
+            {/* NEW: Total estimé */}
+            <div className="mb-3">
+                <span className="badge text-bg-info">
+                    Total estimé : {totalPrice.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
+                </span>
             </div>
 
             <div className="mb-3">
@@ -495,7 +649,7 @@ const ListeEpicerieEdit: React.FC = () => {
             </div>
 
             {/* Facture modal */}
-            <Modal show={showFactureModal} onHide={() => setShowFactureModal(false)} size="lg" centered>
+            <Modal show={showFactureModal} onHide={() => setShowFactureModal(false)} size="xl" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Ajouter un item (factures)</Modal.Title>
                 </Modal.Header>
@@ -508,9 +662,11 @@ const ListeEpicerieEdit: React.FC = () => {
                             value={selectedFactureType}
                             onChange={e => setSelectedFactureType(e.target.value)}
                         >
-                            {factureTypes.length === 0 && <option value="">— Aucun type —</option>}
-                            {factureTypes.map(t => (
-                                <option key={t.type} value={t.type}>{t.type} ({t.count})</option>
+                            {availableFactureTypes.length === 0 && <option value="">— Aucun type —</option>}
+                            {availableFactureTypes.map(t => (
+                                <option key={t.type} value={t.type}>
+                                    {t.type} ({t.remaining})
+                                </option>
                             ))}
                         </select>
 
@@ -523,7 +679,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                 checked={hideFactureOnSale}
                                 onChange={e => setHideFactureOnSale(e.target.checked)}
                             />
-                            <label htmlFor="hideFactureOnSale" className="form-check-label">Masquer “en spécial”</label>
+                            <label htmlFor="hideFactureOnSale" className="form-check-label">
+                                Masquer “en spécial”
+                            </label>
                         </div>
                     </div>
 
@@ -541,37 +699,56 @@ const ListeEpicerieEdit: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {factureItems
-                                    .filter(i => !(hideFactureOnSale && i.wasOnSale)) // filter special
-                                    .filter(i => !liste.items.some(li => li.factureItemId === i.id))
-                                    .map(i => (
+                                {factureListState.all.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="text-muted text-center py-4">
+                                            Aucun article trouvé pour ce type.
+                                        </td>
+                                    </tr>
+                                ) : factureListState.available.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="text-muted text-center py-4">
+                                            {factureListState.afterSale.length === 0
+                                                ? "Aucun article disponible avec le filtre actuel."
+                                                : "Tous les articles de ce type sont déjà dans la liste."}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    factureListState.available.map(i => (
                                         <tr key={i.id}>
                                             <td><strong>{i.item}</strong></td>
                                             <td><small className="text-muted">{i.typeItem}</small></td>
                                             <td>{i.magasin}</td>
-                                            <td>{new Date(i.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" })}</td>
-                                            <td className="text-end">{i.prix.toFixed(2)}$</td>
-                                            <td className="text-center">
-                                                <SpecialDot on={i.wasOnSale} />
+                                            <td>
+                                                {new Date(i.date).toLocaleDateString(undefined, {
+                                                    year: "numeric",
+                                                    month: "short",
+                                                    day: "2-digit",
+                                                })}
                                             </td>
+                                            <td className="text-end">{i.prix.toFixed(2)}$</td>
+                                            <td className="text-center"><SpecialDot on={i.wasOnSale} /></td>
                                             <td className="text-end">
                                                 <button className="btn btn-sm btn-success" onClick={() => addFromFacture(i.id)}>
                                                     Ajouter à la liste
                                                 </button>
                                             </td>
                                         </tr>
-                                    ))}
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowFactureModal(false)}>Fermer</Button>
+                    <Button variant="secondary" onClick={() => setShowFactureModal(false)}>
+                        Fermer
+                    </Button>
                 </Modal.Footer>
             </Modal>
 
-            {/* Free items modal — create first, list empty until type selected */}
-            <Modal show={showFreeModal} onHide={() => setShowFreeModal(false)} size="lg" centered>
+            {/* Free items modal */}
+            <Modal show={showFreeModal} onHide={() => setShowFreeModal(false)} size="xl" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Ajouter un produit libre</Modal.Title>
                 </Modal.Header>
@@ -584,20 +761,23 @@ const ListeEpicerieEdit: React.FC = () => {
                                 className="form-control"
                                 value={newFreeItemName}
                                 onChange={e => setNewFreeItemName(e.target.value)}
-                                placeholder="Ex. Yogourt grec"
+                                placeholder="Ex.: Yogourt grec"
                             />
                         </div>
-
                         <div className="col-md-2">
                             <label className="form-label">Type</label>
                             <input
                                 className="form-control"
                                 value={newFreeItemType}
                                 onChange={e => setNewFreeItemType(e.target.value)}
-                                placeholder="Ex. Laitiers"
+                                placeholder="Ex.: Laitiers"
+                                list="type-suggestions"
                             />
+                            {/* optional: provide some suggestions via datalist if you have them */}
+                            <datalist id="type-suggestions">
+                                {freeTypes.map(t => <option key={t.type} value={t.type} />)}
+                            </datalist>
                         </div>
-
                         <div className="col-md-2">
                             <label className="form-label">Magasin</label>
                             <input
@@ -605,13 +785,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                 value={newFreeItemStore}
                                 onChange={e => setNewFreeItemStore(e.target.value)}
                                 list="stores"
-                                placeholder="Ex. IGA"
+                                placeholder="Ex.: IGA"
                             />
-                            <datalist id="stores">
-                                {knownStores.map(s => <option key={s} value={s} />)}
-                            </datalist>
                         </div>
-
                         <div className="col-md-1">
                             <label className="form-label">Quantité</label>
                             <input
@@ -622,7 +798,6 @@ const ListeEpicerieEdit: React.FC = () => {
                                 placeholder="1"
                             />
                         </div>
-
                         <div className="col-md-1">
                             <label className="form-label">Prix ($)</label>
                             <input
@@ -633,7 +808,6 @@ const ListeEpicerieEdit: React.FC = () => {
                                 placeholder="0"
                             />
                         </div>
-
                         <div className="col-md-1">
                             <label className="form-label">Poids</label>
                             <input
@@ -644,7 +818,6 @@ const ListeEpicerieEdit: React.FC = () => {
                                 placeholder="500"
                             />
                         </div>
-
                         <div className="col-md-1">
                             <label className="form-label">Unité</label>
                             <select
@@ -653,10 +826,11 @@ const ListeEpicerieEdit: React.FC = () => {
                                 onChange={e => setNewFreeItemWeightUnit(e.target.value)}
                             >
                                 <option value="">—</option>
-                                {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+                                {UNIT_OPTIONS.map(u => (
+                                    <option key={u} value={u}>{u}</option>
+                                ))}
                             </select>
                         </div>
-
                         <div className="col-md-1 d-flex gap-2 align-items-center">
                             <div className="form-check mt-4">
                                 <input
@@ -669,14 +843,12 @@ const ListeEpicerieEdit: React.FC = () => {
                                 <label htmlFor="freeOnSale" className="form-check-label">En spécial</label>
                             </div>
                         </div>
-
                         <div className="col-md-12 mt-1">
                             <button className="btn btn-success" onClick={addNewFreeItem}>Créer</button>
                         </div>
                     </div>
 
                     <hr className="mb-3" />
-
                     <div className="d-flex align-items-center gap-2 mb-2">
                         <label className="me-2 mb-0">Type</label>
                         <select
@@ -687,11 +859,12 @@ const ListeEpicerieEdit: React.FC = () => {
                         >
                             <option value="">— Sélectionnez un type —</option>
                             {freeTypes.map(t => (
-                                <option key={t.type} value={t.type}>{t.type} ({t.count})</option>
+                                <option key={t.type} value={t.type}>
+                                    {t.type} ({t.count})
+                                </option>
                             ))}
                         </select>
 
-                        {/* hide en spécial */}
                         <div className="form-check ms-auto">
                             <input
                                 id="hideFreeOnSale"
@@ -726,13 +899,14 @@ const ListeEpicerieEdit: React.FC = () => {
                                     </thead>
                                     <tbody>
                                         {freeItems
-                                            .filter(fi => !(hideFreeOnSale && fi.wasOnSale)) // filter special
+                                            .filter(fi => !(hideFreeOnSale && fi.wasOnSale))
                                             .map(fi => {
-                                                const poids =
-                                                    (fi.poidsValeur ? `${fi.poidsValeur}` : "") +
-                                                    (fi.poidsUnite ? ` ${fi.poidsUnite}` : fi.poidsValeur ? "" : "—");
                                                 const hasQty = typeof fi.defaultQuantite === "number";
                                                 const hasPrice = typeof fi.defaultPrix === "number";
+                                                const poids =
+                                                    (fi.poidsValeur != null ? `${fi.poidsValeur}` : "") +
+                                                    (fi.poidsUnite ? ` ${fi.poidsUnite}` : fi.poidsValeur != null ? "" : "—");
+
                                                 return (
                                                     <tr key={fi.id}>
                                                         <td><strong>{fi.item}</strong></td>
@@ -741,9 +915,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                                         <td className="text-end">{hasQty ? fi.defaultQuantite : "—"}</td>
                                                         <td className="text-end">{hasPrice ? `${Number(fi.defaultPrix).toFixed(2)}$` : "—"}</td>
                                                         <td>{poids}</td>
-                                                        <td className="text-center">
-                                                            <SpecialDot on={fi.wasOnSale} />
-                                                        </td>
+                                                        <td className="text-center"><SpecialDot on={fi.wasOnSale} /></td>
                                                         <td className="text-end">
                                                             <div className="d-flex justify-content-end gap-2">
                                                                 <button
@@ -808,15 +980,18 @@ const ListeEpicerieEdit: React.FC = () => {
                             {factureRows.map(({ it, idx }) => {
                                 const src = it.factureItemId ? factureById[it.factureItemId] : undefined;
                                 const poids =
-                                    (src?.poidsValeur ? `${src.poidsValeur}` : "") +
-                                    (src?.poidsUnite ? ` ${src.poidsUnite}` : src?.poidsValeur ? "" : "—");
+                                    (src?.poidsValeur != null ? `${src.poidsValeur}` : "") +
+                                    (src?.poidsUnite ? ` ${src.poidsUnite}` : src?.poidsValeur != null ? "" : "—");
+
                                 return (
                                     <tr key={it.id ?? `fact-${idx}`}>
                                         <td><strong>{src?.item ?? "—"}</strong></td>
                                         <td><small className="text-muted">{src?.typeItem ?? "—"}</small></td>
                                         <td>{src?.magasin ?? "—"}</td>
                                         <td>{src?.date ? new Date(src.date).toLocaleDateString() : "—"}</td>
-                                        <td className="text-end">{typeof src?.prix === "number" ? `${src.prix.toFixed(2)}$` : "—"}</td>
+                                        <td className="text-end">
+                                            {typeof src?.prix === "number" ? `${src.prix.toFixed(2)}$` : "—"}
+                                        </td>
                                         <td>{poids}</td>
                                         <td className="text-center"><SpecialDot on={!!src?.wasOnSale} /></td>
                                         <td style={{ maxWidth: 140 }}>
@@ -862,10 +1037,13 @@ const ListeEpicerieEdit: React.FC = () => {
                         </thead>
                         <tbody>
                             {freeRows.map(({ it, idx }) => {
-                                const src = it.freeItemId ? (freeById[it.freeItemId] || freeItems.find(f => f.id === it.freeItemId)) : undefined;
+                                const src = it.freeItemId
+                                    ? (freeById[it.freeItemId] || freeItems.find(f => f.id === it.freeItemId))
+                                    : undefined;
                                 const poids =
-                                    (src?.poidsValeur ? `${src.poidsValeur}` : "") +
-                                    (src?.poidsUnite ? ` ${src.poidsUnite}` : src?.poidsValeur ? "" : "—");
+                                    (src?.poidsValeur != null ? `${src.poidsValeur}` : "") +
+                                    (src?.poidsUnite ? ` ${src?.poidsUnite}` : src?.poidsValeur != null ? "" : "—");
+
                                 return (
                                     <tr key={it.id ?? `free-${idx}`}>
                                         <td><strong>{src?.item ?? "—"}</strong></td>
@@ -894,7 +1072,10 @@ const ListeEpicerieEdit: React.FC = () => {
                                                 >
                                                     Modifier
                                                 </button>
-                                                <button className="btn btn-sm btn-outline-danger" onClick={() => removeAtIndex(idx)}>
+                                                <button
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    onClick={() => removeAtIndex(idx)}
+                                                >
                                                     Supprimer
                                                 </button>
                                             </div>
@@ -907,8 +1088,13 @@ const ListeEpicerieEdit: React.FC = () => {
                 </div>
             )}
 
+            {/* datalist for store autocomplete (shared) */}
+            <datalist id="stores">
+                {knownStores.map(s => <option key={s} value={s} />)}
+            </datalist>
+
             {/* Edit Free Item Modal */}
-            <Modal show={editFreeOpen} onHide={() => setEditFreeOpen(false)} size="lg" centered>
+            <Modal show={editFreeOpen} onHide={() => setEditFreeOpen(false)} size="xl" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Modifier le produit libre</Modal.Title>
                 </Modal.Header>
@@ -928,33 +1114,63 @@ const ListeEpicerieEdit: React.FC = () => {
                         </div>
                         <div className="col-md-2 d-flex align-items-end">
                             <div className="form-check">
-                                <input id="editFav" type="checkbox" className="form-check-input" checked={editFav} onChange={e => setEditFav(e.target.checked)} />
+                                <input
+                                    id="editFav"
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={editFav}
+                                    onChange={e => setEditFav(e.target.checked)}
+                                />
                                 <label htmlFor="editFav" className="form-check-label">Favori</label>
                             </div>
                         </div>
-
                         <div className="col-md-2">
                             <label className="form-label">Déf. quantité</label>
-                            <input className="form-control" inputMode="decimal" value={editQty} onChange={e => setEditQty(e.target.value)} />
+                            <input
+                                className="form-control"
+                                inputMode="decimal"
+                                value={editQty}
+                                onChange={e => setEditQty(e.target.value)}
+                            />
                         </div>
                         <div className="col-md-2">
                             <label className="form-label">Déf. prix ($)</label>
-                            <input className="form-control" inputMode="decimal" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
+                            <input
+                                className="form-control"
+                                inputMode="decimal"
+                                value={editPrice}
+                                onChange={e => setEditPrice(e.target.value)}
+                            />
                         </div>
                         <div className="col-md-2">
                             <label className="form-label">Poids</label>
-                            <input className="form-control" inputMode="decimal" value={editWeight} onChange={e => setEditWeight(e.target.value)} />
+                            <input
+                                className="form-control"
+                                inputMode="decimal"
+                                value={editWeight}
+                                onChange={e => setEditWeight(e.target.value)}
+                            />
                         </div>
                         <div className="col-md-2">
                             <label className="form-label">Unité</label>
-                            <select className="form-select" value={editUnit} onChange={e => setEditUnit(e.target.value)}>
+                            <select
+                                className="form-select"
+                                value={editUnit}
+                                onChange={e => setEditUnit(e.target.value)}
+                            >
                                 <option value="">—</option>
                                 {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
                         </div>
                         <div className="col-md-2 d-flex align-items-end">
                             <div className="form-check">
-                                <input id="editOnSale" type="checkbox" className="form-check-input" checked={editOnSale} onChange={e => setEditOnSale(e.target.checked)} />
+                                <input
+                                    id="editOnSale"
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={editOnSale}
+                                    onChange={e => setEditOnSale(e.target.checked)}
+                                />
                                 <label htmlFor="editOnSale" className="form-check-label">En spécial</label>
                             </div>
                         </div>
@@ -962,14 +1178,11 @@ const ListeEpicerieEdit: React.FC = () => {
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setEditFreeOpen(false)}>Annuler</Button>
-                    <Button variant="primary" onClick={saveEditFree} disabled={!editName.trim() || !editType.trim()}>Enregistrer</Button>
+                    <Button variant="primary" onClick={saveEditFree} disabled={!editName.trim() || !editType.trim()}>
+                        Enregistrer
+                    </Button>
                 </Modal.Footer>
             </Modal>
-
-            {/* datalist for store autocomplete */}
-            <datalist id="stores">
-                {knownStores.map(s => <option key={s} value={s} />)}
-            </datalist>
         </div>
     );
 };

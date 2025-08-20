@@ -45,6 +45,8 @@ import Membership from "./pages/Membership/Membership";
 import MembershipGuard from "./components/MembershipGuard";
 import AuthGuard from "./components/AuthGuard";
 import { AuthProvider } from "./components/AuthContext";
+import RequireSuperAdmin from "./components/RequireSuperAdmin";
+import RequireForumAdmin from "./components/RequireForumAdmin";
 
 export default function App() {
     const [user, setUser] = useState<any>(null);
@@ -169,10 +171,10 @@ export default function App() {
                         />
 
                         {/* Forum: public + creation */}
-                        <Route path="/forum" element={<ForumCategories />} />
-                        <Route path="/forum/c/:categoryId" element={<ForumThreads />} />
+                        <Route path="/forum" element={<AuthGuard><ForumCategories /></AuthGuard>} />
+                        <Route path="/forum/c/:categoryId" element={<AuthGuard><ForumThreads /></AuthGuard>} />
                         {/* Use :id to match ForumThreadView’s useParams */}
-                        <Route path="/forum/t/:id" element={<ForumThreadView />} />
+                        <Route path="/forum/t/:id" element={<AuthGuard><ForumThreadView /></AuthGuard>} />
                         {/* Creating a thread requires auth */}
                         <Route
                             path="/forum/new"
@@ -188,7 +190,9 @@ export default function App() {
                             path="/admin/forum"
                             element={
                                 <AuthGuard>
-                                    <ForumAdminPanel />
+                                    <RequireForumAdmin>
+                                        <ForumAdminPanel />
+                                    </RequireForumAdmin>
                                 </AuthGuard>
                             }
                         />
@@ -198,7 +202,9 @@ export default function App() {
                             path="/super/admins"
                             element={
                                 <AuthGuard>
-                                    <SuperAdminPanel />
+                                    <RequireSuperAdmin>
+                                        <SuperAdminPanel />
+                                    </RequireSuperAdmin>
                                 </AuthGuard>
                             }
                         />

@@ -85,7 +85,7 @@ const RapportsDisplay: React.FC = () => {
             {/* INFO ALERT (not printed) */}
             <div className="alert alert-info no-print mb-3" style={{ fontSize: "1.06em" }}>
                 <i className="bi bi-info-circle me-2"></i>
-                <b>Note :</b> Lorsque vous cliquerez sur “Imprimer”, vous pourrez entrer votre nom et votre NAS pour qu’ils soient inclus en haut du rapport. <i>Ceux-ci ne seront pas sauvegardés.</i>
+                <b>Note :</b> Lorsque vous cliquerez sur “Imprimer”, vous pourrez entrer votre <b><i>NOM</i></b> et votre <b><i>NAS</i></b> pour qu’ils soient inclus en haut du rapport. <b><i>Ceux-ci ne seront pas sauvegardés.</i></b>
             </div>
             <button className="btn btn-success no-print mb-3" onClick={handlePrintClick}>
                 Télécharger/Imprimer le PDF

@@ -102,7 +102,7 @@ namespace Projet_Coeliaque_PWA.Server
             app.UseAuthorization();
 
             // API endpoints
-            // app.MapIdentityApi<IdentityUser>(); // expose /api/account/* if you want the minimal Identity API
+            app.MapIdentityApi<IdentityUser>(); // expose /api/account/* if you want the minimal Identity API
             app.MapControllers();
 
             app.MapStaticAssets();

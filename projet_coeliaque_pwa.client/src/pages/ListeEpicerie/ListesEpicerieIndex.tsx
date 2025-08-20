@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 interface ListeEpicerieDTO {
     id: number;
@@ -18,8 +18,23 @@ const ListesEpicerieIndex: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [q, setQ] = useState("");
     const [sortBy, setSortBy] = useState<SortKey>("recent");
-    const [status, setStatus] = useState<StatusFilter>("all");
-    const [pending, setPending] = useState<Record<number, boolean>>({}); // saving state per card
+    const [status, setStatus] = useState<StatusFilter>("active");
+    const [pending, setPending] = useState<Record<number, boolean>>({});
+
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Pick up ?status= from URL
+    useEffect(() => {
+        const s = (searchParams.get("status") || "").toLowerCase();
+        if (s === "all" || s === "active" || s === "completed") {
+            setStatus(s as StatusFilter);
+        }
+    }, [searchParams]);
+
+    const applyStatus = (s: StatusFilter) => {
+        setStatus(s);
+        setSearchParams({ status: s });
+    };
 
     const load = async (signal?: AbortSignal) => {
         try {
@@ -84,7 +99,6 @@ const ListesEpicerieIndex: React.FC = () => {
 
     const toggleCompleted = async (l: ListeEpicerieDTO, next: boolean) => {
         setPending(p => ({ ...p, [l.id]: true }));
-        // optimistic
         setListes(prev => prev.map(x => x.id === l.id ? ({ ...x, completed: next }) : x));
         try {
             const res = await fetch(`/api/ListeEpicerie/${l.id}/completed`, {
@@ -96,7 +110,6 @@ const ListesEpicerieIndex: React.FC = () => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
         } catch (e) {
             console.error(e);
-            // rollback
             setListes(prev => prev.map(x => x.id === l.id ? ({ ...x, completed: !next }) : x));
             alert("Échec de la mise à jour du statut.");
         } finally {
@@ -122,13 +135,11 @@ const ListesEpicerieIndex: React.FC = () => {
 
     return (
         <div className="container py-3">
-            {/* Centered header */}
             <div className="text-center mb-3">
                 <h1 className="h3 mb-1">Mes listes d&apos;épicerie</h1>
                 <div className="text-muted small">Gérez, triez et retrouvez vos listes. Les plus récentes d’abord.</div>
             </div>
 
-            {/* Toolbar card: search + refresh */}
             <div className="card shadow-sm mb-4">
                 <div className="card-body">
                     <div className="row g-2 align-items-center justify-content-center">
@@ -156,23 +167,31 @@ const ListesEpicerieIndex: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Filters + sort + new */}
                     <div className="row g-2 align-items-center justify-content-center mt-2">
                         <div className="col-auto">
                             <ul className="nav nav-pills">
                                 <li className="nav-item">
-                                    <button className={`nav-link ${status === "all" ? "active" : ""}`} onClick={() => setStatus("all")}>
-                                        Toutes <span className="badge text-bg-light ms-1">{counts.total}</span>
-                                    </button>
-                                </li>
-                                <li className="nav-item">
-                                    <button className={`nav-link ${status === "active" ? "active" : ""}`} onClick={() => setStatus("active")}>
+                                    <button
+                                        className={`nav-link ${status === "active" ? "active" : ""}`}
+                                        onClick={() => applyStatus("active")}
+                                    >
                                         Actives <span className="badge text-bg-light ms-1">{counts.active}</span>
                                     </button>
                                 </li>
                                 <li className="nav-item">
-                                    <button className={`nav-link ${status === "completed" ? "active" : ""}`} onClick={() => setStatus("completed")}>
+                                    <button
+                                        className={`nav-link ${status === "completed" ? "active" : ""}`}
+                                        onClick={() => applyStatus("completed")}
+                                    >
                                         Complétées <span className="badge text-bg-light ms-1">{counts.completed}</span>
+                                    </button>
+                                </li>
+                                <li className="nav-item">
+                                    <button
+                                        className={`nav-link ${status === "all" ? "active" : ""}`}
+                                        onClick={() => applyStatus("all")}
+                                    >
+                                        Toutes <span className="badge text-bg-light ms-1">{counts.total}</span>
                                     </button>
                                 </li>
                             </ul>
@@ -207,7 +226,6 @@ const ListesEpicerieIndex: React.FC = () => {
                 </div>
             )}
 
-            {/* Grid centered */}
             {loading ? (
                 <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
                     {Array.from({ length: 6 }).map((_, i) => (

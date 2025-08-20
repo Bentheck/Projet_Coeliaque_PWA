@@ -36,6 +36,7 @@ namespace Projet_Coeliaque_PWA.Server.Models
 
         public ICollection<ForumPost> Posts { get; set; } = new List<ForumPost>();
         public ICollection<ForumThreadModerator> Moderators { get; set; } = new List<ForumThreadModerator>();
+        public ICollection<ForumThreadVote> Votes { get; set; } = new List<ForumThreadVote>();
     }
 
     public class ForumPost
@@ -52,7 +53,13 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public DateTime? EditedUtc { get; set; }
         public string? EditedByUserId { get; set; }
         public IdentityUser? EditedBy { get; set; }
-        public bool IsDeleted { get; set; }  // keep basic soft-delete
+        public bool IsDeleted { get; set; }
+
+        // NEW: nesting
+        public int? ParentPostId { get; set; }
+        public ForumPost? Parent { get; set; }
+        public ICollection<ForumPost> Replies { get; set; } = new List<ForumPost>();
+        public ICollection<ForumPostVote> Votes { get; set; } = new List<ForumPostVote>();
     }
 
     public class ForumThreadModerator
@@ -72,5 +79,35 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public string UserId { get; set; } = default!;
         public IdentityUser User { get; set; } = default!;
         public DateTime AddedUtc { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ForumThreadVote
+    {
+        public int Id { get; set; }
+        public int ThreadId { get; set; }
+        public ForumThread Thread { get; set; } = default!;
+
+        public string UserId { get; set; } = default!;
+        public IdentityUser User { get; set; } = default!;
+
+        /// <summary>-1, 0, or 1 (0 is stored only transiently; we actually delete the row when value==0)</summary>
+        public sbyte Value { get; set; }
+
+        public DateTime VotedUtc { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ForumPostVote
+    {
+        public int Id { get; set; }
+        public int PostId { get; set; }
+        public ForumPost Post { get; set; } = default!;
+
+        public string UserId { get; set; } = default!;
+        public IdentityUser User { get; set; } = default!;
+
+        /// <summary>-1, 0, or 1 (0 removes the vote row)</summary>
+        public sbyte Value { get; set; }
+
+        public DateTime VotedUtc { get; set; } = DateTime.UtcNow;
     }
 }
