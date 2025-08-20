@@ -226,3 +226,11 @@ body {
     .post-body a {
         text-decoration: underline;
     }
+
+/* Keep regular images as-is; only target GIFs we insert from Giphy */
+.lexical-image.lexical-gif {
+    width: min(100%, 480px);
+    height: auto;
+    display: inline-block; /* optional: avoids unexpected inline gaps */
+    border-radius: 8px; /* optional: keep your current look */
+}

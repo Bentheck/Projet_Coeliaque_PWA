@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto } from "../../lib/types";
@@ -14,7 +14,7 @@ const ForumNewThread: React.FC = () => {
     const [cats, setCats] = useState<ForumCategoryDto[]>([]);
     const [categoryId, setCategoryId] = useState<number>(initialCategoryId || 0);
     const [title, setTitle] = useState("");
-    const [body, setBody] = useState(""); // Markdown captured by PostEditor
+    const [bodyHtml, setBodyHtml] = useState(""); // HTML captured by PostEditor
     const [sending, setSending] = useState(false);
     const [err, setErr] = useState<string | null>(null);
 
@@ -31,6 +31,13 @@ const ForumNewThread: React.FC = () => {
         })();
     }, [initialCategoryId]);
 
+    // Cheap “non-empty” guard: strip tags and whitespace
+    const bodyPlain = useMemo(() => {
+        if (!bodyHtml) return "";
+        const doc = new DOMParser().parseFromString(bodyHtml, "text/html");
+        return (doc.body.textContent || "").replace(/\u200B/g, "").trim();
+    }, [bodyHtml]);
+
     const createThread = async () => {
         try {
             setSending(true);
@@ -38,7 +45,9 @@ const ForumNewThread: React.FC = () => {
             const res = await fetchJSON<{ id: number }>(`/api/forum/threads`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ categoryId, title, body }), // send markdown
+                // Server expects CreateThreadInput { CategoryId, Title, Body }
+                // We now send HTML in Body. Sanitize server-side before storing!
+                body: JSON.stringify({ categoryId, title, body: bodyHtml }),
             });
             nav(`/forum/t/${res.id}`);
         } catch (e: any) {
@@ -89,7 +98,15 @@ const ForumNewThread: React.FC = () => {
 
             <div className="mb-3">
                 <label className="form-label">Message</label>
-                <PostEditor initialMarkdown={body} onChange={setBody} />
+                <PostEditor
+                    initialHTML={bodyHtml}
+                    onChange={setBodyHtml}
+                    ariaLabel="Rédiger le message du fil"
+                    
+                    giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
+                    giphyLang="fr"
+                    giphyRating="g"
+                />
             </div>
 
             <div className="d-flex gap-2">
@@ -99,7 +116,7 @@ const ForumNewThread: React.FC = () => {
                 <button
                     className="btn btn-primary"
                     onClick={createThread}
-                    disabled={sending || !title.trim() || !body.trim()}
+                    disabled={sending || !title.trim() || !bodyPlain}
                 >
                     {sending ? "Création…" : "Créer"}
                 </button>

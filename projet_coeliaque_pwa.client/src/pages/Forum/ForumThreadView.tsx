@@ -154,7 +154,14 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
 }) => (
     <div className="mt-2">
         {/* Rich editor for replies (HTML mode) */}
-        <PostEditor initialHTML={value} onChange={onChange} ariaLabel="Rédiger une réponse" />
+        <PostEditor
+            initialHTML={value}
+            onChange={onChange}
+            ariaLabel="Rédiger une réponse"
+            giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
+            giphyLang="fr"
+            giphyRating="g"
+        />
         <div className="d-flex justify-content-end gap-2 mt-2">
             <button
                 className="btn btn-secondary"
