@@ -584,9 +584,42 @@ const ListeEpicerieEdit: React.FC = () => {
         [liste.items]
     );
 
+    // ===== NEW: total price (display only) =====
+    const totalPrice = useMemo(() => {
+        let sum = 0;
+
+        for (const { it } of factureRows) {
+            const src = it.factureItemId ? factureById[it.factureItemId] : undefined;
+            const price = typeof src?.prix === "number" ? src.prix : 0;
+            const qty = Math.max(1, Number(it.quantity) || 1);
+            sum += price * qty;
+        }
+
+        for (const { it } of freeRows) {
+            const src = it.freeItemId
+                ? (freeById[it.freeItemId] || freeItems.find(f => f.id === it.freeItemId))
+                : undefined;
+            const price = typeof src?.defaultPrix === "number" ? Number(src.defaultPrix) : 0;
+            const qty = Math.max(1, Number(it.quantity) || 1);
+            sum += price * qty;
+        }
+
+        return sum;
+    }, [factureRows, freeRows, factureById, freeById, freeItems]);
+
     return (
         <div className="container my-3">
             <div className="d-flex align-items-center gap-2 mb-3">
+                {/* NEW: Retour */}
+                <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => navigate(-1)}
+                    title="Retour"
+                >
+                    ← Retour
+                </button>
+
                 <input
                     className="form-control"
                     value={liste.name}
@@ -597,6 +630,13 @@ const ListeEpicerieEdit: React.FC = () => {
                 <button className="btn btn-primary" onClick={save}>
                     Enregistrer
                 </button>
+            </div>
+
+            {/* NEW: Total estimé */}
+            <div className="mb-3">
+                <span className="badge text-bg-info">
+                    Total estimé : {totalPrice.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
+                </span>
             </div>
 
             <div className="mb-3">

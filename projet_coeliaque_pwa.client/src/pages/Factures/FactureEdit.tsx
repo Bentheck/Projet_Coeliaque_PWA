@@ -226,29 +226,25 @@ export default function FactureEdit() {
                                 </Button>
                             </h4>
 
+                            {/* Desktop table */}
                             <div className="d-none d-xl-block">
                                 <Table bordered hover className="align-middle mb-3">
                                     <thead className="table-light text-center">
                                         <tr>
-                                            <th>Nom du produit</th>
                                             <th style={{ minWidth: 200, width: 250 }}>Type de produit</th>
-                                            <th>Quantité</th>
+                                            <th>Marque</th>
                                             <th>Prix</th>
                                             <th>Poids</th>
                                             <th>Unité</th>
-                                            <th style={{ width: 90 }}>En solde ?</th>
+                                            <th>Quantité</th>
+                                            <th className="text-nowrap" style={{ width: 110 }}>En&nbsp;solde&nbsp;?</th>
                                             <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {facture.items.map((item, i) => (
                                             <tr key={i}>
-                                                <td>
-                                                    <input className="form-control border-black rounded-2"
-                                                        value={item.item}
-                                                        onChange={e => handleItemChange(i, "item", e.target.value)}
-                                                        placeholder="Produit" />
-                                                </td>
+                                                {/* 1) Type de produit */}
                                                 <td>
                                                     <CreatableSelect
                                                         isClearable
@@ -264,49 +260,84 @@ export default function FactureEdit() {
                                                         }}
                                                     />
                                                 </td>
+
+                                                {/* 2) Marque */}
                                                 <td>
-                                                    <input className="form-control border-black rounded-2"
-                                                        type="number"
-                                                        value={item.quantite}
-                                                        onChange={e => handleItemChange(i, "quantite", +e.target.value)}
-                                                        placeholder="Quantité" />
+                                                    <input
+                                                        className="form-control border-black rounded-2"
+                                                        value={item.item}
+                                                        onChange={e => handleItemChange(i, "item", e.target.value)}
+                                                        placeholder="Marque / Produit"
+                                                    />
                                                 </td>
+
+                                                {/* 3) Prix */}
                                                 <td>
-                                                    <input className="form-control border-black rounded-2"
+                                                    <input
+                                                        className="form-control border-black rounded-2"
                                                         type="number"
                                                         step="0.01"
                                                         value={item.prix}
                                                         onChange={e => handleItemChange(i, "prix", +e.target.value)}
-                                                        placeholder="Prix" />
+                                                        placeholder="Prix"
+                                                    />
                                                 </td>
+
+                                                {/* 4) Poids */}
                                                 <td>
-                                                    <input className="form-control border-black rounded-2"
+                                                    <input
+                                                        className="form-control border-black rounded-2"
                                                         type="number"
                                                         step="0.01"
                                                         value={item.poidsValeur}
                                                         onChange={e => handleItemChange(i, "poidsValeur", +e.target.value)}
-                                                        placeholder="Poids" />
+                                                        placeholder="Poids"
+                                                    />
                                                 </td>
+
+                                                {/* 5) Unité */}
                                                 <td>
-                                                    <select className="form-select border-black rounded-2"
+                                                    <select
+                                                        className="form-select border-black rounded-2"
                                                         value={item.poidsUnite}
-                                                        onChange={e => handleItemChange(i, "poidsUnite", e.target.value)}>
+                                                        onChange={e => handleItemChange(i, "poidsUnite", e.target.value)}
+                                                    >
                                                         <option value="">-- Unité --</option>
                                                         {UNIT_OPTIONS.map(u => (
                                                             <option key={u} value={u}>{u}</option>
                                                         ))}
                                                     </select>
                                                 </td>
+
+                                                {/* 6) Quantité */}
+                                                <td>
+                                                    <input
+                                                        className="form-control border-black rounded-2"
+                                                        type="number"
+                                                        value={item.quantite}
+                                                        onChange={e => handleItemChange(i, "quantite", +e.target.value)}
+                                                        placeholder="Quantité"
+                                                    />
+                                                </td>
+
+                                                {/* En solde ? */}
                                                 <td className="text-center">
-                                                    <input className="form-check-input border-dark"
+                                                    <input
+                                                        className="form-check-input border-dark"
                                                         type="checkbox"
                                                         checked={item.wasOnSale}
-                                                        onChange={e => handleItemChange(i, "wasOnSale", e.target.checked)} />
+                                                        onChange={e => handleItemChange(i, "wasOnSale", e.target.checked)}
+                                                        aria-label="En solde ?"
+                                                    />
                                                 </td>
+
+                                                {/* Actions */}
                                                 <td className="text-center">
-                                                    <button type="button"
+                                                    <button
+                                                        type="button"
                                                         className="btn btn-outline-danger btn-sm rounded-pill px-3"
-                                                        onClick={() => handleRemoveItem(i)}>
+                                                        onClick={() => handleRemoveItem(i)}
+                                                    >
                                                         <i className="bi bi-x-lg"></i>
                                                     </button>
                                                 </td>
@@ -315,27 +346,17 @@ export default function FactureEdit() {
                                     </tbody>
                                 </Table>
                             </div>
-                            {/* Mobile/Tablet version: show cards instead of table on <1200px */}
+
+                            {/* Mobile/Tablet cards */}
                             <div className="d-block d-xl-none">
                                 <div className="row g-3">
                                     {facture.items.map((item, i) => (
                                         <div className="col-12" key={i}>
                                             <div className="card border border-dark shadow-sm rounded-3">
                                                 <div className="card-body py-2 px-3">
-                                                    <div className="mb-2 d-flex justify-content-between">
-                                                        <span className="fw-bold">{item.item}</span>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline-danger"
-                                                            className="rounded-pill px-2 py-0"
-                                                            style={{ lineHeight: 1 }}
-                                                            onClick={() => handleRemoveItem(i)}
-                                                        >
-                                                            <i className="bi bi-x-lg"></i>
-                                                        </Button>
-                                                    </div>
-                                                    <div className="mb-1 small text-muted">
-                                                        <b>Type:</b>{" "}
+                                                    {/* 1) Type de produit */}
+                                                    <div className="mb-2">
+                                                        <label className="form-label small mb-1">Type de produit</label>
                                                         <CreatableSelect
                                                             isClearable
                                                             menuPlacement="top"
@@ -346,24 +367,27 @@ export default function FactureEdit() {
                                                             }
                                                             placeholder="Type…"
                                                             styles={{
-                                                                control: base => ({ ...base, minHeight: 24, fontSize: 14 }),
+                                                                control: base => ({ ...base, minHeight: 28, fontSize: 14 }),
                                                                 valueContainer: base => ({ ...base, padding: "0 6px" }),
                                                                 input: base => ({ ...base, margin: 0, padding: 0 }),
-                                                                indicatorsContainer: base => ({ ...base, height: 20 }),
+                                                                indicatorsContainer: base => ({ ...base, height: 22 }),
                                                                 menu: base => ({ ...base, zIndex: 9999 })
                                                             }}
                                                         />
                                                     </div>
-                                                    <div className="mb-1">
-                                                        <label className="form-label small mb-0">Quantité</label>
+
+                                                    {/* 2) Marque */}
+                                                    <div className="mb-2">
+                                                        <label className="form-label small mb-0">Marque</label>
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
-                                                            type="number"
-                                                            value={item.quantite}
-                                                            onChange={e => handleItemChange(i, "quantite", +e.target.value)}
-                                                            placeholder="Quantité"
+                                                            value={item.item}
+                                                            onChange={e => handleItemChange(i, "item", e.target.value)}
+                                                            placeholder="Marque / Produit"
                                                         />
                                                     </div>
+
+                                                    {/* 3) Prix */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">Prix</label>
                                                         <input
@@ -375,6 +399,8 @@ export default function FactureEdit() {
                                                             placeholder="Prix"
                                                         />
                                                     </div>
+
+                                                    {/* 4) Poids */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">Poids</label>
                                                         <input
@@ -386,6 +412,8 @@ export default function FactureEdit() {
                                                             placeholder="Poids"
                                                         />
                                                     </div>
+
+                                                    {/* 5) Unité */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">Unité</label>
                                                         <select
@@ -399,6 +427,20 @@ export default function FactureEdit() {
                                                             ))}
                                                         </select>
                                                     </div>
+
+                                                    {/* 6) Quantité */}
+                                                    <div className="mb-1">
+                                                        <label className="form-label small mb-0">Quantité</label>
+                                                        <input
+                                                            className="form-control form-control-sm border-black rounded-2"
+                                                            type="number"
+                                                            value={item.quantite}
+                                                            onChange={e => handleItemChange(i, "quantite", +e.target.value)}
+                                                            placeholder="Quantité"
+                                                        />
+                                                    </div>
+
+                                                    {/* En solde ? */}
                                                     <div className="form-check mt-2">
                                                         <input
                                                             className="form-check-input border-dark"
@@ -407,9 +449,26 @@ export default function FactureEdit() {
                                                             checked={item.wasOnSale}
                                                             onChange={e => handleItemChange(i, "wasOnSale", e.target.checked)}
                                                         />
-                                                        <label className="form-check-label small" htmlFor={`onsale${i}`}>
-                                                            En solde ?
+                                                        <label
+                                                            className="form-check-label small text-nowrap"
+                                                            htmlFor={`onsale${i}`}
+                                                            style={{ whiteSpace: "nowrap" }}
+                                                        >
+                                                            En&nbsp;solde&nbsp;?
                                                         </label>
+                                                    </div>
+
+                                                    {/* Remove button */}
+                                                    <div className="mt-2 d-flex justify-content-end">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline-danger"
+                                                            className="rounded-pill px-2 py-0"
+                                                            style={{ lineHeight: 1 }}
+                                                            onClick={() => handleRemoveItem(i)}
+                                                        >
+                                                            <i className="bi bi-x-lg"></i>
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -418,6 +477,7 @@ export default function FactureEdit() {
                                 </div>
                             </div>
                         </div>
+
                         <div className="d-flex justify-content-end gap-2">
                             <Button type="submit" className="btn btn-primary rounded-pill px-4">
                                 <i className="bi bi-save me-2"></i>Enregistrer
@@ -477,7 +537,7 @@ export default function FactureEdit() {
                             <>
                                 <Row className="g-2 mb-3">
                                     <Col md={6}>
-                                        <Form.Label className="fw-bold">Nom du produit</Form.Label>
+                                        <Form.Label className="fw-bold">Marque du produit</Form.Label>
                                         <Form.Control
                                             type="text"
                                             name="item"
@@ -497,7 +557,7 @@ export default function FactureEdit() {
                                         />
                                     </Col>
                                     <Col md={3}>
-                                        <Form.Label className="fw-bold">Prix</Form.Label>
+                                        <Form.Label className="fw-bold">Prix unitaire</Form.Label>
                                         <Form.Control
                                             type="number"
                                             step="0.01"

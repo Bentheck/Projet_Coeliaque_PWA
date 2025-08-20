@@ -8,7 +8,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {children}
             </main>
             <footer className="bg-light py-3 mt-4">
-                <div className="container text-center">&copy; 2025 Site Coeliaque</div>
+                <div className="container text-center">&copy; 2025 Service Coeliaque</div>
             </footer>
         </>
     );

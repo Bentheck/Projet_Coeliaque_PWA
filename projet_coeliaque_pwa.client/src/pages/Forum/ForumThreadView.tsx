@@ -4,6 +4,7 @@ import { fetchJSON } from "../../lib/api";
 import type { ForumThreadDto, PagedResult, ForumPostTreeDto } from "../../lib/types";
 import Pagination from "../../components/Pagination";
 import { useAuth } from "../../components/AuthContext";
+import PostEditor from "../../components/PostEditor";
 
 /* ======================== Config: exclusive vote target ======================== */
 // Choose ONE: "thread" OR "op"
@@ -84,27 +85,42 @@ function updateNodeInTree(
 }
 
 type ReplyBoxProps = {
+    /** Markdown string for the reply */
     value: string;
+    /** Called whenever the editor content changes (markdown) */
     onChange: (v: string) => void;
     onSubmit: () => void;
     sending?: boolean;
     disabled?: boolean;
 };
-const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending, disabled }) => (
+
+const ReplyBox: React.FC<ReplyBoxProps> = ({
+    value,
+    onChange,
+    onSubmit,
+    sending,
+    disabled,
+}) => (
     <div className="mt-2">
-        <textarea
-            className="form-control mb-2"
-            rows={3}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Votre message…"
-            disabled={disabled}
+        {/* Rich editor for replies */}
+        <PostEditor
+            initialMarkdown={value}
+            onChange={onChange}
+            ariaLabel="Rédiger une réponse"
         />
-        <div className="d-flex justify-content-end gap-2">
-            <button className="btn btn-secondary" onClick={() => onChange("")} disabled={disabled || !!sending}>
+        <div className="d-flex justify-content-end gap-2 mt-2">
+            <button
+                className="btn btn-secondary"
+                onClick={() => onChange("")}
+                disabled={disabled || !!sending}
+            >
                 Effacer
             </button>
-            <button className="btn btn-primary" onClick={onSubmit} disabled={disabled || !!sending || !value.trim()}>
+            <button
+                className="btn btn-primary"
+                onClick={onSubmit}
+                disabled={disabled || !!sending || !value.trim()}
+            >
                 {sending ? "Envoi…" : "Publier"}
             </button>
         </div>
@@ -112,8 +128,8 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending,
 );
 
 type VoteBarProps = {
-    score: number;         // total score
-    myVote: number;        // -1 | 0 | 1
+    score: number; // total score
+    myVote: number; // -1 | 0 | 1
     onVote: (next: -1 | 0 | 1) => void;
     disabled?: boolean;
     size?: "sm" | "md";
@@ -122,7 +138,6 @@ const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size
     const upActive = myVote === 1;
     const downActive = myVote === -1;
     const btnSize = size === "sm" ? "btn-sm" : "";
-
     return (
         <div className="d-inline-flex align-items-center gap-2">
             <button
@@ -133,7 +148,9 @@ const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size
             >
                 <i className="bi bi-hand-thumbs-up" />
             </button>
-            <span className="fw-semibold" aria-live="polite">{score}</span>
+            <span className="fw-semibold" aria-live="polite">
+                {score}
+            </span>
             <button
                 className={`btn btn-outline-danger ${btnSize} ${downActive ? "active" : ""}`}
                 onClick={() => onVote(downActive ? 0 : -1)}
@@ -166,8 +183,11 @@ type PostCardProps = {
     onToggleCollapsed: (id: number) => void;
 
     // voting
-    showVoteOnThisCard: boolean;                 // UI: should this card render a vote bar?
+    showVoteOnThisCard: boolean;
     onVotePost: (postId: number, next: -1 | 0 | 1) => void;
+
+    // extra slot rendered right after body/actions and BEFORE replies (used for OP sorting controls)
+    extraUnderBody?: React.ReactNode;
 };
 
 const PostCard: React.FC<PostCardProps> = memo(
@@ -185,8 +205,10 @@ const PostCard: React.FC<PostCardProps> = memo(
         onToggleCollapsed,
         showVoteOnThisCard,
         onVotePost,
+        extraUnderBody,
     }) => {
-        const indentPx = Math.min(depth, 8) * 12;
+        // reduced indentation (was 12px); now 8px per level
+        const indentPx = Math.min(depth, 8) * 8;
         const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false; // main comments NOT collapsible
         const directReplies = p.replies ? p.replies.length : 0;
 
@@ -197,19 +219,6 @@ const PostCard: React.FC<PostCardProps> = memo(
             <div className="card shadow-sm border-0 mb-2">
                 <div className="card-body">
                     <div className="d-flex align-items-start gap-3">
-                        {showVoteOnThisCard ? (
-                            <div className="d-flex flex-column align-items-center" style={{ minWidth: 56 }}>
-                                <VoteBar score={score} myVote={myVote} onVote={(next) => onVotePost(p.id, next)} size="sm" />
-                                <small className="text-muted mt-1">
-                                    {directReplies} réponse{directReplies !== 1 ? "s" : ""}
-                                </small>
-                            </div>
-                        ) : (
-                            <div className="d-flex flex-column align-items-center" style={{ minWidth: 56 }}>
-                                <small className="text-muted">{directReplies} réponse{directReplies !== 1 ? "s" : ""}</small>
-                            </div>
-                        )}
-
                         <Avatar name={p.createdBy} />
 
                         <div className="flex-grow-1">
@@ -253,7 +262,8 @@ const PostCard: React.FC<PostCardProps> = memo(
                                         </div>
                                     ) : null}
 
-                                    <div className="mt-2 d-flex align-items-center gap-2">
+                                    {/* Actions row: Reply + VoteBar side-by-side */}
+                                    <div className="mt-2 d-flex align-items-center gap-3">
                                         <button
                                             className="btn btn-sm btn-outline-primary"
                                             onClick={() => onToggleReply(p.id)}
@@ -262,6 +272,19 @@ const PostCard: React.FC<PostCardProps> = memo(
                                             <i className="bi bi-reply me-1" />
                                             Répondre
                                         </button>
+
+                                        {showVoteOnThisCard && (
+                                            <VoteBar
+                                                score={score}
+                                                myVote={myVote}
+                                                onVote={(next) => onVotePost(p.id, next)}
+                                                size="sm"
+                                            />
+                                        )}
+
+                                        <small className="text-muted ms-auto">
+                                            {directReplies} réponse{directReplies !== 1 ? "s" : ""}
+                                        </small>
                                     </div>
 
                                     {replyOpen[p.id] && canReply && (
@@ -272,34 +295,37 @@ const PostCard: React.FC<PostCardProps> = memo(
                                             sending={sending[p.id]}
                                         />
                                     )}
+
+                                    {/* Inject extras (sorting controls for OP) BEFORE replies */}
+                                    {extraUnderBody}
+
+                                    {p.replies?.length ? (
+                                        <div
+                                            className="mt-2 ps-2 ps-sm-3 border-start"
+                                            style={{ marginLeft: indentPx, borderColor: "#dee2e6", borderWidth: 2 }}
+                                        >
+                                            {p.replies.map((child) => (
+                                                <PostCard
+                                                    key={child.id}
+                                                    p={child}
+                                                    depth={depth + 1}
+                                                    canReply={canReply}
+                                                    replyOpen={replyOpen}
+                                                    replyText={replyText}
+                                                    sending={sending}
+                                                    onToggleReply={onToggleReply}
+                                                    onChangeReply={onChangeReply}
+                                                    onSubmitReply={onSubmitReply}
+                                                    collapsed={collapsed}
+                                                    onToggleCollapsed={onToggleCollapsed}
+                                                    showVoteOnThisCard={true}
+                                                    onVotePost={onVotePost}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : null}
                                 </div>
                             )}
-
-                            {!isCollapsed && p.replies?.length ? (
-                                <div
-                                    className="mt-2 ps-2 ps-sm-3 border-start"
-                                    style={{ marginLeft: indentPx, borderColor: "#dee2e6", borderWidth: 2 }}
-                                >
-                                    {p.replies.map((child) => (
-                                        <PostCard
-                                            key={child.id}
-                                            p={child}
-                                            depth={depth + 1}
-                                            canReply={canReply}
-                                            replyOpen={replyOpen}
-                                            replyText={replyText}
-                                            sending={sending}
-                                            onToggleReply={onToggleReply}
-                                            onChangeReply={onChangeReply}
-                                            onSubmitReply={onSubmitReply}
-                                            collapsed={collapsed}
-                                            onToggleCollapsed={onToggleCollapsed}
-                                            showVoteOnThisCard={true}
-                                            onVotePost={onVotePost}
-                                        />
-                                    ))}
-                                </div>
-                            ) : null}
                         </div>
                     </div>
                 </div>
@@ -455,7 +481,7 @@ const ForumThreadView: React.FC = () => {
         [voteMode, thread, canVote, voting, threadId]
     );
 
-    // voting (POSTS) — comments always votable; OP votable only if voteMode === "op"
+    // voting (POSTS)
     const onVotePost = useCallback(
         async (postId: number, next: -1 | 0 | 1) => {
             if (!posts || !canVote) return;
@@ -501,7 +527,7 @@ const ForumThreadView: React.FC = () => {
         [posts, canVote, opOnPage, voteMode]
     );
 
-    /* ======================== Controls (rendered under OP) ======================== */
+    /* ======================== Controls (rendered AFTER OP body, BEFORE its replies) ======================== */
     const Controls = (
         <div className="my-3 d-flex flex-wrap gap-2 align-items-center">
             <div className="input-group input-group-sm" style={{ width: 240 }}>
@@ -533,7 +559,7 @@ const ForumThreadView: React.FC = () => {
     /* ======================== Render ======================== */
     return (
         <div className="container py-3">
-            {/* Thread card — vote bar only if voteMode === "thread" */}
+            {/* Thread card — thread-level voting unchanged */}
             <div className="card shadow-sm border-0 mb-3">
                 <div className="card-body">
                     <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -601,7 +627,7 @@ const ForumThreadView: React.FC = () => {
                         {(() => {
                             const items = sortedItems;
                             if (opOnPage) {
-                                // Render OP first
+                                // Render OP with controls injected BEFORE its replies
                                 const isOpVotable = voteMode === "op";
                                 return (
                                     <>
@@ -620,12 +646,10 @@ const ForumThreadView: React.FC = () => {
                                             onToggleCollapsed={toggleCollapsed}
                                             showVoteOnThisCard={isOpVotable}
                                             onVotePost={onVotePost}
+                                            extraUnderBody={Controls} // <-- here: after OP, before its replies
                                         />
 
-                                        {/* Controls block under OP */}
-                                        {Controls}
-
-                                        {/* Other main comments (non-OP) — always votable */}
+                                        {/* Other main comments (non-OP) */}
                                         {items
                                             .filter((p) => p.id !== opOnPage.id)
                                             .map((p) => (
@@ -650,7 +674,7 @@ const ForumThreadView: React.FC = () => {
                                 );
                             }
 
-                            // OP not on this page => show controls above, then all main comments (all votable)
+                            // OP not on this page => show controls first, then all main comments
                             return (
                                 <>
                                     {Controls}

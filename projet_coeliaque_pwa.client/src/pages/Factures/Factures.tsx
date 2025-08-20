@@ -194,8 +194,8 @@ const Factures: React.FC = () => {
                     <div key={facture.id} className="card mb-2 border-0 shadow-sm">
                         <div className="card-body d-flex align-items-start" style={{ columnGap: "1rem" }}>
                             <span style={{ flex: 1 }}>
-                                <div><b>Date :</b> {facture.date?.slice(0, 10)}</div>
                                 <div><b>ID :</b> {facture.factureId}</div>
+                                <div><b>Date :</b> {facture.date?.slice(0, 10)}</div>                                
                                 <div><b>Magasin :</b> {facture.magasin}</div>
                             </span>
 

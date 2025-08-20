@@ -31,7 +31,9 @@ interface ListeEpicerieItemDto {
     quantity: number;
     isFavorite: boolean;
     wasOnSale: boolean;
-    isChecked: boolean;                // NEW
+    isChecked: boolean;
+    // NEW: list-level price override (optional)
+    unitPrice?: number | null;
     factureItem?: FactureItemRow | null;
     freeItem?: FreeItemRow | null;
 }
@@ -40,7 +42,7 @@ interface ListeEpicerieDto {
     name: string;
     created: string;
     items: ListeEpicerieItemDto[];
-    completed?: boolean;               // NEW (server-computed)
+    completed?: boolean;               // server-computed
 }
 
 // ---- Helpers ----
@@ -92,7 +94,7 @@ const ListeEpicerieView: React.FC = () => {
 
     useEffect(() => { reload(); }, [id]);
 
-    // Ensure details for referenced items (unchanged)
+    // Ensure details for referenced items
     useEffect(() => {
         if (!liste) return;
         const missingFacture = Array.from(new Set(
@@ -175,13 +177,16 @@ const ListeEpicerieView: React.FC = () => {
             const weight = renderWeight(src as any);
             const qty = Math.max(1, Number(it.quantity) || 1);
 
-            const unitPrice =
+            // Prefer list-level override if present
+            const override = (it as any).unitPrice;
+            const fallback =
                 src && "prix" in (src as any) && typeof (src as any).prix === "number"
                     ? (src as any).prix
                     : src && "defaultPrix" in (src as any) && typeof (src as any).defaultPrix === "number"
                         ? (src as any).defaultPrix
                         : null;
 
+            const unitPrice = (typeof override === "number" && isFinite(override)) ? override : fallback;
             const subtotal = unitPrice != null ? unitPrice * qty : null;
             const special = typeof it.wasOnSale === "boolean" ? it.wasOnSale : !!(src && (src as any).wasOnSale);
             const favorite = !!it.isFavorite;
@@ -204,8 +209,7 @@ const ListeEpicerieView: React.FC = () => {
     // Actions
     const setCompleted = async (next: boolean) => {
         if (!liste) return;
-        // optimistic: reflect immediately
-        setListe(prev => prev ? { ...prev, completed: next } : prev);
+        setListe(prev => prev ? { ...prev, completed: next } : prev); // optimistic
         try {
             const res = await fetch(`/api/ListeEpicerie/${liste.id}/completed`, {
                 method: "PATCH",
@@ -214,18 +218,15 @@ const ListeEpicerieView: React.FC = () => {
                 body: JSON.stringify({ completed: next })
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            // optional: await reload(); // to fully sync with server
         } catch (e) {
             console.error(e);
-            // rollback
-            setListe(prev => prev ? { ...prev, completed: !next } : prev);
+            setListe(prev => prev ? { ...prev, completed: !next } : prev); // rollback
             alert("Échec lors de la mise à jour de l’état de la liste.");
         }
     };
 
     const setItemChecked = async (itemId: number | undefined, next: boolean) => {
         if (!liste || itemId == null) return;
-        // optimistic
         setListe(prev => prev ? {
             ...prev,
             items: prev.items.map(it => it.id === itemId ? { ...it, isChecked: next } : it)
@@ -243,10 +244,7 @@ const ListeEpicerieView: React.FC = () => {
                 return;
             }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            // After item toggle, server recomputes Completed; you can refresh or adjust locally:
             if (next) {
-                // if all now checked, reflect completion locally
                 setListe(prev => {
                     if (!prev) return prev;
                     const after = prev.items.map(it => it.id === itemId ? { ...it, isChecked: true } : it);
@@ -258,7 +256,6 @@ const ListeEpicerieView: React.FC = () => {
             }
         } catch (e) {
             console.error(e);
-            // rollback
             setListe(prev => prev ? {
                 ...prev,
                 items: prev.items.map(it => it.id === itemId ? { ...it, isChecked: !next } : it)
@@ -290,11 +287,33 @@ const ListeEpicerieView: React.FC = () => {
 
     return (
         <div className="container py-4">
-            {/* Header (unchanged aside from context) */}
+            {/* Header with Retour */}
             <div className="d-flex flex-wrap justify-content-between align-items-end mb-3">
-                {/* ...left header block... */}
+                <div className="d-flex align-items-center gap-2">
+                    <Link to="/liste-epicerie" className="btn btn-outline-secondary d-print-none">
+                        ← Retour
+                    </Link>
+                    <div>
+                        <h1 className="h5 mb-0">{liste.name || "Liste d'épicerie"}</h1>
+                        <div className="text-muted small">Créée le {fmtDate(liste.created)}</div>
+                    </div>
+                </div>
+
                 <div className="d-flex gap-2 d-print-none align-items-center">
-                    {/* completed switch & actions unchanged */}
+                    <div className="form-check form-switch">
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="completeSwitch"
+                            checked={isCompleted}
+                            onChange={(e) => setCompleted(e.target.checked)}
+                        />
+                        <label className="form-check-label" htmlFor="completeSwitch">Complétée</label>
+                    </div>
+                    <Link to={`/liste-epicerie/edit/${liste.id}`} className={`btn btn-outline-primary ${isCompleted ? "disabled" : ""}`}>
+                        Éditer
+                    </Link>
+                    <button className="btn btn-outline-secondary" onClick={() => window.print()}>Imprimer</button>
                 </div>
             </div>
 
@@ -304,8 +323,7 @@ const ListeEpicerieView: React.FC = () => {
             </div>
 
             {rows.length === 0 ? (
-                // ...empty state unchanged...
-                <div className="border rounded-3 p-4 text-center bg-light">...</div>
+                <div className="border rounded-3 p-4 text-center bg-light">Aucun article.</div>
             ) : (
                 <>
                     {/* Desktop / print table */}
@@ -314,7 +332,7 @@ const ListeEpicerieView: React.FC = () => {
                             <table className="table table-sm align-middle">
                                 <thead className="table-light">
                                     <tr>
-                                        <th className="text-center" style={{ width: 80 }}>Fait</th>{/* ⬅️ moved first */}
+                                        <th className="text-center" style={{ width: 80 }}>Fait</th>
                                         <th style={{ width: "28%" }}>Produit</th>
                                         <th>Type</th>
                                         <th>Magasin</th>
@@ -329,7 +347,6 @@ const ListeEpicerieView: React.FC = () => {
                                     {rows.map(r => (
                                         <tr key={r.key}>
                                             <td className="text-center">
-                                                {/* Screen: checkbox; Print: ✓ */}
                                                 <input
                                                     className="form-check-input d-print-none"
                                                     type="checkbox"
@@ -369,7 +386,7 @@ const ListeEpicerieView: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Mobile cards: checkbox first */}
+                    {/* Mobile cards */}
                     <div className="d-xl-none d-print-none">
                         <div className="row g-2">
                             {rows.map(r => (
@@ -377,7 +394,6 @@ const ListeEpicerieView: React.FC = () => {
                                     <div className="card">
                                         <div className="card-body">
                                             <div className="d-flex justify-content-between">
-                                                {/* Left: checkbox + name/type */}
                                                 <div className="d-flex align-items-start">
                                                     <div className="form-check me-2">
                                                         <input
@@ -395,7 +411,6 @@ const ListeEpicerieView: React.FC = () => {
                                                         <div className="text-muted small">{r.type || "—"}</div>
                                                     </div>
                                                 </div>
-                                                {/* Right: price/qty */}
                                                 <div className="text-end">
                                                     <div className="fw-semibold">{fmtMoney(r.unitPrice ?? undefined)}</div>
                                                     <div className="text-muted small">Qté: {r.qty}</div>
