@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as LexicalErrorBoundaryPkg from "@lexical/react/LexicalErrorBoundary";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
@@ -6,10 +6,14 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
-import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 
-import { FORMAT_TEXT_COMMAND } from "lexical";
+import {
+    $getRoot,
+    $createParagraphNode,
+    $createTextNode,
+    FORMAT_TEXT_COMMAND,
+} from "lexical";
 import {
     INSERT_UNORDERED_LIST_COMMAND,
     INSERT_ORDERED_LIST_COMMAND,
@@ -22,15 +26,16 @@ import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { CodeNode } from "@lexical/code";
 
 import {
-    TRANSFORMERS,
-    $convertFromMarkdownString,
-    $convertToMarkdownString,
-} from "@lexical/markdown";
+    $generateHtmlFromNodes,
+    $generateNodesFromDOM,
+} from "@lexical/html";
 
 /* -------- Types -------- */
 type PostEditorProps = {
-    initialMarkdown?: string;
-    onChange?: (markdown: string) => void;
+    /** Optional initial HTML to load once, on mount. */
+    initialHTML?: string;
+    /** Emits HTML on every change. */
+    onChange?: (html: string) => void;
     ariaLabel?: string;
 };
 
@@ -61,25 +66,48 @@ function Placeholder() {
     );
 }
 
-function LoadMarkdownPlugin({ markdown }: { markdown?: string }) {
+/** Load initial HTML exactly once to avoid cursor resets. */
+function LoadInitialHtmlOncePlugin({ html }: { html?: string }) {
     const [editor] = useLexicalComposerContext();
+    const loaded = useRef(false);
+
     useEffect(() => {
-        if (!markdown) return;
+        if (loaded.current) return;
+        loaded.current = true;
+
         editor.update(() => {
-            $convertFromMarkdownString(markdown, TRANSFORMERS);
+            const root = $getRoot();
+            root.clear();
+
+            if (html && html.trim()) {
+                const parser = new DOMParser();
+                const dom = parser.parseFromString(html, "text/html");
+                const nodes = $generateNodesFromDOM(editor, dom);
+                root.append(...nodes);
+            } else {
+                // ensure there's at least one paragraph
+                const p = $createParagraphNode();
+                p.append($createTextNode(""));
+                root.append(p);
+            }
         });
-    }, [editor, markdown]);
+    }, [editor, html]);
+
     return null;
 }
 
-function MarkdownChangePlugin({ onChange }: { onChange?: (md: string) => void }) {
+/** Emit HTML on every update. */
+function HtmlChangePlugin({ onChange }: { onChange?: (html: string) => void }) {
     const [editor] = useLexicalComposerContext();
+
     useEffect(() => {
         if (!onChange) return;
         const unregister = editor.registerUpdateListener(({ editorState }) => {
-            editorState.read(() => onChange($convertToMarkdownString(TRANSFORMERS)));
+            editorState.read(() => {
+                const html = $generateHtmlFromNodes(editor);
+                onChange(html);
+            });
         });
-        // cleanup (handle different return shapes defensively)
         return () => {
             try {
                 (unregister as any)?.();
@@ -89,10 +117,11 @@ function MarkdownChangePlugin({ onChange }: { onChange?: (md: string) => void })
             }
         };
     }, [editor, onChange]);
+
     return null;
 }
 
-/* Collapsed “step 1” toolbar */
+/* Collapsed toolbar */
 function CollapsedBar({ onExpand }: { onExpand: () => void }) {
     return (
         <div className="d-flex align-items-center gap-3 px-2 pb-2">
@@ -114,22 +143,13 @@ function CollapsedBar({ onExpand }: { onExpand: () => void }) {
     );
 }
 
-/* Expanded toolbar (inside composer) */
-function RichToolbar({
-    onCollapse,
-    onSwitchToMarkdown,
-}: {
-    onCollapse: () => void;
-    onSwitchToMarkdown: () => void;
-}) {
+/* Expanded toolbar */
+function RichToolbar({ onCollapse }: { onCollapse: () => void }) {
     const [editor] = useLexicalComposerContext();
 
     const toggleLink = () => {
         const url = prompt("URL du lien (laisser vide pour retirer) :", "https://");
-        editor.dispatchCommand(
-            TOGGLE_LINK_COMMAND,
-            url && url.trim() ? url.trim() : null
-        );
+        editor.dispatchCommand(TOGGLE_LINK_COMMAND, url && url.trim() ? url.trim() : null);
     };
 
     return (
@@ -184,100 +204,52 @@ function RichToolbar({
                 <button className="btn btn-sm btn-outline-secondary" onClick={onCollapse} title="Réduire">
                     Masquer
                 </button>
-                <button className="btn btn-sm btn-outline-primary" onClick={onSwitchToMarkdown}>
-                    Markdown Editor
-                </button>
             </div>
-        </div>
-    );
-}
-
-/* Simple markdown textarea mode */
-function MarkdownTextarea({
-    value,
-    onChange,
-    onSwitchBack,
-    ariaLabel,
-}: {
-    value: string;
-    onChange: (v: string) => void;
-    onSwitchBack: () => void;
-    ariaLabel?: string;
-}) {
-    return (
-        <div className="border rounded-3 p-2">
-            <div className="d-flex justify-content-end">
-                <button className="btn btn-sm btn-outline-primary mb-2" onClick={onSwitchBack}>
-                    Rich Editor
-                </button>
-            </div>
-            <textarea
-                className="form-control"
-                rows={8}
-                aria-label={ariaLabel}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="Écrire votre message en Markdown…"
-            />
         </div>
     );
 }
 
 /* -------- Main component -------- */
 export default function PostEditor({
-    initialMarkdown,
+    initialHTML,
     onChange,
     ariaLabel = "Éditeur de message",
 }: PostEditorProps) {
-    const [mode, setMode] = useState<"rich" | "md">("rich");
     const [expanded, setExpanded] = useState(false);
-    const mdRef = useRef<string>(initialMarkdown || "");
 
-    const emit = (md: string) => {
-        mdRef.current = md;
-        onChange?.(md);
-    };
-
-    if (mode === "md") {
-        return (
-            <MarkdownTextarea
-                value={mdRef.current}
-                onChange={emit}
-                onSwitchBack={() => setMode("rich")}
-                ariaLabel={ariaLabel}
-            />
-        );
-    }
-
-    const initialConfig = {
-        namespace: "forum-editor",
-        theme,
-        onError(error: unknown) {
-            console.error(error);
-        },
-        // required by ListPlugin, LinkPlugin, Markdown shortcuts (headings, quotes, code)
-        nodes: [HeadingNode, QuoteNode, CodeNode, ListNode, ListItemNode, LinkNode],
-    };
+    // Keep config stable so the editor doesn't remount
+    const initialConfig = useMemo(
+        () => ({
+            namespace: "forum-editor",
+            theme,
+            onError(error: unknown) {
+                console.error(error);
+            },
+            // Nodes required by our plugins/buttons
+            nodes: [HeadingNode, QuoteNode, CodeNode, ListNode, ListItemNode, LinkNode],
+        }),
+        []
+    );
 
     return (
         <LexicalComposer initialConfig={initialConfig}>
             {expanded ? (
-                <RichToolbar
-                    onCollapse={() => setExpanded(false)}
-                    onSwitchToMarkdown={() => setMode("md")}
-                />
+                <RichToolbar onCollapse={() => setExpanded(false)} />
             ) : (
                 <CollapsedBar onExpand={() => setExpanded(true)} />
             )}
 
-            <div className="border rounded-3 p-2" style={{ position: "relative", minHeight: 160, lineHeight: 1.5 }}>
+            <div
+                className="border rounded-3 p-2"
+                style={{ position: "relative", minHeight: 160, lineHeight: 1.5 }}
+            >
                 <RichTextPlugin
                     contentEditable={
                         <ContentEditable
                             aria-label={ariaLabel}
                             spellCheck
                             className="w-100"
-                            style={{ outline: "none" }}
+                            style={{ outline: "none", whiteSpace: "pre-wrap" }}
                         />
                     }
                     placeholder={<Placeholder />}
@@ -287,10 +259,9 @@ export default function PostEditor({
                 <HistoryPlugin />
                 <ListPlugin />
                 <LinkPlugin />
-                <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
 
-                <MarkdownChangePlugin onChange={emit} />
-                <LoadMarkdownPlugin markdown={initialMarkdown} />
+                <HtmlChangePlugin onChange={onChange} />
+                <LoadInitialHtmlOncePlugin html={initialHTML} />
             </div>
         </LexicalComposer>
     );

@@ -5,6 +5,7 @@ import type { ForumThreadDto, PagedResult, ForumPostTreeDto } from "../../lib/ty
 import Pagination from "../../components/Pagination";
 import { useAuth } from "../../components/AuthContext";
 import PostEditor from "../../components/PostEditor";
+import DOMPurify from "dompurify";
 
 /* ======================== Config: exclusive vote target ======================== */
 // Choose ONE: "thread" OR "op"
@@ -84,10 +85,60 @@ function updateNodeInTree(
     });
 }
 
+/* ---------- Safe HTML renderer (client-side sanitization) ---------- */
+const SafeHtml = memo(function SafeHtml({
+    html,
+    className,
+}: {
+    html: string;
+    className?: string;
+}) {
+    const clean = useMemo(
+        () =>
+            DOMPurify.sanitize(html || "", {
+                USE_PROFILES: { html: true },
+                ALLOWED_TAGS: [
+                    "p",
+                    "b",
+                    "strong",
+                    "i",
+                    "em",
+                    "u",
+                    "ul",
+                    "ol",
+                    "li",
+                    "a",
+                    "code",
+                    "pre",
+                    "blockquote",
+                    "br",
+                    "span",
+                    "h1",
+                    "h2",
+                    "h3",
+                    "h4"
+                ],
+                // We keep class/dir/href/target/rel. We intentionally drop inline "style".
+                ALLOWED_ATTR: ["href", "target", "rel", "class", "dir"],
+                FORBID_TAGS: ["script", "iframe", "object", "embed"],
+            }),
+        [html]
+    );
+
+    return (
+        <div
+            className={className ?? "post-body"}
+            // React needs this to render HTML
+            dangerouslySetInnerHTML={{ __html: clean }}
+        />
+    );
+});
+
+/* ---------- Reply box uses HTML editor ---------- */
 type ReplyBoxProps = {
-    /** Markdown string for the reply */
+    /** HTML string for the reply */
     value: string;
-    /** Called whenever the editor content changes (markdown) */
+    /** Called whenever the editor content changes (HTML) */
     onChange: (v: string) => void;
     onSubmit: () => void;
     sending?: boolean;
@@ -102,12 +153,8 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
     disabled,
 }) => (
     <div className="mt-2">
-        {/* Rich editor for replies */}
-        <PostEditor
-            initialMarkdown={value}
-            onChange={onChange}
-            ariaLabel="Rédiger une réponse"
-        />
+        {/* Rich editor for replies (HTML mode) */}
+        <PostEditor initialHTML={value} onChange={onChange} ariaLabel="Rédiger une réponse" />
         <div className="d-flex justify-content-end gap-2 mt-2">
             <button
                 className="btn btn-secondary"
@@ -207,13 +254,16 @@ const PostCard: React.FC<PostCardProps> = memo(
         onVotePost,
         extraUnderBody,
     }) => {
-        // reduced indentation (was 12px); now 8px per level
         const indentPx = Math.min(depth, 8) * 8;
         const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false; // main comments NOT collapsible
         const directReplies = p.replies ? p.replies.length : 0;
 
         const score = (p as any).score ?? 0;
         const myVote = (p as any).myVote ?? 0;
+
+        // Body is HTML now. Your DTO likely keeps `body` — which is fine.
+        // If your API returns `bodyHtml`, just replace `p.body` below.
+        const bodyHtml: string = (p as any).body ?? "";
 
         return (
             <div className="card shadow-sm border-0 mb-2">
@@ -252,9 +302,9 @@ const PostCard: React.FC<PostCardProps> = memo(
 
                             {!isCollapsed && (
                                 <div id={`post-${p.id}-body`}>
-                                    <div className="mt-2" style={{ whiteSpace: "pre-wrap" }}>
-                                        {p.body}
-                                    </div>
+                                    {/* RENDER SANITIZED HTML */}
+                                    <SafeHtml html={bodyHtml} className="mt-2 post-body" />
+
                                     {(p as any).editedUtc || (p as any).editedBy ? (
                                         <div className="text-muted small mt-2">
                                             Édité {(p as any).editedBy ? `par ${(p as any).editedBy} ` : ""}
@@ -352,7 +402,7 @@ const ForumThreadView: React.FC = () => {
     // UI state
     const [order, setOrder] = useState<Order>("recent");
     const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
-    const [replyText, setReplyText] = useState<Record<number, string>>({});
+    const [replyText, setReplyText] = useState<Record<number, string>>({}); // holds HTML now
     const [replyOpen, setReplyOpen] = useState<Record<number, boolean>>({});
     const [sending, setSending] = useState<Record<number, boolean>>({});
     const [voting, setVoting] = useState(false); // thread voting in-flight
@@ -421,21 +471,26 @@ const ForumThreadView: React.FC = () => {
         setReplyOpen((o) => ({ ...o, [postId]: !o[postId] }));
     }, []);
     const onChangeReply = useCallback((postId: number, v: string) => {
-        setReplyText((t) => ({ ...t, [postId]: v }));
+        setReplyText((t) => ({ ...t, [postId]: v })); // v is HTML
     }, []);
+
     const doReply = useCallback(
         async (parentPostId?: number | null) => {
             const key = parentPostId ?? 0;
-            const body = (replyText[key] || "").trim();
-            if (!body) return;
+            const bodyHtml = (replyText[key] || "").trim();
+            if (!bodyHtml) return;
 
             try {
                 setSending((s) => ({ ...s, [key]: true }));
+
+                // NOTE: backend now treats `body` as HTML.
+                // If your API expects a different name, e.g. `bodyHtml`, change it here.
                 await fetchJSON(`/api/forum/threads/${threadId}/posts`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ body, parentPostId: parentPostId ?? null }),
+                    body: JSON.stringify({ body: bodyHtml, parentPostId: parentPostId ?? null }),
                 });
+
                 setReplyText((t) => ({ ...t, [key]: "" }));
                 setReplyOpen((o) => ({ ...o, [key]: false }));
                 await load();

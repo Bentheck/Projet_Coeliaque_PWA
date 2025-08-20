@@ -218,3 +218,11 @@ body {
         font-size: 11px;
     }
 }
+
+.post-body {
+    white-space: pre-wrap;
+}
+
+    .post-body a {
+        text-decoration: underline;
+    }
