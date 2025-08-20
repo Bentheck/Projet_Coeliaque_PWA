@@ -495,12 +495,14 @@ export default function PostEditor({
         });
 
     // Add optional className so we can style GIFs differently (lexical-gif)
-    const insertImageAtSelection = (src: string, alt = "", className?: string) => {
+    const insertImageAtSelection = (src: string, alt = "", width?: number, height?: number) => {
         const editor = editorRef.current;
         if (!editor) return;
         editor.update(() => {
-            const image = $createImageNode({ src, altText: alt, className });
+            const image = $createImageNode({ src, altText: alt, width, height }); // <-- pass w/h
             $insertNodes([image]);
+
+            // add a new empty paragraph after image for nicer UX
             const p = $createParagraphNode();
             p.append($createTextNode(""));
             $insertNodes([p]);
@@ -549,9 +551,8 @@ export default function PostEditor({
         if (img) await handleImageFile(img);
     };
 
-    const onPickGif = (url: string, alt?: string) => {
-        // Insert with GIF class so CSS can enforce width: min(100%, 480px)
-        insertImageAtSelection(url, alt || "gif", "lexical-image lexical-gif");
+    const onPickGif = (url: string, alt?: string, w?: number, h?: number) => {
+        insertImageAtSelection(url, alt || "gif", w, h);
         setGifOpen(false);
     };
 

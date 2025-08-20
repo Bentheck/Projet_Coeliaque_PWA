@@ -116,10 +116,11 @@ const SafeHtml = memo(function SafeHtml({
                     "h1",
                     "h2",
                     "h3",
-                    "h4"
+                    "h4",
+                    "img",
                 ],
-                // We keep class/dir/href/target/rel. We intentionally drop inline "style".
-                ALLOWED_ATTR: ["href", "target", "rel", "class", "dir"],
+                // We keep class/dir/href/target/rel/src/alt/width/height. We intentionally drop inline "style".
+                ALLOWED_ATTR: ["href", "target", "rel", "class", "dir", "src", "alt", "width", "height"],
                 FORBID_TAGS: ["script", "iframe", "object", "embed"],
             }),
         [html]
@@ -128,7 +129,6 @@ const SafeHtml = memo(function SafeHtml({
     return (
         <div
             className={className ?? "post-body"}
-            // React needs this to render HTML
             dangerouslySetInnerHTML={{ __html: clean }}
         />
     );
@@ -240,6 +240,16 @@ type PostCardProps = {
     showVoteOnThisCard: boolean;
     onVotePost: (postId: number, next: -1 | 0 | 1) => void;
 
+    // edit/delete
+    onStartEdit: (id: number, currentHtml: string) => void;
+    onCancelEdit: (id: number) => void;
+    onSaveEdit: (id: number) => void;
+    onDeletePost: (id: number) => void;
+    editing: Record<number, boolean>;
+    editText: Record<number, string>;
+    setEditText: React.Dispatch<React.SetStateAction<Record<number, string>>>;
+    saving: Record<number, boolean>;
+
     // extra slot rendered right after body/actions and BEFORE replies (used for OP sorting controls)
     extraUnderBody?: React.ReactNode;
 };
@@ -260,6 +270,15 @@ const PostCard: React.FC<PostCardProps> = memo(
         showVoteOnThisCard,
         onVotePost,
         extraUnderBody,
+
+        onStartEdit,
+        onCancelEdit,
+        onSaveEdit,
+        onDeletePost,
+        editing,
+        editText,
+        setEditText,
+        saving,
     }) => {
         const indentPx = Math.min(depth, 8) * 8;
         const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false; // main comments NOT collapsible
@@ -267,10 +286,10 @@ const PostCard: React.FC<PostCardProps> = memo(
 
         const score = (p as any).score ?? 0;
         const myVote = (p as any).myVote ?? 0;
+        const canEdit = (p as any).canEdit === true; // server-provided
 
-        // Body is HTML now. Your DTO likely keeps `body` — which is fine.
-        // If your API returns `bodyHtml`, just replace `p.body` below.
         const bodyHtml: string = (p as any).body ?? "";
+        const isEditing = editing[p.id] === true;
 
         return (
             <div className="card shadow-sm border-0 mb-2">
@@ -309,78 +328,131 @@ const PostCard: React.FC<PostCardProps> = memo(
 
                             {!isCollapsed && (
                                 <div id={`post-${p.id}-body`}>
-                                    {/* RENDER SANITIZED HTML */}
-                                    <SafeHtml html={bodyHtml} className="mt-2 post-body" />
+                                    {!isEditing ? (
+                                        <>
+                                            <SafeHtml html={bodyHtml} className="mt-2 post-body" />
 
-                                    {(p as any).editedUtc || (p as any).editedBy ? (
-                                        <div className="text-muted small mt-2">
-                                            Édité {(p as any).editedBy ? `par ${(p as any).editedBy} ` : ""}
-                                            {(p as any).editedUtc && `le ${fmt((p as any).editedUtc)}`}
-                                        </div>
-                                    ) : null}
+                                            {(p as any).editedUtc || (p as any).editedBy ? (
+                                                <div className="text-muted small mt-2">
+                                                    Édité {(p as any).editedBy ? `par ${(p as any).editedBy} ` : ""}
+                                                    {(p as any).editedUtc && `le ${fmt((p as any).editedUtc)}`}
+                                                </div>
+                                            ) : null}
 
-                                    {/* Actions row: Reply + VoteBar side-by-side */}
-                                    <div className="mt-2 d-flex align-items-center gap-3">
-                                        <button
-                                            className="btn btn-sm btn-outline-primary"
-                                            onClick={() => onToggleReply(p.id)}
-                                            disabled={!canReply}
-                                        >
-                                            <i className="bi bi-reply me-1" />
-                                            Répondre
-                                        </button>
+                                            <div className="mt-2 d-flex align-items-center gap-3">
+                                                <button
+                                                    className="btn btn-sm btn-outline-primary"
+                                                    onClick={() => onToggleReply(p.id)}
+                                                    disabled={!canReply}
+                                                >
+                                                    <i className="bi bi-reply me-1" />
+                                                    Répondre
+                                                </button>
 
-                                        {showVoteOnThisCard && (
-                                            <VoteBar
-                                                score={score}
-                                                myVote={myVote}
-                                                onVote={(next) => onVotePost(p.id, next)}
-                                                size="sm"
-                                            />
-                                        )}
+                                                {showVoteOnThisCard && (
+                                                    <VoteBar
+                                                        score={score}
+                                                        myVote={myVote}
+                                                        onVote={(next) => onVotePost(p.id, next)}
+                                                        size="sm"
+                                                    />
+                                                )}
 
-                                        <small className="text-muted ms-auto">
-                                            {directReplies} réponse{directReplies !== 1 ? "s" : ""}
-                                        </small>
-                                    </div>
+                                                <small className="text-muted ms-auto">
+                                                    {directReplies} réponse{directReplies !== 1 ? "s" : ""}
+                                                </small>
 
-                                    {replyOpen[p.id] && canReply && (
-                                        <ReplyBox
-                                            value={replyText[p.id] || ""}
-                                            onChange={(v) => onChangeReply(p.id, v)}
-                                            onSubmit={() => onSubmitReply(p.id)}
-                                            sending={sending[p.id]}
-                                        />
-                                    )}
+                                                {canEdit && (
+                                                    <div className="btn-group btn-group-sm ms-2">
+                                                        <button
+                                                            className="btn btn-outline-secondary"
+                                                            onClick={() => onStartEdit(p.id, bodyHtml)}
+                                                        >
+                                                            Modifier
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-outline-danger"
+                                                            onClick={() => onDeletePost(p.id)}
+                                                        >
+                                                            Supprimer
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                    {/* Inject extras (sorting controls for OP) BEFORE replies */}
-                                    {extraUnderBody}
-
-                                    {p.replies?.length ? (
-                                        <div
-                                            className="mt-2 ps-2 ps-sm-3 border-start"
-                                            style={{ marginLeft: indentPx, borderColor: "#dee2e6", borderWidth: 2 }}
-                                        >
-                                            {p.replies.map((child) => (
-                                                <PostCard
-                                                    key={child.id}
-                                                    p={child}
-                                                    depth={depth + 1}
-                                                    canReply={canReply}
-                                                    replyOpen={replyOpen}
-                                                    replyText={replyText}
-                                                    sending={sending}
-                                                    onToggleReply={onToggleReply}
-                                                    onChangeReply={onChangeReply}
-                                                    onSubmitReply={onSubmitReply}
-                                                    collapsed={collapsed}
-                                                    onToggleCollapsed={onToggleCollapsed}
-                                                    showVoteOnThisCard={true}
-                                                    onVotePost={onVotePost}
+                                            {replyOpen[p.id] && canReply && (
+                                                <ReplyBox
+                                                    value={replyText[p.id] || ""}
+                                                    onChange={(v) => onChangeReply(p.id, v)}
+                                                    onSubmit={() => onSubmitReply(p.id)}
+                                                    sending={sending[p.id]}
                                                 />
-                                            ))}
+                                            )}
+
+                                            {extraUnderBody}
+
+                                            {p.replies?.length ? (
+                                                <div
+                                                    className="mt-2 ps-2 ps-sm-3 border-start"
+                                                    style={{ marginLeft: indentPx, borderColor: "#dee2e6", borderWidth: 2 }}
+                                                >
+                                                    {p.replies.map((child) => (
+                                                        <PostCard
+                                                            key={child.id}
+                                                            p={child}
+                                                            depth={depth + 1}
+                                                            canReply={canReply}
+                                                            replyOpen={replyOpen}
+                                                            replyText={replyText}
+                                                            sending={sending}
+                                                            onToggleReply={onToggleReply}
+                                                            onChangeReply={onChangeReply}
+                                                            onSubmitReply={onSubmitReply}
+                                                            collapsed={collapsed}
+                                                            onToggleCollapsed={onToggleCollapsed}
+                                                            showVoteOnThisCard={true}
+                                                            onVotePost={onVotePost}
+                                                            onStartEdit={onStartEdit}
+                                                            onCancelEdit={onCancelEdit}
+                                                            onSaveEdit={onSaveEdit}
+                                                            onDeletePost={onDeletePost}
+                                                            editing={editing}
+                                                            editText={editText}
+                                                            setEditText={setEditText}
+                                                            saving={saving}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            ) : null}
+                                        </>
+                                    ) : (
+                                        <div className="mt-2">
+                                            <PostEditor
+                                                initialHTML={editText[p.id] ?? bodyHtml}
+                                                onChange={(v) => setEditText((t) => ({ ...t, [p.id]: v }))}
+                                                ariaLabel="Modifier le message"
+                                                giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
+                                                giphyLang="fr"
+                                                giphyRating="g"
+                                            />
+                                            <div className="d-flex gap-2 justify-content-end mt-2">
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => onCancelEdit(p.id)}
+                                                    disabled={saving[p.id]}
+                                                >
+                                                    Annuler
+                                                </button>
+                                                <button
+                                                    className="btn btn-primary btn-sm"
+                                                    onClick={() => onSaveEdit(p.id)}
+                                                    disabled={saving[p.id] || !(editText[p.id] || "").trim()}
+                                                >
+                                                    {saving[p.id] ? "Sauvegarde…" : "Enregistrer"}
+                                                </button>
+                                            </div>
                                         </div>
-                                    ) : null}
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -414,12 +486,22 @@ const ForumThreadView: React.FC = () => {
     const [sending, setSending] = useState<Record<number, boolean>>({});
     const [voting, setVoting] = useState(false); // thread voting in-flight
 
+    // editing posts state
+    const [editing, setEditing] = useState<Record<number, boolean>>({});
+    const [editText, setEditText] = useState<Record<number, string>>({});
+    const [saving, setSaving] = useState<Record<number, boolean>>({});
+
+    // thread title edit
+    const [titleEditing, setTitleEditing] = useState(false);
+    const [titleDraft, setTitleDraft] = useState("");
+
     const load = useCallback(async () => {
         try {
             setLoading(true);
             setErr(null);
             const t = await fetchJSON<ForumThreadDto>(`/api/forum/threads/${threadId}`);
             setThread(t);
+            setTitleDraft(t.title || "");
             const p = await fetchJSON<PagedResult<ForumPostTreeDto>>(
                 `/api/forum/threads/${threadId}/posts?page=${page}&pageSize=20`
             );
@@ -490,8 +572,6 @@ const ForumThreadView: React.FC = () => {
             try {
                 setSending((s) => ({ ...s, [key]: true }));
 
-                // NOTE: backend now treats `body` as HTML.
-                // If your API expects a different name, e.g. `bodyHtml`, change it here.
                 await fetchJSON(`/api/forum/threads/${threadId}/posts`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -589,6 +669,85 @@ const ForumThreadView: React.FC = () => {
         [posts, canVote, opOnPage, voteMode]
     );
 
+    /* ======== edit/delete post handlers ======== */
+    const onStartEdit = useCallback((postId: number, currentHtml: string) => {
+        setEditing((e) => ({ ...e, [postId]: true }));
+        setEditText((t) => ({ ...t, [postId]: currentHtml }));
+    }, []);
+
+    const onCancelEdit = useCallback((postId: number) => {
+        setEditing((e) => {
+            const n = { ...e };
+            delete n[postId];
+            return n;
+        });
+        setEditText((t) => {
+            const n = { ...t };
+            delete n[postId];
+            return n;
+        });
+    }, []);
+
+    const onSaveEdit = useCallback(
+        async (postId: number) => {
+            const html = (editText[postId] || "").trim();
+            if (!html) return;
+            setSaving((s) => ({ ...s, [postId]: true }));
+            try {
+                await fetchJSON(`/api/forum/posts/${postId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ body: html }),
+                });
+                await load();
+                onCancelEdit(postId);
+            } catch (e) {
+                console.error(e);
+                alert("Échec de la sauvegarde.");
+            } finally {
+                setSaving((s) => {
+                    const n = { ...s };
+                    delete n[postId];
+                    return n;
+                });
+            }
+        },
+        [editText, load, onCancelEdit]
+    );
+
+    const onDeletePost = useCallback(
+        async (postId: number) => {
+            if (!confirm("Supprimer ce message ?")) return;
+            try {
+                await fetchJSON(`/api/forum/posts/${postId}`, { method: "DELETE" });
+                await load();
+            } catch (e) {
+                console.error(e);
+                alert("Échec de la suppression.");
+            }
+        },
+        [load]
+    );
+
+    /* ======== thread title edit ======== */
+    const saveTitle = useCallback(async () => {
+        if (!thread) return;
+        const t = titleDraft.trim();
+        if (!t) return;
+        try {
+            await fetchJSON(`/api/forum/threads/${thread.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: t }),
+            });
+            setTitleEditing(false);
+            await load();
+        } catch (e) {
+            console.error(e);
+            alert("Échec de la mise à jour du titre.");
+        }
+    }, [thread, titleDraft, load]);
+
     /* ======================== Controls (rendered AFTER OP body, BEFORE its replies) ======================== */
     const Controls = (
         <div className="my-3 d-flex flex-wrap gap-2 align-items-center">
@@ -641,7 +800,49 @@ const ForumThreadView: React.FC = () => {
                                     {thread?.isPinned && <span className="badge bg-warning text-dark me-2">Épinglé</span>}
                                     {thread?.isLocked && <span className="badge bg-secondary me-2">Verrouillé</span>}
                                 </div>
-                                <h1 className="h4 mb-1">{thread?.title ?? "Fil"}</h1>
+
+                                <div className="d-flex align-items-center gap-2 flex-wrap">
+                                    {!titleEditing ? (
+                                        <>
+                                            <h1 className="h4 mb-1 mb-0">{thread?.title ?? "Fil"}</h1>
+                                            {thread?.canEditTitle && (
+                                                <button
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    onClick={() => setTitleEditing(true)}
+                                                    title="Modifier le titre"
+                                                >
+                                                    Modifier
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <input
+                                                className="form-control form-control-sm"
+                                                style={{ maxWidth: 520 }}
+                                                value={titleDraft}
+                                                onChange={(e) => setTitleDraft(e.target.value)}
+                                            />
+                                            <button
+                                                className="btn btn-sm btn-secondary"
+                                                onClick={() => {
+                                                    setTitleEditing(false);
+                                                    setTitleDraft(thread?.title ?? "");
+                                                }}
+                                            >
+                                                Annuler
+                                            </button>
+                                            <button
+                                                className="btn btn-sm btn-primary"
+                                                onClick={saveTitle}
+                                                disabled={!titleDraft.trim()}
+                                            >
+                                                Enregistrer
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+
                                 {thread && (
                                     <div className="text-muted small">
                                         Par {thread.createdBy} • {fmt(thread.createdUtc)} • {thread.postCount} commentaire
@@ -709,6 +910,14 @@ const ForumThreadView: React.FC = () => {
                                             showVoteOnThisCard={isOpVotable}
                                             onVotePost={onVotePost}
                                             extraUnderBody={Controls} // <-- here: after OP, before its replies
+                                            onStartEdit={onStartEdit}
+                                            onCancelEdit={onCancelEdit}
+                                            onSaveEdit={onSaveEdit}
+                                            onDeletePost={onDeletePost}
+                                            editing={editing}
+                                            editText={editText}
+                                            setEditText={setEditText}
+                                            saving={saving}
                                         />
 
                                         {/* Other main comments (non-OP) */}
@@ -730,6 +939,14 @@ const ForumThreadView: React.FC = () => {
                                                     onToggleCollapsed={toggleCollapsed}
                                                     showVoteOnThisCard={true}
                                                     onVotePost={onVotePost}
+                                                    onStartEdit={onStartEdit}
+                                                    onCancelEdit={onCancelEdit}
+                                                    onSaveEdit={onSaveEdit}
+                                                    onDeletePost={onDeletePost}
+                                                    editing={editing}
+                                                    editText={editText}
+                                                    setEditText={setEditText}
+                                                    saving={saving}
                                                 />
                                             ))}
                                     </>
@@ -756,6 +973,14 @@ const ForumThreadView: React.FC = () => {
                                             onToggleCollapsed={toggleCollapsed}
                                             showVoteOnThisCard={true}
                                             onVotePost={onVotePost}
+                                            onStartEdit={onStartEdit}
+                                            onCancelEdit={onCancelEdit}
+                                            onSaveEdit={onSaveEdit}
+                                            onDeletePost={onDeletePost}
+                                            editing={editing}
+                                            editText={editText}
+                                            setEditText={setEditText}
+                                            saving={saving}
                                         />
                                     ))}
                                 </>

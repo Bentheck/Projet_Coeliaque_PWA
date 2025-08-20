@@ -37,15 +37,15 @@ export type ForumThreadDto = {
     title: string;
     createdUtc: string;
     createdBy: string;
+    createdByUserId: string;   // NEW
     lastPostUtc: string;
     lastBy: string;
     isLocked: boolean;
     isPinned: boolean;
     postCount: number;
-
-    // NEW for voting on thread:
-    score: number;     // total score
-    myVote: number;    // -1 | 0 | 1 (current user)
+    score: number;
+    myVote: number;
+    canEditTitle: boolean;     // NEW
 };
 
 export type ForumPostDto = {
@@ -71,22 +71,20 @@ export type ForumAdminDto = {
     addedUtc: string;
 };
 
-export interface ForumPostTreeDto {
+export type ForumPostTreeDto = {
     id: number;
     body: string;
     createdUtc: string;
     createdBy: string;
+    createdByUserId: string;   // NEW
     editedUtc?: string | null;
     editedBy?: string | null;
     parentPostId?: number | null;
+    score: number;
+    myVote: number;
+    repliesCount: number;
     replies: ForumPostTreeDto[];
-
-    // NEW for voting on posts:
-    score: number;    // total score
-    myVote: number;   // -1 | 0 | 1 (current user)
-
-    // Optional server-provided count (can differ from loaded replies length)
-    repliesCount?: number;
-}
+    canEdit: boolean;          // NEW
+};
 
 export type ModeratorDto = { userId: string; displayName: string };
