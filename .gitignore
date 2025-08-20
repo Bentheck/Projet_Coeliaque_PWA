@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 **/appsettings.json
 /Projet_Coeliaque_PWA.Server/wwwroot/avatars/
+/projet_coeliaque_pwa.client/.env.local
