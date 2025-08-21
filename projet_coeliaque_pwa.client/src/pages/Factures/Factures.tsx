@@ -1,15 +1,16 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-// ----- Interfaces -----
+/** Minimal invoice shape used in the listing & create form */
 interface Facture {
     id: number;
     annee: number;
     factureId: string;
-    date: string; // ISO string
+    date: string; // ISO yyyy-mm-dd
     magasin: string;
 }
 
+/** Default values when starting a new invoice */
 const emptyFacture: Omit<Facture, "id"> = {
     annee: new Date().getFullYear(),
     factureId: "",
@@ -23,12 +24,12 @@ const Factures: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Form states
+    /** Form state: create/edit inline form above the list */
     const [formMode, setFormMode] = useState<"none" | "create" | "edit">("none");
-    const [current, setCurrent] = useState<Facture | null>(null);
+    const [current, setCurrent] = useState<Facture | null>(null); // target of edit mode
     const [formData, setFormData] = useState(emptyFacture);
 
-    // Fetch all factures
+    /** Load all invoices for the table */
     const fetchFactures = () => {
         setLoading(true);
         fetch("/api/factures", { credentials: "include" })
@@ -44,6 +45,8 @@ const Factures: React.FC = () => {
     useEffect(fetchFactures, []);
 
     // ----- Handlers -----
+
+    /** Keep formData in sync with inputs */
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({
             ...prev,
@@ -51,26 +54,32 @@ const Factures: React.FC = () => {
         }));
     };
 
+    /** Enter create mode with a clean form */
     const startCreate = () => {
         setFormData(emptyFacture);
         setCurrent(null);
         setFormMode("create");
     };
 
+    /** Exit form without persisting */
     const handleCancel = () => {
         setFormMode("none");
         setCurrent(null);
         setFormData(emptyFacture);
     };
 
+    /**
+     * Create or update the invoice.
+     * - POST on create (with items: [] so backend can hydrate properly)
+     * - PUT on edit
+     * - On create success, navigate to the detail/editor page.
+     */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
 
         const isEdit = formMode === "edit";
         const url = isEdit ? `/api/factures/${current!.id}` : "/api/factures";
-
-        // If backend needs items on create, send items: []
         const payload = isEdit ? formData : { ...formData, items: [] };
 
         try {
@@ -89,7 +98,7 @@ const Factures: React.FC = () => {
                 return;
             }
 
-            // Create flow: get new id and jump to edit page
+            // Create flow: expect new id to route to editor
             const created = await res.json();
             const newId = created?.id ?? created?.Id;
             if (!newId) throw new Error("Réponse inattendue: id manquant.");
@@ -101,6 +110,7 @@ const Factures: React.FC = () => {
         }
     };
 
+    /** Permanently remove an invoice (with user confirmation) */
     const handleDelete = (facture: Facture) => {
         if (!window.confirm("Supprimer cette facture?")) return;
         fetch(`/api/factures/${facture.id}`, { method: "DELETE", credentials: "include" })
@@ -114,7 +124,7 @@ const Factures: React.FC = () => {
     // ----- Render -----
     return (
         <div className="container" style={{ maxWidth: 700 }}>
-            {/* Responsive tweak: hide .btn-text under 600px */}
+            {/* Hide button text under 600px to keep actions compact */}
             <style>{`
         @media (max-width: 600px) {
           .only-icons-under-600 .btn-text { display: none !important; }
@@ -195,7 +205,7 @@ const Factures: React.FC = () => {
                         <div className="card-body d-flex align-items-start" style={{ columnGap: "1rem" }}>
                             <span style={{ flex: 1 }}>
                                 <div><b>ID :</b> {facture.factureId}</div>
-                                <div><b>Date :</b> {facture.date?.slice(0, 10)}</div>                                
+                                <div><b>Date :</b> {facture.date?.slice(0, 10)}</div>
                                 <div><b>Magasin :</b> {facture.magasin}</div>
                             </span>
 

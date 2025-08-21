@@ -14,10 +14,11 @@ const ForumNewThread: React.FC = () => {
     const [cats, setCats] = useState<ForumCategoryDto[]>([]);
     const [categoryId, setCategoryId] = useState<number>(initialCategoryId || 0);
     const [title, setTitle] = useState("");
-    const [bodyHtml, setBodyHtml] = useState(""); // HTML captured by PostEditor
+    const [bodyHtml, setBodyHtml] = useState(""); // HTML produced by PostEditor (sanitize on the server)
     const [sending, setSending] = useState(false);
     const [err, setErr] = useState<string | null>(null);
 
+    // Load available categories for the selector; default to the first if none preselected
     useEffect(() => {
         (async () => {
             try {
@@ -31,13 +32,14 @@ const ForumNewThread: React.FC = () => {
         })();
     }, [initialCategoryId]);
 
-    // Cheap “non-empty” guard: strip tags and whitespace
+    // Minimal validation: remove tags/whitespace to ensure body has visible content
     const bodyPlain = useMemo(() => {
         if (!bodyHtml) return "";
         const doc = new DOMParser().parseFromString(bodyHtml, "text/html");
         return (doc.body.textContent || "").replace(/\u200B/g, "").trim();
     }, [bodyHtml]);
 
+    // Create thread; server should sanitize/stash HTML body
     const createThread = async () => {
         try {
             setSending(true);
@@ -45,9 +47,7 @@ const ForumNewThread: React.FC = () => {
             const res = await fetchJSON<{ id: number }>(`/api/forum/threads`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                // Server expects CreateThreadInput { CategoryId, Title, Body }
-                // We now send HTML in Body. Sanitize server-side before storing!
-                body: JSON.stringify({ categoryId, title, body: bodyHtml }),
+                body: JSON.stringify({ categoryId, title, body: bodyHtml }), // API expects { CategoryId, Title, Body }
             });
             nav(`/forum/t/${res.id}`);
         } catch (e: any) {
@@ -58,6 +58,7 @@ const ForumNewThread: React.FC = () => {
         }
     };
 
+    // Require authentication to post
     if (!user) {
         return (
             <div className="container py-3">
@@ -102,7 +103,7 @@ const ForumNewThread: React.FC = () => {
                     initialHTML={bodyHtml}
                     onChange={setBodyHtml}
                     ariaLabel="Rédiger le message du fil"
-                    
+                    // Enable GIF picker (keys/ratings are passed through to the editor)
                     giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
                     giphyLang="fr"
                     giphyRating="g"

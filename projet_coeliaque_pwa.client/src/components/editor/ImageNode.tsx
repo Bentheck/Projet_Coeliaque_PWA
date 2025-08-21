@@ -9,6 +9,7 @@ import type {
     SerializedLexicalNode,
 } from "lexical";
 
+// Serialization format for ImageNode
 export type SerializedImageNode = SerializedLexicalNode & {
     type: "image";
     version: 1;
@@ -41,7 +42,7 @@ export class ImageNode extends DecoratorNode<React.ReactElement> {
         );
     }
 
-    // Tell Lexical how to import <img> from HTML/DOM
+    // Allow Lexical to convert <img> DOM elements into ImageNodes
     static importDOM(): DOMConversionMap {
         return {
             img: (domNode: Node) => {
@@ -118,16 +119,17 @@ export class ImageNode extends DecoratorNode<React.ReactElement> {
     }
 
     createDOM(): HTMLElement {
-        // DecoratorNode renders React in decorate(); wrapper element is fine
+        // Wrapper element – actual rendering is handled by decorate()
         return document.createElement("span");
     }
 
     updateDOM(): boolean {
+        // Nothing to update in the wrapper span
         return false;
     }
 
-    // Optional: what this node contributes to plain text selections
     getTextContent(): string {
+        // Image contributes alt text to plain text output
         return this.__altText || "";
     }
 
@@ -137,15 +139,15 @@ export class ImageNode extends DecoratorNode<React.ReactElement> {
             src: __src,
             alt: __altText || "",
             className: __className || "lexical-image",
-            style: { maxWidth: "100%", height: "auto" }, // in-editor friendliness
+            style: { maxWidth: "100%", height: "auto" }, // responsive inside editor
         };
         if (__width) props.width = __width;
         if (__height) props.height = __height;
-        // eslint-disable-next-line react/react-in-jsx-scope
         return <img {...props} />;
     }
 }
 
+// Helpers for working with ImageNode in editor code
 export function $createImageNode(payload: {
     src: string;
     altText?: string;

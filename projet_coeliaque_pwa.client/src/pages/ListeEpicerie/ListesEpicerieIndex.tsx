@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+/** Server DTO for list metadata shown on the index */
 interface ListeEpicerieDTO {
     id: number;
     name: string;
@@ -16,14 +17,16 @@ const ListesEpicerieIndex: React.FC = () => {
     const [listes, setListes] = useState<ListeEpicerieDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // UI state
     const [q, setQ] = useState("");
     const [sortBy, setSortBy] = useState<SortKey>("recent");
     const [status, setStatus] = useState<StatusFilter>("active");
-    const [pending, setPending] = useState<Record<number, boolean>>({});
+    const [pending, setPending] = useState<Record<number, boolean>>({}); // in-flight completion toggles
 
     const [searchParams, setSearchParams] = useSearchParams();
 
-    // Pick up ?status= from URL
+    /** Hydrate status from URL (?status=active|completed|all) so view is shareable */
     useEffect(() => {
         const s = (searchParams.get("status") || "").toLowerCase();
         if (s === "all" || s === "active" || s === "completed") {
@@ -33,9 +36,10 @@ const ListesEpicerieIndex: React.FC = () => {
 
     const applyStatus = (s: StatusFilter) => {
         setStatus(s);
-        setSearchParams({ status: s });
+        setSearchParams({ status: s }); // keep URL in sync with the filter
     };
 
+    /** Fetch lists; supports AbortController so refresh cannot race with unmount */
     const load = async (signal?: AbortSignal) => {
         try {
             setLoading(true);
@@ -57,6 +61,7 @@ const ListesEpicerieIndex: React.FC = () => {
         return () => ac.abort();
     }, []);
 
+    /** Small counters used for the filter pills */
     const counts = useMemo(() => {
         const total = listes.length;
         const completed = listes.filter(l => !!l.completed).length;
@@ -64,6 +69,12 @@ const ListesEpicerieIndex: React.FC = () => {
         return { total, active, completed };
     }, [listes]);
 
+    /**
+     * Client-side filtering/sorting:
+     * - status filter first (active/completed/all)
+     * - text search on name or formatted date
+     * - sort by date or name
+     */
     const filtered = useMemo(() => {
         const term = q.trim().toLowerCase();
         let arr = [...listes];
@@ -73,7 +84,7 @@ const ListesEpicerieIndex: React.FC = () => {
 
         if (term) {
             arr = arr.filter(
-                (l) =>
+                l =>
                     l.name?.toLowerCase().includes(term) ||
                     new Date(l.created).toLocaleDateString("fr-CA").toLowerCase().includes(term)
             );
@@ -85,6 +96,7 @@ const ListesEpicerieIndex: React.FC = () => {
             const db = new Date(b.created).getTime();
             return sortBy === "recent" ? db - da : da - db;
         });
+
         return arr;
     }, [listes, q, sortBy, status]);
 
@@ -97,9 +109,14 @@ const ListesEpicerieIndex: React.FC = () => {
             minute: "2-digit",
         });
 
+    /**
+     * Optimistic toggle of "completed":
+     * - flip UI immediately and track pending state
+     * - rollback on error and show a small alert
+     */
     const toggleCompleted = async (l: ListeEpicerieDTO, next: boolean) => {
         setPending(p => ({ ...p, [l.id]: true }));
-        setListes(prev => prev.map(x => x.id === l.id ? ({ ...x, completed: next }) : x));
+        setListes(prev => prev.map(x => (x.id === l.id ? { ...x, completed: next } : x)));
         try {
             const res = await fetch(`/api/ListeEpicerie/${l.id}/completed`, {
                 method: "PATCH",
@@ -110,7 +127,7 @@ const ListesEpicerieIndex: React.FC = () => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
         } catch (e) {
             console.error(e);
-            setListes(prev => prev.map(x => x.id === l.id ? ({ ...x, completed: !next }) : x));
+            setListes(prev => prev.map(x => (x.id === l.id ? { ...x, completed: !next } : x)));
             alert("Échec de la mise à jour du statut.");
         } finally {
             setPending(p => {
@@ -121,6 +138,7 @@ const ListesEpicerieIndex: React.FC = () => {
         }
     };
 
+    /** Hard delete with an inline confirm; remove from local state on success */
     const onDelete = async (l: ListeEpicerieDTO) => {
         if (!confirm(`Supprimer « ${l.name} » ?`)) return;
         try {
@@ -140,6 +158,7 @@ const ListesEpicerieIndex: React.FC = () => {
                 <div className="text-muted small">Gérez, triez et retrouvez vos listes. Les plus récentes d’abord.</div>
             </div>
 
+            {/* Controls: search • status pills (URL-synced) • sort • new list */}
             <div className="card shadow-sm mb-4">
                 <div className="card-body">
                     <div className="row g-2 align-items-center justify-content-center">
@@ -219,6 +238,7 @@ const ListesEpicerieIndex: React.FC = () => {
                 </div>
             </div>
 
+            {/* Errors are retryable without leaving the page */}
             {error && (
                 <div className="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
                     <span className="me-2">{error}</span>
@@ -226,6 +246,7 @@ const ListesEpicerieIndex: React.FC = () => {
                 </div>
             )}
 
+            {/* Skeletons while loading */}
             {loading ? (
                 <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -247,6 +268,7 @@ const ListesEpicerieIndex: React.FC = () => {
                     ))}
                 </div>
             ) : filtered.length === 0 ? (
+                // Empty state with quick action
                 <div className="border rounded-3 p-5 text-center bg-light">
                     <div className="display-6 mb-2">🛒</div>
                     <h2 className="h5">Aucune liste trouvée</h2>
@@ -254,6 +276,7 @@ const ListesEpicerieIndex: React.FC = () => {
                     <Link to="/liste-epicerie/edit" className="btn btn-primary">Créer une liste</Link>
                 </div>
             ) : (
+                // Cards grid
                 <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
                     {filtered.map((l) => {
                         const count = Array.isArray(l.items) ? l.items.length : 0;
@@ -271,6 +294,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                             </span>
                                         </div>
 
+                                        {/* Completion switch (optimistic; spinner while saving) */}
                                         <div className="form-check form-switch d-flex align-items-center gap-2 mt-2 mb-2">
                                             <input
                                                 className="form-check-input"
@@ -293,6 +317,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                             <small className="text-muted">Créée le {formatDate(l.created)}</small>
                                         </div>
 
+                                        {/* Primary actions: view / edit / delete (edit disabled when completed) */}
                                         <div className="mt-auto d-flex align-items-center gap-2">
                                             <Link to={`/liste-epicerie/view/${l.id}`} className="btn btn-outline-secondary w-100">Voir</Link>
                                             <Link

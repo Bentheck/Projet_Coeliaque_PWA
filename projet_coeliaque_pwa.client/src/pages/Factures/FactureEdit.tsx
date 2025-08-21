@@ -4,7 +4,7 @@ import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import CreatableSelect from "react-select/creatable";
 import type { SingleValue } from "react-select";
 
-// --- Interfaces ---
+/** Canonical unit options for validation and consistent UI */
 const UNIT_OPTIONS = [
     "g", "kg", "mg", "lb", "oz",
     "ml", "l", "fl oz",
@@ -13,8 +13,8 @@ const UNIT_OPTIONS = [
 
 interface FactureItem {
     id: number;
-    item: string;
-    typeItem: string;
+    item: string;          // Brand / product label
+    typeItem: string;      // Product category (user-creatable)
     quantite: number;
     prix: number;
     poidsValeur: number;
@@ -49,16 +49,16 @@ export default function FactureEdit() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Add item modal/wizard state
+    // “Add item” 2-step wizard state
     const [showAddModal, setShowAddModal] = useState(false);
     const [modalStep, setModalStep] = useState(1);
     const [modalTypeItem, setModalTypeItem] = useState("");
     const [modalForm, setModalForm] = useState(emptyItem);
 
-    // All unique item types across all factures
+    // Global list of unique product types (across all invoices) for suggestion/creation
     const [allTypeItems, setAllTypeItems] = useState<string[]>([]);
 
-    // --- Load Facture ---
+    /** Load current facture being edited */
     useEffect(() => {
         setLoading(true);
         fetch(`/api/factures/${id}`, { credentials: "include" })
@@ -71,7 +71,7 @@ export default function FactureEdit() {
             .finally(() => setLoading(false));
     }, [id]);
 
-    // --- Load all typeItems for dropdowns ---
+    /** Build product type suggestions from all factures (drives CreatableSelect) */
     useEffect(() => {
         fetch("/api/factures", { credentials: "include" })
             .then(async res => {
@@ -82,8 +82,7 @@ export default function FactureEdit() {
                 const types = new Set<string>();
                 allFactures.forEach(f =>
                     f.items.forEach(i => {
-                        if (i.typeItem && i.typeItem.trim())
-                            types.add(i.typeItem.trim());
+                        if (i.typeItem && i.typeItem.trim()) types.add(i.typeItem.trim());
                     })
                 );
                 setAllTypeItems([...types]);
@@ -91,16 +90,15 @@ export default function FactureEdit() {
             .catch(() => setAllTypeItems([]));
     }, []);
 
-    // Options for react-select
     const typeOptions = allTypeItems.map(type => ({ label: type, value: type }));
 
-    // --- Facture field change ---
+    /** Top-level facture field changes (simple name/value mapping) */
     function handleFactureChange(e: React.ChangeEvent<HTMLInputElement>) {
         if (!facture) return;
         setFacture({ ...facture, [e.target.name]: e.target.value });
     }
 
-    // --- Item inline change ---
+    /** Inline edit for one item (immutable update) */
     function handleItemChange(idx: number, field: keyof FactureItem, value: any) {
         if (!facture) return;
         const items = facture.items.slice();
@@ -108,7 +106,7 @@ export default function FactureEdit() {
         setFacture({ ...facture, items });
     }
 
-    // --- Remove item ---
+    /** Remove a single item row from the facture */
     function handleRemoveItem(idx: number) {
         if (!facture) return;
         const items = facture.items.slice();
@@ -116,7 +114,7 @@ export default function FactureEdit() {
         setFacture({ ...facture, items });
     }
 
-    // --- Add Item Wizard ---
+    // ----- Add Item Wizard -----
     function openAddModal() {
         setShowAddModal(true);
         setModalStep(1);
@@ -130,17 +128,18 @@ export default function FactureEdit() {
     function handleBackStep() {
         setModalStep(1);
     }
+    /** Normalize inputs and coerce checkbox to boolean */
     function handleModalChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) {
         const { name, value, type } = e.target;
-        let checked = false;
-        if (type === "checkbox") checked = (e.target as HTMLInputElement).checked;
+        const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
         setModalForm(prev => ({
             ...prev,
-            [name]: type === "checkbox" ? checked : value
+            [name]: type === "checkbox" ? !!checked : value
         }));
     }
+    /** Append new item client-side (server will get full payload on Save) */
     function handleAddItemSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
@@ -152,7 +151,7 @@ export default function FactureEdit() {
         setModalForm(emptyItem);
     }
 
-    // --- Save facture and items ---
+    /** Persist facture with all current items */
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
@@ -180,34 +179,49 @@ export default function FactureEdit() {
                     <h2 className="mb-4">
                         <i className="bi bi-receipt-cutoff me-2"></i>Modifier Facture
                     </h2>
+
                     {error && <div className="alert alert-danger">{error}</div>}
+
                     <form onSubmit={handleSubmit} autoComplete="off">
                         {/* Facture fields */}
                         <Row className="mb-4">
                             <Col md={3}>
                                 <label className="form-label fw-semibold">Facture ID</label>
-                                <input name="factureId" value={facture.factureId}
+                                <input
+                                    name="factureId"
+                                    value={facture.factureId}
                                     onChange={handleFactureChange}
-                                    className="form-control border-black rounded-3" />
+                                    className="form-control border-black rounded-3"
+                                />
                             </Col>
                             <Col md={3}>
                                 <label className="form-label fw-semibold">Date</label>
-                                <input name="date" type="date"
+                                <input
+                                    name="date"
+                                    type="date"
                                     value={facture.date.slice(0, 10)}
                                     onChange={handleFactureChange}
-                                    className="form-control border-black rounded-3" />
+                                    className="form-control border-black rounded-3"
+                                />
                             </Col>
                             <Col md={3}>
                                 <label className="form-label fw-semibold">Année</label>
-                                <input name="annee" type="number" value={facture.annee}
+                                <input
+                                    name="annee"
+                                    type="number"
+                                    value={facture.annee}
                                     onChange={handleFactureChange}
-                                    className="form-control border-black rounded-3" />
+                                    className="form-control border-black rounded-3"
+                                />
                             </Col>
                             <Col md={3}>
                                 <label className="form-label fw-semibold">Magasin</label>
-                                <input name="magasin" value={facture.magasin}
+                                <input
+                                    name="magasin"
+                                    value={facture.magasin}
                                     onChange={handleFactureChange}
-                                    className="form-control border-black rounded-3" />
+                                    className="form-control border-black rounded-3"
+                                />
                             </Col>
                         </Row>
 
@@ -244,7 +258,7 @@ export default function FactureEdit() {
                                     <tbody>
                                         {facture.items.map((item, i) => (
                                             <tr key={i}>
-                                                {/* 1) Type de produit */}
+                                                {/* Type de produit */}
                                                 <td>
                                                     <CreatableSelect
                                                         isClearable
@@ -261,7 +275,7 @@ export default function FactureEdit() {
                                                     />
                                                 </td>
 
-                                                {/* 2) Marque */}
+                                                {/* Marque / Produit */}
                                                 <td>
                                                     <input
                                                         className="form-control border-black rounded-2"
@@ -271,7 +285,7 @@ export default function FactureEdit() {
                                                     />
                                                 </td>
 
-                                                {/* 3) Prix */}
+                                                {/* Prix */}
                                                 <td>
                                                     <input
                                                         className="form-control border-black rounded-2"
@@ -283,7 +297,7 @@ export default function FactureEdit() {
                                                     />
                                                 </td>
 
-                                                {/* 4) Poids */}
+                                                {/* Poids */}
                                                 <td>
                                                     <input
                                                         className="form-control border-black rounded-2"
@@ -295,7 +309,7 @@ export default function FactureEdit() {
                                                     />
                                                 </td>
 
-                                                {/* 5) Unité */}
+                                                {/* Unité */}
                                                 <td>
                                                     <select
                                                         className="form-select border-black rounded-2"
@@ -309,7 +323,7 @@ export default function FactureEdit() {
                                                     </select>
                                                 </td>
 
-                                                {/* 6) Quantité */}
+                                                {/* Quantité */}
                                                 <td>
                                                     <input
                                                         className="form-control border-black rounded-2"
@@ -347,14 +361,14 @@ export default function FactureEdit() {
                                 </Table>
                             </div>
 
-                            {/* Mobile/Tablet cards */}
+                            {/* Mobile/Tablet cards (touch-friendly controls) */}
                             <div className="d-block d-xl-none">
                                 <div className="row g-3">
                                     {facture.items.map((item, i) => (
                                         <div className="col-12" key={i}>
                                             <div className="card border border-dark shadow-sm rounded-3">
                                                 <div className="card-body py-2 px-3">
-                                                    {/* 1) Type de produit */}
+                                                    {/* Type de produit */}
                                                     <div className="mb-2">
                                                         <label className="form-label small mb-1">Type de produit</label>
                                                         <CreatableSelect
@@ -376,7 +390,7 @@ export default function FactureEdit() {
                                                         />
                                                     </div>
 
-                                                    {/* 2) Marque */}
+                                                    {/* Marque */}
                                                     <div className="mb-2">
                                                         <label className="form-label small mb-0">Marque</label>
                                                         <input
@@ -387,7 +401,7 @@ export default function FactureEdit() {
                                                         />
                                                     </div>
 
-                                                    {/* 3) Prix */}
+                                                    {/* Prix */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">Prix</label>
                                                         <input
@@ -400,7 +414,7 @@ export default function FactureEdit() {
                                                         />
                                                     </div>
 
-                                                    {/* 4) Poids */}
+                                                    {/* Poids */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">Poids</label>
                                                         <input
@@ -413,7 +427,7 @@ export default function FactureEdit() {
                                                         />
                                                     </div>
 
-                                                    {/* 5) Unité */}
+                                                    {/* Unité */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">Unité</label>
                                                         <select
@@ -428,7 +442,7 @@ export default function FactureEdit() {
                                                         </select>
                                                     </div>
 
-                                                    {/* 6) Quantité */}
+                                                    {/* Quantité */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">Quantité</label>
                                                         <input
@@ -616,10 +630,7 @@ export default function FactureEdit() {
                                     <Button
                                         type="submit"
                                         className="btn btn-success rounded-pill px-4"
-                                        disabled={
-                                            !modalForm.item.trim() ||
-                                            !modalForm.poidsUnite.trim()
-                                        }
+                                        disabled={!modalForm.item.trim() || !modalForm.poidsUnite.trim()}
                                     >
                                         <i className="bi bi-plus-circle me-2"></i>Ajouter
                                     </Button>

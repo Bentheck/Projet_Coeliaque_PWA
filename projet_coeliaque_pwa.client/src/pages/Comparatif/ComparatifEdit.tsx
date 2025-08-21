@@ -4,6 +4,7 @@ import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import Select from "react-select";
 import type { SingleValue } from "react-select";
 
+/** API shapes */
 interface ProductComparisonDto {
     id: number;
     comparatifYearId: number;
@@ -20,6 +21,7 @@ interface ComparatifYearDto {
     lines: ProductComparisonDto[];
 }
 
+/** Canonical unit options kept centralized for consistency/validation */
 const UNIT_OPTIONS = ["mg", "g", "kg", "lb", "oz", "ml", "l", "fl oz"];
 
 type FCEl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
@@ -33,11 +35,13 @@ const ComparatifEdit: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Add line modal/wizard state
+    // Inline “add line” wizard
     const [showAddModal, setShowAddModal] = useState(false);
     const [modalStep, setModalStep] = useState(1);
     const [modalTypeItem, setModalTypeItem] = useState("");
-    const [modalForm, setModalForm] = useState<Omit<ProductComparisonDto, "id" | "comparatifYearId" | "typeItem">>({
+    const [modalForm, setModalForm] = useState<
+        Omit<ProductComparisonDto, "id" | "comparatifYearId" | "typeItem">
+    >({
         marque: "",
         prix: 0,
         poidsValeur: 0,
@@ -45,7 +49,7 @@ const ComparatifEdit: React.FC = () => {
         magasin: "",
     });
 
-    // Mobile detection for native select (<600px)
+    /** Use a simple breakpoint check to prefer native selects on small screens */
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
         const mq = window.matchMedia("(max-width: 599.98px)");
@@ -55,49 +59,54 @@ const ComparatifEdit: React.FC = () => {
         return () => mq.removeEventListener?.("change", apply);
     }, []);
 
-    // Type options (for the given year)
+    /** Type options are scoped to the selected year so comparisons stay consistent */
     const [typeOptionsList, setTypeOptionsList] = useState<string[]>([]);
     useEffect(() => {
         if (!year) return;
         fetch(`/api/comparatifyears/types?annee=${year.annee}`, { credentials: "include" })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
             .then((types: string[]) => setTypeOptionsList(types || []))
             .catch(() => setTypeOptionsList([]));
     }, [year]);
-    const typeSelectOptions = typeOptionsList.map(t => ({ label: t, value: t }));
+
+    const typeSelectOptions = typeOptionsList.map((t) => ({ label: t, value: t }));
+
+    /** Prevent duplicate typeItem across lines for a given year (business rule) */
     const allowedTypeOptionsFor = (index: number) =>
         typeOptionsList.filter(
-            opt => !lines.some((l, j) => l.typeItem === opt && j !== index) || lines[index].typeItem === opt
+            (opt) => !lines.some((l, j) => l.typeItem === opt && j !== index) || lines[index].typeItem === opt
         );
 
-    // Load year + lines
+    /** Load year and its current lines */
     useEffect(() => {
         setLoading(true);
         fetch(`/api/comparatifyears/${id}`, { credentials: "include" })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
             .then((data: ComparatifYearDto) => {
                 setYear(data);
-                setLines(data.lines.map(l => ({ ...l })));
+                // Copy to allow local editing before PUT
+                setLines(data.lines.map((l) => ({ ...l })));
             })
-            .catch(err => setError(err.message))
+            .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
     }, [id]);
 
-    // Inline changes
+    /** Local line editing without server round-trips; saved on submit */
     function handleLineChange(idx: number, field: keyof ProductComparisonDto, value: any) {
-        setLines(prev => {
+        setLines((prev) => {
             const arr = [...prev];
             arr[idx] = { ...arr[idx], [field]: value };
             return arr;
         });
     }
 
+    /** Delete a single comparison line */
     function handleDeleteLine(idx: number) {
         if (!year) return;
         if (!window.confirm("Supprimer cette ligne?")) return;
@@ -106,15 +115,15 @@ const ComparatifEdit: React.FC = () => {
             method: "DELETE",
             credentials: "include",
         })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
-                setLines(prev => prev.filter((_, i) => i !== idx));
-                setYear(y => (y ? { ...y, lines: y.lines.filter((_, i) => i !== idx) } : y));
+                setLines((prev) => prev.filter((_, i) => i !== idx));
+                setYear((y) => (y ? { ...y, lines: y.lines.filter((_, i) => i !== idx) } : y));
             })
-            .catch(err => setError(err.message));
+            .catch((err) => setError(err.message));
     }
 
-    // Save all
+    /** Persist all edits at once for atomicity */
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!year) return;
@@ -125,14 +134,14 @@ const ComparatifEdit: React.FC = () => {
             credentials: "include",
             body: JSON.stringify({ ...year, lines }),
         })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 navigate("/comparatif");
             })
-            .catch(err => setError(err.message));
+            .catch((err) => setError(err.message));
     }
 
-    // Add line wizard
+    /** Wizard controls */
     function openAddModal() {
         setShowAddModal(true);
         setModalStep(1);
@@ -150,13 +159,17 @@ const ComparatifEdit: React.FC = () => {
     function backStep() {
         setModalStep(1);
     }
+
+    /** Normalize modal field changes and coerce numeric inputs */
     const handleModalChange: React.ChangeEventHandler<FCEl> = (e) => {
         const { name, value } = e.target as FCEl & { name: string; value: string };
-        setModalForm(prev => ({
+        setModalForm((prev) => ({
             ...prev,
             [name]: name === "prix" || name === "poidsValeur" ? Number(value) : value,
         }));
     };
+
+    /** Create a new line then refresh year payload to stay in sync with server */
     function handleAddLineSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!year) return;
@@ -173,17 +186,17 @@ const ComparatifEdit: React.FC = () => {
                 magasin: modalForm.magasin,
             }),
         })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 return fetch(`/api/comparatifyears/${id}`, { credentials: "include" });
             })
-            .then(res => res.json())
+            .then((res) => res.json())
             .then((data: ComparatifYearDto) => {
                 setYear(data);
-                setLines(data.lines.map(l => ({ ...l })));
+                setLines(data.lines.map((l) => ({ ...l })));
                 closeAddModal();
             })
-            .catch(err => setError(err.message));
+            .catch((err) => setError(err.message));
     }
 
     if (loading) return <div>Chargement…</div>;
@@ -213,7 +226,7 @@ const ComparatifEdit: React.FC = () => {
                     {error && <div className="alert alert-danger">{error}</div>}
 
                     <form onSubmit={handleSubmit} autoComplete="off">
-                        {/* Desktop (>=1200px) table */}
+                        {/* Desktop table (denser editing UI) */}
                         <div className="d-none d-xl-block mb-3">
                             <Table bordered hover className="align-middle">
                                 <thead className="table-light text-center">
@@ -234,7 +247,7 @@ const ComparatifEdit: React.FC = () => {
                                                 <Select
                                                     isClearable
                                                     options={typeSelectOptions.filter(
-                                                        opt =>
+                                                        (opt) =>
                                                             !lines.some((l, j) => l.typeItem === opt.value && j !== i) ||
                                                             item.typeItem === opt.value
                                                     )}
@@ -244,8 +257,8 @@ const ComparatifEdit: React.FC = () => {
                                                     }
                                                     placeholder="Type…"
                                                     styles={{
-                                                        container: base => ({ ...base, minWidth: 0 }),
-                                                        menu: base => ({ ...base, zIndex: 9999 }),
+                                                        container: (base) => ({ ...base, minWidth: 0 }),
+                                                        menu: (base) => ({ ...base, zIndex: 9999 }),
                                                     }}
                                                 />
                                             </td>
@@ -253,7 +266,7 @@ const ComparatifEdit: React.FC = () => {
                                                 <input
                                                     className="form-control border-black rounded-2"
                                                     value={item.marque}
-                                                    onChange={e => handleLineChange(i, "marque", e.target.value)}
+                                                    onChange={(e) => handleLineChange(i, "marque", e.target.value)}
                                                     placeholder="Marque"
                                                 />
                                             </td>
@@ -263,7 +276,7 @@ const ComparatifEdit: React.FC = () => {
                                                     type="number"
                                                     step="0.01"
                                                     value={item.prix}
-                                                    onChange={e => handleLineChange(i, "prix", +e.target.value)}
+                                                    onChange={(e) => handleLineChange(i, "prix", +e.target.value)}
                                                     placeholder="Prix"
                                                 />
                                             </td>
@@ -273,7 +286,7 @@ const ComparatifEdit: React.FC = () => {
                                                     type="number"
                                                     step="0.01"
                                                     value={item.poidsValeur}
-                                                    onChange={e => handleLineChange(i, "poidsValeur", +e.target.value)}
+                                                    onChange={(e) => handleLineChange(i, "poidsValeur", +e.target.value)}
                                                     placeholder="Poids"
                                                 />
                                             </td>
@@ -281,10 +294,10 @@ const ComparatifEdit: React.FC = () => {
                                                 <select
                                                     className="form-select border-black rounded-2"
                                                     value={item.poidsUnite}
-                                                    onChange={e => handleLineChange(i, "poidsUnite", e.target.value)}
+                                                    onChange={(e) => handleLineChange(i, "poidsUnite", e.target.value)}
                                                 >
                                                     <option value="">-- Unité --</option>
-                                                    {UNIT_OPTIONS.map(u => (
+                                                    {UNIT_OPTIONS.map((u) => (
                                                         <option key={u} value={u}>
                                                             {u}
                                                         </option>
@@ -295,7 +308,7 @@ const ComparatifEdit: React.FC = () => {
                                                 <input
                                                     className="form-control border-black rounded-2"
                                                     value={item.magasin}
-                                                    onChange={e => handleLineChange(i, "magasin", e.target.value)}
+                                                    onChange={(e) => handleLineChange(i, "magasin", e.target.value)}
                                                     placeholder="Magasin"
                                                 />
                                             </td>
@@ -304,6 +317,8 @@ const ComparatifEdit: React.FC = () => {
                                                     type="button"
                                                     className="btn btn-outline-danger btn-sm rounded-pill px-3"
                                                     onClick={() => handleDeleteLine(i)}
+                                                    aria-label="Supprimer la ligne"
+                                                    title="Supprimer"
                                                 >
                                                     <i className="bi bi-x-lg"></i>
                                                 </button>
@@ -314,7 +329,7 @@ const ComparatifEdit: React.FC = () => {
                             </Table>
                         </div>
 
-                        {/* Mobile / Tablet (<1200px): card list */}
+                        {/* Mobile / Tablet: card list (touch-friendly controls) */}
                         <div className="d-block d-xl-none">
                             <div className="row g-3">
                                 {lines.map((item, i) => (
@@ -323,7 +338,9 @@ const ComparatifEdit: React.FC = () => {
                                             <div className="card-body py-2 px-3">
                                                 <div className="mb-2 d-flex justify-content-between align-items-start">
                                                     <div className="me-2">
-                                                        <div className="fw-bold">{item.marque || <span className="text-muted">Marque</span>}</div>
+                                                        <div className="fw-bold">
+                                                            {item.marque || <span className="text-muted">Marque</span>}
+                                                        </div>
                                                         <div className="small text-muted">{item.typeItem || "Type…"}</div>
                                                     </div>
                                                     <Button
@@ -346,10 +363,10 @@ const ComparatifEdit: React.FC = () => {
                                                         <select
                                                             className="form-select form-select-sm border-black rounded-2"
                                                             value={item.typeItem}
-                                                            onChange={e => handleLineChange(i, "typeItem", e.target.value)}
+                                                            onChange={(e) => handleLineChange(i, "typeItem", e.target.value)}
                                                         >
                                                             <option value="">Type…</option>
-                                                            {allowedTypeOptionsFor(i).map(t => (
+                                                            {allowedTypeOptionsFor(i).map((t) => (
                                                                 <option key={t} value={t}>
                                                                     {t}
                                                                 </option>
@@ -360,7 +377,7 @@ const ComparatifEdit: React.FC = () => {
                                                             isClearable
                                                             menuPlacement="top"
                                                             options={typeSelectOptions.filter(
-                                                                opt =>
+                                                                (opt) =>
                                                                     !lines.some((l, j) => l.typeItem === opt.value && j !== i) ||
                                                                     item.typeItem === opt.value
                                                             )}
@@ -370,11 +387,11 @@ const ComparatifEdit: React.FC = () => {
                                                             }
                                                             placeholder="Type…"
                                                             styles={{
-                                                                control: base => ({ ...base, minHeight: 28, fontSize: 14 }),
-                                                                valueContainer: base => ({ ...base, padding: "0 6px" }),
-                                                                input: base => ({ ...base, margin: 0, padding: 0 }),
-                                                                indicatorsContainer: base => ({ ...base, height: 24 }),
-                                                                menu: base => ({ ...base, zIndex: 9999 }),
+                                                                control: (base) => ({ ...base, minHeight: 28, fontSize: 14 }),
+                                                                valueContainer: (base) => ({ ...base, padding: "0 6px" }),
+                                                                input: (base) => ({ ...base, margin: 0, padding: 0 }),
+                                                                indicatorsContainer: (base) => ({ ...base, height: 24 }),
+                                                                menu: (base) => ({ ...base, zIndex: 9999 }),
                                                             }}
                                                         />
                                                     )}
@@ -386,7 +403,7 @@ const ComparatifEdit: React.FC = () => {
                                                     <input
                                                         className="form-control form-control-sm border-black rounded-2"
                                                         value={item.marque}
-                                                        onChange={e => handleLineChange(i, "marque", e.target.value)}
+                                                        onChange={(e) => handleLineChange(i, "marque", e.target.value)}
                                                         placeholder="Marque"
                                                     />
                                                 </div>
@@ -400,7 +417,7 @@ const ComparatifEdit: React.FC = () => {
                                                         step="0.01"
                                                         inputMode="decimal"
                                                         value={item.prix}
-                                                        onChange={e => handleLineChange(i, "prix", +e.target.value)}
+                                                        onChange={(e) => handleLineChange(i, "prix", +e.target.value)}
                                                         placeholder="Prix"
                                                     />
                                                 </div>
@@ -414,7 +431,7 @@ const ComparatifEdit: React.FC = () => {
                                                         step="0.01"
                                                         inputMode="decimal"
                                                         value={item.poidsValeur}
-                                                        onChange={e => handleLineChange(i, "poidsValeur", +e.target.value)}
+                                                        onChange={(e) => handleLineChange(i, "poidsValeur", +e.target.value)}
                                                         placeholder="Poids"
                                                     />
                                                 </div>
@@ -425,10 +442,10 @@ const ComparatifEdit: React.FC = () => {
                                                     <select
                                                         className="form-select form-select-sm border-black rounded-2"
                                                         value={item.poidsUnite}
-                                                        onChange={e => handleLineChange(i, "poidsUnite", e.target.value)}
+                                                        onChange={(e) => handleLineChange(i, "poidsUnite", e.target.value)}
                                                     >
                                                         <option value="">-- Unité --</option>
-                                                        {UNIT_OPTIONS.map(u => (
+                                                        {UNIT_OPTIONS.map((u) => (
                                                             <option key={u} value={u}>
                                                                 {u}
                                                             </option>
@@ -442,7 +459,7 @@ const ComparatifEdit: React.FC = () => {
                                                     <input
                                                         className="form-control form-control-sm border-black rounded-2"
                                                         value={item.magasin}
-                                                        onChange={e => handleLineChange(i, "magasin", e.target.value)}
+                                                        onChange={(e) => handleLineChange(i, "magasin", e.target.value)}
                                                         placeholder="Magasin"
                                                     />
                                                 </div>
@@ -484,14 +501,11 @@ const ComparatifEdit: React.FC = () => {
                                 <Form.Group className="mb-3">
                                     <Form.Label className="fw-bold">Type de produit</Form.Label>
                                     {isMobile ? (
-                                        <Form.Select
-                                            value={modalTypeItem}
-                                            onChange={e => setModalTypeItem(e.target.value)}
-                                        >
+                                        <Form.Select value={modalTypeItem} onChange={(e) => setModalTypeItem(e.target.value)}>
                                             <option value="">Choisissez un type…</option>
                                             {typeOptionsList
-                                                .filter(opt => !lines.some(l => l.typeItem === opt))
-                                                .map(t => (
+                                                .filter((opt) => !lines.some((l) => l.typeItem === opt))
+                                                .map((t) => (
                                                     <option key={t} value={t}>
                                                         {t}
                                                     </option>
@@ -500,15 +514,15 @@ const ComparatifEdit: React.FC = () => {
                                     ) : (
                                         <Select
                                             isClearable
-                                            options={typeSelectOptions.filter(opt => !lines.some(l => l.typeItem === opt.value))}
+                                            options={typeSelectOptions.filter((opt) => !lines.some((l) => l.typeItem === opt.value))}
                                             value={modalTypeItem ? { value: modalTypeItem, label: modalTypeItem } : null}
                                             onChange={(opt: SingleValue<{ label: string; value: string }>) =>
                                                 setModalTypeItem(opt?.value || "")
                                             }
                                             placeholder="Choisissez un type…"
                                             styles={{
-                                                container: base => ({ ...base, minWidth: 0 }),
-                                                menu: base => ({ ...base, zIndex: 9999 }),
+                                                container: (base) => ({ ...base, minWidth: 0 }),
+                                                menu: (base) => ({ ...base, zIndex: 9999 }),
                                             }}
                                         />
                                     )}
@@ -576,7 +590,7 @@ const ComparatifEdit: React.FC = () => {
                                             className="border-black rounded-3"
                                         >
                                             <option value="">-- Unité --</option>
-                                            {UNIT_OPTIONS.map(u => (
+                                            {UNIT_OPTIONS.map((u) => (
                                                 <option key={u} value={u}>
                                                     {u}
                                                 </option>
@@ -596,13 +610,21 @@ const ComparatifEdit: React.FC = () => {
                                     </Col>
                                 </Row>
                                 <div className="d-flex justify-content-between">
-                                    <Button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setModalStep(1)}>
+                                    <Button
+                                        type="button"
+                                        className="btn btn-secondary rounded-pill px-4"
+                                        onClick={() => setModalStep(1)}
+                                    >
                                         <i className="bi bi-arrow-left me-2"></i>Précédent
                                     </Button>
                                     <Button
                                         type="submit"
                                         className="btn btn-success rounded-pill px-4"
-                                        disabled={!modalForm.marque.trim() || !modalForm.poidsUnite.trim() || !modalTypeItem.trim()}
+                                        disabled={
+                                            !modalForm.marque.trim() ||
+                                            !modalForm.poidsUnite.trim() ||
+                                            !modalTypeItem.trim()
+                                        }
                                     >
                                         <i className="bi bi-plus-circle me-2"></i>Ajouter
                                     </Button>

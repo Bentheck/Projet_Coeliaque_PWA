@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto } from "../../lib/types";
 
+/** Accent stripes for cards (cycled by index) */
 const PALETTE = [
     "linear-gradient(90deg,#a18cd1 0%,#fbc2eb 100%)",
     "linear-gradient(90deg,#f6d365 0%,#fda085 100%)",
@@ -17,6 +18,10 @@ const ForumCategories: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
+    /**
+     * Fetch categories on mount.
+     * `alive` prevents setState after unmount if the request resolves late.
+     */
     useEffect(() => {
         let alive = true;
         (async () => {
@@ -24,19 +29,21 @@ const ForumCategories: React.FC = () => {
                 setLoading(true);
                 const data = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
                 if (alive) setCats(data);
-            } catch (e: any) {
-                if (alive) setErr("Impossible de charger les catégories.");
+            } catch (e) {
                 console.error(e);
+                if (alive) setErr("Impossible de charger les catégories.");
             } finally {
                 if (alive) setLoading(false);
             }
         })();
-        return () => { alive = false; };
+        return () => {
+            alive = false;
+        };
     }, []);
 
     return (
         <div className="container py-3">
-            {/* Hero */}
+            {/* Header / context */}
             <div className="rounded-4 p-4 p-md-5 mb-4 border bg-light">
                 <h1 className="h3 mb-1">Forum</h1>
                 <div className="text-muted">Choisissez une catégorie pour voir les discussions.</div>
@@ -45,6 +52,7 @@ const ForumCategories: React.FC = () => {
             {err && <div className="alert alert-danger">{err}</div>}
 
             {loading ? (
+                // Skeleton grid while loading
                 <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div className="col" key={i}>
@@ -69,6 +77,7 @@ const ForumCategories: React.FC = () => {
             ) : cats.length === 0 ? (
                 <div className="alert alert-info">Aucune catégorie.</div>
             ) : (
+                // Categories grid
                 <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
                     {cats.map((c, idx) => (
                         <div className="col" key={c.id}>

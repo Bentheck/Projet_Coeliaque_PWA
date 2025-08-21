@@ -2,11 +2,14 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Modal, Button } from "react-bootstrap";
 
+/** Valid weight/volume units shown in selects. */
 const UNIT_OPTIONS = [
     "g", "kg", "mg", "lb", "oz",
     "ml", "l", "fl oz",
     "un", "dozen",
 ];
+
+/* ---------- Shared DTOs ---------- */
 
 type FactureItemRow = {
     id: number;
@@ -14,7 +17,7 @@ type FactureItemRow = {
     typeItem: string;
     prix: number;
     magasin: string;
-    date: string; // ISO from API
+    date: string;          // ISO string from API
     wasOnSale: boolean;
     quantite?: number | null;
     poidsValeur?: number | null;
@@ -45,8 +48,8 @@ type ListeEpicerieItemDto = {
     freeItemId?: number | null;
     customName?: string | null;
     quantity: number;
-    isFavorite: boolean; // list-level
-    wasOnSale: boolean;  // list-level
+    isFavorite: boolean;  // list-level flag
+    wasOnSale: boolean;   // list-level flag
 };
 
 type ListeEpicerieDto = {
@@ -56,7 +59,10 @@ type ListeEpicerieDto = {
     items: ListeEpicerieItemDto[];
 };
 
-// robust fetch helper to avoid "Unexpected end of JSON input"
+/** Robust fetch helper:
+ *  - always sends credentials
+ *  - throws detailed HTTP errors
+ *  - tolerates empty bodies and non-JSON with best-effort parse */
 async function fetchJSON<T = any>(input: RequestInfo, init?: RequestInit): Promise<T> {
     const res = await fetch(input, { credentials: "include", ...init });
     const ct = res.headers.get("content-type") || "";
@@ -79,29 +85,35 @@ async function fetchJSON<T = any>(input: RequestInfo, init?: RequestInit): Promi
     }
 }
 
+/* ========================================================================== */
+/*                             ListeEpicerie Edit                              */
+/* ========================================================================== */
+
 const ListeEpicerieEdit: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
     const [liste, setListe] = useState<ListeEpicerieDto>({ name: "", items: [] });
 
-    // Facture modal
+    /* --------------------------- Modal: invoice items --------------------------- */
     const [showFactureModal, setShowFactureModal] = useState(false);
     const [factureTypes, setFactureTypes] = useState<FactureType[]>([]);
     const [selectedFactureType, setSelectedFactureType] = useState<string>("");
     const [factureItems, setFactureItems] = useState<FactureItemRow[]>([]);
+    /** Local cache by ID for quick lookup when rendering the list table. */
     const [factureById, setFactureById] = useState<Record<number, FactureItemRow>>({});
     const [hideFactureOnSale, setHideFactureOnSale] = useState(false);
 
-    // Free items modal
+    /* ----------------------------- Modal: free items ---------------------------- */
     const [showFreeModal, setShowFreeModal] = useState(false);
     const [freeTypes, setFreeTypes] = useState<FreeItemType[]>([]);
     const [selectedFreeType, setSelectedFreeType] = useState<string>("");
     const [freeItems, setFreeItems] = useState<FreeItem[]>([]);
+    /** Local cache by ID for quick lookup when rendering the list table. */
     const [freeById, setFreeById] = useState<Record<number, FreeItem>>({});
     const [hideFreeOnSale, setHideFreeOnSale] = useState(false);
 
-    // Create free item form
+    /* --------------------------- Create Free Item form -------------------------- */
     const [newFreeItemName, setNewFreeItemName] = useState("");
     const [newFreeItemType, setNewFreeItemType] = useState("");
     const [newFreeItemStore, setNewFreeItemStore] = useState("");
@@ -111,7 +123,7 @@ const ListeEpicerieEdit: React.FC = () => {
     const [newFreeItemWeight, setNewFreeItemWeight] = useState<string>("0");
     const [newFreeItemWeightUnit, setNewFreeItemWeightUnit] = useState<string>("");
 
-    // Edit free item modal
+    /* ---------------------------- Edit Free Item modal -------------------------- */
     const [editFreeOpen, setEditFreeOpen] = useState(false);
     const [editFreeId, setEditFreeId] = useState<number | null>(null);
     const [editName, setEditName] = useState("");
@@ -124,13 +136,14 @@ const ListeEpicerieEdit: React.FC = () => {
     const [editWeight, setEditWeight] = useState<string>("");
     const [editUnit, setEditUnit] = useState<string>("");
 
+    /** When the free item modal opens with a selected type, prefill the create form type. */
     useEffect(() => {
         if (showFreeModal && selectedFreeType && !newFreeItemType) {
             setNewFreeItemType(selectedFreeType);
         }
     }, [showFreeModal, selectedFreeType, newFreeItemType]);
 
-    // Initial load
+    /* ------------------------------- Initial load ------------------------------- */
     useEffect(() => {
         let ignore = false;
         (async () => {
@@ -146,7 +159,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 setFreeTypes(freetypes ?? []);
                 if (current) setListe(current);
 
-                // Tentative initial selection; will be validated below
+                // Prefer a default selection for invoices when possible.
                 if (!selectedFactureType && (ftypes?.length ?? 0) > 0) {
                     setSelectedFactureType(ftypes![0].type);
                 }
@@ -160,7 +173,7 @@ const ListeEpicerieEdit: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
-    // Load facture items for selected type
+    /* ---------- Load invoice items for the selected invoice type ---------- */
     useEffect(() => {
         let ignore = false;
         (async () => {
@@ -187,7 +200,7 @@ const ListeEpicerieEdit: React.FC = () => {
         };
     }, [selectedFactureType]);
 
-    // Load free items for selected type
+    /* ---------- Load free items for the selected free type ---------- */
     useEffect(() => {
         let ignore = false;
         (async () => {
@@ -214,7 +227,7 @@ const ListeEpicerieEdit: React.FC = () => {
         };
     }, [selectedFreeType]);
 
-    // Ensure caches have details for IDs present in the list
+    /* ---------- Ensure caches contain items already referenced in the list ---------- */
     useEffect(() => {
         const missingFacture = Array.from(
             new Set(
@@ -251,7 +264,7 @@ const ListeEpicerieEdit: React.FC = () => {
         if (missingFacture.length || missingFree.length) load();
     }, [liste.items, factureById, freeById]);
 
-    // Known stores for datalist (from currently loaded rows)
+    /* -------------------------- Shared "store" suggestions -------------------------- */
     const knownStores = useMemo(() => {
         const set = new Set<string>();
         factureItems.forEach(i => i.magasin && set.add(i.magasin));
@@ -259,7 +272,9 @@ const ListeEpicerieEdit: React.FC = () => {
         return Array.from(set).sort();
     }, [factureItems, freeItems]);
 
-    // Adders
+    /* ------------------------------- Add operations ------------------------------- */
+
+    /** Add an item from invoice rows; avoid duplicates. */
     const addFromFacture = (factureItemId: number) => {
         if (liste.items.some(i => i.factureItemId === factureItemId)) return;
         const src = factureById[factureItemId];
@@ -272,6 +287,7 @@ const ListeEpicerieEdit: React.FC = () => {
         }));
     };
 
+    /** Add an item from free item rows using their defaults. */
     const addFromFree = (fi: FreeItem) => {
         setListe(prev => ({
             ...prev,
@@ -287,7 +303,7 @@ const ListeEpicerieEdit: React.FC = () => {
         }));
     };
 
-    // Create new free item (instant refresh + types update)
+    /* --------------------------- Create a new free item --------------------------- */
     const addNewFreeItem = async () => {
         if (!newFreeItemName.trim() || !newFreeItemType.trim()) return;
 
@@ -321,6 +337,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 return;
             }
 
+            // Try to rehydrate from response if server returns the created entity.
             let created: FreeItem | null = null;
             try {
                 const ct = res.headers.get("content-type") || "";
@@ -328,15 +345,16 @@ const ListeEpicerieEdit: React.FC = () => {
                     created = (await res.json()) as FreeItem;
                 }
             } catch {
-                /* ignore */
+                /* ignore parse errors */
             }
 
-            // Always refresh type list
+            // Keep free type list fresh after creation.
             const types = await fetchJSON<FreeItemType[]>("/api/freeitems/types");
             setFreeTypes(types ?? []);
 
             const createdType = (created?.typeItem ?? newFreeItemType).trim();
 
+            // If viewing the same type, ensure the table shows the new row (without a full reload when possible).
             if (!selectedFreeType) {
                 if (createdType) setSelectedFreeType(createdType);
             } else if (createdType === selectedFreeType) {
@@ -356,7 +374,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 }
             }
 
-            // Reset form
+            // Reset form with sensible defaults.
             setNewFreeItemName("");
             setNewFreeItemType(selectedFreeType || "");
             setNewFreeItemStore("");
@@ -370,7 +388,7 @@ const ListeEpicerieEdit: React.FC = () => {
         }
     };
 
-    // delete a free item from modal (also remove from current grocery list if present)
+    /* ------------- Delete a free item (optionally removing from list) ------------- */
     const deleteFreeItem = async (fid: number) => {
         const usedCount = liste.items.filter(x => x.freeItemId === fid).length;
 
@@ -391,7 +409,7 @@ const ListeEpicerieEdit: React.FC = () => {
             return;
         }
 
-        // Refresh types & current type's list
+        // Refresh the current type and type counts after deletion.
         const [types, items] = await Promise.all([
             fetchJSON<FreeItemType[]>("/api/freeitems/types"),
             selectedFreeType
@@ -406,6 +424,7 @@ const ListeEpicerieEdit: React.FC = () => {
         });
     };
 
+    /* ---------------------------- List item operations --------------------------- */
     const updateQtyAtIndex = (idx: number, quantity: number) => {
         setListe(prev => ({
             ...prev,
@@ -417,6 +436,7 @@ const ListeEpicerieEdit: React.FC = () => {
         setListe(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
     };
 
+    /* --------------------------------- Persist list -------------------------------- */
     const save = async () => {
         const method = id ? "PUT" : "POST";
         const url = id ? `/api/ListeEpicerie/${id}` : "/api/ListeEpicerie";
@@ -438,6 +458,7 @@ const ListeEpicerieEdit: React.FC = () => {
         }
     };
 
+    /* ------------------------------ Edit free item flow ------------------------------ */
     const openEditFree = (freeId: number) => {
         const src = freeById[freeId] || freeItems.find(f => f.id === freeId);
         if (!src) return;
@@ -489,6 +510,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 return;
             }
 
+            // Refresh current type listing or update cache if no type is selected.
             if (selectedFreeType) {
                 const items = await fetchJSON<FreeItem[]>(
                     `/api/freeitems?type=${encodeURIComponent(selectedFreeType)}`
@@ -523,6 +545,7 @@ const ListeEpicerieEdit: React.FC = () => {
         }
     };
 
+    /* ------------------------------ Small UI helpers ------------------------------ */
     const SpecialDot: React.FC<{ on?: boolean }> = ({ on = false }) => (
         <span
             className={`d-inline-block rounded-circle ${on ? "bg-success" : "bg-danger"}`}
@@ -532,7 +555,7 @@ const ListeEpicerieEdit: React.FC = () => {
         />
     );
 
-    // --- FILTER FACTURE TYPES TO ONLY THOSE WITH REMAINING ITEMS ---
+    /* ------------------- Filter invoice types to “remaining items” ------------------ */
     const availableFactureTypes = useMemo(() => {
         const used = new Map<string, number>();
         for (const li of liste.items) {
@@ -547,7 +570,7 @@ const ListeEpicerieEdit: React.FC = () => {
             .filter(ft => ft.remaining > 0);
     }, [factureTypes, liste.items, factureById]);
 
-    // Keep selected facture type valid
+    /** Keep selected invoice type valid against the “remaining” list. */
     useEffect(() => {
         if (availableFactureTypes.length === 0) {
             if (selectedFactureType) setSelectedFactureType("");
@@ -559,7 +582,7 @@ const ListeEpicerieEdit: React.FC = () => {
         }
     }, [availableFactureTypes, selectedFactureType]);
 
-    // Facture list state for messaging/availability
+    /** Compute “available items” table for the selected invoice type respecting filters & current list. */
     const factureListState = useMemo(() => {
         const all = factureItems;
         const afterSale = factureItems.filter(i => !(hideFactureOnSale && i.wasOnSale));
@@ -574,7 +597,7 @@ const ListeEpicerieEdit: React.FC = () => {
         return { all, afterSale, available };
     }, [factureItems, hideFactureOnSale, liste.items]);
 
-    // Grouped views
+    /* --------------------------- Split list rows by origin -------------------------- */
     const factureRows = useMemo(
         () => liste.items.map((it, idx) => ({ it, idx })).filter(x => !!x.it.factureItemId),
         [liste.items]
@@ -584,10 +607,11 @@ const ListeEpicerieEdit: React.FC = () => {
         [liste.items]
     );
 
-    // ===== NEW: total price (display only) =====
+    /* ----------------------------- Display-only total ----------------------------- */
     const totalPrice = useMemo(() => {
         let sum = 0;
 
+        // Sum invoice-based items (use invoice price * quantity)
         for (const { it } of factureRows) {
             const src = it.factureItemId ? factureById[it.factureItemId] : undefined;
             const price = typeof src?.prix === "number" ? src.prix : 0;
@@ -595,6 +619,7 @@ const ListeEpicerieEdit: React.FC = () => {
             sum += price * qty;
         }
 
+        // Sum free items (use defaultPrix * quantity)
         for (const { it } of freeRows) {
             const src = it.freeItemId
                 ? (freeById[it.freeItemId] || freeItems.find(f => f.id === it.freeItemId))
@@ -607,10 +632,11 @@ const ListeEpicerieEdit: React.FC = () => {
         return sum;
     }, [factureRows, freeRows, factureById, freeById, freeItems]);
 
+    /* ------------------------------------ UI ------------------------------------ */
     return (
         <div className="container my-3">
+            {/* Header: name + save + back */}
             <div className="d-flex align-items-center gap-2 mb-3">
-                {/* NEW: Retour */}
                 <button
                     type="button"
                     className="btn btn-outline-secondary"
@@ -632,13 +658,14 @@ const ListeEpicerieEdit: React.FC = () => {
                 </button>
             </div>
 
-            {/* NEW: Total estimé */}
+            {/* Estimated total (CAD) */}
             <div className="mb-3">
                 <span className="badge text-bg-info">
                     Total estimé : {totalPrice.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
                 </span>
             </div>
 
+            {/* Add sources */}
             <div className="mb-3">
                 <button className="btn btn-outline-success me-2" onClick={() => setShowFactureModal(true)}>
                     + Ajouter depuis mes factures (sans gluten)
@@ -648,7 +675,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 </button>
             </div>
 
-            {/* Facture modal */}
+            {/* --------------------------- Modal: invoice items --------------------------- */}
             <Modal show={showFactureModal} onHide={() => setShowFactureModal(false)} size="xl" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Ajouter un item (factures)</Modal.Title>
@@ -670,7 +697,6 @@ const ListeEpicerieEdit: React.FC = () => {
                             ))}
                         </select>
 
-                        {/* hide en spécial */}
                         <div className="form-check ms-auto">
                             <input
                                 id="hideFactureOnSale"
@@ -747,12 +773,13 @@ const ListeEpicerieEdit: React.FC = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* Free items modal */}
+            {/* ---------------------------- Modal: free items ---------------------------- */}
             <Modal show={showFreeModal} onHide={() => setShowFreeModal(false)} size="xl" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Ajouter un produit libre</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
+                    {/* Inline creation form */}
                     <h6 className="mb-2">Créer un produit libre</h6>
                     <div className="row g-2 align-items-end mb-3">
                         <div className="col-md-3">
@@ -773,7 +800,6 @@ const ListeEpicerieEdit: React.FC = () => {
                                 placeholder="Ex.: Laitiers"
                                 list="type-suggestions"
                             />
-                            {/* optional: provide some suggestions via datalist if you have them */}
                             <datalist id="type-suggestions">
                                 {freeTypes.map(t => <option key={t.type} value={t.type} />)}
                             </datalist>
@@ -849,6 +875,8 @@ const ListeEpicerieEdit: React.FC = () => {
                     </div>
 
                     <hr className="mb-3" />
+
+                    {/* Listing by free type */}
                     <div className="d-flex align-items-center gap-2 mb-2">
                         <label className="me-2 mb-0">Type</label>
                         <select
@@ -953,10 +981,10 @@ const ListeEpicerieEdit: React.FC = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* -------- LIST SECTION (two categories) -------- */}
+            {/* ------------------------------- List section ------------------------------- */}
             <h4 className="mt-4">Articles dans la liste</h4>
 
-            {/* From invoices */}
+            {/* Items originating from invoices */}
             <h5 className="mt-3">Depuis mes factures</h5>
             {factureRows.length === 0 ? (
                 <div className="text-muted">Aucun article provenant des factures.</div>
@@ -1016,7 +1044,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 </div>
             )}
 
-            {/* Free items */}
+            {/* Items created as “free” products */}
             <h5 className="mt-4">Produits libres</h5>
             {freeRows.length === 0 ? (
                 <div className="text-muted">Aucun produit libre.</div>
@@ -1088,12 +1116,12 @@ const ListeEpicerieEdit: React.FC = () => {
                 </div>
             )}
 
-            {/* datalist for store autocomplete (shared) */}
+            {/* Shared datalist for store autocomplete */}
             <datalist id="stores">
                 {knownStores.map(s => <option key={s} value={s} />)}
             </datalist>
 
-            {/* Edit Free Item Modal */}
+            {/* ---------------------------- Modal: edit free item ---------------------------- */}
             <Modal show={editFreeOpen} onHide={() => setEditFreeOpen(false)} size="xl" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Modifier le produit libre</Modal.Title>

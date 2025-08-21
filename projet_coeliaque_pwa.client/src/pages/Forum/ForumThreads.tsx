@@ -4,9 +4,17 @@ import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto, ForumThreadListItemDto, PagedResult } from "../../lib/types";
 import Pagination from "../../components/Pagination";
 
+/**
+ * Thread list for a given forum category.
+ * - Reads categoryId from the URL.
+ * - Keeps page in the URL (?page=) so pagination is shareable/back-button friendly.
+ * - Fetches category metadata (name/description) and a paged list of threads.
+ */
 const ForumThreads: React.FC = () => {
     const { categoryId } = useParams<{ categoryId: string }>();
     const cid = Number(categoryId);
+
+    // Page is driven by the query string to preserve navigation state.
     const [searchParams, setSearchParams] = useSearchParams();
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
 
@@ -15,11 +23,18 @@ const ForumThreads: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
+    /**
+     * Load category info and the current page of threads.
+     * - Category details are fetched from the full list and filtered locally for simplicity.
+     * - Errors are shown with a user-friendly message and logged to console for diagnostics.
+     */
     const load = async () => {
         try {
-            setLoading(true); setErr(null);
+            setLoading(true);
+            setErr(null);
+
             const cats = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
-            setCat(cats.find(c => c.id === cid) || null);
+            setCat(cats.find((c) => c.id === cid) || null);
 
             const res = await fetchJSON<PagedResult<ForumThreadListItemDto>>(
                 `/api/forum/threads?categoryId=${cid}&page=${page}&pageSize=20`
@@ -33,15 +48,22 @@ const ForumThreads: React.FC = () => {
         }
     };
 
-    useEffect(() => { load(); /* eslint-disable-next-line */ }, [cid, page]);
+    // Reload when category or page changes.
+    useEffect(() => {
+        load();
+        // eslint-disable-next-line
+    }, [cid, page]);
+
+    // Keep page in the URL (triggers useEffect to reload).
     const setPage = (p: number) => setSearchParams({ page: String(p) });
 
+    // Compact, localized timestamp display for “created” and “last post”.
     const fmt = (iso: string) =>
         new Date(iso).toLocaleString("fr-CA", { dateStyle: "medium", timeStyle: "short" });
 
     return (
         <div className="container py-3">
-            {/* Header with back-to-categories and New Thread */}
+            {/* Header: back to categories + context + quick link to create a new thread in this category */}
             <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div className="d-flex align-items-start gap-2">
                     <Link to="/forum" className="btn btn-outline-secondary">
@@ -62,6 +84,7 @@ const ForumThreads: React.FC = () => {
             {err && <div className="alert alert-danger">{err}</div>}
 
             {loading ? (
+                // Skeletons while loading
                 <div className="row g-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div className="col-12" key={i}>
@@ -82,9 +105,9 @@ const ForumThreads: React.FC = () => {
                 <div className="alert alert-info">Aucun fil.</div>
             ) : (
                 <>
-                    {/* Threads as cards */}
+                    {/* Thread cards: show pinned/locked badges before the title for quick scanning */}
                     <div className="row g-3">
-                        {data.items.map(t => (
+                        {data.items.map((t) => (
                             <div className="col-12" key={t.id}>
                                 <Link to={`/forum/t/${t.id}`} className="text-decoration-none">
                                     <div className="card shadow-sm h-100 border-0 hover-shadow">
@@ -116,6 +139,7 @@ const ForumThreads: React.FC = () => {
                         ))}
                     </div>
 
+                    {/* Pager keeps URL in sync via setPage; disabling handled inside <Pagination /> */}
                     <div className="mt-3">
                         <Pagination page={data.page} totalPages={data.totalPages} onPage={setPage} />
                     </div>
