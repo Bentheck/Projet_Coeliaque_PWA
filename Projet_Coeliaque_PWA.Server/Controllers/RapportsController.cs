@@ -1,19 +1,17 @@
-﻿// Controllers/RapportsController.cs
-using System.Security.Claims;
-using System.Text.Json;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
     /// <summary>
-    /// Génération et consultation des rapports annuels (comparatifs $/100 et sous-totaux).
-    /// Toutes les opérations sont limitées à l'utilisateur authentifié courant.
+    /// Endpoints to list, generate, and retrieve yearly savings reports for the authenticated user.
     /// </summary>
     [Route("api/rapports")]
     [ApiController]
@@ -23,6 +21,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RapportsController"/>.
+        /// </summary>
+        /// <param name="db">Application database context.</param>
+        /// <param name="userManager">ASP.NET Identity user manager.</param>
         public RapportsController(ApplicationDbContext db, UserManager<IdentityUser> userManager)
         {
             _db = db;
@@ -30,31 +33,32 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         /// <summary>
-        /// Retourne la liste des années pour lesquelles l'utilisateur a des données de comparatif
-        /// et indique si un rapport a déjà été généré pour chacune d'elles.
+        /// Lists available report years for the current user and indicates whether a report is generated for each year.
         /// </summary>
+        /// <remarks>
+        /// Combines years from the user's <c>ComparatifYears</c> with years present in <c>SavedReports</c>.
+        /// </remarks>
+        /// <returns>
+        /// An ordered list (desc by year) of year descriptors including whether a report has been generated.
+        /// </returns>
+        /// <response code="200">Returns the list of years with generation flags.</response>
         [HttpGet]
-        [ProducesResponseType(typeof(List<RapportYearDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<List<RapportYearDto>>> GetAvailableReports(CancellationToken ct = default)
+        public async Task<ActionResult<List<RapportYearDto>>> GetAvailableReports()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            // Années présentes dans les comparatifs de l'utilisateur
+            // All years for which this user has a comparatif
             var userYears = await _db.ComparatifYears
-                .AsNoTracking()
                 .Where(cy => cy.UserId == userId)
                 .Select(cy => cy.Annee)
                 .Distinct()
-                .ToListAsync(ct);
+                .ToListAsync();
 
-            // Années pour lesquelles un rapport est déjà persisté
+            // All years for which this user has a generated report
             var generatedYears = await _db.SavedReports
-                .AsNoTracking()
                 .Where(r => r.UserId == userId)
                 .Select(r => r.Year)
-                .ToListAsync(ct);
+                .ToListAsync();
 
             var result = userYears
                 .OrderByDescending(y => y)
@@ -65,26 +69,26 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 })
                 .ToList();
 
-            return Ok(result);
+            return result;
         }
 
         /// <summary>
-        /// Récupère le rapport généré pour une année donnée (si présent en base).
+        /// Retrieves a previously generated report for a given year for the current user.
         /// </summary>
+        /// <param name="annee">Target year (e.g., 2025).</param>
+        /// <returns>
+        /// The report rows, the requesting user's display name, and the total of product subtotals.
+        /// </returns>
+        /// <response code="200">Returns the report for the specified year.</response>
+        /// <response code="404">No saved report was found for the specified year.</response>
         [HttpGet("{annee:int}")]
-        [ProducesResponseType(typeof(RapportDisplayDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<RapportDisplayDto>> GetReportByYear(int annee, CancellationToken ct = default)
+        public async Task<ActionResult<RapportDisplayDto>> GetReportByYear(int annee)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
             var user = await _userManager.GetUserAsync(User);
 
             var savedReport = await _db.SavedReports
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.UserId == userId && r.Year == annee, ct);
+                .FirstOrDefaultAsync(r => r.UserId == userId && r.Year == annee);
 
             if (savedReport == null)
                 return NotFound();
@@ -94,31 +98,36 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var total = reportRows.Sum(r => r.SousTotalProduit);
 
-            var dto = new RapportDisplayDto
+            return new RapportDisplayDto
             {
                 ReportRows = reportRows,
-                UserName = user?.UserName ?? user?.Email ?? "",
+                UserName = user?.UserName ?? "",
                 TotalSousTotalProduit = total
             };
-
-            return Ok(dto);
         }
 
         /// <summary>
-        /// Génère / régénère le rapport de l'année ciblée à partir des FactureItems et des ProductComparisons.
-        /// Écrit (ou met à jour) un enregistrement <see cref="SavedReport"/> persistent.
+        /// Generates (or regenerates) the report for a given year based on the user's invoices and product comparisons.
         /// </summary>
-        [HttpPost("generate/{annee:int}")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GenerateReport(int annee, CancellationToken ct = default)
+        /// <param name="annee">Target year to generate (e.g., 2025).</param>
+        /// <returns>HTTP 200 when the report has been persisted.</returns>
+        /// <remarks>
+        /// <para>
+        /// Aggregates invoice items for the year, aligns them with product comparisons, computes per-100 unit differences,
+        /// and saves the resulting rows as JSON in <c>SavedReports</c>.
+        /// </para>
+        /// <para>
+        /// Relies on <c>UnitConversionHelper.GetPricePer100</c> to normalize price per 100g or 100ml where applicable.
+        /// </para>
+        /// </remarks>
+        /// <response code="200">Report was generated and saved successfully.</response>
+        [HttpPost("generate/{annee}")]
+        public async Task<IActionResult> GenerateReport(int annee)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            // Regrouper les items de facture par (Item/TypeItem/PoidsUnite/Prix/PoidsValeur)
+            // Fetch all the relevant facture items for the user & year
             var groupedFactureItems = await _db.FactureItems
-                .AsNoTracking()
                 .Include(fi => fi.Facture)
                 .Where(fi => fi.Facture.UserId == userId && fi.Facture.Annee == annee)
                 .GroupBy(fi => new { fi.Item, fi.TypeItem, fi.PoidsUnite, fi.Prix, fi.PoidsValeur })
@@ -131,14 +140,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     PoidsValeur = g.Key.PoidsValeur,
                     QuantiteTotale = g.Sum(x => x.Quantite)
                 })
-                .ToListAsync(ct);
+                .ToListAsync();
 
-            // Comparatifs (avec gluten) de l'année
             var productComparisons = await _db.ProductComparisons
-                .AsNoTracking()
-                .Include(pc => pc.ComparatifYear)
                 .Where(pc => pc.ComparatifYear.Annee == annee && pc.ComparatifYear.UserId == userId)
-                .ToListAsync(ct);
+                .ToListAsync();
 
             var reportRows = new List<ProductComparisonRowDto>();
 
@@ -147,7 +153,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 var matchingComparison = productComparisons
                     .FirstOrDefault(pc => pc.TypeItem == factureGroup.TypeItem);
 
-                // Prix par 100 pour SansGluten et AvecGluten
+                // Assume you have UnitConversionHelper.GetPricePer100 as in your code
                 var (sg100, unitLabel) = UnitConversionHelper.GetPricePer100(
                     factureGroup.Prix,
                     factureGroup.PoidsValeur,
@@ -164,26 +170,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
                 var diffPer100 = sg100 - ag100;
 
-                // Quantité totale en unité de base (g ou ml) pour multiplier diffPer100
-                decimal qtyBaseUnit = (decimal)(factureGroup.PoidsValeur ?? 0d);
-                var unit = (factureGroup.PoidsUnite ?? "").ToLowerInvariant();
+                decimal qtyBaseUnit = (decimal)factureGroup.PoidsValeur;
+                string unit = (factureGroup.PoidsUnite ?? "").ToLower();
 
-                // Poids/volume -> convertir en g/ml
                 if (unit == "kg") qtyBaseUnit *= 1000m;
                 else if (unit == "mg") qtyBaseUnit /= 1000m;
                 else if (unit == "lb") qtyBaseUnit *= 453.59237m;
-                else if (unit == "oz") qtyBaseUnit *= 28.349523125m;
+                else if (unit == "oz") qtyBaseUnit *= 28.3495231m;
                 else if (unit == "l") qtyBaseUnit *= 1000m;
-                else if (unit == "fl oz") qtyBaseUnit *= 29.5735295625m;
+                else if (unit == "fl oz") qtyBaseUnit *= 29.5735296m;
 
-                var totalInBaseUnit = (decimal)factureGroup.QuantiteTotale * qtyBaseUnit;
-
+                decimal totalInBaseUnit = (decimal)factureGroup.QuantiteTotale * qtyBaseUnit;
                 decimal sousTotal;
-                // Si le label est $/100g ou $/100ml, on ramène à des « paquets de 100 »
-                if (unitLabel is "$/100g" or "$/100ml")
+
+                if (unitLabel == "$/100g" || unitLabel == "$/100ml")
                     sousTotal = diffPer100 * (totalInBaseUnit / 100m);
                 else
-                    // Fallback (unités non pondérales/volumétriques)
                     sousTotal = diffPer100 * (decimal)factureGroup.QuantiteTotale;
 
                 sousTotal = Math.Round(sousTotal, 2);
@@ -211,13 +213,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
             }
 
-            // Persist JSON
             var reportJson = JsonSerializer.Serialize(reportRows);
 
             var savedReport = await _db.SavedReports
-                .FirstOrDefaultAsync(r => r.UserId == userId && r.Year == annee, ct);
-
-            var generatedAt = DateTime.UtcNow;
+                .FirstOrDefaultAsync(r => r.UserId == userId && r.Year == annee);
 
             if (savedReport == null)
             {
@@ -225,25 +224,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 {
                     UserId = userId,
                     Year = annee,
-                    GeneratedAt = generatedAt,
+                    GeneratedAt = DateTime.UtcNow,
                     ReportJson = reportJson
                 };
                 _db.SavedReports.Add(savedReport);
             }
             else
             {
-                savedReport.GeneratedAt = generatedAt;
+                savedReport.GeneratedAt = DateTime.UtcNow;
                 savedReport.ReportJson = reportJson;
             }
 
-            await _db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync();
 
-            return Ok(new
-            {
-                year = annee,
-                rows = reportRows.Count,
-                generatedAt = generatedAt
-            });
+            return Ok();
         }
+
     }
 }
