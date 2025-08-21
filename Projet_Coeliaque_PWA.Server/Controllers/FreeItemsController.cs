@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Controllers/FreeItemsController.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
@@ -11,6 +12,12 @@ using System.Threading.Tasks;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
+    /// <summary>
+    /// CRUD-lite endpoints for a user's reusable “free items” templates.
+    /// Data is always scoped to the authenticated user (via <see cref="FreeItem.UserId" />).
+    /// 
+    /// NOTE: Routes and HTTP verbs are preserved exactly (GET/POST/PUT/DELETE).
+    /// </summary>
     [ApiController]
     [Route("api/freeitems")]
     [Authorize]
@@ -25,8 +32,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
+        // --------------------------------------------------------------------
         // GET: api/freeitems/types?q=...
+        // --------------------------------------------------------------------
+        /// <summary>
+        /// Returns distinct item types with counts for the current user.
+        /// Optionally filters by a substring <c>q</c> (SQL LIKE).
+        /// </summary>
         [HttpGet("types")]
+        [ProducesResponseType(typeof(object), 200)]
         public async Task<IActionResult> GetTypes([FromQuery] string? q, CancellationToken ct = default)
         {
             var query = _db.FreeItems
@@ -48,8 +62,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(types);
         }
 
+        // --------------------------------------------------------------------
         // GET: api/freeitems?type=...&q=...
+        // --------------------------------------------------------------------
+        /// <summary>
+        /// Lists free items for the current user, optionally filtered by exact <c>type</c>
+        /// and/or substring search <c>q</c> on the item name. Ordered by item name (A–Z).
+        /// </summary>
         [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<FreeItemDTO>), 200)]
         public async Task<IActionResult> GetItems([FromQuery] string? type, [FromQuery] string? q, CancellationToken ct = default)
         {
             var query = _db.FreeItems
@@ -73,8 +94,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(items);
         }
 
+        // --------------------------------------------------------------------
         // GET: api/freeitems/{id}
+        // --------------------------------------------------------------------
+        /// <summary>
+        /// Returns a single free item by id for the current user.
+        /// </summary>
         [HttpGet("{id:int}")]
+        [ProducesResponseType(typeof(FreeItemDTO), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> GetItem(int id, CancellationToken ct = default)
         {
             var dto = await _db.FreeItems
@@ -86,10 +114,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return dto is null ? NotFound() : Ok(dto);
         }
 
+        // --------------------------------------------------------------------
         // POST: api/freeitems
+        // --------------------------------------------------------------------
+        /// <summary>
+        /// Creates a new free item for the current user.
+        /// </summary>
         [HttpPost]
+        [ProducesResponseType(typeof(FreeItemDTO), 201)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] FreeItemDTO dto, CancellationToken ct = default)
         {
+            if (dto is null) return BadRequest("Payload manquant.");
             if (string.IsNullOrWhiteSpace(dto.Item) || string.IsNullOrWhiteSpace(dto.TypeItem))
                 return BadRequest("Item and TypeItem are required.");
 
@@ -104,24 +140,32 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 PoidsUnite = dto.PoidsUnite,
                 IsFavorite = dto.IsFavorite,
                 WasOnSale = dto.WasOnSale,
-                Magasin = string.IsNullOrWhiteSpace(dto.Magasin) ? null : dto.Magasin.Trim() // NEW
+                Magasin = string.IsNullOrWhiteSpace(dto.Magasin) ? null : dto.Magasin.Trim() // keep null if blank
             };
 
             _db.FreeItems.Add(entity);
             await _db.SaveChangesAsync(ct);
 
             var createdDto = ToDto(entity);
-
             return CreatedAtAction(nameof(GetItem), new { id = entity.Id }, createdDto);
         }
 
+        // --------------------------------------------------------------------
         // PUT: api/freeitems/{id}
+        // --------------------------------------------------------------------
+        /// <summary>
+        /// Updates a free item owned by the current user.
+        /// </summary>
         [HttpPut("{id:int}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Update(int id, [FromBody] FreeItemDTO dto, CancellationToken ct = default)
         {
             var f = await _db.FreeItems.FirstOrDefaultAsync(x => x.Id == id && x.UserId == UserId, ct);
             if (f == null) return NotFound();
 
+            if (dto is null) return BadRequest("Payload manquant.");
             if (string.IsNullOrWhiteSpace(dto.Item) || string.IsNullOrWhiteSpace(dto.TypeItem))
                 return BadRequest("Item and TypeItem are required.");
 
@@ -133,14 +177,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             f.PoidsUnite = dto.PoidsUnite;
             f.IsFavorite = dto.IsFavorite;
             f.WasOnSale = dto.WasOnSale;
-            f.Magasin = string.IsNullOrWhiteSpace(dto.Magasin) ? null : dto.Magasin.Trim(); // NEW
+            f.Magasin = string.IsNullOrWhiteSpace(dto.Magasin) ? null : dto.Magasin.Trim();
 
             await _db.SaveChangesAsync(ct);
             return NoContent();
         }
 
+        // --------------------------------------------------------------------
         // DELETE: api/freeitems/{id}
+        // --------------------------------------------------------------------
+        /// <summary>
+        /// Deletes a free item owned by the current user.
+        /// </summary>
         [HttpDelete("{id:int}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Delete(int id, CancellationToken ct = default)
         {
             var f = await _db.FreeItems.FirstOrDefaultAsync(x => x.Id == id && x.UserId == UserId, ct);
@@ -165,7 +216,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 PoidsUnite = f.PoidsUnite,
                 IsFavorite = f.IsFavorite,
                 WasOnSale = f.WasOnSale,
-                Magasin = f.Magasin // NEW
+                Magasin = f.Magasin
             };
 
         private static FreeItemDTO ToDto(FreeItem f) => new FreeItemDTO
@@ -179,7 +230,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             PoidsUnite = f.PoidsUnite,
             IsFavorite = f.IsFavorite,
             WasOnSale = f.WasOnSale,
-            Magasin = f.Magasin // NEW
+            Magasin = f.Magasin
         };
     }
 }

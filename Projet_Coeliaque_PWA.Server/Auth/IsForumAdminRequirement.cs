@@ -1,32 +1,46 @@
-﻿using System.Threading.Tasks;
+﻿using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 
 namespace Projet_Coeliaque_PWA.Server.Auth
 {
-    public class IsForumAdminRequirement : IAuthorizationRequirement { }
+    /// <summary>
+    /// Requirement marker: "user must be a forum admin".
+    /// </summary>
+    public sealed class IsForumAdminRequirement : IAuthorizationRequirement { }
 
-    public class IsForumAdminHandler : AuthorizationHandler<IsForumAdminRequirement>
+    /// <summary>
+    /// Authorization handler that succeeds when the current user exists
+    /// in the ForumAdmins table.
+    /// </summary>
+    public sealed class IsForumAdminHandler : AuthorizationHandler<IsForumAdminRequirement>
     {
         private readonly ApplicationDbContext _db;
-        private readonly IHttpContextAccessor _http;
 
-        public IsForumAdminHandler(ApplicationDbContext db, IHttpContextAccessor http)
+        public IsForumAdminHandler(ApplicationDbContext db)
         {
             _db = db;
-            _http = http;
         }
 
-        protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, IsForumAdminRequirement requirement)
+        protected override async Task HandleRequirementAsync(
+            AuthorizationHandlerContext context,
+            IsForumAdminRequirement requirement)
         {
-            var userId = _http.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            // User not authenticated → nothing to do.
+            var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return;
 
-            var isAdmin = await _db.ForumAdmins.FindAsync(userId) != null;
-            if (isAdmin) context.Succeed(requirement);
+            // Check membership in ForumAdmins (use AnyAsync; avoids tracking & materialization).
+            var isAdmin = await _db.ForumAdmins
+                                   .AsNoTracking()
+                                   .AnyAsync(a => a.UserId == userId)
+                                   .ConfigureAwait(false);
+
+            if (isAdmin)
+                context.Succeed(requirement);
         }
     }
 }

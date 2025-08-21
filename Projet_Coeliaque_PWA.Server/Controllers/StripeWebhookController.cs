@@ -22,9 +22,19 @@ public class StripeWebhookController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Stripe webhook entrypoint.
+    /// Handles:
+    /// - <c>checkout.session.completed</c> → creates/extends membership from first payment
+    /// - <c>invoice.payment_succeeded</c> → extends membership on renewal
+    /// - <c>customer.subscription.deleted</c> → ends access immediately
+    /// Always returns 200 to Stripe (logs errors internally) to avoid retry storms.
+    /// </summary>
+    /// <returns>200 OK to Stripe regardless of internal processing outcome.</returns>
     [HttpPost]
     public async Task<IActionResult> Index()
     {
+        // Read body + verify signature (throws on invalid)
         var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
         var signature = Request.Headers["Stripe-Signature"];
 
@@ -56,6 +66,7 @@ public class StripeWebhookController : ControllerBase
                             break;
                         }
 
+                        // Load subscription to determine period end
                         var subSvc = new SubscriptionService();
                         var sub = await subSvc.GetAsync(subId);
                         if (sub == null)
@@ -64,6 +75,7 @@ public class StripeWebhookController : ControllerBase
                             break;
                         }
 
+                        // Choose best period end; never write "now" if unknown
                         var periodEndUtc = BestPeriodEndUtcFromSubscription(sub);
                         if (periodEndUtc == null)
                         {
@@ -71,6 +83,7 @@ public class StripeWebhookController : ControllerBase
                             break; // do NOT write "now"
                         }
 
+                        // Prefer user_id from subscription metadata; fallback to session metadata
                         var userId = ExtractUserId(sub.Metadata) ?? ExtractUserId(session.Metadata);
                         var customerId = GetCustomerId(sub);
 
@@ -151,6 +164,10 @@ public class StripeWebhookController : ControllerBase
 
     // ---------------- Membership write helper ----------------
 
+    /// <summary>
+    /// Create or extend a membership safely. Prefers matching on SubscriptionId, then CustomerId, then UserId.
+    /// Never shortens EndDate; only extends when the new end is later.
+    /// </summary>
     private async Task UpsertMembershipAsync(string? userId, string? customerId, string subscriptionId, DateTime newEndUtc)
     {
         // Prefer find by subscription id; then by customer id; then by user id.
@@ -187,7 +204,7 @@ public class StripeWebhookController : ControllerBase
         {
             // First time we see this user/subscription
             var now = DateTime.UtcNow;
-            var start = now; // you could derive start similarly if needed
+            var start = now; // could be derived similarly if needed
 
             _db.Memberships.Add(new Membership
             {
@@ -209,9 +226,11 @@ public class StripeWebhookController : ControllerBase
 
     // ---------------- Period/end extraction helpers ----------------
 
+    /// <summary>Returns the best available period end (subscription-level first, then latest item-level).</summary>
     private static DateTime? BestPeriodEndUtcFromSubscription(Subscription sub)
-    => GetCurrentPeriodEndUtc(sub) ?? GetLatestItemPeriodEndUtc(sub);
+        => GetCurrentPeriodEndUtc(sub) ?? GetLatestItemPeriodEndUtc(sub);
 
+    /// <summary>Extracts the latest period end from invoice lines (if available).</summary>
     private static DateTime? GetInvoicePeriodEndUtc(Invoice inv)
     {
         // inv.Lines.Data[*].Period.End (epoch seconds)
@@ -237,6 +256,7 @@ public class StripeWebhookController : ControllerBase
         return best;
     }
 
+    /// <summary>Extracts subscription current period end (handles SDK types).</summary>
     private static DateTime? GetCurrentPeriodEndUtc(Subscription sub)
     {
         // sub.CurrentPeriodEnd may be long? (epoch) or DateTime depending on SDK
@@ -250,6 +270,7 @@ public class StripeWebhookController : ControllerBase
         return null;
     }
 
+    /// <summary>Extracts the latest period end among subscription items (handles SDK types).</summary>
     private static DateTime? GetLatestItemPeriodEndUtc(Subscription sub)
     {
         // sub.Items.Data[*].CurrentPeriodEnd
@@ -273,6 +294,7 @@ public class StripeWebhookController : ControllerBase
         return best;
     }
 
+    /// <summary>Coerces common Stripe SDK shapes (DateTime, DateTimeOffset, epoch seconds) to UTC DateTime.</summary>
     private static DateTime? CoerceToUtcDateTime(object? val)
     {
         if (val == null) return null;
@@ -285,6 +307,7 @@ public class StripeWebhookController : ControllerBase
 
     // ---------------- Id helpers (SDK variations safe) ----------------
 
+    /// <summary>Gets SubscriptionId from <see cref="Session"/> (supports both <c>SubscriptionId</c> and expandable <c>Subscription</c>).</summary>
     private static string? GetSubscriptionIdFromSession(Session s)
     {
         // Session.SubscriptionId (string) or Session.Subscription (Expandable<Subscription>)
@@ -298,6 +321,7 @@ public class StripeWebhookController : ControllerBase
         return string.IsNullOrWhiteSpace(innerId) ? null : innerId;
     }
 
+    /// <summary>Gets SubscriptionId from <see cref="Invoice"/> (supports both <c>SubscriptionId</c> and expandable <c>Subscription</c>).</summary>
     private static string? GetSubscriptionIdFromInvoice(Invoice inv)
     {
         // Invoice.SubscriptionId (string) or Invoice.Subscription (Expandable<Subscription>)
@@ -311,6 +335,7 @@ public class StripeWebhookController : ControllerBase
         return string.IsNullOrWhiteSpace(innerId) ? null : innerId;
     }
 
+    /// <summary>Gets CustomerId from <see cref="Subscription"/> (supports both <c>CustomerId</c> and expandable <c>Customer</c>).</summary>
     private static string? GetCustomerId(Subscription sub)
     {
         // Subscription.CustomerId (string) or Subscription.Customer (Expandable<Customer>)
@@ -324,6 +349,7 @@ public class StripeWebhookController : ControllerBase
         return string.IsNullOrWhiteSpace(innerId) ? null : innerId;
     }
 
+    /// <summary>Extracts <c>user_id</c> from Stripe metadata dictionary.</summary>
     private static string? ExtractUserId(Dictionary<string, string> metadata)
         => metadata != null && metadata.TryGetValue("user_id", out var uid) && !string.IsNullOrWhiteSpace(uid)
             ? uid : null;

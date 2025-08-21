@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿// Controllers/ForumController.cs
+using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Ganss.Xss;
 using Microsoft.AspNetCore.Authorization;
@@ -15,6 +16,11 @@ using System.Threading.Tasks;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
+    /// <summary>
+    /// Public forum endpoints: categories, thread listing, thread detail, posts tree,
+    /// thread/post creation, voting, editing, soft-deleting, and title updates.
+    /// NOTE: Method signatures, routes, and HTTP verbs preserved exactly as requested.
+    /// </summary>
     [ApiController]
     [Route("api/forum")]
     public class ForumController : ControllerBase
@@ -30,7 +36,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _mapper = mapper;
             _um = um;
 
-            // Server-side HTML sanitizer (align with your client allowlist)
+            // Server-side HTML sanitizer (align with client allowlist)
             _sanitizer = new HtmlSanitizer();
             _sanitizer.AllowedTags.Clear();
             _sanitizer.AllowedTags.UnionWith(new[]
@@ -58,7 +64,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         // --------------------- Categories & thread list ---------------------
 
+        /// <summary>
+        /// Returns all forum categories.
+        /// </summary>
         [HttpGet("categories")]
+        [ProducesResponseType(typeof(IEnumerable<ForumCategoryDto>), 200)]
         public async Task<ActionResult> GetCategories()
         {
             var list = await _db.ForumCategories
@@ -69,7 +79,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(list);
         }
 
+        /// <summary>
+        /// Paged list of threads for a category (pins first, then last activity). 
+        /// Default page = 1, default pageSize = 20 (max 100).
+        /// </summary>
         [HttpGet("threads")]
+        [ProducesResponseType(typeof(PagedResult<ForumThreadListItemDto>), 200)]
         public async Task<ActionResult> GetThreads([FromQuery] int categoryId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             if (page < 1) page = 1;
@@ -94,7 +109,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         // --------------------- Thread (enriched with Score/MyVote/ownership) ---------------------
 
+        /// <summary>
+        /// Returns a single thread with computed score, current user's vote, and edit capability for the title.
+        /// </summary>
         [HttpGet("threads/{id:int}")]
+        [ProducesResponseType(typeof(ForumThreadDto), 200)]
+        [ProducesResponseType(404)]
         public async Task<ActionResult> GetThread(int id)
         {
             var userId = _um.GetUserId(User); // can be null
@@ -148,10 +168,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         // --------------------- Posts as TREE with sorting & voting ---------------------
 
         /// <summary>
-        /// sort: "top" (default) | "new" | "old"
-        /// Paging applies to top-level comments; children are fetched in full beneath each visible top-level comment.
+        /// Returns a paged tree of posts for a thread.
+        /// <list type="bullet">
+        /// <item><description><c>sort</c>: "top" (default) | "new" | "old"</description></item>
+        /// <item><description>Paging applies to top-level comments only; children are returned fully under each top-level item.</description></item>
+        /// </list>
         /// </summary>
         [HttpGet("threads/{id:int}/posts")]
+        [ProducesResponseType(typeof(PagedResult<ForumPostTreeDto>), 200)]
         public async Task<ActionResult> GetPosts(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string sort = "top")
         {
             if (page < 1) page = 1;
@@ -254,8 +278,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         // --------------------- Create thread / reply (HTML sanitized) ---------------------
 
+        /// <summary>
+        /// Create a new thread with its first post. Body is sanitized server-side.
+        /// </summary>
         [Authorize]
         [HttpPost("threads")]
+        [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
         public async Task<ActionResult> CreateThread([FromBody] CreateThreadInput input)
         {
             if (string.IsNullOrWhiteSpace(input.Title) || string.IsNullOrWhiteSpace(input.Body))
@@ -292,8 +322,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return CreatedAtAction(nameof(GetThread), new { id = t.Id }, new { id = t.Id });
         }
 
+        /// <summary>
+        /// Reply to a thread (optionally to a parent post). Body is sanitized server-side.
+        /// </summary>
         [Authorize]
         [HttpPost("threads/{id:int}/posts")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(409)]
         public async Task<IActionResult> Reply(int id, [FromBody] CreatePostInput input)
         {
             if (string.IsNullOrWhiteSpace(input.Body))
@@ -335,8 +372,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         public record VoteInput(int Value); // -1, 0, or 1
 
+        /// <summary>
+        /// Vote on a thread: -1 (down), 0 (clear), 1 (up). Returns new score and your vote.
+        /// </summary>
         [Authorize]
         [HttpPost("threads/{id:int}/vote")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<ActionResult> VoteThread(int id, [FromBody] VoteInput input)
         {
             if (input is null || (input.Value != -1 && input.Value != 0 && input.Value != 1))
@@ -372,8 +415,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { score, myVote = input.Value });
         }
 
+        /// <summary>
+        /// Vote on a post: -1 (down), 0 (clear), 1 (up). Returns new score and your vote.
+        /// </summary>
         [Authorize]
         [HttpPost("posts/{postId:int}/vote")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<ActionResult> VotePost(int postId, [FromBody] VoteInput input)
         {
             if (input is null || (input.Value != -1 && input.Value != 0 && input.Value != 1))
@@ -409,13 +458,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { score, myVote = input.Value });
         }
 
-        // --------------------- NEW: edit/delete posts + edit thread title ---------------------
+        // --------------------- Edit/delete posts + edit thread title ---------------------
 
         public record UpdatePostInput(string Body);
         public record UpdateThreadTitleInput(string Title);
 
+        /// <summary>
+        /// Edit a post you own, or if you're a moderator/admin. Body is sanitized server-side.
+        /// </summary>
         [Authorize]
         [HttpPut("posts/{postId:int}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> EditPost(int postId, [FromBody] UpdatePostInput input)
         {
             if (input == null || string.IsNullOrWhiteSpace(input.Body))
@@ -439,8 +495,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Soft-delete a post (or restore if you switch logic to allow). Requires owner/mod/admin.
+        /// </summary>
         [Authorize]
         [HttpDelete("posts/{postId:int}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> DeletePost(int postId)
         {
             var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == postId);
@@ -462,8 +524,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Edit a thread's title if you own it, or you're a moderator/admin.
+        /// </summary>
         [Authorize]
         [HttpPut("threads/{id:int}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> EditThreadTitle(int id, [FromBody] UpdateThreadTitleInput input)
         {
             if (input == null || string.IsNullOrWhiteSpace(input.Title))

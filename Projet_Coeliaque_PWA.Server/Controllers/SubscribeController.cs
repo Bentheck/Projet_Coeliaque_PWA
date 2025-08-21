@@ -7,6 +7,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Subscription endpoints for creating a Stripe Checkout session and opening the Stripe Billing Portal.
+/// </summary>
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
@@ -17,6 +20,9 @@ public class SubscribeController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly string _frontendUrl;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SubscribeController"/>.
+    /// </summary>
     public SubscribeController(IConfiguration config, UserManager<IdentityUser> userManager, IWebHostEnvironment env)
     {
         _config = config;
@@ -25,6 +31,12 @@ public class SubscribeController : ControllerBase
         _frontendUrl = _config["FrontendUrl"];
     }
 
+    /// <summary>
+    /// Creates a Stripe Checkout Session to start a subscription.
+    /// In Development, supports <c>?test=1</c> or <c>?test=true</c> to use a test price,
+    /// and <c>?customerId=cus_...</c> to force a customer (useful for Test Clocks).
+    /// </summary>
+    /// <returns>Session ID to redirect with stripe-js.</returns>
     [HttpPost("create-checkout-session")]
     public async Task<IActionResult> CreateCheckoutSession()
     {
@@ -102,7 +114,10 @@ public class SubscribeController : ControllerBase
         return Ok(new { sessionId = session.Id });
     }
 
-    // NEW: Stripe Customer Portal (manage payment method, cancel/renew, invoices)
+    /// <summary>
+    /// Creates a Stripe Billing Portal session so the user can manage payment methods, invoices, and subscriptions.
+    /// </summary>
+    /// <returns>Hosted portal URL for client-side redirection.</returns>
     [HttpPost("create-portal-session")]
     public async Task<IActionResult> CreatePortalSession()
     {

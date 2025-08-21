@@ -12,6 +12,9 @@ using Projet_Coeliaque_PWA.Server.Models;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
+    /// <summary>
+    /// Super-admin endpoints for managing forum admins, Identity Admin role, and memberships.
+    /// </summary>
     [ApiController]
     [Route("api/super/admins")]
     [Authorize(Policy = "IsSuperAdmin")] // ONLY superadmin can use these
@@ -20,6 +23,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _um;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SuperAdminController"/>.
+        /// </summary>
         public SuperAdminController(ApplicationDbContext db, UserManager<IdentityUser> um)
         {
             _db = db;
@@ -30,6 +36,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         // -------- Forum Admins (DB-backed) --------
 
+        /// <summary>
+        /// Lists all forum admins (from DB) with their display names and added dates.
+        /// </summary>
+        /// <returns>List of <see cref="ForumAdminDto"/>.</returns>
         // GET /api/super/admins/forum
         [HttpGet("forum")]
         public async Task<ActionResult> ListForumAdmins()
@@ -44,6 +54,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(items);
         }
 
+        /// <summary>
+        /// Adds a forum admin by userId or email.
+        /// </summary>
+        /// <param name="input">Payload containing userId or email.</param>
+        /// <returns>Created result with the new admin's userId.</returns>
         // POST /api/super/admins/forum   { userId?: "...", email?: "..." }
         [HttpPost("forum")]
         public async Task<ActionResult> AddForumAdmin([FromBody] UpsertForumAdminInput input)
@@ -66,6 +81,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return CreatedAtAction(nameof(ListForumAdmins), new { id = user.Id }, new { userId = user.Id });
         }
 
+        /// <summary>
+        /// Removes a forum admin by userId.
+        /// </summary>
+        /// <param name="userId">The userId of the forum admin to remove.</param>
+        /// <returns>No content on success.</returns>
         // DELETE /api/super/admins/forum/{userId}
         [HttpDelete("forum/{userId}")]
         public async Task<IActionResult> RemoveForumAdmin(string userId)
@@ -79,6 +99,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         // -------- Identity "Admin" role (site-wide admin for future tasks) --------
 
+        /// <summary>
+        /// Lists all users in the Identity "Admin" role.
+        /// </summary>
+        /// <returns>Collection of user IDs and display names.</returns>
         // GET /api/super/admins/identity
         [HttpGet("identity")]
         public async Task<ActionResult> ListIdentityAdmins()
@@ -91,6 +115,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(items);
         }
 
+        /// <summary>
+        /// Grants the Identity "Admin" role to a user by userId or email.
+        /// </summary>
+        /// <param name="input">Payload containing userId or email.</param>
+        /// <returns>Created result on success.</returns>
         // POST /api/super/admins/identity   { userId?: "...", email?: "..." }
         [HttpPost("identity")]
         public async Task<ActionResult> AddIdentityAdmin([FromBody] UpsertForumAdminInput input)
@@ -114,6 +143,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return CreatedAtAction(nameof(ListIdentityAdmins), new { id = user.Id }, new { userId = user.Id });
         }
 
+        /// <summary>
+        /// Removes the Identity "Admin" role from a user.
+        /// </summary>
+        /// <param name="userId">The user to demote from the Admin role.</param>
+        /// <returns>No content on success.</returns>
         // DELETE /api/super/admins/identity/{userId}
         [HttpDelete("identity/{userId}")]
         public async Task<IActionResult> RemoveIdentityAdmin(string userId)
@@ -130,6 +164,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         #region Membership management
 
+        /// <summary>
+        /// Searches users by email or username (case-insensitive).
+        /// </summary>
+        /// <param name="q">Query term (min 2 characters).</param>
+        /// <param name="take">Maximum results to return (1–20).</param>
+        /// <returns>Autocomplete friendly list of users.</returns>
         // GET /api/super/admins/memberships/search?q=abc&take=8
         [HttpGet("memberships/search")]
         public async Task<ActionResult> SearchUsersByEmail([FromQuery] string q, [FromQuery] int take = 8)
@@ -158,6 +198,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(results);
         }
 
+        /// <summary>
+        /// Gets the membership information for a given user.
+        /// </summary>
+        /// <param name="userId">Target user ID.</param>
+        /// <returns><see cref="MembershipDto"/> describing the membership window and status.</returns>
         // GET /api/super/admins/memberships/{userId}
         [HttpGet("memberships/{userId}")]
         public async Task<ActionResult> GetMembershipForUser(string userId)
@@ -172,6 +217,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new MembershipDto(userId, m.StartDate, m.EndDate, m.IsActive));
         }
 
+        /// <summary>
+        /// Creates or updates a membership window for a given user.
+        /// Optionally toggles active state by adjusting Start/End dates.
+        /// </summary>
+        /// <param name="userId">Target user ID.</param>
+        /// <param name="input">Membership update payload.</param>
+        /// <returns>The resulting membership descriptor.</returns>
         // PUT /api/super/admins/memberships/{userId}
         [HttpPut("memberships/{userId}")]
         public async Task<ActionResult> UpsertMembershipForUser(string userId, [FromBody] UpsertMembershipInput input)

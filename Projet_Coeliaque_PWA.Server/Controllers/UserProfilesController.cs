@@ -8,6 +8,10 @@ using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
 using System.Security.Claims;
 
+/// <summary>
+/// User profile endpoints: fetch by userId or name, get/update current user's profile,
+/// and build absolute avatar URLs with cache-busting.
+/// </summary>
 [ApiController]
 [Route("api/users")]
 public class UserProfilesController : ControllerBase
@@ -16,6 +20,9 @@ public class UserProfilesController : ControllerBase
     private readonly IMapper _mapper;
     private readonly UserManager<IdentityUser> _um;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UserProfilesController"/>.
+    /// </summary>
     public UserProfilesController(ApplicationDbContext db, IMapper mapper, UserManager<IdentityUser> um)
     {
         _db = db; _mapper = mapper; _um = um;
@@ -23,6 +30,12 @@ public class UserProfilesController : ControllerBase
 
     private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+    /// <summary>
+    /// Gets a user's profile by userId. If none exists, a temporary profile is constructed from Identity data.
+    /// </summary>
+    /// <param name="userId">Target user ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A <see cref="UserProfileDto"/>.</returns>
     // GET: /api/users/{userId}/profile
     [HttpGet("{userId}/profile")]
     public async Task<ActionResult<UserProfileDto>> GetProfile(string userId, CancellationToken ct)
@@ -56,6 +69,12 @@ public class UserProfilesController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Gets a user profile by its display name.
+    /// </summary>
+    /// <param name="displayName">The display name to look up.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A <see cref="UserProfileDto"/> if found.</returns>
     // GET: /api/users/by-name/{displayName}
     [HttpGet("by-name/{displayName}")]
     public async Task<ActionResult<UserProfileDto>> GetByName(string displayName, CancellationToken ct)
@@ -73,6 +92,11 @@ public class UserProfilesController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Gets the current authenticated user's profile. Creates one if missing.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A <see cref="UserProfileDto"/>.</returns>
     // GET: /api/users/me/profile
     [Authorize]
     [HttpGet("me/profile")]
@@ -97,6 +121,14 @@ public class UserProfilesController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Updates the current user's profile (excluding avatar which is managed elsewhere).
+    /// Validates and enforces uniqueness of the display name.
+    /// Also mirrors the display name to a <c>display_name</c> claim for immediate UI use.
+    /// </summary>
+    /// <param name="input">Profile fields to update.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>No content on success.</returns>
     // PUT: /api/users/me/profile
     [Authorize]
     [HttpPut("me/profile")]
@@ -153,6 +185,9 @@ public class UserProfilesController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Normalizes a website string, ensuring it includes a scheme (defaults to https).
+    /// </summary>
     private static string? NormalizeWebsite(string? url)
     {
         var s = (url ?? "").Trim();
@@ -165,6 +200,9 @@ public class UserProfilesController : ControllerBase
         return s;
     }
 
+    /// <summary>
+    /// Builds an absolute URL from a stored relative path (e.g., avatar path).
+    /// </summary>
     private string AbsoluteContentUrl(string relativePath)
     {
         var normalized = relativePath.Replace("\\", "/").TrimStart('/');

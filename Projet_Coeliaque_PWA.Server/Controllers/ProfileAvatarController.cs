@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Controllers/ProfileAvatarController.cs
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,12 +9,20 @@ using Projet_Coeliaque_PWA.Server.Models;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
-using System.Security.Claims;
 using Image = SixLabors.ImageSharp.Image;
 using SixSize = SixLabors.ImageSharp.Size;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
+    /// <summary>
+    /// Upload / suppression d’avatar utilisateur.
+    /// - POST: charge une image (jpeg/png/webp) & la redimensionne (max 512px) vers un JPEG optimisé.
+    /// - DELETE: supprime l’avatar courant (et invalide le cache via AvatarUpdatedUtc).
+    ///
+    /// Notes :
+    /// • La réponse POST retourne un <c>avatarUrl</c> absolu avec un suffixe cache-busting <c>?v=Ticks</c>.
+    /// • Les fichiers sont écrits sous <c>wwwroot/avatars/{userId}/avatar_*.jpg</c> (un seul conservé).
+    /// </summary>
     [ApiController]
     [Authorize]
     [Route("api/profile/avatar")]
@@ -36,12 +46,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _env = env;
         }
 
-        private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        private string? UserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+        /// <summary>
+        /// Charge un avatar, le redimensionne (max 512px) et le stocke en JPEG (~qualité 82).
+        /// </summary>
         [HttpPost]
         [RequestSizeLimit(MaxBytes + 100_000)]
-        public async Task<IActionResult> Upload([FromForm] IFormFile? file, CancellationToken ct)
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(401)]
+        public async Task<IActionResult> Upload([FromForm] IFormFile? file, CancellationToken ct = default)
         {
+            if (string.IsNullOrEmpty(UserId))
+                return Unauthorized();
+
             if (file == null || file.Length == 0)
                 return BadRequest(new { error = "Fichier manquant." });
 
@@ -59,18 +78,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return BadRequest(new { error = "Fichier image invalide." });
 
             ms.Position = 0;
-            Image image;
-            try
-            {
-                image = await Image.LoadAsync(ms, ct);
-            }
-            catch
-            {
+
+            // Charger et redimensionner l’image
+            using Image image = await LoadImageOrBadRequest(ms, ct);
+            if (image == null!)
                 return BadRequest(new { error = "Image non valide ou corrompue." });
-            }
 
             var pixelCount = (long)image.Width * image.Height;
-            if (pixelCount > 40_000_000)
+            if (pixelCount > 40_000_000) // garde-fou (~200MP)
                 return BadRequest(new { error = "Image trop grande." });
 
             var options = new ResizeOptions
@@ -81,8 +96,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             };
             image.Mutate(ctx => ctx.Resize(options));
 
+            // Préparer le chemin d’écriture
             var fileName = $"avatar_{DateTime.UtcNow.Ticks}.jpg";
-            var relativeDir = Path.Combine("avatars", UserId);
+            var relativeDir = Path.Combine("avatars", UserId!);
             var webRoot = _env.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot");
             var absDir = Path.Combine(webRoot, relativeDir);
             Directory.CreateDirectory(absDir);
@@ -94,25 +110,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 await image.SaveAsJpegAsync(outStream, jpegOpts, ct);
             }
 
-            // Clean previous avatars (best-effort)
-            try
-            {
-                foreach (var f in Directory.EnumerateFiles(absDir, "avatar_*.jpg"))
-                {
-                    if (!string.Equals(f, absPath, StringComparison.OrdinalIgnoreCase))
-                        System.IO.File.Delete(f);
-                }
-            }
-            catch { /* ignore */ }
+            // Nettoyer les anciens avatars (best-effort)
+            TryDeleteOldFiles(absDir, absPath);
 
-            // Persist profile (no CreatedUtc reference)
+            // Persister le profil + invalidation de cache
             var profile = await _db.UserProfiles.SingleOrDefaultAsync(p => p.UserId == UserId, ct);
             if (profile == null)
             {
                 profile = new UserProfile
                 {
                     Id = Guid.NewGuid(),
-                    UserId = UserId,
+                    UserId = UserId!,
                     DisplayName = await GetDefaultDisplayNameAsync()
                 };
                 _db.UserProfiles.Add(profile);
@@ -122,15 +130,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             profile.AvatarUpdatedUtc = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
 
-            // Cache-busting version that tolerates null
             var versionTicks = (profile.AvatarUpdatedUtc ?? DateTime.UtcNow).Ticks;
             var abs = AbsoluteContentUrl(profile.AvatarPath) + $"?v={versionTicks}";
             return Ok(new { avatarUrl = abs });
         }
 
+        /// <summary>
+        /// Supprime l’avatar courant (si présent) et met à jour AvatarUpdatedUtc.
+        /// </summary>
         [HttpDelete]
-        public async Task<IActionResult> Delete(CancellationToken ct)
+        [ProducesResponseType(204)]
+        [ProducesResponseType(401)]
+        public async Task<IActionResult> Delete(CancellationToken ct = default)
         {
+            if (string.IsNullOrEmpty(UserId))
+                return Unauthorized();
+
             var profile = await _db.UserProfiles.SingleOrDefaultAsync(p => p.UserId == UserId, ct);
             if (profile == null || string.IsNullOrWhiteSpace(profile.AvatarPath))
                 return NoContent();
@@ -149,22 +164,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return NoContent();
         }
 
+        // ---------------- helpers ----------------
+
         private async Task<string> GetDefaultDisplayNameAsync()
         {
-            var user = await _um.FindByIdAsync(UserId);
-            return user?.UserName ?? "Utilisateur";
+            var user = await _um.FindByIdAsync(UserId!);
+            return user?.UserName ?? user?.Email ?? "Utilisateur";
         }
 
         private static bool LooksLikeImage(byte[] data)
         {
             // JPEG
-            if (data.Length > 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF)
-                return true;
+            if (data.Length > 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF) return true;
 
             // PNG
             var png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
-            if (data.Length >= 8 && png.AsSpan().SequenceEqual(data.AsSpan(0, 8)))
-                return true;
+            if (data.Length >= 8 && png.AsSpan().SequenceEqual(data.AsSpan(0, 8))) return true;
 
             // WebP (RIFF....WEBP)
             if (data.Length >= 12 &&
@@ -173,6 +188,31 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return true;
 
             return false;
+        }
+
+        private static async Task<Image> LoadImageOrBadRequest(Stream stream, CancellationToken ct)
+        {
+            try
+            {
+                return await Image.LoadAsync(stream, ct);
+            }
+            catch
+            {
+                return null!;
+            }
+        }
+
+        private static void TryDeleteOldFiles(string absDir, string keepPath)
+        {
+            try
+            {
+                foreach (var f in Directory.EnumerateFiles(absDir, "avatar_*.jpg"))
+                {
+                    if (!string.Equals(f, keepPath, StringComparison.OrdinalIgnoreCase))
+                        System.IO.File.Delete(f);
+                }
+            }
+            catch { /* ignore */ }
         }
 
         private string AbsoluteContentUrl(string? relativePath)

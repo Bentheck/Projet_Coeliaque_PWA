@@ -1,29 +1,38 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Identity; // <-- add this
+using Microsoft.AspNetCore.Identity; // needed for IdentityUser → DTO projection
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
 using System.Linq;
 
 namespace Projet_Coeliaque_PWA.Server.Mapping
 {
+    /// <summary>
+    /// AutoMapper profile configuring mappings between domain entities and DTOs
+    /// (invoices, comparisons, grocery lists, forum, membership, FAQ, and Identity projections).
+    /// </summary>
     public class MappingProfile : Profile
     {
+        /// <summary>
+        /// Initializes all mapping configurations.
+        /// </summary>
         public MappingProfile()
         {
-            // ---------- Existing maps ----------
+            // ---------- Invoices ----------
             CreateMap<Facture, FactureDto>().ReverseMap();
             CreateMap<FactureItem, FactureItemDto>().ReverseMap();
 
+            // ---------- Product comparisons ----------
             CreateMap<ComparatifYear, ComparatifYearDto>().ReverseMap();
             CreateMap<ProductComparison, ProductComparisonDto>().ReverseMap();
             CreateMap<ProductComparisonRow, ProductComparisonRowDto>().ReverseMap();
 
+            // ---------- Grocery list ----------
             CreateMap<ListeEpicerie, ListeEpicerieDTO>()
                 .ForMember(d => d.Items, o => o.MapFrom(s => s.Items));
 
             CreateMap<ListeEpicerieDTO, ListeEpicerie>()
                 .ForMember(d => d.UserId, o => o.Ignore())
-                .ForMember(d => d.Items, o => o.Ignore()); // handled in controller
+                .ForMember(d => d.Items, o => o.Ignore()); // items handled in controller
 
             CreateMap<ListeEpicerieItem, ListeEpicerieItemDTO>();
             CreateMap<ListeEpicerieItemDTO, ListeEpicerieItem>()
@@ -35,7 +44,7 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ReverseMap()
                 .ForMember(d => d.UserId, o => o.Ignore());
 
-            // ---------- Forum DTOs ----------
+            // ---------- Forum ----------
             CreateMap<UserProfile, UserProfileDto>().ReverseMap();
 
             CreateMap<ForumCategory, ForumCategoryDto>()
@@ -66,7 +75,7 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ForMember(d => d.DisplayName, o => o.MapFrom(s =>
                     s.User != null ? (s.User.UserName ?? s.User.Email ?? "Utilisateur") : "Utilisateur"));
 
-            // ---------- Admin inputs → entities ----------
+            // ---------- Admin inputs → entities (forum categories) ----------
             CreateMap<CreateCategoryInput, ForumCategory>()
                 .ForMember(d => d.Slug, o => o.MapFrom(s => s.Slug.Trim().ToLowerInvariant()))
                 .ForMember(d => d.Name, o => o.MapFrom(s => s.Name.Trim()))
@@ -81,13 +90,13 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ForMember(d => d.Description, o => o.MapFrom(s =>
                     string.IsNullOrWhiteSpace(s.Description) ? null : s.Description!.Trim()));
 
-            // ---------- NEW: Membership & search DTOs ----------
-            // Membership -> DTO (map Start/End to *Utc fields; IsActive is computed by the entity getter)
+            // ---------- Membership & user search ----------
+            // Membership → DTO (map Start/End to *Utc fields; IsActive computed by entity)
             CreateMap<Membership, MembershipDto>()
                 .ForMember(d => d.StartDateUtc, o => o.MapFrom(s => s.StartDate))
                 .ForMember(d => d.EndDateUtc, o => o.MapFrom(s => s.EndDate));
 
-            // Upsert payload -> Membership (only apply provided values; never touch UserId here)
+            // Upsert payload → Membership (apply provided values only; never set UserId here)
             CreateMap<UpsertMembershipInput, Membership>()
                 .ForMember(d => d.UserId, o => o.Ignore())
                 .ForMember(d => d.StartDate, o =>
@@ -101,24 +110,24 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                     o.MapFrom(src => src.EndDateUtc!.Value);
                 });
 
-            // IdentityUser -> search result DTO (for autocomplete)
+            // IdentityUser → UserSearchResultDto (for autocomplete)
             CreateMap<IdentityUser, UserSearchResultDto>()
                 .ForCtorParam("UserId", o => o.MapFrom(s => s.Id))
                 .ForCtorParam("Email", o => o.MapFrom(s => s.Email ?? string.Empty))
                 .ForCtorParam("DisplayName", o => o.MapFrom(s => s.UserName ?? s.Email ?? "Utilisateur"));
 
-            // ---------- FAQ (AutoMapper) ----------
+            // ---------- FAQ ----------
             CreateMap<FaqQuestion, FaqQuestionDto>();
 
             CreateMap<FaqCategory, FaqCategoryDto>()
-                // Only active questions and sorted
+                // only active questions, sorted
                 .ForMember(d => d.Questions, o => o.MapFrom(s =>
                     s.Questions.Where(q => q.IsActive).OrderBy(q => q.SortOrder)));
 
             CreateMap<FaqCategory, FaqCategorySummaryDto>()
                 .ForMember(d => d.ActiveQuestions, o => o.MapFrom(s => s.Questions.Count(q => q.IsActive)));
 
-            // Admin inputs -> entities
+            // Admin inputs → entities (FAQ)
             CreateMap<UpsertCategoryInput, FaqCategory>()
                 .ForMember(d => d.Slug, o => o.MapFrom(s => s.Slug.Trim().ToLowerInvariant()))
                 .ForMember(d => d.Name, o => o.MapFrom(s => s.Name.Trim()))
