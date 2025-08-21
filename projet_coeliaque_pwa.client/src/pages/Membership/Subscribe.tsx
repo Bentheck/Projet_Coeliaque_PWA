@@ -5,34 +5,31 @@ const stripePromise = loadStripe('pk_test_51RTnmkRtAySSxpaZUfWBLiftBpBYG60P0VJV1
 
 const Subscribe: React.FC = () => {
     const [loading, setLoading] = useState(false);
+    const isLocal = typeof window !== "undefined" && window.location.hostname === "localhost";
 
-    const handleSubscribe = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const startCheckout = async (testDaily: boolean) => {
         setLoading(true);
-
-        const response = await fetch('/api/subscribe/create-checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        const url = testDaily ? '/api/subscribe/create-checkout-session?test=1' : '/api/subscribe/create-checkout-session';
+        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include' });
         const data = await response.json();
-
         const stripe = await stripePromise;
-        if (stripe) {
-            await stripe.redirectToCheckout({ sessionId: data.sessionId });
-        } else {
-            alert("Stripe failed to initialize.");
-        }
+        if (stripe) await stripe.redirectToCheckout({ sessionId: data.sessionId });
         setLoading(false);
     };
 
     return (
         <div>
             <h1>Abonnement</h1>
-            <form onSubmit={handleSubscribe}>
-                <button type="submit" disabled={loading}>
-                    {loading ? "Redirection vers Stripe..." : "S'abonner"}
+            <div className="d-flex gap-2">
+                <button type="button" disabled={loading} onClick={() => startCheckout(false)}>
+                    {loading ? "Redirection..." : "S'abonner (plan normal)"}
                 </button>
-            </form>
+                {isLocal && (
+                    <button type="button" disabled={loading} onClick={() => startCheckout(true)}>
+                        {loading ? "Redirection..." : "S'abonner (TEST quotidien)"}
+                    </button>
+                )}
+            </div>
         </div>
     );
 };

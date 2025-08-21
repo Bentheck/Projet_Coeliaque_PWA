@@ -27,6 +27,11 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<ForumThreadVote> ForumThreadVotes => Set<ForumThreadVote>();
         public DbSet<ForumPostVote> ForumPostVotes => Set<ForumPostVote>();
 
+        // FAQ
+        public DbSet<FaqCategory> FaqCategories => Set<FaqCategory>();
+        public DbSet<FaqQuestion> FaqQuestions => Set<FaqQuestion>();
+
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
 
@@ -187,6 +192,24 @@ namespace Projet_Coeliaque_PWA.Server.Data
             modelBuilder.Entity<ForumPostVote>()
                 .Property(x => x.Value)
                 .HasConversion<short>();
+
+            modelBuilder.Entity<FaqCategory>(e =>
+            {
+                e.HasIndex(x => x.Slug).IsUnique();
+                e.Property(x => x.SortOrder).HasDefaultValue(0);
+            });
+
+
+            modelBuilder.Entity<FaqQuestion>(e =>
+            {
+                e.HasOne(x => x.Category)
+                .WithMany(c => c.Questions)
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
+                e.Property(x => x.SortOrder).HasDefaultValue(0);
+            });
 
             // Optional seed example
             // modelBuilder.Entity<ForumCategory>().HasData(

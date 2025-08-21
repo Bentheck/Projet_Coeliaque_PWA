@@ -158,6 +158,12 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("StripeCustomerId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StripeSubscriptionId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -467,6 +473,89 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.HasIndex("FactureId");
 
                     b.ToTable("FactureItems");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.FaqCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("FaqCategories");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.FaqQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnswerHtml")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("TagsCsv")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("FaqQuestions");
                 });
 
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumAdmin", b =>
@@ -923,6 +1012,17 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Navigation("Facture");
                 });
 
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.FaqQuestion", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.FaqCategory", "Category")
+                        .WithMany("Questions")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumAdmin", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
@@ -1085,6 +1185,11 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Facture", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.FaqCategory", b =>
+                {
+                    b.Navigation("Questions");
                 });
 
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ForumCategory", b =>
