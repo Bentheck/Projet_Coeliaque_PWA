@@ -106,6 +106,37 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ForCtorParam("UserId", o => o.MapFrom(s => s.Id))
                 .ForCtorParam("Email", o => o.MapFrom(s => s.Email ?? string.Empty))
                 .ForCtorParam("DisplayName", o => o.MapFrom(s => s.UserName ?? s.Email ?? "Utilisateur"));
+
+            // ---------- FAQ (AutoMapper) ----------
+            CreateMap<FaqQuestion, FaqQuestionDto>();
+
+            CreateMap<FaqCategory, FaqCategoryDto>()
+                // Only active questions and sorted
+                .ForMember(d => d.Questions, o => o.MapFrom(s =>
+                    s.Questions.Where(q => q.IsActive).OrderBy(q => q.SortOrder)));
+
+            CreateMap<FaqCategory, FaqCategorySummaryDto>()
+                .ForMember(d => d.ActiveQuestions, o => o.MapFrom(s => s.Questions.Count(q => q.IsActive)));
+
+            // Admin inputs -> entities
+            CreateMap<UpsertCategoryInput, FaqCategory>()
+                .ForMember(d => d.Slug, o => o.MapFrom(s => s.Slug.Trim().ToLowerInvariant()))
+                .ForMember(d => d.Name, o => o.MapFrom(s => s.Name.Trim()))
+                .ForMember(d => d.Description, o => o.MapFrom(s =>
+                    string.IsNullOrWhiteSpace(s.Description) ? null : s.Description!.Trim()))
+                .ForMember(d => d.SortOrder, o => o.MapFrom(s => s.SortOrder))
+                .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive))
+                .ForMember(d => d.Questions, o => o.Ignore()); // never overwrite navigation here
+
+            CreateMap<UpsertQuestionInput, FaqQuestion>()
+                .ForMember(d => d.Question, o => o.MapFrom(s => s.Question.Trim()))
+                .ForMember(d => d.AnswerHtml, o => o.MapFrom(s => s.AnswerHtml))
+                .ForMember(d => d.TagsCsv, o => o.MapFrom(s =>
+                    string.IsNullOrWhiteSpace(s.TagsCsv) ? null : s.TagsCsv!.Trim()))
+                .ForMember(d => d.SortOrder, o => o.MapFrom(s => s.SortOrder))
+                .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive))
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore());
         }
     }
 }

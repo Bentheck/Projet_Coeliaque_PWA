@@ -148,6 +148,43 @@ export default function Navbar() {
                                 )}
                             </ul>
                         </li>
+                    
+
+                        {/* Aide */}
+                        <li className="nav-item dropdown">
+                            <a
+                                className="nav-link dropdown-toggle"
+                                href="#"
+                                id="helpDropdown"
+                                role="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                            >
+                                <i className="bi bi-life-preserver me-1"></i> Aide
+                            </a>
+                            <ul className="dropdown-menu" aria-labelledby="helpDropdown">
+                                <li>
+                                    <Link className="dropdown-item" to="/faq">
+                                        <i className="bi bi-journal-text me-2"></i> FAQ
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link className="dropdown-item" to="/contact">
+                                        <i className="bi bi-envelope me-2"></i> Contactez-nous
+                                    </Link>
+                                </li>
+                                {isSuperAdmin && (
+                                    <>
+                                        <li><hr className="dropdown-divider" /></li>
+                                        <li>
+                                            <Link className="dropdown-item" to="/super/faq">
+                                                <i className="bi bi-tools me-2"></i> Admin FAQ
+                                            </Link>
+                                        </li>
+                                    </>
+                                )}
+                            </ul>
+                        </li>
                     </ul>
 
                     {/* Right side */}
