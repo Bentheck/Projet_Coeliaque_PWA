@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+/// <summary>
+/// File upload endpoints. Currently supports image uploads.
+/// </summary>
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
     [Authorize]
@@ -9,8 +12,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     public class UploadsController : ControllerBase
     {
         private readonly IWebHostEnvironment _env;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UploadsController"/>.
+        /// </summary>
         public UploadsController(IWebHostEnvironment env) => _env = env;
 
+        /// <summary>
+        /// Uploads an image (max 20 MB), stores it under <c>wwwroot/uploads</c>, and returns the relative URL.
+        /// </summary>
+        /// <param name="file">The image file sent via multipart/form-data.</param>
+        /// <returns>JSON containing the relative <c>url</c> to the stored file.</returns>
         [HttpPost("image")]
         [RequestSizeLimit(20_000_000)] // 20 MB
         public async Task<IActionResult> Image([FromForm] IFormFile file)
@@ -32,5 +44,4 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { url });
         }
     }
-
 }

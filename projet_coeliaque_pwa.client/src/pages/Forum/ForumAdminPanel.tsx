@@ -6,25 +6,26 @@ type CreateCategoryInput = { slug: string; name: string; description?: string | 
 type UpdateCategoryInput = CreateCategoryInput;
 
 const ForumAdminPanel: React.FC = () => {
-    // categories
+    // Category data & page state
     const [cats, setCats] = useState<ForumCategoryDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
-    // create
+    // Category creation form
     const [slug, setSlug] = useState("");
     const [name, setName] = useState("");
     const [desc, setDesc] = useState("");
 
-    // thread tools
+    // Quick thread tools
     const [threadId, setThreadId] = useState<string>("");
     const [pin, setPin] = useState(false);
     const [lock, setLock] = useState(false);
 
-    // post moderation
+    // Post moderation
     const [postId, setPostId] = useState<string>("");
     const [deleted, setDeleted] = useState(false);
 
+    /** Fetch categories from API and hydrate table */
     const load = async () => {
         try {
             setLoading(true);
@@ -43,6 +44,7 @@ const ForumAdminPanel: React.FC = () => {
         load();
     }, []);
 
+    /** Create a new category, then refresh list */
     const createCat = async () => {
         const payload: CreateCategoryInput = { slug, name, description: desc || null };
         try {
@@ -61,6 +63,10 @@ const ForumAdminPanel: React.FC = () => {
         }
     };
 
+    /**
+     * Persist inline edits for a given category row.
+     * Triggers a reload to keep the table consistent with server state.
+     */
     const saveCat = async (id: number, values: UpdateCategoryInput) => {
         try {
             await fetchJSON(`/api/forum/admin/categories/${id}`, {
@@ -75,6 +81,11 @@ const ForumAdminPanel: React.FC = () => {
         }
     };
 
+    /**
+     * Delete a category.
+     * - force=false: fail if there are threads
+     * - force=true : delete even if threads exist (server-side policy)
+     */
     const deleteCat = async (id: number, force: boolean) => {
         if (!confirm("Supprimer cette catégorie ?")) return;
         try {
@@ -87,6 +98,10 @@ const ForumAdminPanel: React.FC = () => {
         }
     };
 
+    /**
+     * Apply pin/lock flags to a thread.
+     * Executes two endpoints in sequence; both must succeed.
+     */
     const applyThreadFlags = async () => {
         const tid = Number(threadId);
         if (!tid) return;
@@ -108,6 +123,10 @@ const ForumAdminPanel: React.FC = () => {
         }
     };
 
+    /**
+     * Soft-delete / restore a post (depends on server semantics).
+     * Toggled via the “Supprimé” checkbox.
+     */
     const setPostState = async () => {
         const pid = Number(postId);
         if (!pid) return;
@@ -129,7 +148,7 @@ const ForumAdminPanel: React.FC = () => {
             <h1 className="h4 mb-3">Administration du forum</h1>
             {err && <div className="alert alert-danger">{err}</div>}
 
-            {/* Categories */}
+            {/* Categories table + creation form */}
             <div className="card mb-4">
                 <div className="card-header">Catégories</div>
                 <div className="card-body">

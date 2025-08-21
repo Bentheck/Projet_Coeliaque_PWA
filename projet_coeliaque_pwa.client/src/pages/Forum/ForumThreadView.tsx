@@ -7,11 +7,14 @@ import { useAuth } from "../../components/AuthContext";
 import PostEditor from "../../components/PostEditor";
 import DOMPurify from "dompurify";
 
-/* ======================== Config: exclusive vote target ======================== */
-// Choose ONE: "thread" OR "op"
+/** One of the two vote UIs will be active:
+ *  - "thread": vote on the whole thread via header bar (all comments, incl. OP, show no vote bar)
+ *  - "op": vote on the OP post (other comments show their own vote bars)
+ *  NOTE: Current implementation disables OP voting when in "thread" mode
+ *  but still allows voting on non-OP comments. */
 const VOTE_MODE_DEFAULT: "thread" | "op" = "thread";
 
-/* ======================== Helpers & small components ======================== */
+/* ---------- Small helpers/components ---------- */
 
 const Avatar: React.FC<{ name: string }> = ({ name }) => {
     const letter = (name || "?").trim().charAt(0).toUpperCase();
@@ -31,6 +34,7 @@ const fmt = (iso: string) =>
 
 type Order = "recent" | "old";
 
+/** Sort a comment tree by created date, preserving structure. */
 function sortTree(nodes: ForumPostTreeDto[], order: Order): ForumPostTreeDto[] {
     const cmp =
         order === "recent"
@@ -42,13 +46,10 @@ function sortTree(nodes: ForumPostTreeDto[], order: Order): ForumPostTreeDto[] {
     return nodes
         .slice()
         .sort(cmp)
-        .map((n) => ({
-            ...n,
-            replies: n.replies ? sortTree(n.replies, order) : [],
-        }));
+        .map((n) => ({ ...n, replies: n.replies ? sortTree(n.replies, order) : [] }));
 }
 
-// collect only descendants (used for collapse-all)
+/** Collect all reply IDs (used by “collapse/expand all”). */
 function collectReplyIds(nodes: ForumPostTreeDto[], acc: number[] = []): number[] {
     for (const n of nodes) {
         for (const r of n.replies || []) {
@@ -70,6 +71,7 @@ function findNodeById(nodes: ForumPostTreeDto[], id: number): ForumPostTreeDto |
     return undefined;
 }
 
+/** Immutable update of a node within a tree by ID. */
 function updateNodeInTree(
     nodes: ForumPostTreeDto[],
     id: number,
@@ -119,41 +121,27 @@ const SafeHtml = memo(function SafeHtml({
                     "h4",
                     "img",
                 ],
-                // We keep class/dir/href/target/rel/src/alt/width/height. We intentionally drop inline "style".
+                // Intentionally disallow inline styles. Allow only safe attributes.
                 ALLOWED_ATTR: ["href", "target", "rel", "class", "dir", "src", "alt", "width", "height"],
                 FORBID_TAGS: ["script", "iframe", "object", "embed"],
             }),
         [html]
     );
 
-    return (
-        <div
-            className={className ?? "post-body"}
-            dangerouslySetInnerHTML={{ __html: clean }}
-        />
-    );
+    return <div className={className ?? "post-body"} dangerouslySetInnerHTML={{ __html: clean }} />;
 });
 
-/* ---------- Reply box uses HTML editor ---------- */
+/* ---------- Reply editor box (HTML) ---------- */
 type ReplyBoxProps = {
-    /** HTML string for the reply */
     value: string;
-    /** Called whenever the editor content changes (HTML) */
-    onChange: (v: string) => void;
+    onChange: (v: string) => void; // receives HTML
     onSubmit: () => void;
     sending?: boolean;
     disabled?: boolean;
 };
 
-const ReplyBox: React.FC<ReplyBoxProps> = ({
-    value,
-    onChange,
-    onSubmit,
-    sending,
-    disabled,
-}) => (
+const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending, disabled }) => (
     <div className="mt-2">
-        {/* Rich editor for replies (HTML mode) */}
         <PostEditor
             initialHTML={value}
             onChange={onChange}
@@ -163,31 +151,25 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
             giphyRating="g"
         />
         <div className="d-flex justify-content-end gap-2 mt-2">
-            <button
-                className="btn btn-secondary"
-                onClick={() => onChange("")}
-                disabled={disabled || !!sending}
-            >
+            <button className="btn btn-secondary" onClick={() => onChange("")} disabled={disabled || !!sending}>
                 Effacer
             </button>
-            <button
-                className="btn btn-primary"
-                onClick={onSubmit}
-                disabled={disabled || !!sending || !value.trim()}
-            >
+            <button className="btn btn-primary" onClick={onSubmit} disabled={disabled || !!sending || !value.trim()}>
                 {sending ? "Envoi…" : "Publier"}
             </button>
         </div>
     </div>
 );
 
+/* ---------- Voting UI ---------- */
 type VoteBarProps = {
-    score: number; // total score
+    score: number;
     myVote: number; // -1 | 0 | 1
     onVote: (next: -1 | 0 | 1) => void;
     disabled?: boolean;
     size?: "sm" | "md";
 };
+
 const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size = "sm" }) => {
     const upActive = myVote === 1;
     const downActive = myVote === -1;
@@ -217,8 +199,7 @@ const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size
     );
 };
 
-/* ======================== Recursive Post Card ======================== */
-
+/* ---------- Recursive Post Card ---------- */
 type PostCardProps = {
     p: ForumPostTreeDto;
     depth: number;
@@ -250,7 +231,7 @@ type PostCardProps = {
     setEditText: React.Dispatch<React.SetStateAction<Record<number, string>>>;
     saving: Record<number, boolean>;
 
-    // extra slot rendered right after body/actions and BEFORE replies (used for OP sorting controls)
+    // extra UI placed right after the body/actions (e.g., sort & collapse controls under OP)
     extraUnderBody?: React.ReactNode;
 };
 
@@ -270,7 +251,6 @@ const PostCard: React.FC<PostCardProps> = memo(
         showVoteOnThisCard,
         onVotePost,
         extraUnderBody,
-
         onStartEdit,
         onCancelEdit,
         onSaveEdit,
@@ -281,12 +261,12 @@ const PostCard: React.FC<PostCardProps> = memo(
         saving,
     }) => {
         const indentPx = Math.min(depth, 8) * 8;
-        const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false; // main comments NOT collapsible
+        const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false; // top-level comments stay open
         const directReplies = p.replies ? p.replies.length : 0;
 
         const score = (p as any).score ?? 0;
         const myVote = (p as any).myVote ?? 0;
-        const canEdit = (p as any).canEdit === true; // server-provided
+        const canEdit = (p as any).canEdit === true;
 
         const bodyHtml: string = (p as any).body ?? "";
         const isEditing = editing[p.id] === true;
@@ -370,10 +350,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                         >
                                                             Modifier
                                                         </button>
-                                                        <button
-                                                            className="btn btn-outline-danger"
-                                                            onClick={() => onDeletePost(p.id)}
-                                                        >
+                                                        <button className="btn btn-outline-danger" onClick={() => onDeletePost(p.id)}>
                                                             Supprimer
                                                         </button>
                                                     </div>
@@ -436,11 +413,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                 giphyRating="g"
                                             />
                                             <div className="d-flex gap-2 justify-content-end mt-2">
-                                                <button
-                                                    className="btn btn-secondary btn-sm"
-                                                    onClick={() => onCancelEdit(p.id)}
-                                                    disabled={saving[p.id]}
-                                                >
+                                                <button className="btn btn-secondary btn-sm" onClick={() => onCancelEdit(p.id)} disabled={saving[p.id]}>
                                                     Annuler
                                                 </button>
                                                 <button
@@ -464,7 +437,7 @@ const PostCard: React.FC<PostCardProps> = memo(
 );
 PostCard.displayName = "PostCard";
 
-/* ======================== Page ======================== */
+/* ---------- Page ---------- */
 
 const ForumThreadView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -481,12 +454,12 @@ const ForumThreadView: React.FC = () => {
     // UI state
     const [order, setOrder] = useState<Order>("recent");
     const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
-    const [replyText, setReplyText] = useState<Record<number, string>>({}); // holds HTML now
+    const [replyText, setReplyText] = useState<Record<number, string>>({});
     const [replyOpen, setReplyOpen] = useState<Record<number, boolean>>({});
     const [sending, setSending] = useState<Record<number, boolean>>({});
-    const [voting, setVoting] = useState(false); // thread voting in-flight
+    const [voting, setVoting] = useState(false);
 
-    // editing posts state
+    // per-post editing state
     const [editing, setEditing] = useState<Record<number, boolean>>({});
     const [editText, setEditText] = useState<Record<number, string>>({});
     const [saving, setSaving] = useState<Record<number, boolean>>({});
@@ -495,6 +468,7 @@ const ForumThreadView: React.FC = () => {
     const [titleEditing, setTitleEditing] = useState(false);
     const [titleDraft, setTitleDraft] = useState("");
 
+    /** Fetch thread and the current page of posts. */
     const load = useCallback(async () => {
         try {
             setLoading(true);
@@ -523,16 +497,15 @@ const ForumThreadView: React.FC = () => {
     const canReply = !!user && !thread?.isLocked;
     const canVote = !!user;
 
-    // vote mode: server can provide thread.voteMode ("thread" | "op"), fallback to default
+    /** Server may specify vote mode per thread; default applies otherwise. */
     const voteMode: "thread" | "op" =
         ((thread as any)?.voteMode === "op" || (thread as any)?.voteMode === "thread")
             ? ((thread as any).voteMode as "op" | "thread")
             : VOTE_MODE_DEFAULT;
 
-    // sorted items for render
     const sortedItems = useMemo(() => (posts ? sortTree(posts.items, order) : []), [posts, order]);
 
-    // OP on this page (earliest top-level among current page items; usually page 1)
+    /** OP for this page (page 1 only: earliest top-level in the page items). */
     const opOnPage = useMemo(() => {
         if (!posts || !posts.items.length || page !== 1) return null;
         let min = posts.items[0];
@@ -542,7 +515,7 @@ const ForumThreadView: React.FC = () => {
         return min;
     }, [posts, page]);
 
-    // collapse helpers (replies only)
+    // collapse helpers
     const toggleCollapsed = useCallback((id: number) => {
         setCollapsed((c) => ({ ...c, [id]: !c[id] }));
     }, []);
@@ -560,9 +533,10 @@ const ForumThreadView: React.FC = () => {
         setReplyOpen((o) => ({ ...o, [postId]: !o[postId] }));
     }, []);
     const onChangeReply = useCallback((postId: number, v: string) => {
-        setReplyText((t) => ({ ...t, [postId]: v })); // v is HTML
+        setReplyText((t) => ({ ...t, [postId]: v }));
     }, []);
 
+    /** Send a reply (parentPostId null for top-level reply). */
     const doReply = useCallback(
         async (parentPostId?: number | null) => {
             const key = parentPostId ?? 0;
@@ -595,7 +569,7 @@ const ForumThreadView: React.FC = () => {
         [replyText, threadId, load]
     );
 
-    // voting (THREAD) — only if voteMode === "thread"
+    /** Thread-level voting (active only in "thread" mode). */
     const voteThread = useCallback(
         async (next: -1 | 0 | 1) => {
             if (voteMode !== "thread" || !thread || !canVote || voting) return;
@@ -604,13 +578,15 @@ const ForumThreadView: React.FC = () => {
             const prevVote = (thread as any).myVote ?? 0;
             const delta = next - prevVote;
 
+            // optimistic
             setThread((t) => (t ? ({ ...(t as any), score: prevScore + delta, myVote: next } as any) : t));
             setVoting(true);
             try {
-                const res = await fetchJSON<{ score: number; myVote: number }>(
-                    `/api/forum/threads/${threadId}/vote`,
-                    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ value: next }) }
-                );
+                const res = await fetchJSON<{ score: number; myVote: number }>(`/api/forum/threads/${threadId}/vote`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ value: next }),
+                });
                 setThread((t) => (t ? ({ ...(t as any), score: res.score ?? 0, myVote: res.myVote ?? 0 } as any) : t));
             } catch (e) {
                 console.error(e);
@@ -623,15 +599,14 @@ const ForumThreadView: React.FC = () => {
         [voteMode, thread, canVote, voting, threadId]
     );
 
-    // voting (POSTS)
+    /** Per-post voting. In "thread" mode, OP is not votable (header owns the vote). */
     const onVotePost = useCallback(
         async (postId: number, next: -1 | 0 | 1) => {
             if (!posts || !canVote) return;
 
             const isOp = opOnPage && opOnPage.id === postId;
             if (isOp && voteMode !== "op") {
-                // In thread-mode, OP isn't votable (thread header owns the vote)
-                return;
+                return; // thread mode: OP is controlled by header vote bar
             }
 
             const current = findNodeById(posts.items, postId);
@@ -669,7 +644,7 @@ const ForumThreadView: React.FC = () => {
         [posts, canVote, opOnPage, voteMode]
     );
 
-    /* ======== edit/delete post handlers ======== */
+    // post edit/delete
     const onStartEdit = useCallback((postId: number, currentHtml: string) => {
         setEditing((e) => ({ ...e, [postId]: true }));
         setEditText((t) => ({ ...t, [postId]: currentHtml }));
@@ -729,7 +704,7 @@ const ForumThreadView: React.FC = () => {
         [load]
     );
 
-    /* ======== thread title edit ======== */
+    // thread title edit
     const saveTitle = useCallback(async () => {
         if (!thread) return;
         const t = titleDraft.trim();
@@ -748,7 +723,7 @@ const ForumThreadView: React.FC = () => {
         }
     }, [thread, titleDraft, load]);
 
-    /* ======================== Controls (rendered AFTER OP body, BEFORE its replies) ======================== */
+    /** Controls displayed under the OP (or first when OP not on page). */
     const Controls = (
         <div className="my-3 d-flex flex-wrap gap-2 align-items-center">
             <div className="input-group input-group-sm" style={{ width: 240 }}>
@@ -777,10 +752,10 @@ const ForumThreadView: React.FC = () => {
         </div>
     );
 
-    /* ======================== Render ======================== */
+    /* ---------- Render ---------- */
     return (
         <div className="container py-3">
-            {/* Thread card — thread-level voting unchanged */}
+            {/* Thread header card (title, meta, and thread-level voting) */}
             <div className="card shadow-sm border-0 mb-3">
                 <div className="card-body">
                     <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -832,11 +807,7 @@ const ForumThreadView: React.FC = () => {
                                             >
                                                 Annuler
                                             </button>
-                                            <button
-                                                className="btn btn-sm btn-primary"
-                                                onClick={saveTitle}
-                                                disabled={!titleDraft.trim()}
-                                            >
+                                            <button className="btn btn-sm btn-primary" onClick={saveTitle} disabled={!titleDraft.trim()}>
                                                 Enregistrer
                                             </button>
                                         </>
@@ -890,7 +861,6 @@ const ForumThreadView: React.FC = () => {
                         {(() => {
                             const items = sortedItems;
                             if (opOnPage) {
-                                // Render OP with controls injected BEFORE its replies
                                 const isOpVotable = voteMode === "op";
                                 return (
                                     <>
@@ -909,7 +879,7 @@ const ForumThreadView: React.FC = () => {
                                             onToggleCollapsed={toggleCollapsed}
                                             showVoteOnThisCard={isOpVotable}
                                             onVotePost={onVotePost}
-                                            extraUnderBody={Controls} // <-- here: after OP, before its replies
+                                            extraUnderBody={Controls}
                                             onStartEdit={onStartEdit}
                                             onCancelEdit={onCancelEdit}
                                             onSaveEdit={onSaveEdit}
@@ -920,7 +890,7 @@ const ForumThreadView: React.FC = () => {
                                             saving={saving}
                                         />
 
-                                        {/* Other main comments (non-OP) */}
+                                        {/* Other top-level comments */}
                                         {items
                                             .filter((p) => p.id !== opOnPage.id)
                                             .map((p) => (
@@ -953,7 +923,7 @@ const ForumThreadView: React.FC = () => {
                                 );
                             }
 
-                            // OP not on this page => show controls first, then all main comments
+                            // OP not on this page: show controls first, then all top-level comments
                             return (
                                 <>
                                     {Controls}

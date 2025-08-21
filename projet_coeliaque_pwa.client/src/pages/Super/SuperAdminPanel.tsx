@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { fetchJSON } from "../../lib/api";
 import type { ForumAdminDto } from "../../lib/types";
 
-// --- Types ---
+/* ======================== Types ======================== */
 type IdentityAdmin = { userId: string; displayName: string };
 type UserSearch = { userId: string; email: string; displayName: string };
 type MembershipDto = {
@@ -13,45 +13,43 @@ type MembershipDto = {
     isActive: boolean;
 };
 
-// --- Helpers ---
+/* ======================== Date helpers ======================== */
+/** Convert an ISO date (or null) to a yyyy-mm-dd string for <input type="date">, normalized to UTC to avoid TZ shifts. */
 const toDateInput = (iso: string | null) => {
     if (!iso) return "";
     const d = new Date(iso);
-    // normalize to yyyy-mm-dd based on UTC to avoid TZ shifting
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
         .toISOString()
         .slice(0, 10);
 };
-
+/** Build an ISO string at UTC start-of-day for a yyyy-mm-dd input value. */
 const fromDateInputToStartOfDayUtcIso = (yyyyMmDd: string) => {
     if (!yyyyMmDd) return null;
     const [y, m, d] = yyyyMmDd.split("-").map(Number);
-    const dt = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1, 0, 0, 0));
-    return dt.toISOString();
+    return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1, 0, 0, 0)).toISOString();
 };
-
+/** Build an ISO string at UTC end-of-day for a yyyy-mm-dd input value. */
 const fromDateInputToEndOfDayUtcIso = (yyyyMmDd: string) => {
     if (!yyyyMmDd) return null;
     const [y, m, d] = yyyyMmDd.split("-").map(Number);
-    const dt = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1, 23, 59, 59));
-    return dt.toISOString();
+    return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1, 23, 59, 59)).toISOString();
 };
 
 const LIFETIME_DATE_INPUT = "9999-12-31";
 const todayUtcDateInput = () => new Date().toISOString().slice(0, 10);
 
 const SuperAdminPanel: React.FC = () => {
-    // Forum admins (DB)
+    /* ======================== Forum admins ======================== */
     const [forumAdmins, setForumAdmins] = useState<ForumAdminDto[]>([]);
     const [faEmail, setFaEmail] = useState("");
     const [loadingFA, setLoadingFA] = useState(true);
 
-    // Identity Admins (role: Admin)
+    /* ======================== Identity admins (role=Admin) ======================== */
     const [idAdmins, setIdAdmins] = useState<IdentityAdmin[]>([]);
     const [iaEmail, setIaEmail] = useState("");
     const [loadingIA, setLoadingIA] = useState(true);
 
-    // Membership management
+    /* ======================== Membership management ======================== */
     const [query, setQuery] = useState("");
     const [suggestions, setSuggestions] = useState<UserSearch[]>([]);
     const [showSug, setShowSug] = useState(false);
@@ -60,15 +58,15 @@ const SuperAdminPanel: React.FC = () => {
     const [membership, setMembership] = useState<MembershipDto | null>(null);
     const [active, setActive] = useState(false);
     const [startDate, setStartDate] = useState<string>(""); // yyyy-mm-dd
-    const [endDate, setEndDate] = useState<string>(""); // yyyy-mm-dd
+    const [endDate, setEndDate] = useState<string>("");     // yyyy-mm-dd
     const [savingM, setSavingM] = useState(false);
     const [loadingM, setLoadingM] = useState(false);
 
-    // Manual search states
+    // Ad-hoc search state (manual search button)
     const [searching, setSearching] = useState(false);
     const [searchMsg, setSearchMsg] = useState<string | null>(null);
 
-    // --- Loaders ---
+    /* ======================== Loaders ======================== */
     const loadForumAdmins = async () => {
         setLoadingFA(true);
         try {
@@ -94,7 +92,7 @@ const SuperAdminPanel: React.FC = () => {
         loadIdentityAdmins();
     }, []);
 
-    // --- Forum Admins handlers ---
+    /* ======================== Forum Admins handlers ======================== */
     const addForumAdmin = async () => {
         try {
             await fetchJSON("/api/super/admins/forum", {
@@ -116,7 +114,7 @@ const SuperAdminPanel: React.FC = () => {
         await loadForumAdmins();
     };
 
-    // --- Identity Admins handlers ---
+    /* ======================== Identity Admins handlers ======================== */
     const addIdentityAdmin = async () => {
         try {
             await fetchJSON("/api/super/admins/identity", {
@@ -138,7 +136,7 @@ const SuperAdminPanel: React.FC = () => {
         await loadIdentityAdmins();
     };
 
-    // --- Membership: autocomplete search (debounced) ---
+    /* ======================== Membership search (debounced autocomplete) ======================== */
     useEffect(() => {
         const t = setTimeout(async () => {
             const q = query.trim();
@@ -159,6 +157,7 @@ const SuperAdminPanel: React.FC = () => {
         return () => clearTimeout(t);
     }, [query]);
 
+    /** Pick a user from suggestions, then load their membership record. */
     const pickUser = async (u: UserSearch) => {
         setSelectedUser(u);
         setQuery(u.email || u.displayName);
@@ -166,9 +165,7 @@ const SuperAdminPanel: React.FC = () => {
 
         setLoadingM(true);
         try {
-            const m = await fetchJSON<MembershipDto>(
-                `/api/super/admins/memberships/${u.userId}`
-            );
+            const m = await fetchJSON<MembershipDto>(`/api/super/admins/memberships/${u.userId}`);
             setMembership(m);
             setActive(m.isActive);
             setStartDate(toDateInput(m.startDateUtc));
@@ -178,7 +175,7 @@ const SuperAdminPanel: React.FC = () => {
         }
     };
 
-    // --- Membership: manual search button ---
+    /* ======================== Membership manual search ======================== */
     const runManualSearch = async () => {
         const q = query.trim();
         if (q.length < 2) return;
@@ -208,16 +205,15 @@ const SuperAdminPanel: React.FC = () => {
         }
     };
 
-    // --- Membership: actions ---
+    /* ======================== Membership actions ======================== */
     const saveMembership = async () => {
         if (!selectedUser) return;
 
         setSavingM(true);
         try {
+            // The API expects UTC ISO values (we normalize start/end) and an 'Active' flag.
             const payload: any = {
-                StartDateUtc: startDate
-                    ? fromDateInputToStartOfDayUtcIso(startDate)
-                    : null,
+                StartDateUtc: startDate ? fromDateInputToStartOfDayUtcIso(startDate) : null,
                 EndDateUtc: endDate ? fromDateInputToEndOfDayUtcIso(endDate) : null,
                 Active: active,
             };
@@ -231,6 +227,7 @@ const SuperAdminPanel: React.FC = () => {
                 }
             );
 
+            // Reflect authoritative values returned by the server.
             setMembership(updated);
             setActive(updated.isActive);
             setStartDate(toDateInput(updated.startDateUtc));
@@ -243,6 +240,7 @@ const SuperAdminPanel: React.FC = () => {
         }
     };
 
+    /** Mark membership as lifetime (sets end date to 9999-12-31, ensures start date is set). */
     const makeLifetime = () => {
         if (!confirm("Définir l’adhésion comme « à vie » ?")) return;
         setActive(true);
@@ -250,7 +248,7 @@ const SuperAdminPanel: React.FC = () => {
         setEndDate(LIFETIME_DATE_INPUT);
     };
 
-    // --- UI ---
+    /* ======================== UI ======================== */
     return (
         <div className="container py-3">
             <h1 className="h4 mb-3">Super Admin</h1>
@@ -293,10 +291,7 @@ const SuperAdminPanel: React.FC = () => {
                         </div>
 
                         {showSug && suggestions.length > 0 && (
-                            <div
-                                className="list-group position-absolute w-100 shadow-sm"
-                                style={{ zIndex: 10 }}
-                            >
+                            <div className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 10 }}>
                                 {suggestions.map((s) => (
                                     <button
                                         key={s.userId}
@@ -313,9 +308,7 @@ const SuperAdminPanel: React.FC = () => {
                             </div>
                         )}
 
-                        {searchMsg && (
-                            <div className="form-text text-danger mt-1">{searchMsg}</div>
-                        )}
+                        {searchMsg && <div className="form-text text-danger mt-1">{searchMsg}</div>}
                     </div>
 
                     {loadingM && <div>Chargement…</div>}
@@ -385,8 +378,7 @@ const SuperAdminPanel: React.FC = () => {
                             {membership && (
                                 <div className="alert alert-secondary mt-3 d-flex align-items-center gap-2 flex-wrap">
                                     <div>
-                                        <b>Utilisateur:</b> {selectedUser.displayName} (
-                                        {selectedUser.email})
+                                        <b>Utilisateur:</b> {selectedUser.displayName} ({selectedUser.email})
                                     </div>
                                     <div>
                                         <b>Start UTC:</b> {membership.startDateUtc ?? "—"}

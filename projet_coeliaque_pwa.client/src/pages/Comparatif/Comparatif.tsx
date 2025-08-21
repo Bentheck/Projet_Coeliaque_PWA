@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-// ----- Interfaces -----
+/** API DTOs for comparatif years and report presence */
 interface ProductComparisonDto {
     id: number;
     comparatifYearId: number;
@@ -22,7 +22,7 @@ interface ReportYearDto {
     reportGenerated: boolean;
 }
 
-// 👉 Adjust this if your report viewer route is different
+/** Route builder for the year-specific report viewer */
 const REPORT_ROUTE = (annee: number) => `/rapports/${annee}`;
 
 const Comparatif: React.FC = () => {
@@ -31,31 +31,33 @@ const Comparatif: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Inline “new year” form state
     const [showForm, setShowForm] = useState(false);
     const [newYear, setNewYear] = useState<number>(new Date().getFullYear());
 
+    // Per-year generate progress/error (tracks the active year)
     const [genLoading, setGenLoading] = useState<number | null>(null);
     const [genError, setGenError] = useState<string | null>(null);
 
     const navigate = useNavigate();
 
-    // Fetch comparatif years
+    /** Fetch list of comparatif “years” (admin data to manage lines). */
     const fetchYears = () => {
         setLoading(true);
         fetch("/api/comparatifyears", { credentials: "include" })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
             .then(setYears)
-            .catch(err => setError(err.message))
+            .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
     };
 
-    // Fetch report status
+    /** Fetch report availability flags (used to show Generate vs Re-generate). */
     const fetchReports = () => {
         fetch("/api/rapports", { credentials: "include" })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
@@ -63,15 +65,17 @@ const Comparatif: React.FC = () => {
             .catch(() => setReports([]));
     };
 
+    /** Initial load. Independent requests are fine; no dependency between them. */
     useEffect(() => {
         fetchYears();
         fetchReports();
     }, []);
 
+    /** Helper: check if the report for a year already exists. */
     const isReportGenerated = (annee: number) =>
-        reports.some(r => r.year === annee && r.reportGenerated);
+        reports.some((r) => r.year === annee && r.reportGenerated);
 
-    // Create comparatif year
+    /** Create a new comparatif year, then refresh lists (and report flags shortly after). */
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
@@ -81,32 +85,36 @@ const Comparatif: React.FC = () => {
             credentials: "include",
             body: JSON.stringify({ annee: newYear, lines: [] }),
         })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 setShowForm(false);
                 setNewYear(new Date().getFullYear());
                 fetchYears();
+                // Small delay to allow backend to update report index if needed
                 setTimeout(fetchReports, 400);
             })
-            .catch(err => setError(err.message));
+            .catch((err) => setError(err.message));
     }
 
-    // Delete comparatif year
+    /** Delete an entire year (and its lines), then refresh lists/flags. */
     function handleDelete(id: number) {
         if (!window.confirm("Supprimer cette année et toutes ses lignes?")) return;
         fetch(`/api/comparatifyears/${id}`, {
             method: "DELETE",
             credentials: "include",
         })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 fetchYears();
                 setTimeout(fetchReports, 400);
             })
-            .catch(err => setError(err.message));
+            .catch((err) => setError(err.message));
     }
 
-    // (Re)generate report -> navigate to the report page
+    /**
+     * (Re)generate the report for a given year.
+     * Navigates to the report viewer on success (API may pre-create the file).
+     */
     async function handleGenerateReport(annee: number) {
         try {
             if (isReportGenerated(annee)) {
@@ -125,11 +133,7 @@ const Comparatif: React.FC = () => {
             });
             if (!res.ok) throw new Error(await res.text());
 
-            // Optional: if your API returns a report id/url, you could use it here.
-            // const data = await res.json().catch(() => null);
-            // if (data?.id) return navigate(`/rapports/${data.id}`);
-
-            // Navigate to the report viewer for this year
+            // If the API returns a specific report id/url, use it here instead.
             navigate(REPORT_ROUTE(annee));
         } catch (err: any) {
             setGenError(err.message ?? "Erreur lors de la génération du rapport.");
@@ -146,7 +150,7 @@ const Comparatif: React.FC = () => {
                 <button
                     className="btn btn-primary"
                     style={{ minWidth: 170 }}
-                    onClick={() => setShowForm(f => !f)}
+                    onClick={() => setShowForm((f) => !f)}
                 >
                     <i className="bi bi-plus-circle me-1"></i>
                     <span className="d-none d-sm-inline">Nouveau comparatif</span>
@@ -163,7 +167,7 @@ const Comparatif: React.FC = () => {
                             value={newYear}
                             min={1990}
                             max={2100}
-                            onChange={e => setNewYear(Number(e.target.value))}
+                            onChange={(e) => setNewYear(Number(e.target.value))}
                             required
                             style={{ maxWidth: 130 }}
                         />
@@ -190,7 +194,7 @@ const Comparatif: React.FC = () => {
                 <div className="alert alert-secondary text-center">Aucune année disponible.</div>
             ) : (
                 <div>
-                    {years.map(y => {
+                    {years.map((y) => {
                         const generated = isReportGenerated(y.annee);
                         const busy = genLoading === y.annee;
 
@@ -214,14 +218,18 @@ const Comparatif: React.FC = () => {
                                     <div className="d-flex gap-2 ms-auto">
                                         {/* (Re)Generate */}
                                         <button
-                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"}`}
+                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"
+                                                }`}
                                             onClick={() => handleGenerateReport(y.annee)}
                                             disabled={busy}
                                             title={generated ? "Régénérer le rapport" : "Générer un rapport"}
                                         >
                                             {busy ? (
                                                 <>
-                                                    <span className="spinner-border spinner-border-sm me-2" role="status" />
+                                                    <span
+                                                        className="spinner-border spinner-border-sm me-2"
+                                                        role="status"
+                                                    />
                                                     <span className="d-none d-sm-inline">Traitement…</span>
                                                     <span className="d-sm-none">…</span>
                                                 </>

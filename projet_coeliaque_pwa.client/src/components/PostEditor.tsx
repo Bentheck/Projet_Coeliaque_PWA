@@ -27,39 +27,42 @@ import {
 import { LinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { CodeNode } from "@lexical/code";
-
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 
 import { ImageNode, $createImageNode } from "./editor/ImageNode";
 
-/* ================== Props ================== */
+/* ================== Types ================== */
 type PostEditorProps = {
     initialHTML?: string;
     onChange?: (html: string) => void;
     ariaLabel?: string;
 
+    /** If provided, images are uploaded and the returned URL is inserted; otherwise a data: URL is used. */
     uploadImage?: (file: File) => Promise<string>;
     maxImageSizeMB?: number;
 
-    /** GIPHY API key enables the GIF picker */
+    /** Enable GIF picker (GIPHY) by passing an API key. */
     giphyApiKey?: string;
-    /** Optional search language (ISO 639-1), defaults to 'fr' */
+    /** ISO 639-1 search language; default 'fr'. */
     giphyLang?: string;
-    /** Optional content rating filter: 'g' | 'pg' | 'pg-13' | 'r' (default 'g') */
+    /** Content rating filter; default 'g'. */
     giphyRating?: "g" | "pg" | "pg-13" | "r";
 };
 
-/* ================== Theme / Error ================== */
+/* ================== Theme / Error ==================
+   Minimal theme mapping to Bootstrap classes. */
 const theme = {
     text: { bold: "fw-bold", italic: "fst-italic", underline: "text-decoration-underline" },
 };
 
+/** LexicalErrorBoundary has a few export shapes; pick whatever exists. */
 const FallbackBoundary = ({ children }: any) => <>{children}</>;
 const ErrorBoundary: any =
     (LexicalErrorBoundaryPkg as any).default ||
     (LexicalErrorBoundaryPkg as any).LexicalErrorBoundary ||
     FallbackBoundary;
 
+/* ================== Placeholder ================== */
 function Placeholder() {
     return (
         <div style={{ position: "absolute", pointerEvents: "none", top: 10, left: 12, opacity: 0.5 }}>
@@ -68,7 +71,8 @@ function Placeholder() {
     );
 }
 
-/* ================== EditorRef Plugin ================== */
+/* ================== EditorRef Plugin ==================
+   Exposes the underlying LexicalEditor via ref for imperative inserts. */
 function EditorRefPlugin({ editorRef }: { editorRef: React.MutableRefObject<LexicalEditor | null> }) {
     const [editor] = useLexicalComposerContext();
     useEffect(() => {
@@ -80,7 +84,8 @@ function EditorRefPlugin({ editorRef }: { editorRef: React.MutableRefObject<Lexi
     return null;
 }
 
-/* ================== Initial HTML Loader ================== */
+/* ================== Initial HTML Loader ==================
+   Loads initial HTML once; falls back to an empty paragraph. */
 function LoadInitialHtmlOncePlugin({ html }: { html?: string }) {
     const [editor] = useLexicalComposerContext();
     const loaded = useRef(false);
@@ -109,7 +114,8 @@ function LoadInitialHtmlOncePlugin({ html }: { html?: string }) {
     return null;
 }
 
-/* ================== HTML Change Emitter ================== */
+/* ================== HTML Change Emitter ==================
+   Converts the editor state to HTML on each update and bubbles up. */
 function HtmlChangePlugin({ onChange }: { onChange?: (html: string) => void }) {
     const [editor] = useLexicalComposerContext();
 
@@ -241,10 +247,11 @@ function RichToolbar({
     );
 }
 
-/* ================== GIPHY Picker ================== */
+/* ================== GIPHY Picker ==================
+   Light-weight modal to browse/search and pick a GIF URL from GIPHY. */
 type GiphyImage = {
     url: string;
-    width: string; // numbers as strings in Giphy payload
+    width: string;
     height: string;
 };
 type GiphyItem = {
@@ -252,14 +259,14 @@ type GiphyItem = {
     title?: string;
     images?: {
         preview_gif?: GiphyImage;
-        fixed_width_small?: GiphyImage; // ~100w
-        fixed_width?: GiphyImage; // ~200w
+        fixed_width_small?: GiphyImage;
+        fixed_width?: GiphyImage;
         downsized?: GiphyImage;
         original?: GiphyImage;
     };
 };
 
-// Prefer a rendition <= 480px wide; otherwise, pick the smallest available
+/** Prefer a rendition ≤480px; fall back to the smallest width available. */
 function bestGiphyVariantMax480(x: GiphyItem): GiphyImage | null {
     const i = x.images || ({} as any);
     const candidates: (GiphyImage | undefined)[] = [
@@ -284,7 +291,6 @@ function bestGiphyVariantMax480(x: GiphyItem): GiphyImage | null {
     }
     if (best) return best;
 
-    // fallback: smallest width
     let smallest: GiphyImage | null = null;
     let smallestW = Infinity;
     for (const c of candidates) {
@@ -456,7 +462,8 @@ function GifPickerModalGiphy({
     );
 }
 
-/* ================== Main Editor ================== */
+/* ================== Main Editor ==================
+   Rich-text editor for posts with image upload, GIF insert, lists/links, and HTML I/O. */
 export default function PostEditor({
     initialHTML,
     onChange,
@@ -472,6 +479,7 @@ export default function PostEditor({
     const editorRef = useRef<LexicalEditor | null>(null);
     const [gifOpen, setGifOpen] = useState(false);
 
+    /** Stable Lexical config (nodes list must be static across mounts). */
     const initialConfig = useMemo(
         () => ({
             namespace: "forum-editor",
@@ -494,15 +502,13 @@ export default function PostEditor({
             reader.readAsDataURL(file);
         });
 
-    // Add optional className so we can style GIFs differently (lexical-gif)
+    /** Insert an image at the current selection and follow with an empty paragraph for smoother typing. */
     const insertImageAtSelection = (src: string, alt = "", width?: number, height?: number) => {
         const editor = editorRef.current;
         if (!editor) return;
         editor.update(() => {
-            const image = $createImageNode({ src, altText: alt, width, height }); // <-- pass w/h
+            const image = $createImageNode({ src, altText: alt, width, height });
             $insertNodes([image]);
-
-            // add a new empty paragraph after image for nicer UX
             const p = $createParagraphNode();
             p.append($createTextNode(""));
             $insertNodes([p]);
@@ -521,7 +527,7 @@ export default function PostEditor({
         try {
             const url = uploadImage ? await uploadImage(file) : await fileToDataURL(file);
             const alt = file.name.replace(/\.[^/.]+$/, "");
-            insertImageAtSelection(url, alt); // regular images -> default class from ImageNode
+            insertImageAtSelection(url, alt);
         } catch (e) {
             console.error(e);
             alert("Impossible d’ajouter l’image.");
@@ -530,6 +536,7 @@ export default function PostEditor({
         }
     };
 
+    /** Paste: if any clipboard item is an image file, intercept and insert it. */
     const onPaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
         const items = e.clipboardData?.items;
         if (!items) return;
@@ -543,6 +550,7 @@ export default function PostEditor({
         }
     };
 
+    /** Drop: accept the first image file and insert it. */
     const onDrop = async (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         const files = e.dataTransfer?.files;
@@ -578,7 +586,7 @@ export default function PostEditor({
                 />
             )}
 
-            {/* Hidden image picker */}
+            {/* Hidden file input for image selection */}
             <input
                 ref={fileInputRef}
                 type="file"

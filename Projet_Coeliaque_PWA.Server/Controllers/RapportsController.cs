@@ -10,6 +10,9 @@ using System.Text.Json;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
+    /// <summary>
+    /// Endpoints to list, generate, and retrieve yearly savings reports for the authenticated user.
+    /// </summary>
     [Route("api/rapports")]
     [ApiController]
     [Authorize]
@@ -18,13 +21,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RapportsController"/>.
+        /// </summary>
+        /// <param name="db">Application database context.</param>
+        /// <param name="userManager">ASP.NET Identity user manager.</param>
         public RapportsController(ApplicationDbContext db, UserManager<IdentityUser> userManager)
         {
             _db = db;
             _userManager = userManager;
         }
 
-        // GET: /api/rapports
+        /// <summary>
+        /// Lists available report years for the current user and indicates whether a report is generated for each year.
+        /// </summary>
+        /// <remarks>
+        /// Combines years from the user's <c>ComparatifYears</c> with years present in <c>SavedReports</c>.
+        /// </remarks>
+        /// <returns>
+        /// An ordered list (desc by year) of year descriptors including whether a report has been generated.
+        /// </returns>
+        /// <response code="200">Returns the list of years with generation flags.</response>
         [HttpGet]
         public async Task<ActionResult<List<RapportYearDto>>> GetAvailableReports()
         {
@@ -55,7 +72,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return result;
         }
 
-        // GET: /api/rapports/{annee}
+        /// <summary>
+        /// Retrieves a previously generated report for a given year for the current user.
+        /// </summary>
+        /// <param name="annee">Target year (e.g., 2025).</param>
+        /// <returns>
+        /// The report rows, the requesting user's display name, and the total of product subtotals.
+        /// </returns>
+        /// <response code="200">Returns the report for the specified year.</response>
+        /// <response code="404">No saved report was found for the specified year.</response>
         [HttpGet("{annee:int}")]
         public async Task<ActionResult<RapportDisplayDto>> GetReportByYear(int annee)
         {
@@ -80,6 +105,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 TotalSousTotalProduit = total
             };
         }
+
+        /// <summary>
+        /// Generates (or regenerates) the report for a given year based on the user's invoices and product comparisons.
+        /// </summary>
+        /// <param name="annee">Target year to generate (e.g., 2025).</param>
+        /// <returns>HTTP 200 when the report has been persisted.</returns>
+        /// <remarks>
+        /// <para>
+        /// Aggregates invoice items for the year, aligns them with product comparisons, computes per-100 unit differences,
+        /// and saves the resulting rows as JSON in <c>SavedReports</c>.
+        /// </para>
+        /// <para>
+        /// Relies on <c>UnitConversionHelper.GetPricePer100</c> to normalize price per 100g or 100ml where applicable.
+        /// </para>
+        /// </remarks>
+        /// <response code="200">Report was generated and saved successfully.</response>
         [HttpPost("generate/{annee}")]
         public async Task<IActionResult> GenerateReport(int annee)
         {

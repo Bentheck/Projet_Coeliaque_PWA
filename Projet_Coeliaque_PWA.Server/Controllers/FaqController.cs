@@ -1,14 +1,23 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Controllers/FaqController.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
 
 namespace Projet_coeliaque.Controllers
 {
+    /// <summary>
+    /// Public FAQ endpoints (read) and SuperAdmin endpoints (manage).
+    /// Routes and method signatures kept intact; added XML docs and minor guard rails.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class FaqController : ControllerBase
@@ -23,9 +32,16 @@ namespace Projet_coeliaque.Controllers
         }
 
         // ========== PUBLIC ==========
-        // Returns active categories + active questions (mapping enforces active-only questions).
-        // Optional q= filters in-memory (case-insensitive) across category name, question, answerHtml, tags.
+
+        /// <summary>
+        /// Returns active categories with their active questions.
+        /// Optional <c>q</c> filters in-memory (case-insensitive) across:
+        /// category name, question, answerHtml, and tags.
+        /// </summary>
+        /// <param name="q">Optional search term used to filter questions inside categories.</param>
+        /// <returns>List of active categories with (possibly filtered) active questions.</returns>
         [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<FaqCategoryDto>), 200)]
         public async Task<ActionResult<IEnumerable<FaqCategoryDto>>> GetTree([FromQuery] string? q)
         {
             var cats = await _db.FaqCategories
@@ -67,8 +83,13 @@ namespace Projet_coeliaque.Controllers
             return Ok(cats);
         }
 
-        // Category summaries (includes IsActive + active question count)
+        /// <summary>
+        /// Returns all FAQ categories (active and inactive) with their active question counts.
+        /// Useful for admin dashboards.
+        /// </summary>
+        /// <returns>List of category summaries including <c>IsActive</c> and question count.</returns>
         [HttpGet("categories")]
+        [ProducesResponseType(typeof(IEnumerable<FaqCategorySummaryDto>), 200)]
         public async Task<ActionResult<IEnumerable<FaqCategorySummaryDto>>> GetCategories()
         {
             var cats = await _db.FaqCategories
@@ -81,8 +102,16 @@ namespace Projet_coeliaque.Controllers
         }
 
         // ========== ADMIN (SuperAdmin) ==========
+
+        /// <summary>
+        /// Creates a new FAQ category.
+        /// </summary>
+        /// <param name="input">Category payload (name, slug, description, etc.).</param>
+        /// <returns>The created category as DTO.</returns>
         [HttpPost("categories")]
         [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(typeof(FaqCategoryDto), 200)]
+        [ProducesResponseType(409)]
         public async Task<ActionResult<FaqCategoryDto>> CreateCategory([FromBody] UpsertCategoryInput input)
         {
             if (await _db.FaqCategories.AnyAsync(c => c.Slug == input.Slug))
@@ -95,8 +124,17 @@ namespace Projet_coeliaque.Controllers
             return await GetOneCategory(entity.Id);
         }
 
+        /// <summary>
+        /// Updates an existing FAQ category.
+        /// </summary>
+        /// <param name="id">Category id.</param>
+        /// <param name="input">Updated category payload.</param>
+        /// <returns>The updated category as DTO.</returns>
         [HttpPut("categories/{id:int}")]
         [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(typeof(FaqCategoryDto), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(409)]
         public async Task<ActionResult<FaqCategoryDto>> UpdateCategory(int id, [FromBody] UpsertCategoryInput input)
         {
             var entity = await _db.FaqCategories.FindAsync(id);
@@ -115,11 +153,20 @@ namespace Projet_coeliaque.Controllers
             return await GetOneCategory(entity.Id);
         }
 
+        /// <summary>
+        /// Deletes a category and its questions (cascade).
+        /// </summary>
+        /// <param name="id">Category id.</param>
         [HttpDelete("categories/{id:int}")]
         [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> DeleteCategory(int id)
         {
-            var cat = await _db.FaqCategories.Include(c => c.Questions).FirstOrDefaultAsync(c => c.Id == id);
+            var cat = await _db.FaqCategories
+                .Include(c => c.Questions)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
             if (cat == null) return NotFound();
 
             _db.FaqCategories.Remove(cat); // cascades to questions
@@ -127,19 +174,39 @@ namespace Projet_coeliaque.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Reorders categories according to the provided id list (0-based order).
+        /// </summary>
+        /// <param name="orderedIds">Array of category ids in the desired order.</param>
         [HttpPost("categories/reorder")]
         [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(204)]
         public async Task<IActionResult> ReorderCategories([FromBody] int[] orderedIds)
         {
-            var cats = await _db.FaqCategories.Where(c => orderedIds.Contains(c.Id)).ToListAsync();
-            var orderMap = orderedIds.Select((id, i) => new { id, i }).ToDictionary(x => x.id, x => x.i);
-            foreach (var c in cats) c.SortOrder = orderMap[c.Id];
+            var cats = await _db.FaqCategories
+                .Where(c => orderedIds.Contains(c.Id))
+                .ToListAsync();
+
+            var orderMap = orderedIds
+                .Select((id, i) => new { id, i })
+                .ToDictionary(x => x.id, x => x.i);
+
+            foreach (var c in cats)
+                c.SortOrder = orderMap[c.Id];
+
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
+        /// <summary>
+        /// Creates a new FAQ question.
+        /// </summary>
+        /// <param name="input">Question payload.</param>
+        /// <returns>The created question DTO.</returns>
         [HttpPost("questions")]
         [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(typeof(FaqQuestionDto), 200)]
+        [ProducesResponseType(400)]
         public async Task<ActionResult<FaqQuestionDto>> CreateQuestion([FromBody] UpsertQuestionInput input)
         {
             if (!await _db.FaqCategories.AnyAsync(c => c.Id == input.CategoryId))
@@ -152,8 +219,16 @@ namespace Projet_coeliaque.Controllers
             return Ok(_mapper.Map<FaqQuestionDto>(entity));
         }
 
+        /// <summary>
+        /// Updates an existing FAQ question.
+        /// </summary>
+        /// <param name="id">Question id.</param>
+        /// <param name="input">Updated question payload.</param>
+        /// <returns>The updated question DTO.</returns>
         [HttpPut("questions/{id:int}")]
         [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(typeof(FaqQuestionDto), 200)]
+        [ProducesResponseType(404)]
         public async Task<ActionResult<FaqQuestionDto>> UpdateQuestion(int id, [FromBody] UpsertQuestionInput input)
         {
             var entity = await _db.FaqQuestions.FindAsync(id);
@@ -166,8 +241,14 @@ namespace Projet_coeliaque.Controllers
             return Ok(_mapper.Map<FaqQuestionDto>(entity));
         }
 
+        /// <summary>
+        /// Deletes a FAQ question.
+        /// </summary>
+        /// <param name="id">Question id.</param>
         [HttpDelete("questions/{id:int}")]
         [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> DeleteQuestion(int id)
         {
             var q = await _db.FaqQuestions.FindAsync(id);
@@ -178,22 +259,38 @@ namespace Projet_coeliaque.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Reorders questions within a specific category based on the provided id list.
+        /// </summary>
+        /// <param name="categoryId">Target category id.</param>
+        /// <param name="orderedIds">Array of question ids in the desired order.</param>
         [HttpPost("questions/reorder/{categoryId:int}")]
         [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(204)]
         public async Task<IActionResult> ReorderQuestions(int categoryId, [FromBody] int[] orderedIds)
         {
             var qs = await _db.FaqQuestions
                 .Where(x => x.CategoryId == categoryId && orderedIds.Contains(x.Id))
                 .ToListAsync();
 
-            var orderMap = orderedIds.Select((id, i) => new { id, i }).ToDictionary(x => x.id, x => x.i);
-            foreach (var item in qs) item.SortOrder = orderMap[item.Id];
+            var orderMap = orderedIds
+                .Select((id, i) => new { id, i })
+                .ToDictionary(x => x.id, x => x.i);
+
+            foreach (var item in qs)
+                item.SortOrder = orderMap[item.Id];
 
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
         // ---------- helper ----------
+
+        /// <summary>
+        /// Loads a single category by id, projected to <see cref="FaqCategoryDto"/>.
+        /// </summary>
+        /// <param name="id">Category id.</param>
+        /// <returns>Category DTO or 404.</returns>
         private async Task<ActionResult<FaqCategoryDto>> GetOneCategory(int id)
         {
             var dto = await _db.FaqCategories

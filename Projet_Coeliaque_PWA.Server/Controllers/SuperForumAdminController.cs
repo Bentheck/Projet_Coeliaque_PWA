@@ -12,6 +12,9 @@ using Projet_Coeliaque_PWA.Server.Models;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
+    /// <summary>
+    /// Super-admin endpoints specifically for the Forum Admins (DB-backed list).
+    /// </summary>
     [ApiController]
     [Route("api/super/forum/admins")]
     [Authorize(Policy = "IsSuperAdmin")] // only SuperAdmin (Identity role) can manage the list
@@ -20,12 +23,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _um;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SuperForumAdminController"/>.
+        /// </summary>
         public SuperForumAdminController(ApplicationDbContext db, UserManager<IdentityUser> um)
         {
             _db = db;
             _um = um;
         }
 
+        /// <summary>
+        /// Lists all forum admins with display names and added timestamps.
+        /// </summary>
+        /// <returns>List of <see cref="ForumAdminDto"/>.</returns>
         // GET: /api/super/forum/admins
         [HttpGet]
         public async Task<ActionResult> List()
@@ -43,6 +53,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(admins);
         }
 
+        /// <summary>
+        /// Adds a forum admin by userId or email.
+        /// </summary>
+        /// <param name="input">Payload specifying userId or email.</param>
+        /// <returns>Created result with the admin's userId.</returns>
         // POST: /api/super/forum/admins  body: { userId?: "...", email?: "..." }
         [HttpPost]
         public async Task<ActionResult> Add([FromBody] UpsertForumAdminInput input)
@@ -70,6 +85,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return CreatedAtAction(nameof(List), new { id = user.Id }, new { userId = user.Id });
         }
 
+        /// <summary>
+        /// Removes a forum admin by userId.
+        /// </summary>
+        /// <param name="userId">The userId of the forum admin.</param>
+        /// <returns>No content on success.</returns>
         // DELETE: /api/super/forum/admins/{userId}
         [HttpDelete("{userId}")]
         public async Task<IActionResult> Remove(string userId)

@@ -3,17 +3,28 @@ import { Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
 export default function Navbar() {
-    const { user, membershipStatus, isForumAdmin, isSuperAdmin } = useAuth() as any;
+    // Typed via AuthContext; no `as any` needed.
+    const { user, membershipStatus, isForumAdmin, isSuperAdmin } = useAuth();
 
-    // Prefer Nom affiché, then username, then email
+    /**
+     * Preferred display label for the user menu.
+     * Order matters: show a human-friendly name first, then username, then email.
+     */
     const displayLabel =
-        (user && (user.displayName || user.name || user.email)) || "Compte";
+        user?.displayName ?? user?.name ?? user?.email ?? "Compte";
 
-    // Profile URL
-    const myProfileUrl =
-        user?.id ? `/u/${user.id}` :
-            (user as any)?.userId ? `/u/${(user as any).userId}` :
-                null;
+    /**
+     * Profile URL for the current user.
+     * Keep a legacy fallback for older payloads that shipped `userId`.
+     */
+    const myProfileUrl = user?.id
+        ? `/u/${user.id}`
+        : (user as any)?.userId
+            ? `/u/${(user as any).userId}`
+            : null;
+
+    // Consistent single source of truth for “active” membership UI decisions.
+    const hasActiveMembership = membershipStatus === "Active";
 
     return (
         <nav className="navbar navbar-expand-lg navbar-light bg-white sticky-top mb-4 shadow-sm">
@@ -60,7 +71,9 @@ export default function Navbar() {
                                         <i className="bi bi-list-columns me-2"></i> Comparatif
                                     </Link>
                                 </li>
-                                <li><hr className="dropdown-divider" /></li>
+                                <li>
+                                    <hr className="dropdown-divider" />
+                                </li>
                                 <li>
                                     <Link className="dropdown-item" to="/rapports">
                                         <i className="bi bi-bar-chart-steps me-2"></i> Rapport Comparatif
@@ -69,7 +82,7 @@ export default function Navbar() {
                             </ul>
                         </li>
 
-                        {/* Épicerie (now a dropdown) */}
+                        {/* Épicerie */}
                         <li className="nav-item dropdown">
                             <a
                                 className="nav-link dropdown-toggle"
@@ -97,7 +110,9 @@ export default function Navbar() {
                                         Toutes
                                     </Link>
                                 </li>
-                                <li><hr className="dropdown-divider" /></li>
+                                <li>
+                                    <hr className="dropdown-divider" />
+                                </li>
                                 <li>
                                     <Link className="dropdown-item" to="/liste-epicerie">
                                         Ouvrir l’index
@@ -138,7 +153,9 @@ export default function Navbar() {
                                 )}
                                 {isForumAdmin && (
                                     <>
-                                        <li><hr className="dropdown-divider" /></li>
+                                        <li>
+                                            <hr className="dropdown-divider" />
+                                        </li>
                                         <li>
                                             <Link className="dropdown-item" to="/admin/forum">
                                                 <i className="bi bi-shield-check me-2"></i> Admin forum
@@ -148,7 +165,6 @@ export default function Navbar() {
                                 )}
                             </ul>
                         </li>
-                    
 
                         {/* Aide */}
                         <li className="nav-item dropdown">
@@ -175,7 +191,9 @@ export default function Navbar() {
                                 </li>
                                 {isSuperAdmin && (
                                     <>
-                                        <li><hr className="dropdown-divider" /></li>
+                                        <li>
+                                            <hr className="dropdown-divider" />
+                                        </li>
                                         <li>
                                             <Link className="dropdown-item" to="/super/faq">
                                                 <i className="bi bi-tools me-2"></i> Admin FAQ
@@ -191,9 +209,9 @@ export default function Navbar() {
                     <ul className="navbar-nav ms-auto align-items-lg-center">
                         {user ? (
                             <>
-                                {(membershipStatus === "Inactive" || !membershipStatus) && (
+                                {!hasActiveMembership && (
                                     <li className="nav-item my-2 my-lg-0">
-                                        <Link className="btn btn-warning ms-lg-2 text-white" to="/subscribe">
+                                        <Link className="btn btn-warning ms-lg-2 text-white" to="/subscribe" title="Activer mon abonnement">
                                             <i className="bi bi-exclamation-triangle me-1"></i> S'abonner
                                         </Link>
                                     </li>
@@ -204,7 +222,7 @@ export default function Navbar() {
                                         <Link
                                             to="/super/admins"
                                             className="btn btn-outline-danger ms-lg-2"
-                                            title="SuperAdmin"
+                                            title="Espace SuperAdmin"
                                         >
                                             <i className="bi bi-shield-lock me-1"></i> SuperAdmin
                                         </Link>
@@ -223,19 +241,21 @@ export default function Navbar() {
                                         <i className="bi bi-person-circle"></i> {displayLabel}
                                     </a>
                                     <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                                        <li>
-                                            {myProfileUrl && (
+                                        {myProfileUrl && (
+                                            <li>
                                                 <Link className="dropdown-item" to={myProfileUrl}>
                                                     <i className="bi bi-person-badge me-2"></i> Mon profil
                                                 </Link>
-                                            )}
-                                        </li>
+                                            </li>
+                                        )}
                                         <li>
                                             <Link className="dropdown-item" to="/u/me/edit">
                                                 <i className="bi bi-pencil-square me-2"></i> Éditer mon profil
                                             </Link>
                                         </li>
-                                        <li><hr className="dropdown-divider" /></li>
+                                        <li>
+                                            <hr className="dropdown-divider" />
+                                        </li>
                                         <li>
                                             <Link className="dropdown-item" to="/membership">
                                                 <i className="bi bi-card-checklist me-2"></i> Membership

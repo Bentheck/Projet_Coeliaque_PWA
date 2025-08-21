@@ -1,13 +1,12 @@
 ﻿// src/pages/FAQ/FaqModule.tsx
 import React, { useEffect, useMemo, useState } from "react";
-// ⬇️ Adjust this path to your actual PostEditor location
 import PostEditor from "../../components/PostEditor";
 
-// ---- Shared Types (mirror of DTOs) ----
+/** FAQ entities (mirror API DTOs) */
 export type FaqQuestionDto = {
     id: number;
     question: string;
-    answerHtml: string;
+    answerHtml: string;      // trusted/sanitized HTML from server
     tagsCsv?: string | null;
     sortOrder: number;
 };
@@ -16,7 +15,7 @@ export type FaqCategoryDto = {
     id: number;
     name: string;
     slug: string;
-    description?: string | null; // treat as HTML
+    description?: string | null; // trusted/sanitized HTML from server
     sortOrder: number;
     questions: FaqQuestionDto[];
 };
@@ -25,15 +24,17 @@ export type FaqCategorySummaryDto = {
     id: number;
     name: string;
     slug: string;
-    description?: string | null; // treat as HTML
+    description?: string | null; // trusted/sanitized HTML from server
     sortOrder: number;
     isActive: boolean;
     activeQuestions: number;
 };
 
-// ========================
-// Public FAQ Page
-// ========================
+/* ========================
+   Public FAQ Page
+   - Client-side search via ?q=
+   - Renders server-provided HTML (assumed sanitized)
+   ======================== */
 export function FaqPage({ className = "" }: { className?: string }) {
     const [q, setQ] = useState("");
     const [data, setData] = useState<FaqCategoryDto[] | null>(null);
@@ -70,6 +71,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                 <p className="mt-1 text-sm text-neutral-600">
                     Questions fréquentes sur le calculateur, la liste d&apos;épicerie, etc.
                 </p>
+
                 <div className="mt-3 flex items-center gap-2">
                     <input
                         value={q}
@@ -84,6 +86,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                         </button>
                     )}
                 </div>
+
                 <div className="mt-2 text-xs text-neutral-500">
                     {loading ? "Chargement…" : `${totalCount} résultat(s)`}
                 </div>
@@ -96,7 +99,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                             {cat.name}
                         </summary>
 
-                        {/* HTML description (render inside, not inline in <summary>) */}
+                        {/* Server HTML. Must be sanitized server-side before sending to client. */}
                         {cat.description && (
                             <div
                                 className="prose mt-2 max-w-none text-sm text-neutral-700"
@@ -108,6 +111,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                             {cat.questions.map((qq) => (
                                 <details key={qq.id} className="rounded-xl border p-3">
                                     <summary className="cursor-pointer font-medium">{qq.question}</summary>
+                                    {/* Same note: render trusted/sanitized HTML */}
                                     <div
                                         className="prose mt-2 max-w-none text-sm"
                                         dangerouslySetInnerHTML={{ __html: qq.answerHtml }}
@@ -126,16 +130,19 @@ export function FaqPage({ className = "" }: { className?: string }) {
             </div>
 
             <aside className="mt-6 rounded-2xl border-l-4 border-amber-500 bg-amber-50 p-4 text-sm">
-                <strong>Avertissement :</strong> Les informations de cette FAQ sont fournies à titre indicatif.
-                Vérifiez les exigences officielles (ARC/Revenu Québec) selon votre situation.
+                <strong>Avertissement :</strong> Les informations de cette FAQ sont fournies à titre
+                indicatif. Vérifiez les exigences officielles (ARC/Revenu Québec) selon votre situation.
             </aside>
         </section>
     );
 }
 
-// ========================
-// SuperAdmin Admin Panel
-// ========================
+/* ========================
+   SuperAdmin Admin Panel
+   - CRUD for categories/questions
+   - Uses PostEditor to author HTML (stored as HTML)
+   - After mutations, refresh lists
+   ======================== */
 export function FaqAdmin({ className = "" }: { className?: string }) {
     const [q, setQ] = useState("");
     const [cats, setCats] = useState<FaqCategorySummaryDto[]>([]);
@@ -160,10 +167,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
     useEffect(() => {
         void refresh();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // q changes refetch the public tree filtered by query
     }, [q]);
 
-    // --- Create/Update helpers ---
+    /** Create or update a category (name/slug required) */
     const upsertCategory = async (payload: Partial<FaqCategorySummaryDto> & { id?: number }) => {
         const isEdit = !!payload.id;
         const res = await fetch(isEdit ? `/api/faq/categories/${payload.id}` : "/api/faq/categories", {
@@ -181,6 +188,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         await refresh();
     };
 
+    /** Irreversible category delete (with confirmation) */
     const deleteCategory = async (id: number) => {
         if (!confirm("Supprimer cette catégorie?")) return;
         const res = await fetch(`/api/faq/categories/${id}`, { method: "DELETE" });
@@ -188,6 +196,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         await refresh();
     };
 
+    /** Create or update a question within a category */
     const upsertQuestion = async (
         payload: Partial<FaqQuestionDto> & { id?: number; categoryId: number; isActive?: boolean }
     ) => {
@@ -208,6 +217,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         await refresh();
     };
 
+    /** Irreversible question delete (with confirmation) */
     const deleteQuestion = async (id: number) => {
         if (!confirm("Supprimer cette question?")) return;
         const res = await fetch(`/api/faq/questions/${id}`, { method: "DELETE" });
@@ -215,12 +225,12 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         await refresh();
     };
 
-    // --- UI State ---
+    // ---- UI State for forms ----
     const [editingCatId, setEditingCatId] = useState<number | null>(null);
     const [catForm, setCatForm] = useState<Partial<FaqCategorySummaryDto>>({
         name: "",
         slug: "",
-        description: "", // HTML
+        description: "",
         isActive: true,
         sortOrder: 0,
     });
@@ -229,7 +239,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         id?: number;
         categoryId: number;
         question: string;
-        answerHtml: string; // HTML
+        answerHtml: string;
         tagsCsv?: string;
         sortOrder: number;
         isActive: boolean;
@@ -259,6 +269,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                 <p className="mt-1 text-sm text-neutral-600">
                     Créer des catégories, ajouter des questions/réponses, gérer l&apos;ordre et l&apos;état.
                 </p>
+
                 <div className="mt-3 flex items-center gap-2">
                     <input
                         value={q}
@@ -272,6 +283,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         </button>
                     )}
                 </div>
+
                 <div className="mt-2 text-xs text-neutral-500">
                     {loading ? "Chargement…" : `${cats.length} catégorie(s), ${totalQuestions} question(s)`}
                 </div>
@@ -280,6 +292,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             {/* Category form */}
             <div className="mb-6 rounded-2xl border bg-white p-4 shadow-sm">
                 <h2 className="text-lg font-semibold">{editingCatId ? "Modifier la catégorie" : "Nouvelle catégorie"}</h2>
+
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                     <label className="text-sm">
                         Nom
@@ -299,11 +312,11 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                     </label>
                 </div>
 
-                {/* HTML description via PostEditor */}
+                {/* Author category HTML via PostEditor */}
                 <div className="mt-3">
                     <div className="text-sm mb-2">Description (HTML)</div>
                     <PostEditor
-                        key={`cat-desc-${editingCatId ?? "new"}`}   // force remount when switching edit target
+                        key={`cat-desc-${editingCatId ?? "new"}`}   // force re-mount when target changes
                         initialHTML={catForm.description ?? ""}
                         onChange={(html) => setCatForm((prev) => ({ ...prev, description: html }))}
                         ariaLabel="Description de la catégorie"
@@ -352,6 +365,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             {/* Question form */}
             <div className="mb-6 rounded-2xl border bg-white p-4 shadow-sm">
                 <h2 className="text-lg font-semibold">Nouvelle question</h2>
+
                 <div className="mt-3 grid gap-3">
                     <label className="text-sm">
                         Catégorie
@@ -368,6 +382,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                             ))}
                         </select>
                     </label>
+
                     <label className="text-sm">
                         Question
                         <input
@@ -377,10 +392,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         />
                     </label>
 
-                    {/* HTML answer via PostEditor */}
+                    {/* Author answer HTML via PostEditor */}
                     <div className="text-sm">Réponse (HTML)</div>
                     <PostEditor
-                        key={`q-answer-${qForm.id ?? "new"}`}        // force remount on edit
+                        key={`q-answer-${qForm.id ?? "new"}`}  // force re-mount when switching edited question
                         initialHTML={qForm.answerHtml}
                         onChange={(html) => setQForm((prev) => ({ ...prev, answerHtml: html }))}
                         ariaLabel="Réponse"
@@ -434,7 +449,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                 </div>
             </div>
 
-            {/* Tree with edit/delete */}
+            {/* Category/question tree with quick actions */}
             <div className="space-y-4">
                 {tree.map((cat) => (
                     <details key={cat.id} className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -443,7 +458,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                             <span className="text-xs text-neutral-500">{cat.questions.length} question(s)</span>
                         </summary>
 
-                        {/* Render category description HTML in admin view as well */}
+                        {/* Render category description HTML in admin view */}
                         {cat.description && (
                             <div
                                 className="prose mt-2 max-w-none text-sm text-neutral-700"
@@ -508,7 +523,9 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                     </div>
                                 </details>
                             ))}
-                            {cat.questions.length === 0 && <p className="text-sm text-neutral-500">Aucune question.</p>}
+                            {cat.questions.length === 0 && (
+                                <p className="text-sm text-neutral-500">Aucune question.</p>
+                            )}
                         </div>
                     </details>
                 ))}

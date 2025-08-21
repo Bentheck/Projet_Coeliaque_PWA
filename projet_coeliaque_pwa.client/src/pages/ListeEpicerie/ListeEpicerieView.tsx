@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-// ---- DTOs ----
+/* ============================== Types (DTOs) ============================== */
+
 interface FactureItemRow {
     id: number;
     item: string;
@@ -24,7 +25,7 @@ interface FreeItemRow {
     poidsUnite?: string | null;
 }
 interface ListeEpicerieItemDto {
-    id: number;                        // needed for PATCH (assume API returns it)
+    id: number;                      // required for PATCH on a specific item
     factureItemId?: number | null;
     freeItemId?: number | null;
     customName?: string | null;
@@ -32,8 +33,9 @@ interface ListeEpicerieItemDto {
     isFavorite: boolean;
     wasOnSale: boolean;
     isChecked: boolean;
-    // NEW: list-level price override (optional)
+    /** Per-list override for the unit price; falls back to source price if null */
     unitPrice?: number | null;
+    /** Optional inlined sources if server provided them with the list */
     factureItem?: FactureItemRow | null;
     freeItem?: FreeItemRow | null;
 }
@@ -42,10 +44,12 @@ interface ListeEpicerieDto {
     name: string;
     created: string;
     items: ListeEpicerieItemDto[];
-    completed?: boolean;               // server-computed
+    /** Server-computed: may be true even if some items were added without price */
+    completed?: boolean;
 }
 
-// ---- Helpers ----
+/* ============================== Small helpers ============================== */
+
 const fmtMoney = (n: number | null | undefined) =>
     typeof n === "number" && isFinite(n)
         ? n.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })
@@ -61,10 +65,12 @@ const renderWeight = (obj?: { poidsValeur?: number | null; poidsUnite?: string |
     if (hasUnit) return String(unit);
     return "—";
 };
+
 const fmtDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleString("fr-CA", { year: "numeric", month: "long", day: "2-digit" }) : "—";
 
-// ---- Component ----
+/* ============================== Component ============================== */
+
 const ListeEpicerieView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
 
@@ -73,9 +79,11 @@ const ListeEpicerieView: React.FC = () => {
     const [detailLoading, setDetailLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    /** Local caches for product lookups referenced by items (avoid n+1 at render) */
     const [factureById, setFactureById] = useState<Record<number, FactureItemRow>>({});
     const [freeById, setFreeById] = useState<Record<number, FreeItemRow>>({});
 
+    /** Load the list skeleton (items may include embedded sources or just IDs) */
     const reload = async () => {
         setLoading(true);
         setError(null);
@@ -94,9 +102,13 @@ const ListeEpicerieView: React.FC = () => {
 
     useEffect(() => { reload(); }, [id]);
 
-    // Ensure details for referenced items
+    /**
+     * Ensure we have full details for any referenced product that was not embedded
+     * in the list payload. We fetch only missing ones and fill the caches.
+     */
     useEffect(() => {
         if (!liste) return;
+
         const missingFacture = Array.from(new Set(
             (liste.items ?? [])
                 .filter(x => x.factureItemId && !x.factureItem)
@@ -122,7 +134,7 @@ const ListeEpicerieView: React.FC = () => {
                             if (!r.ok) return;
                             const row = (await r.json()) as FactureItemRow;
                             if (!cancelled) setFactureById(prev => ({ ...prev, [fid]: row }));
-                        } catch { }
+                        } catch { /* ignore network error for a single row */ }
                     }),
                     ...missingFree.map(async fid => {
                         try {
@@ -130,7 +142,7 @@ const ListeEpicerieView: React.FC = () => {
                             if (!r.ok) return;
                             const row = (await r.json()) as FreeItemRow;
                             if (!cancelled) setFreeById(prev => ({ ...prev, [fid]: row }));
-                        } catch { }
+                        } catch { /* ignore */ }
                     }),
                 ]);
             } finally {
@@ -140,7 +152,8 @@ const ListeEpicerieView: React.FC = () => {
         return () => { cancelled = true; };
     }, [liste, factureById, freeById]);
 
-    // Build rows
+    /* ------------------------------ Display rows ------------------------------ */
+
     type DisplayRow = {
         key: string;
         id?: number;
@@ -156,60 +169,73 @@ const ListeEpicerieView: React.FC = () => {
         checked: boolean;
     };
 
+    /**
+     * Build render-ready rows:
+     * - choose name/type/store/weight from customName > freeItem > factureItem
+     * - price = list-level override OR source price (defaultPrix/prix)
+     * - subtotal = unitPrice * qty when available
+     */
     const rows: DisplayRow[] = useMemo(() => {
         if (!liste) return [];
-        return (liste.items ?? []).map((it, idx) => {
-            const src =
-                it.customName ? null :
-                    it.freeItem || (it.freeItemId ? freeById[it.freeItemId] : null) ||
-                    it.factureItem || (it.factureItemId ? factureById[it.factureItemId] : null) ||
-                    null;
+        return (liste.items ?? [])
+            .map((it, idx) => {
+                const src =
+                    it.customName ? null :
+                        it.freeItem || (it.freeItemId ? freeById[it.freeItemId] : null) ||
+                        it.factureItem || (it.factureItemId ? factureById[it.factureItemId] : null) ||
+                        null;
 
-            const name =
-                it.customName ??
-                (src && "item" in src ? (src as any).item : "") ??
-                (it.factureItemId ? `Article #${it.factureItemId}` : it.freeItemId ? `Produit libre #${it.freeItemId}` : "—");
+                const name =
+                    it.customName ??
+                    (src && "item" in src ? (src as any).item : "") ??
+                    (it.factureItemId ? `Article #${it.factureItemId}` : it.freeItemId ? `Produit libre #${it.freeItemId}` : "—");
 
-            const type =
-                (src && "typeItem" in src ? (src as any).typeItem : "") || (it.customName ? "Personnalisé" : "—");
+                const type =
+                    (src && "typeItem" in src ? (src as any).typeItem : "") || (it.customName ? "Personnalisé" : "—");
 
-            const store = (src && "magasin" in src ? ((src as any).magasin || "—") : "—") as string;
-            const weight = renderWeight(src as any);
-            const qty = Math.max(1, Number(it.quantity) || 1);
+                const store = (src && "magasin" in src ? ((src as any).magasin || "—") : "—") as string;
+                const weight = renderWeight(src as any);
+                const qty = Math.max(1, Number(it.quantity) || 1);
 
-            // Prefer list-level override if present
-            const override = (it as any).unitPrice;
-            const fallback =
-                src && "prix" in (src as any) && typeof (src as any).prix === "number"
-                    ? (src as any).prix
-                    : src && "defaultPrix" in (src as any) && typeof (src as any).defaultPrix === "number"
-                        ? (src as any).defaultPrix
-                        : null;
+                // list override > facture.prix > free.defaultPrix
+                const override = (it as any).unitPrice;
+                const fallback =
+                    src && "prix" in (src as any) && typeof (src as any).prix === "number"
+                        ? (src as any).prix
+                        : src && "defaultPrix" in (src as any) && typeof (src as any).defaultPrix === "number"
+                            ? (src as any).defaultPrix
+                            : null;
 
-            const unitPrice = (typeof override === "number" && isFinite(override)) ? override : fallback;
-            const subtotal = unitPrice != null ? unitPrice * qty : null;
-            const special = typeof it.wasOnSale === "boolean" ? it.wasOnSale : !!(src && (src as any).wasOnSale);
-            const favorite = !!it.isFavorite;
-            const key = String(it.id ?? `${it.factureItemId ?? it.freeItemId ?? "custom"}-${idx}`);
+                const unitPrice = (typeof override === "number" && isFinite(override)) ? override : fallback;
+                const subtotal = unitPrice != null ? unitPrice * qty : null;
 
-            return { key, id: it.id, name, type, store, weight, qty, special, favorite, unitPrice, subtotal, checked: !!it.isChecked };
-        }).sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+                const special = typeof it.wasOnSale === "boolean" ? it.wasOnSale : !!(src && (src as any).wasOnSale);
+                const favorite = !!it.isFavorite;
+                const key = String(it.id ?? `${it.factureItemId ?? it.freeItemId ?? "custom"}-${idx}`);
+
+                return { key, id: it.id, name, type, store, weight, qty, special, favorite, unitPrice, subtotal, checked: !!it.isChecked };
+            })
+            .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
     }, [liste, factureById, freeById]);
 
-    // Totals & completion
+    /* ------------------------------ Aggregates ------------------------------ */
+
     const totalQty = rows.reduce((acc, r) => acc + r.qty, 0);
     const favoritesCount = rows.filter(r => r.favorite).length;
     const specialsCount = rows.filter(r => r.special).length;
     const totalCost = rows.reduce((acc, r) => acc + (r.subtotal ?? 0), 0);
     const anyPrice = rows.some(r => r.unitPrice != null);
 
+    // If server didn’t compute completed, fallback to “all checked”.
     const allChecked = rows.length > 0 && rows.every(r => r.checked);
     const isCompleted = !!(liste?.completed ?? allChecked);
 
-    // Actions
+    /* ------------------------------ Mutations ------------------------------ */
+
+    /** Mark the whole list as completed (optimistic UI, rollback on failure). */
     const setCompleted = async (next: boolean) => {
         if (!liste) return;
-        setListe(prev => prev ? { ...prev, completed: next } : prev); // optimistic
+        setListe(prev => prev ? { ...prev, completed: next } : prev);
         try {
             const res = await fetch(`/api/ListeEpicerie/${liste.id}/completed`, {
                 method: "PATCH",
@@ -220,17 +246,21 @@ const ListeEpicerieView: React.FC = () => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
         } catch (e) {
             console.error(e);
-            setListe(prev => prev ? { ...prev, completed: !next } : prev); // rollback
+            setListe(prev => prev ? { ...prev, completed: !next } : prev);
             alert("Échec lors de la mise à jour de l’état de la liste.");
         }
     };
 
+    /** Toggle a single item’s checked state (handles 409 “list is locked” + optimistic UI). */
     const setItemChecked = async (itemId: number | undefined, next: boolean) => {
         if (!liste || itemId == null) return;
+
+        // optimistic flip
         setListe(prev => prev ? {
             ...prev,
             items: prev.items.map(it => it.id === itemId ? { ...it, isChecked: next } : it)
         } : prev);
+
         try {
             const res = await fetch(`/api/ListeEpicerie/${liste.id}/items/${itemId}/checked`, {
                 method: "PATCH",
@@ -238,12 +268,15 @@ const ListeEpicerieView: React.FC = () => {
                 credentials: "include",
                 body: JSON.stringify({ checked: next })
             });
+
             if (res.status === 409) {
                 alert("La liste est complétée et ne peut pas être modifiée.");
                 await reload();
                 return;
             }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            // Keep completed in sync after success (only compute when toggling to true)
             if (next) {
                 setListe(prev => {
                     if (!prev) return prev;
@@ -256,6 +289,7 @@ const ListeEpicerieView: React.FC = () => {
             }
         } catch (e) {
             console.error(e);
+            // rollback on error
             setListe(prev => prev ? {
                 ...prev,
                 items: prev.items.map(it => it.id === itemId ? { ...it, isChecked: !next } : it)
@@ -263,6 +297,8 @@ const ListeEpicerieView: React.FC = () => {
             alert("Échec lors de la mise à jour de l’article.");
         }
     };
+
+    /* ------------------------------ Render ------------------------------ */
 
     if (loading) {
         return (
@@ -274,6 +310,7 @@ const ListeEpicerieView: React.FC = () => {
             </div>
         );
     }
+
     if (error || !liste) {
         return (
             <div className="container py-4">
@@ -287,7 +324,7 @@ const ListeEpicerieView: React.FC = () => {
 
     return (
         <div className="container py-4">
-            {/* Header with Retour */}
+            {/* Header: list title + actions (edit/print/complete) */}
             <div className="d-flex flex-wrap justify-content-between align-items-end mb-3">
                 <div className="d-flex align-items-center gap-2">
                     <Link to="/liste-epicerie" className="btn btn-outline-secondary d-print-none">
@@ -317,7 +354,7 @@ const ListeEpicerieView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Print-only meta */}
+            {/* Minimal print metadata */}
             <div className="d-none d-print-block mb-2">
                 <div className="small">Imprimé le {new Date().toLocaleString("fr-CA")}</div>
             </div>

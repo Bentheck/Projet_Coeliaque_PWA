@@ -6,12 +6,18 @@ interface ReportYear {
     reportGenerated: boolean;
 }
 
-// Helper for individual list items (handles report generation)
+/**
+ * Renders a single report row with actions.
+ * - Shows “Voir” + “Régénérer” when a report exists.
+ * - Shows “Générer” otherwise.
+ * - Handles its own async state (loading/success/error) to keep parent simple.
+ */
 const ReportListItem: React.FC<{ y: ReportYear, navigate: any, onReportGenerated?: () => void }> = ({ y, navigate, onReportGenerated }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
+    /** Create or re-create the given year's report, then ask parent to refresh the list. */
     function handleGenerate() {
         setLoading(true);
         setError(null);
@@ -23,6 +29,7 @@ const ReportListItem: React.FC<{ y: ReportYear, navigate: any, onReportGenerated
             .then(async res => {
                 if (!res.ok) throw new Error(await res.text());
                 setSuccess(true);
+                // brief success feedback; avoid persisting a “green” state forever
                 setTimeout(() => setSuccess(false), 3000);
                 onReportGenerated?.();
             })
@@ -73,12 +80,17 @@ const ReportListItem: React.FC<{ y: ReportYear, navigate: any, onReportGenerated
     );
 };
 
+/**
+ * Lists all report years and allows generating (or re-generating) each one.
+ * Fetches the list on mount and refreshes whenever a child item completes generation.
+ */
 const Rapports: React.FC = () => {
     const [years, setYears] = useState<ReportYear[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
+    /** Load report-year availability; used by both initial mount and child refreshes. */
     const fetchYears = () => {
         setLoading(true);
         fetch("/api/rapports", { credentials: "include" })

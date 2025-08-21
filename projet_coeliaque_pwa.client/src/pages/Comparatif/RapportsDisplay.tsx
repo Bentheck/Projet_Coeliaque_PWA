@@ -32,7 +32,7 @@ const RapportsDisplay: React.FC = () => {
     const navigate = useNavigate();
     const printSectionRef = useRef<HTMLDivElement>(null);
 
-    // State for modal prompt
+    // Print-time prompt (not persisted): collected only to render on the PDF
     const [showPrompt, setShowPrompt] = useState(false);
     const [printNom, setPrintNom] = useState("");
     const [printNAS, setPrintNAS] = useState("");
@@ -54,17 +54,16 @@ const RapportsDisplay: React.FC = () => {
             .finally(() => setLoading(false));
     }, [annee]);
 
-    // When triggerPrint is set, print and then reset fields
+    // When triggered, defer briefly so DOM updates, then invoke the browser print dialog
     useEffect(() => {
         if (!triggerPrint) return;
         setTimeout(() => {
             window.print();
             setShowPrompt(false);
             setTriggerPrint(false);
-            // Optionally clear fields after print:
-            // setPrintNom("");
-            // setPrintNAS("");
-        }, 200); // Short delay to ensure DOM updates
+            // If desired, uncomment to clear after printing:
+            // setPrintNom(""); setPrintNAS("");
+        }, 200);
     }, [triggerPrint]);
 
     function handlePrintClick() {
@@ -82,18 +81,20 @@ const RapportsDisplay: React.FC = () => {
 
     return (
         <div className="container py-3" style={{ maxWidth: 1200 }}>
-            {/* INFO ALERT (not printed) */}
+            {/* Inform users that NOM/NAS are only used for the printed output and never stored */}
             <div className="alert alert-info no-print mb-3" style={{ fontSize: "1.06em" }}>
                 <i className="bi bi-info-circle me-2"></i>
                 <b>Note :</b> Lorsque vous cliquerez sur “Imprimer”, vous pourrez entrer votre <b><i>NOM</i></b> et votre <b><i>NAS</i></b> pour qu’ils soient inclus en haut du rapport. <b><i>Ceux-ci ne seront pas sauvegardés.</i></b>
             </div>
+
             <button className="btn btn-success no-print mb-3" onClick={handlePrintClick}>
                 Télécharger/Imprimer le PDF
             </button>
             <button className="btn btn-outline-secondary no-print mb-3 ms-2" onClick={() => navigate(-1)}>
                 Retour
             </button>
-            {/* Prompt Modal */}
+
+            {/* Minimal, dependency-free modal for print metadata */}
             {showPrompt && (
                 <div
                     style={{
@@ -167,63 +168,62 @@ const RapportsDisplay: React.FC = () => {
             )}
 
             <div id="print-section" ref={printSectionRef}>
-                {/* Print-only CSS */}
+                {/* Print-only CSS toggles fields/controls for hardcopy vs on-screen */}
                 <style>
                     {`
-                    @media screen {
-                        .print-only { display: none !important; }
-                    }
-                    @media print {
-                        .print-only { display: flex !important; }
-                        .no-print { display: none !important; }
-                    }
-                    `}
+          @media screen {
+            .print-only { display: none !important; }
+          }
+          @media print {
+            .print-only { display: flex !important; }
+            .no-print { display: none !important; }
+          }
+          `}
                 </style>
-                {/* PRINT: Nom & NAS boxes (always shown in print, and on screen for preview) */}
+
+                {/* Boxes rendered into the PDF; values are transient and not persisted */}
                 <div className="d-flex gap-4 align-items-end mb-4 mt-2 print-only" style={{ marginTop: 18 }}>
                     <div>
-                        <div style={{
-                            fontWeight: "bold",
-                            marginBottom: 6,
-                            fontSize: "1.07em"
-                        }}>Nom&nbsp;:</div>
-                        <div style={{
-                            border: "2px solid #333",
-                            background: "#fff",
-                            width: 260,
-                            height: 36,
-                            marginBottom: 6,
-                            display: "flex",
-                            alignItems: "center",
-                            fontSize: "1.07em",
-                            paddingLeft: 10
-                        }}>
+                        <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>Nom&nbsp;:</div>
+                        <div
+                            style={{
+                                border: "2px solid #333",
+                                background: "#fff",
+                                width: 260,
+                                height: 36,
+                                marginBottom: 6,
+                                display: "flex",
+                                alignItems: "center",
+                                fontSize: "1.07em",
+                                paddingLeft: 10
+                            }}
+                        >
                             {printNom || <span style={{ color: "#fff" }}>-</span>}
                         </div>
                     </div>
                     <div>
-                        <div style={{
-                            fontWeight: "bold",
-                            marginBottom: 6,
-                            fontSize: "1.07em"
-                        }}>NAS&nbsp;:</div>
-                        <div style={{
-                            border: "2px solid #333",
-                            background: "#fff",
-                            width: 180,
-                            height: 36,
-                            marginBottom: 6,
-                            display: "flex",
-                            alignItems: "center",
-                            fontSize: "1.07em",
-                            paddingLeft: 10
-                        }}>
+                        <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>NAS&nbsp;:</div>
+                        <div
+                            style={{
+                                border: "2px solid #333",
+                                background: "#fff",
+                                width: 180,
+                                height: 36,
+                                marginBottom: 6,
+                                display: "flex",
+                                alignItems: "center",
+                                fontSize: "1.07em",
+                                paddingLeft: 10
+                            }}
+                        >
                             {printNAS || <span style={{ color: "#fff" }}>-</span>}
                         </div>
                     </div>
                 </div>
+
                 <h1>Rapport Comparatif Année {annee}</h1>
                 <p>Utilisateur: {userName}</p>
+
                 <table className="comparatif-table">
                     <thead>
                         <tr>
@@ -257,23 +257,39 @@ const RapportsDisplay: React.FC = () => {
                                 <td className="comparatif-th-sg">{row.quantiteSansGluten}</td>
                                 <td className="comparatif-th-sg">{row.formatSansGluten}</td>
                                 <td className="comparatif-th-sg">{row.uniteSansGluten}</td>
-                                <td className="comparatif-th-sg">{row.prixSansGluten.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}</td>
-                                <td className="comparatif-th-sg double-divider">{row.prixPar100SansGluten.toFixed(3)} {row.prixPar100Unit}</td>
+                                {/* CAD locale for consistent currency in French-Canada */}
+                                <td className="comparatif-th-sg">
+                                    {row.prixSansGluten.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
+                                </td>
+                                <td className="comparatif-th-sg double-divider">
+                                    {row.prixPar100SansGluten.toFixed(3)} {row.prixPar100Unit}
+                                </td>
                                 <td className="comparatif-th-ag">{row.marqueAvecGluten ?? ""}</td>
                                 <td className="comparatif-th-ag">{row.nomAvecGluten ?? ""}</td>
                                 <td className="comparatif-th-ag">{row.formatAvecGluten ?? ""}</td>
                                 <td className="comparatif-th-ag">{row.uniteAvecGluten ?? ""}</td>
-                                <td className="comparatif-th-ag">{(row.prixAvecGluten ?? 0).toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}</td>
-                                <td className="comparatif-th-ag double-divider">{row.prixPar100AvecGluten.toFixed(3)} {row.prixPar100Unit}</td>
-                                <td>{row.diffPar100.toFixed(3)} {row.prixPar100Unit}</td>
-                                <td>{row.sousTotalProduit.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}</td>
+                                <td className="comparatif-th-ag">
+                                    {(row.prixAvecGluten ?? 0).toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
+                                </td>
+                                <td className="comparatif-th-ag double-divider">
+                                    {row.prixPar100AvecGluten.toFixed(3)} {row.prixPar100Unit}
+                                </td>
+                                <td>
+                                    {row.diffPar100.toFixed(3)} {row.prixPar100Unit}
+                                </td>
+                                <td>
+                                    {row.sousTotalProduit.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
+
                 <div style={{ marginTop: 32, fontSize: "1.1em" }}>
                     <b>TOTAL = {total.toFixed(2)} $</b>
                 </div>
+
+                {/* Human-readable breakdown of formulas used to compute the report */}
                 <div className="mt-5 p-4 rounded-3 bg-light border" style={{ fontSize: "1em", maxWidth: 900 }}>
                     <h4 className="fw-bold mb-2"><i className="bi bi-calculator me-2"></i>Explications des calculs</h4>
                     <ul>
@@ -282,7 +298,7 @@ const RapportsDisplay: React.FC = () => {
                             <br />
                             <span>
                                 <code>Prix / Poids × 100</code> <br />
-                                Exemple : Pour un produit de 2,99 $ pour 500 g, le prix par 100 g = <b>2,99 / 500 × 100 = 0,60 $</b>
+                                Exemple : Pour un produit de 2,99 $ pour 500 g, le prix par 100 g = <b>2,99 / 500 × 100 = 0,60 $</b>
                             </span>
                         </li>
                         <li className="mt-2">
@@ -298,8 +314,8 @@ const RapportsDisplay: React.FC = () => {
                             <br />
                             <span>
                                 <code>Différence par 100 × Quantité totale achetée (exprimée en 100g/100ml/unité selon le format)</code><br />
-                                Exemple : Si la différence est 0,60 $ par 100g et vous avez acheté 2 kg (soit 2000g), alors : <br />
-                                <b>0,60 × (2000/100) = 0,60 × 20 = 12,00 $</b>
+                                Exemple : Si la différence est 0,60 $ par 100g et vous avez acheté 2 kg (soit 2000g), alors : <br />
+                                <b>0,60 × (2000/100) = 0,60 × 20 = 12,00 $</b>
                             </span>
                         </li>
                         <li className="mt-2">
