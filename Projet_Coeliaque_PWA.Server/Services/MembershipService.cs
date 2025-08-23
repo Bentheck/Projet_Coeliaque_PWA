@@ -23,7 +23,23 @@ namespace Projet_Coeliaque_PWA.Server.Services
         public async Task<bool> HasActiveMembershipAsync(string userId)
         {
             var membership = await GetCurrentMembershipAsync(userId);
-            return membership != null && DateTime.UtcNow >= membership.StartDate && DateTime.UtcNow <= membership.EndDate;
+            if (membership == null) return false;
+
+            var startUtc = membership.StartDate.Kind == DateTimeKind.Utc
+                ? membership.StartDate
+                : DateTime.SpecifyKind(membership.StartDate, DateTimeKind.Utc);
+
+            var endUtc = membership.EndDate.Kind == DateTimeKind.Utc
+                ? membership.EndDate
+                : DateTime.SpecifyKind(membership.EndDate, DateTimeKind.Utc);
+
+            var nowUtc = DateTime.UtcNow;
+
+            // Small grace to absorb webhook latency / clock skew.
+            // Make this configurable; 5–10 minutes is typical.
+            var grace = TimeSpan.FromMinutes(10);
+
+            return nowUtc >= startUtc && nowUtc <= endUtc.Add(grace);
         }
     }
 }

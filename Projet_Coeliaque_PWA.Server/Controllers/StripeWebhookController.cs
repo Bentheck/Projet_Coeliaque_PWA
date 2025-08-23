@@ -5,352 +5,433 @@ using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Models;
 using Stripe;
 using Stripe.Checkout;
-using System.Reflection;
+using System.Diagnostics;
 
-[ApiController]
-[Route("api/[controller]")]
-public class StripeWebhookController : ControllerBase
+namespace Projet_Coeliaque_PWA.Server.Controllers
 {
-    private readonly IConfiguration _config;
-    private readonly ApplicationDbContext _db;
-    private readonly ILogger<StripeWebhookController> _logger;
-
-    public StripeWebhookController(IConfiguration config, ApplicationDbContext db, ILogger<StripeWebhookController> logger)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class StripeWebhookController : ControllerBase
     {
-        _config = config;
-        _db = db;
-        _logger = logger;
-    }
+        private readonly IConfiguration _config;
+        private readonly ApplicationDbContext _db;
+        private readonly ILogger<StripeWebhookController> _logger;
 
-    /// <summary>
-    /// Stripe webhook entrypoint.
-    /// Handles:
-    /// - <c>checkout.session.completed</c> → creates/extends membership from first payment
-    /// - <c>invoice.payment_succeeded</c> → extends membership on renewal
-    /// - <c>customer.subscription.deleted</c> → ends access immediately
-    /// Always returns 200 to Stripe (logs errors internally) to avoid retry storms.
-    /// </summary>
-    /// <returns>200 OK to Stripe regardless of internal processing outcome.</returns>
-    [HttpPost]
-    public async Task<IActionResult> Index()
-    {
-        // Read body + verify signature (throws on invalid)
-        var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-        var signature = Request.Headers["Stripe-Signature"];
-
-        Event stripeEvent;
-        try
+        public StripeWebhookController(
+            IConfiguration config,
+            ApplicationDbContext db,
+            ILogger<StripeWebhookController> logger)
         {
-            stripeEvent = EventUtility.ConstructEvent(json, signature, _config["Stripe:WebhookSecret"]);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Invalid Stripe webhook signature");
-            return BadRequest();
+            _config = config;
+            _db = db;
+            _logger = logger;
         }
 
-        try
+        [HttpPost]
+        public async Task<IActionResult> Index()
         {
-            switch (stripeEvent.Type)
+            Debug.WriteLine(">>> [StripeWebhook] HIT");
+            _logger.LogInformation("[StripeWebhook] HIT");
+
+            var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+            var signature = Request.Headers["Stripe-Signature"];
+
+            Event stripeEvent;
+            try
             {
-                // First payment after Checkout
-                case "checkout.session.completed":
-                    {
-                        var session = stripeEvent.Data.Object as Session;
-                        if (session == null) break;
-
-                        var subId = GetSubscriptionIdFromSession(session);
-                        if (string.IsNullOrWhiteSpace(subId))
-                        {
-                            _logger.LogWarning("checkout.session.completed: missing subscription id");
-                            break;
-                        }
-
-                        // Load subscription to determine period end
-                        var subSvc = new SubscriptionService();
-                        var sub = await subSvc.GetAsync(subId);
-                        if (sub == null)
-                        {
-                            _logger.LogWarning("Subscription {SubId} not found", subId);
-                            break;
-                        }
-
-                        // Choose best period end; never write "now" if unknown
-                        var periodEndUtc = BestPeriodEndUtcFromSubscription(sub);
-                        if (periodEndUtc == null)
-                        {
-                            _logger.LogWarning("No period end found on subscription {SubId}; skipping write", sub.Id);
-                            break; // do NOT write "now"
-                        }
-
-                        // Prefer user_id from subscription metadata; fallback to session metadata
-                        var userId = ExtractUserId(sub.Metadata) ?? ExtractUserId(session.Metadata);
-                        var customerId = GetCustomerId(sub);
-
-                        await UpsertMembershipAsync(userId, customerId, sub.Id, periodEndUtc.Value);
-                        break;
-                    }
-
-                // Every renewal payment
-                case "invoice.payment_succeeded":
-                    {
-                        var invoice = stripeEvent.Data.Object as Invoice;
-                        if (invoice == null) break;
-
-                        var subId = GetSubscriptionIdFromInvoice(invoice);
-                        if (string.IsNullOrWhiteSpace(subId))
-                        {
-                            _logger.LogWarning("invoice.payment_succeeded: missing subscription id on invoice {InvoiceId}", invoice.Id);
-                            break;
-                        }
-
-                        // Prefer period end from invoice lines, then subscription, then subscription item.
-                        var invoicePeriodEnd = GetInvoicePeriodEndUtc(invoice);
-
-                        var subSvc = new SubscriptionService();
-                        var sub = await subSvc.GetAsync(subId);
-                        if (sub == null)
-                        {
-                            _logger.LogWarning("Subscription {SubId} not found", subId);
-                            break;
-                        }
-
-                        var subPeriodEnd = GetCurrentPeriodEndUtc(sub);
-                        var itemPeriodEnd = GetLatestItemPeriodEndUtc(sub);
-
-                        var periodEndUtc = invoicePeriodEnd ?? subPeriodEnd ?? itemPeriodEnd;
-                        if (periodEndUtc == null)
-                        {
-                            _logger.LogWarning("No reliable period end for subscription {SubId}; skipping write", sub.Id);
-                            break; // do NOT write "now"
-                        }
-
-                        var userId = ExtractUserId(sub.Metadata);
-                        var customerId = GetCustomerId(sub);
-
-                        await UpsertMembershipAsync(userId, customerId, sub.Id, periodEndUtc.Value);
-                        break;
-                    }
-
-                // If the subscription is canceled immediately, end access now.
-                case "customer.subscription.deleted":
-                    {
-                        var sub = stripeEvent.Data.Object as Subscription;
-                        if (sub == null) break;
-
-                        var membership = await _db.Memberships.FirstOrDefaultAsync(m => m.StripeSubscriptionId == sub.Id);
-                        if (membership != null)
-                        {
-                            var now = DateTime.UtcNow;
-                            if (membership.EndDate > now)
-                            {
-                                membership.EndDate = now;
-                                await _db.SaveChangesAsync();
-                                _logger.LogInformation("Canceled subscription {Sub}, set EndDate to now {End}", sub.Id, now);
-                            }
-                        }
-                        break;
-                    }
+                stripeEvent = EventUtility.ConstructEvent(json, signature, _config["Stripe:WebhookSecret"]);
             }
-        }
-        catch (Exception ex)
-        {
-            // Always 200 to Stripe to avoid retries storm, but log server-side
-            _logger.LogError(ex, "Error processing webhook {Type}", stripeEvent.Type);
-        }
-
-        return Ok();
-    }
-
-    // ---------------- Membership write helper ----------------
-
-    /// <summary>
-    /// Create or extend a membership safely. Prefers matching on SubscriptionId, then CustomerId, then UserId.
-    /// Never shortens EndDate; only extends when the new end is later.
-    /// </summary>
-    private async Task UpsertMembershipAsync(string? userId, string? customerId, string subscriptionId, DateTime newEndUtc)
-    {
-        // Prefer find by subscription id; then by customer id; then by user id.
-        var membership = await _db.Memberships.FirstOrDefaultAsync(m => m.StripeSubscriptionId == subscriptionId);
-
-        if (membership == null && !string.IsNullOrWhiteSpace(customerId))
-            membership = await _db.Memberships.FirstOrDefaultAsync(m => m.StripeCustomerId == customerId);
-
-        if (membership == null && !string.IsNullOrWhiteSpace(userId))
-            membership = await _db.Memberships.Where(m => m.UserId == userId)
-                                              .OrderByDescending(m => m.EndDate)
-                                              .FirstOrDefaultAsync();
-
-        if (membership != null)
-        {
-            // Only extend; never shorten accidentally
-            if (newEndUtc > membership.EndDate)
+            catch (Exception ex)
             {
-                _logger.LogInformation("Updating membership user {User} sub {Sub}: {PrevEnd} -> {NewEnd}",
-                    membership.UserId, subscriptionId, membership.EndDate, newEndUtc);
+                Debug.WriteLine($">>> [StripeWebhook] Invalid signature: {ex.Message}");
+                _logger.LogWarning(ex, "[StripeWebhook] Invalid signature");
+                return BadRequest();
+            }
 
-                membership.EndDate = newEndUtc;
-                if (!string.IsNullOrWhiteSpace(customerId)) membership.StripeCustomerId = customerId;
-                if (!string.IsNullOrWhiteSpace(subscriptionId)) membership.StripeSubscriptionId = subscriptionId;
+            Debug.WriteLine($">>> [StripeWebhook] Event.Type = {stripeEvent.Type}");
+            _logger.LogInformation("[StripeWebhook] Event.Type = {Type}", stripeEvent.Type);
+
+            try
+            {
+                switch (stripeEvent.Type)
+                {
+                    case "checkout.session.completed":
+                        {
+                            Debug.WriteLine(">>> [StripeWebhook] Handling checkout.session.completed");
+                            _logger.LogInformation("[StripeWebhook] Handling checkout.session.completed");
+
+                            var session = stripeEvent.Data.Object as Session;
+                            if (session == null) break;
+
+                            var subId = GetSubscriptionIdFromSession(session);
+                            Debug.WriteLine($">>> [StripeWebhook] subId(from session) = {subId}");
+                            if (string.IsNullOrWhiteSpace(subId))
+                            {
+                                _logger.LogWarning("[StripeWebhook] checkout.session.completed missing subscription id");
+                                break;
+                            }
+
+                            var subSvc = new SubscriptionService();
+                            var sub = await subSvc.GetAsync(subId);
+                            if (sub == null)
+                            {
+                                Debug.WriteLine($">>> [StripeWebhook] Subscription {subId} not found");
+                                _logger.LogWarning("[StripeWebhook] Subscription {SubId} not found", subId);
+                                break;
+                            }
+
+                            var periodEndUtc = BestPeriodEndUtcFromSubscription(sub);
+                            Debug.WriteLine($">>> [StripeWebhook] periodEndUtc(Checkout) = {periodEndUtc:o}");
+                            if (periodEndUtc == null) break;
+
+                            var userId = ExtractUserId(sub.Metadata) ?? ExtractUserId(session.Metadata);
+                            var customerId = GetCustomerId(sub);
+
+                            await UpsertMembershipAsync(userId, customerId, sub.Id, periodEndUtc.Value);
+                            break;
+                        }
+
+                    case "invoice.payment_succeeded":
+                        {
+                            var inv = stripeEvent.Data.Object as Invoice;
+                            if (inv == null) break;
+
+                            Debug.WriteLine($">>> [StripeWebhook] invoice.payment_succeeded invoice={GetInvoiceId(inv)}");
+                            _logger.LogInformation("[StripeWebhook] invoice.payment_succeeded invoice={Invoice}", GetInvoiceId(inv));
+
+                            await ProcessInvoiceAsync(GetInvoiceId(inv));
+                            break;
+                        }
+
+                    case "charge.succeeded":
+                        {
+                            Debug.WriteLine(">>> [StripeWebhook] Handling charge.succeeded");
+                            _logger.LogInformation("[StripeWebhook] Handling charge.succeeded");
+
+                            var charge = stripeEvent.Data.Object as Charge;
+                            if (charge == null) break;
+
+                            var invoiceId = GetInvoiceIdFromCharge(charge);
+                            if (string.IsNullOrWhiteSpace(invoiceId))
+                            {
+                                Debug.WriteLine($">>> [StripeWebhook] charge.succeeded has no invoice, skipping (charge={charge.Id})");
+                                _logger.LogInformation("[StripeWebhook] charge.succeeded without invoice (id={ChargeId})", charge.Id);
+                                break;
+                            }
+
+                            Debug.WriteLine($">>> [StripeWebhook] charge → invoice: {invoiceId}");
+                            await ProcessInvoiceAsync(invoiceId);
+                            break;
+                        }
+
+                    case "customer.subscription.deleted":
+                        {
+                            Debug.WriteLine(">>> [StripeWebhook] Handling customer.subscription.deleted");
+                            _logger.LogInformation("[StripeWebhook] Handling customer.subscription.deleted");
+
+                            var sub = stripeEvent.Data.Object as Subscription;
+                            if (sub == null) break;
+
+                            var membership = await _db.Memberships.FirstOrDefaultAsync(m => m.StripeSubscriptionId == sub.Id);
+                            if (membership != null)
+                            {
+                                var now = DateTime.UtcNow;
+                                if (membership.EndDate > now)
+                                {
+                                    membership.EndDate = now;
+                                    await _db.SaveChangesAsync();
+                                    Debug.WriteLine($">>> [StripeWebhook] Cancel sets EndDate -> {now:o}");
+                                    _logger.LogInformation("[StripeWebhook] Canceled subscription {Sub}, EndDate -> now {End}", sub.Id, now);
+                                }
+                            }
+                            break;
+                        }
+
+                    default:
+                        Debug.WriteLine($">>> [StripeWebhook] Ignored event type {stripeEvent.Type}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($">>> [StripeWebhook] Error: {ex}");
+                _logger.LogError(ex, "[StripeWebhook] Error processing webhook {Type}", stripeEvent.Type);
+            }
+
+            return Ok();
+        }
+
+        /* ========================= Unified renewal via invoice ========================= */
+
+        private async Task ProcessInvoiceAsync(string invoiceId)
+        {
+            var invSvc = new InvoiceService();
+            // expand lines.period to get authoritative period end
+            var inv = await invSvc.GetAsync(invoiceId, new InvoiceGetOptions
+            {
+                Expand = new List<string> { "lines.data.period", "subscription", "customer" }
+            });
+
+            var subId = GetSubscriptionIdFromInvoice(inv);
+            if (string.IsNullOrWhiteSpace(subId))
+            {
+                Debug.WriteLine($">>> [StripeWebhook] Invoice {invoiceId} has no subscription; skip");
+                _logger.LogWarning("[StripeWebhook] Invoice {InvoiceId} lacks subscription id", invoiceId);
+                return;
+            }
+
+            var subSvc = new SubscriptionService();
+            var sub = await subSvc.GetAsync(subId);
+            if (sub == null)
+            {
+                Debug.WriteLine($">>> [StripeWebhook] Subscription {subId} not found");
+                _logger.LogWarning("[StripeWebhook] Subscription {SubId} not found", subId);
+                return;
+            }
+
+            var invoicePeriodEnd = GetInvoicePeriodEndUtc(inv);
+            var subPeriodEnd = GetCurrentPeriodEndUtc(sub);
+            var itemPeriodEnd = GetLatestItemPeriodEndUtc(sub);
+
+            Debug.WriteLine($">>> [StripeWebhook] Period candidates: invoice={invoicePeriodEnd:o}, sub={subPeriodEnd:o}, item={itemPeriodEnd:o}");
+            _logger.LogInformation("[StripeWebhook] Period candidates: invoice={InvoiceEnd:o} sub={SubEnd:o} item={ItemEnd:o}",
+                invoicePeriodEnd, subPeriodEnd, itemPeriodEnd);
+
+            var periodEndUtcRaw = invoicePeriodEnd ?? subPeriodEnd ?? itemPeriodEnd;
+            if (periodEndUtcRaw == null) return;
+
+            var periodEndUtc = DateTime.SpecifyKind(periodEndUtcRaw.Value, DateTimeKind.Utc);
+            var userId = ExtractUserId(sub.Metadata);
+            var customerId = GetCustomerId(sub);
+
+            await UpsertMembershipAsync(userId, customerId, sub.Id, periodEndUtc);
+        }
+
+        /* ========================= Membership upsert ========================= */
+
+        private async Task UpsertMembershipAsync(string? userId, string? customerId, string subscriptionId, DateTime newEndUtc)
+        {
+            newEndUtc = DateTime.SpecifyKind(newEndUtc, DateTimeKind.Utc);
+            Debug.WriteLine($">>> [UpsertMembership] userId={userId}, customerId={customerId}, sub={subscriptionId}, newEndUtc={newEndUtc:o}");
+            _logger.LogInformation("[UpsertMembership] sub={Sub} newEnd={End:o}", subscriptionId, newEndUtc);
+
+            var membership = await _db.Memberships.FirstOrDefaultAsync(m => m.StripeSubscriptionId == subscriptionId)
+                          ?? (!string.IsNullOrWhiteSpace(customerId)
+                                ? await _db.Memberships.FirstOrDefaultAsync(m => m.StripeCustomerId == customerId)
+                                : null);
+
+            if (membership == null && !string.IsNullOrWhiteSpace(userId))
+            {
+                membership = await _db.Memberships
+                    .Where(m => m.UserId == userId)
+                    .OrderByDescending(m => m.EndDate)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (membership != null)
+            {
+                var currentEnd = membership.EndDate.Kind == DateTimeKind.Utc
+                    ? membership.EndDate
+                    : DateTime.SpecifyKind(membership.EndDate, DateTimeKind.Utc);
+
+                if (newEndUtc > currentEnd)
+                {
+                    membership.EndDate = newEndUtc;
+                    if (!string.IsNullOrWhiteSpace(customerId)) membership.StripeCustomerId = customerId;
+                    membership.StripeSubscriptionId = subscriptionId;
+                    await _db.SaveChangesAsync();
+
+                    Debug.WriteLine(">>> [UpsertMembership] Extended membership");
+                    _logger.LogInformation("[UpsertMembership] Extended");
+                }
+                else
+                {
+                    Debug.WriteLine(">>> [UpsertMembership] Skipped (existing >= new)");
+                    _logger.LogInformation("[UpsertMembership] Skipped");
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(userId))
+            {
+                _db.Memberships.Add(new Membership
+                {
+                    UserId = userId,
+                    StartDate = DateTime.UtcNow,
+                    EndDate = newEndUtc,
+                    StripeCustomerId = customerId,
+                    StripeSubscriptionId = subscriptionId
+                });
                 await _db.SaveChangesAsync();
+
+                Debug.WriteLine(">>> [UpsertMembership] Created membership");
+                _logger.LogInformation("[UpsertMembership] Created");
             }
             else
             {
-                _logger.LogInformation("Skipping membership update for user {User}: existing EndDate {PrevEnd} >= {NewEnd}",
-                    membership.UserId, membership.EndDate, newEndUtc);
+                Debug.WriteLine(">>> [UpsertMembership] No userId; nothing to write");
+                _logger.LogWarning("[UpsertMembership] No userId for sub {Sub}", subscriptionId);
             }
         }
-        else if (!string.IsNullOrWhiteSpace(userId))
+
+        /* ========================= Helpers (version-safe) ========================= */
+
+        private static string GetInvoiceId(Invoice inv)
         {
-            // First time we see this user/subscription
-            var now = DateTime.UtcNow;
-            var start = now; // could be derived similarly if needed
-
-            _db.Memberships.Add(new Membership
-            {
-                UserId = userId,
-                StartDate = start,
-                EndDate = newEndUtc,
-                StripeCustomerId = customerId,
-                StripeSubscriptionId = subscriptionId
-            });
-            await _db.SaveChangesAsync();
-
-            _logger.LogInformation("Created membership user {User} sub {Sub} with EndDate {End}", userId, subscriptionId, newEndUtc);
+            // Try Id first (always present)
+            if (!string.IsNullOrWhiteSpace(inv.Id)) return inv.Id;
+            // extremely defensive fallback
+            var idProp = inv.GetType().GetProperty("Id");
+            return idProp?.GetValue(inv) as string ?? string.Empty;
         }
-        else
+
+        private static string? GetInvoiceIdFromCharge(Charge charge)
         {
-            _logger.LogWarning("No membership row and no userId for sub {Sub}; nothing to write", subscriptionId);
+            // 1) Try charge.InvoiceId (older/newer libs)
+            var prop = charge.GetType().GetProperty("InvoiceId");
+            var val = prop?.GetValue(charge) as string;
+            if (!string.IsNullOrWhiteSpace(val)) return val;
+
+            // 2) Try expandable charge.Invoice.Id
+            var exp = charge.GetType().GetProperty("Invoice")?.GetValue(charge);
+            var expId = exp?.GetType().GetProperty("Id")?.GetValue(exp) as string;
+            if (!string.IsNullOrWhiteSpace(expId)) return expId;
+
+            // 3) In some versions "Invoice" might be a plain string id
+            if (exp is string s && !string.IsNullOrWhiteSpace(s)) return s;
+
+            return null;
         }
-    }
 
-    // ---------------- Period/end extraction helpers ----------------
-
-    /// <summary>Returns the best available period end (subscription-level first, then latest item-level).</summary>
-    private static DateTime? BestPeriodEndUtcFromSubscription(Subscription sub)
-        => GetCurrentPeriodEndUtc(sub) ?? GetLatestItemPeriodEndUtc(sub);
-
-    /// <summary>Extracts the latest period end from invoice lines (if available).</summary>
-    private static DateTime? GetInvoicePeriodEndUtc(Invoice inv)
-    {
-        // inv.Lines.Data[*].Period.End (epoch seconds)
-        var linesProp = inv.GetType().GetProperty("Lines");
-        var linesObj = linesProp?.GetValue(inv);
-        var dataProp = linesObj?.GetType().GetProperty("Data");
-        var dataList = dataProp?.GetValue(linesObj) as System.Collections.IEnumerable;
-
-        DateTime? best = null;
-        if (dataList != null)
+        private static string? GetSubscriptionIdFromInvoice(Invoice inv)
         {
-            foreach (var line in dataList)
+            // 1) Try inv.SubscriptionId (some SDK versions)
+            var idProp = inv.GetType().GetProperty("SubscriptionId");
+            var idVal = idProp?.GetValue(inv) as string;
+            if (!string.IsNullOrWhiteSpace(idVal)) return idVal;
+
+            // 2) Try expandable inv.Subscription.Id
+            var expProp = inv.GetType().GetProperty("Subscription");
+            var expVal = expProp?.GetValue(inv);
+            var innerId = expVal?.GetType().GetProperty("Id")?.GetValue(expVal) as string;
+            if (!string.IsNullOrWhiteSpace(innerId)) return innerId;
+
+            // 3) In some versions "Subscription" may be a plain string id
+            if (expVal is string s && !string.IsNullOrWhiteSpace(s)) return s;
+
+            return null;
+        }
+
+        private static string? GetSubscriptionIdFromSession(Session s)
+        {
+            // 1) Session.SubscriptionId (string)
+            var idProp = s.GetType().GetProperty("SubscriptionId");
+            var idVal = idProp?.GetValue(s) as string;
+            if (!string.IsNullOrWhiteSpace(idVal)) return idVal;
+
+            // 2) Expandable Session.Subscription.Id
+            var expProp = s.GetType().GetProperty("Subscription");
+            var expVal = expProp?.GetValue(s);
+            var innerId = expVal?.GetType().GetProperty("Id")?.GetValue(expVal) as string;
+            if (!string.IsNullOrWhiteSpace(innerId)) return innerId;
+
+            // 3) Sometimes "Subscription" can be a plain string id
+            if (expVal is string s2 && !string.IsNullOrWhiteSpace(s2)) return s2;
+
+            return null;
+        }
+
+        private static string? GetCustomerId(Subscription sub)
+        {
+            // 1) Subscription.CustomerId (string)
+            var idProp = sub.GetType().GetProperty("CustomerId");
+            var idVal = idProp?.GetValue(sub) as string;
+            if (!string.IsNullOrWhiteSpace(idVal)) return idVal;
+
+            // 2) Expandable Subscription.Customer.Id
+            var expProp = sub.GetType().GetProperty("Customer");
+            var expVal = expProp?.GetValue(sub);
+            var innerId = expVal?.GetType().GetProperty("Id")?.GetValue(expVal) as string;
+            if (!string.IsNullOrWhiteSpace(innerId)) return innerId;
+
+            // 3) Or Customer can be plain string
+            if (expVal is string s && !string.IsNullOrWhiteSpace(s)) return s;
+
+            return null;
+        }
+
+        private static DateTime? BestPeriodEndUtcFromSubscription(Subscription sub)
+            => GetCurrentPeriodEndUtc(sub) ?? GetLatestItemPeriodEndUtc(sub);
+
+        private static DateTime? GetInvoicePeriodEndUtc(Invoice inv)
+        {
+            // inv.Lines.Data[*].Period.End
+            var linesProp = inv.GetType().GetProperty("Lines");
+            var linesObj = linesProp?.GetValue(inv);
+            var dataProp = linesObj?.GetType().GetProperty("Data");
+            var dataList = dataProp?.GetValue(linesObj) as System.Collections.IEnumerable;
+
+            DateTime? best = null;
+            if (dataList != null)
             {
-                var periodProp = line.GetType().GetProperty("Period");
-                var periodObj = periodProp?.GetValue(line);
-                var endProp = periodObj?.GetType().GetProperty("End");
-                var endVal = endProp?.GetValue(periodObj);
-                var dt = CoerceToUtcDateTime(endVal);
-                if (dt.HasValue && (!best.HasValue || dt.Value > best.Value))
-                    best = dt;
+                foreach (var line in dataList)
+                {
+                    var periodProp = line.GetType().GetProperty("Period");
+                    var periodObj = periodProp?.GetValue(line);
+                    var endProp = periodObj?.GetType().GetProperty("End");
+                    var endVal = endProp?.GetValue(periodObj);
+                    var dt = CoerceToUtcDateTime(endVal);
+                    if (dt.HasValue && (!best.HasValue || dt.Value > best.Value))
+                        best = dt;
+                }
             }
+            return best;
         }
-        return best;
-    }
 
-    /// <summary>Extracts subscription current period end (handles SDK types).</summary>
-    private static DateTime? GetCurrentPeriodEndUtc(Subscription sub)
-    {
-        // sub.CurrentPeriodEnd may be long? (epoch) or DateTime depending on SDK
-        var prop = sub.GetType().GetProperty("CurrentPeriodEnd");
-        if (prop != null)
+        private static DateTime? GetCurrentPeriodEndUtc(Subscription sub)
         {
-            var val = prop.GetValue(sub);
-            var dt = CoerceToUtcDateTime(val);
-            if (dt.HasValue) return dt.Value;
-        }
-        return null;
-    }
-
-    /// <summary>Extracts the latest period end among subscription items (handles SDK types).</summary>
-    private static DateTime? GetLatestItemPeriodEndUtc(Subscription sub)
-    {
-        // sub.Items.Data[*].CurrentPeriodEnd
-        var itemsProp = sub.GetType().GetProperty("Items");
-        var itemsObj = itemsProp?.GetValue(sub);
-        var dataProp = itemsObj?.GetType().GetProperty("Data");
-        var dataList = dataProp?.GetValue(itemsObj) as System.Collections.IEnumerable;
-
-        DateTime? best = null;
-        if (dataList != null)
-        {
-            foreach (var item in dataList)
+            var prop = sub.GetType().GetProperty("CurrentPeriodEnd");
+            if (prop != null)
             {
-                var cpeProp = item.GetType().GetProperty("CurrentPeriodEnd");
-                var val = cpeProp?.GetValue(item);
+                var val = prop.GetValue(sub);
                 var dt = CoerceToUtcDateTime(val);
-                if (dt.HasValue && (!best.HasValue || dt.Value > best.Value))
-                    best = dt;
+                if (dt.HasValue) return dt.Value;
             }
+            return null;
         }
-        return best;
+
+        private static DateTime? GetLatestItemPeriodEndUtc(Subscription sub)
+        {
+            var itemsProp = sub.GetType().GetProperty("Items");
+            var itemsObj = itemsProp?.GetValue(sub);
+            var dataProp = itemsObj?.GetType().GetProperty("Data");
+            var dataList = dataProp?.GetValue(itemsObj) as System.Collections.IEnumerable;
+
+            DateTime? best = null;
+            if (dataList != null)
+            {
+                foreach (var item in dataList)
+                {
+                    var cpeProp = item.GetType().GetProperty("CurrentPeriodEnd");
+                    var val = cpeProp?.GetValue(item);
+                    var dt = CoerceToUtcDateTime(val);
+                    if (dt.HasValue && (!best.HasValue || dt.Value > best.Value))
+                        best = dt;
+                }
+            }
+            return best;
+        }
+
+        private static DateTime? CoerceToUtcDateTime(object? val)
+        {
+            if (val == null) return null;
+            if (val is DateTime dt) return dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+            if (val is DateTimeOffset dto) return dto.UtcDateTime;
+            if (val is long l && l > 0) return DateTimeOffset.FromUnixTimeSeconds(l).UtcDateTime;
+            if (val is int i && i > 0) return DateTimeOffset.FromUnixTimeSeconds(i).UtcDateTime;
+            return null;
+        }
+
+        private static string? ExtractUserId(Dictionary<string, string> metadata)
+            => metadata != null && metadata.TryGetValue("user_id", out var uid) && !string.IsNullOrWhiteSpace(uid)
+                ? uid : null;
     }
-
-    /// <summary>Coerces common Stripe SDK shapes (DateTime, DateTimeOffset, epoch seconds) to UTC DateTime.</summary>
-    private static DateTime? CoerceToUtcDateTime(object? val)
-    {
-        if (val == null) return null;
-        if (val is DateTime dt) return dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
-        if (val is DateTimeOffset dto) return dto.UtcDateTime;
-        if (val is long l && l > 0) return DateTimeOffset.FromUnixTimeSeconds(l).UtcDateTime;
-        if (val is int i && i > 0) return DateTimeOffset.FromUnixTimeSeconds(i).UtcDateTime;
-        return null;
-    }
-
-    // ---------------- Id helpers (SDK variations safe) ----------------
-
-    /// <summary>Gets SubscriptionId from <see cref="Session"/> (supports both <c>SubscriptionId</c> and expandable <c>Subscription</c>).</summary>
-    private static string? GetSubscriptionIdFromSession(Session s)
-    {
-        // Session.SubscriptionId (string) or Session.Subscription (Expandable<Subscription>)
-        var idProp = s.GetType().GetProperty("SubscriptionId");
-        var idVal = idProp?.GetValue(s) as string;
-        if (!string.IsNullOrWhiteSpace(idVal)) return idVal;
-
-        var expProp = s.GetType().GetProperty("Subscription"); // Expandable<Subscription>
-        var expVal = expProp?.GetValue(s);
-        var innerId = expVal?.GetType().GetProperty("Id")?.GetValue(expVal) as string;
-        return string.IsNullOrWhiteSpace(innerId) ? null : innerId;
-    }
-
-    /// <summary>Gets SubscriptionId from <see cref="Invoice"/> (supports both <c>SubscriptionId</c> and expandable <c>Subscription</c>).</summary>
-    private static string? GetSubscriptionIdFromInvoice(Invoice inv)
-    {
-        // Invoice.SubscriptionId (string) or Invoice.Subscription (Expandable<Subscription>)
-        var idProp = inv.GetType().GetProperty("SubscriptionId");
-        var idVal = idProp?.GetValue(inv) as string;
-        if (!string.IsNullOrWhiteSpace(idVal)) return idVal;
-
-        var expProp = inv.GetType().GetProperty("Subscription");
-        var expVal = expProp?.GetValue(inv);
-        var innerId = expVal?.GetType().GetProperty("Id")?.GetValue(expVal) as string;
-        return string.IsNullOrWhiteSpace(innerId) ? null : innerId;
-    }
-
-    /// <summary>Gets CustomerId from <see cref="Subscription"/> (supports both <c>CustomerId</c> and expandable <c>Customer</c>).</summary>
-    private static string? GetCustomerId(Subscription sub)
-    {
-        // Subscription.CustomerId (string) or Subscription.Customer (Expandable<Customer>)
-        var idProp = sub.GetType().GetProperty("CustomerId");
-        var idVal = idProp?.GetValue(sub) as string;
-        if (!string.IsNullOrWhiteSpace(idVal)) return idVal;
-
-        var expProp = sub.GetType().GetProperty("Customer");
-        var expVal = expProp?.GetValue(sub);
-        var innerId = expVal?.GetType().GetProperty("Id")?.GetValue(expVal) as string;
-        return string.IsNullOrWhiteSpace(innerId) ? null : innerId;
-    }
-
-    /// <summary>Extracts <c>user_id</c> from Stripe metadata dictionary.</summary>
-    private static string? ExtractUserId(Dictionary<string, string> metadata)
-        => metadata != null && metadata.TryGetValue("user_id", out var uid) && !string.IsNullOrWhiteSpace(uid)
-            ? uid : null;
 }

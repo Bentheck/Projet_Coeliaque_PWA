@@ -8,6 +8,15 @@ type MembershipData = {
 const LIFETIME_PREFIX = "9999-12-31";
 const isLifetime = (iso?: string | null) => !!iso && iso.startsWith(LIFETIME_PREFIX);
 
+const formatDateTime = (iso: string) =>
+    new Date(iso).toLocaleString("fr-CA", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+
 const Membership: React.FC = () => {
     const [membership, setMembership] = useState<MembershipData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -60,7 +69,7 @@ const Membership: React.FC = () => {
                     <div className="alert alert-success">Votre abonnement est <b>à vie</b>. 🎉</div>
                 ) : (
                     <div className="alert alert-success">
-                        Votre abonnement est actif jusqu’au <b>{formatDate(membership.endDate)}</b>
+                        Votre abonnement est actif jusqu’au <b>{formatDateTime(membership.endDate)}</b>
                     </div>
                 )
             ) : (
