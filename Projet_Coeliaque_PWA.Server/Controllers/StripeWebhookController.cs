@@ -16,15 +16,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly IConfiguration _config;
         private readonly ApplicationDbContext _db;
         private readonly ILogger<StripeWebhookController> _logger;
+        private readonly IAccountStatusService _statusSvc;
 
         public StripeWebhookController(
             IConfiguration config,
             ApplicationDbContext db,
-            ILogger<StripeWebhookController> logger)
+            ILogger<StripeWebhookController> logger,
+            IAccountStatusService statusSvc)
         {
             _config = config;
             _db = db;
             _logger = logger;
+            _statusSvc = statusSvc;
         }
 
         [HttpPost]
@@ -146,6 +149,80 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                             }
                             break;
                         }
+                    case "customer.subscription.updated":
+                        {
+                            Debug.WriteLine(">>> [StripeWebhook] Handling customer.subscription.updated");
+                            _logger.LogInformation("[StripeWebhook] Handling customer.subscription.updated");
+
+                            var sub = stripeEvent.Data.Object as Subscription;
+                            if (sub == null) break;
+
+                            // Try to use the latest invoice IF it’s already paid
+                            // (We access ID in a version-safe way, similar to other helpers)
+                            string? latestInvoiceId = null;
+                            try
+                            {
+                                // 1) Subscription.LatestInvoiceId (string)
+                                var liIdProp = sub.GetType().GetProperty("LatestInvoiceId");
+                                latestInvoiceId = liIdProp?.GetValue(sub) as string;
+
+                                // 2) Or expandable LatestInvoice.Id
+                                if (string.IsNullOrWhiteSpace(latestInvoiceId))
+                                {
+                                    var liExp = sub.GetType().GetProperty("LatestInvoice")?.GetValue(sub);
+                                    var innerId = liExp?.GetType().GetProperty("Id")?.GetValue(liExp) as string;
+
+                                    // In some SDKs LatestInvoice may be a plain string
+                                    latestInvoiceId = !string.IsNullOrWhiteSpace(innerId) ? innerId
+                                                   : (liExp as string);
+                                }
+                            }
+                            catch { /* ultra-defensive; continue */ }
+
+                            var userId = ExtractUserId(sub.Metadata);
+                            var customerId = GetCustomerId(sub);
+
+                            var usedInvoice = false;
+                            if (!string.IsNullOrWhiteSpace(latestInvoiceId))
+                            {
+                                var invSvc = new InvoiceService();
+                                var inv = await invSvc.GetAsync(latestInvoiceId, new InvoiceGetOptions
+                                {
+                                    Expand = new List<string> { "lines.data.period", "subscription", "customer" }
+                                });
+
+                                // If invoice is already paid (or marked paid), use it as source of truth
+                                // (Invoice.Status can be "paid"; some SDKs also expose a bool Paid)
+                                var statusProp = inv.GetType().GetProperty("Status");
+                                var statusVal = statusProp?.GetValue(inv) as string;
+                                var paidProp = inv.GetType().GetProperty("Paid");
+                                var paidBool = paidProp?.GetValue(inv) as bool?;
+
+                                if (string.Equals(statusVal, "paid", StringComparison.OrdinalIgnoreCase) || paidBool == true)
+                                {
+                                    await ProcessInvoiceAsync(inv.Id);
+                                    usedInvoice = true;
+                                }
+                            }
+
+                            if (!usedInvoice)
+                            {
+                                // Fall back to subscription period end (works for immediate UI feedback or free trials)
+                                var periodEndUtc = BestPeriodEndUtcFromSubscription(sub);
+                                if (periodEndUtc != null)
+                                {
+                                    await UpsertMembershipAsync(userId, customerId, sub.Id, DateTime.SpecifyKind(periodEndUtc.Value, DateTimeKind.Utc));
+                                    Debug.WriteLine($">>> [StripeWebhook] Updated via subscription period end {periodEndUtc:o}");
+                                    _logger.LogInformation("[StripeWebhook] Updated via subscription period end {End:o}", periodEndUtc);
+                                }
+                                else
+                                {
+                                    Debug.WriteLine(">>> [StripeWebhook] No period end found on subscription.updated");
+                                    _logger.LogWarning("[StripeWebhook] No period end on subscription.updated for {Sub}", sub.Id);
+                                }
+                            }
+                            break;
+                        }
 
                     default:
                         Debug.WriteLine($">>> [StripeWebhook] Ignored event type {stripeEvent.Type}");
@@ -262,6 +339,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
                 await _db.SaveChangesAsync();
 
+                if (!string.IsNullOrWhiteSpace(userId))
+                    await SendAccountStatusPushAsync(userId);
                 Debug.WriteLine(">>> [UpsertMembership] Created membership");
                 _logger.LogInformation("[UpsertMembership] Created");
             }
@@ -270,6 +349,42 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 Debug.WriteLine(">>> [UpsertMembership] No userId; nothing to write");
                 _logger.LogWarning("[UpsertMembership] No userId for sub {Sub}", subscriptionId);
             }
+        }
+
+        private async Task SendAccountStatusPushAsync(string userId)
+        {
+            var subs = await _db.PushSubscriptions.Where(s => s.UserId == userId).ToListAsync();
+            if (subs.Count == 0) return;
+
+            var statusPayload = await _statusSvc.BuildStatusAsync(userId);
+            var envelope = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                type = "account-status",
+                v = 1,
+                payload = statusPayload
+            });
+
+            var vapidPublic = _config["VAPID:PublicKey"];
+            var vapidPrivate = _config["VAPID:PrivateKey"];
+            var subject = _config["VAPID:Subject"] ?? "mailto:support@example.com";
+
+            var client = new WebPush.WebPushClient();
+            var details = new WebPush.VapidDetails(subject, vapidPublic, vapidPrivate);
+
+            foreach (var s in subs.ToList())
+            {
+                try
+                {
+                    var sub = new WebPush.PushSubscription(s.Endpoint, s.P256dh, s.Auth);
+                    await client.SendNotificationAsync(sub, envelope, details);
+                }
+                catch (WebPush.WebPushException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Gone or System.Net.HttpStatusCode.NotFound)
+                {
+                    _db.PushSubscriptions.Remove(s); // prune dead endpoints
+                }
+                catch { /* ignore transient */ }
+            }
+            await _db.SaveChangesAsync();
         }
 
         /* ========================= Helpers (version-safe) ========================= */
