@@ -1,28 +1,20 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/** API DTOs for comparatif years and report presence */
-interface ProductComparisonDto {
-    id: number;
-    comparatifYearId: number;
-    typeItem: string;
-    marque: string;
-    prix: number;
-    poidsValeur: number;
-    poidsUnite: string;
-    magasin: string;
-}
-interface ComparatifYearDto {
-    id: number;
-    annee: number;
-    lines: ProductComparisonDto[];
-}
-interface ReportYearDto {
-    year: number;
-    reportGenerated: boolean;
-}
+// --- Offline helpers & shared DTOs (from your offline/db.ts) ---
+import {
+    // generic cache helpers
+    getCache,
+    setCache,
+    // typed aliases (optional niceties — feel free to collapse to getCache/setCache)
+    type ComparatifYearDto,
+    type ReportYearDto,
+} from "../../offline/db";
 
-/** Route builder for the year-specific report viewer */
+// Storage keys used in IndexedDB/Cache
+const YEARS_CACHE_KEY = "comparatif:years";
+const REPORTS_CACHE_KEY = "comparatif:reports";
+
 const REPORT_ROUTE = (annee: number) => `/rapports/${annee}`;
 
 const Comparatif: React.FC = () => {
@@ -31,54 +23,113 @@ const Comparatif: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Inline “new year” form state
+    // “new year” inline form
     const [showForm, setShowForm] = useState(false);
     const [newYear, setNewYear] = useState<number>(new Date().getFullYear());
 
-    // Per-year generate progress/error (tracks the active year)
+    // (Re)generate progress per year
     const [genLoading, setGenLoading] = useState<number | null>(null);
     const [genError, setGenError] = useState<string | null>(null);
 
     const navigate = useNavigate();
 
-    /** Fetch list of comparatif “years” (admin data to manage lines). */
+    // ---------------- Cache-first loaders ----------------
+
     const fetchYears = () => {
         setLoading(true);
+
+        // 1) Immediate cache (if any)
+        getCache<ComparatifYearDto[]>(YEARS_CACHE_KEY).then((cached) => {
+            if (cached) setYears(cached);
+        });
+
+        // 2) Network (background refresh)
         fetch("/api/comparatifyears", { credentials: "include" })
             .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
-            .then(setYears)
+            .then(async (list: ComparatifYearDto[]) => {
+                setYears(list);
+                await setCache(YEARS_CACHE_KEY, list);
+            })
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
     };
 
-    /** Fetch report availability flags (used to show Generate vs Re-generate). */
     const fetchReports = () => {
+        // quick cache
+        getCache<ReportYearDto[]>(REPORTS_CACHE_KEY).then((cached) => {
+            if (cached) setReports(cached);
+        });
+
         fetch("/api/rapports", { credentials: "include" })
             .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
-            .then(setReports)
+            .then(async (data: ReportYearDto[]) => {
+                setReports(data);
+                await setCache(REPORTS_CACHE_KEY, data);
+            })
             .catch(() => setReports([]));
     };
 
-    /** Initial load. Independent requests are fine; no dependency between them. */
     useEffect(() => {
         fetchYears();
         fetchReports();
+
+        // react to SW messages (cache refresh, outbox replay, etc.)
+        const onSwMsg = (evt: MessageEvent) => {
+            const msg = evt.data;
+            if (!msg || typeof msg !== "object") return;
+
+            // if the SW announces cached JSON for this endpoint, adopt & cache
+            if (msg.type === "api-cache-hit" && typeof msg.url === "string") {
+                if (msg.url.includes("/api/comparatifyears")) {
+                    if (Array.isArray(msg.data)) {
+                        setYears(msg.data);
+                        setCache(YEARS_CACHE_KEY, msg.data);
+                    }
+                }
+                if (msg.url.includes("/api/rapports")) {
+                    if (Array.isArray(msg.data)) {
+                        setReports(msg.data);
+                        setCache(REPORTS_CACHE_KEY, msg.data);
+                    }
+                }
+            }
+
+            // mutation replay complete → refresh lists
+            if (msg.type === "mutation-sent") {
+                fetchYears();
+                setTimeout(fetchReports, 400);
+            }
+        };
+
+        navigator.serviceWorker?.addEventListener("message", onSwMsg);
+
+        const onOnline = () =>
+            navigator.serviceWorker?.controller?.postMessage?.({ type: "drain-outbox" });
+        window.addEventListener("online", onOnline);
+
+        return () => {
+            navigator.serviceWorker?.removeEventListener("message", onSwMsg);
+            window.removeEventListener("online", onOnline);
+        };
     }, []);
 
-    /** Helper: check if the report for a year already exists. */
+    // ---------------- Helpers ----------------
+
     const isReportGenerated = (annee: number) =>
         reports.some((r) => r.year === annee && r.reportGenerated);
 
-    /** Create a new comparatif year, then refresh lists (and report flags shortly after). */
+    // ---------------- Actions ----------------
+
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+
         fetch("/api/comparatifyears", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -86,24 +137,40 @@ const Comparatif: React.FC = () => {
             body: JSON.stringify({ annee: newYear, lines: [] }),
         })
             .then(async (res) => {
+                if (res.status === 202) {
+                    alert("Nouvelle année ajoutée hors ligne — elle se synchronisera plus tard.");
+                    setShowForm(false);
+                    setNewYear(new Date().getFullYear());
+                    // optimistic add (optional): re-fetch to read SW cache too
+                    fetchYears();
+                    return;
+                }
                 if (!res.ok) throw new Error(await res.text());
                 setShowForm(false);
                 setNewYear(new Date().getFullYear());
                 fetchYears();
-                // Small delay to allow backend to update report index if needed
                 setTimeout(fetchReports, 400);
             })
             .catch((err) => setError(err.message));
     }
 
-    /** Delete an entire year (and its lines), then refresh lists/flags. */
     function handleDelete(id: number) {
         if (!window.confirm("Supprimer cette année et toutes ses lignes?")) return;
+
         fetch(`/api/comparatifyears/${id}`, {
             method: "DELETE",
             credentials: "include",
         })
             .then(async (res) => {
+                if (res.status === 202) {
+                    // optimistic remove
+                    setYears((prev) => prev.filter((y) => y.id !== id));
+                    await setCache(
+                        YEARS_CACHE_KEY,
+                        years.filter((y) => y.id !== id)
+                    );
+                    return;
+                }
                 if (!res.ok) throw new Error(await res.text());
                 fetchYears();
                 setTimeout(fetchReports, 400);
@@ -111,10 +178,6 @@ const Comparatif: React.FC = () => {
             .catch((err) => setError(err.message));
     }
 
-    /**
-     * (Re)generate the report for a given year.
-     * Navigates to the report viewer on success (API may pre-create the file).
-     */
     async function handleGenerateReport(annee: number) {
         try {
             if (isReportGenerated(annee)) {
@@ -131,9 +194,13 @@ const Comparatif: React.FC = () => {
                 method: "POST",
                 credentials: "include",
             });
-            if (!res.ok) throw new Error(await res.text());
 
-            // If the API returns a specific report id/url, use it here instead.
+            if (res.status === 202) {
+                alert("Commande de génération enregistrée hors ligne — la création sera traitée à la reconnexion.");
+                return;
+            }
+
+            if (!res.ok) throw new Error(await res.text());
             navigate(REPORT_ROUTE(annee));
         } catch (err: any) {
             setGenError(err.message ?? "Erreur lors de la génération du rapport.");
@@ -142,7 +209,8 @@ const Comparatif: React.FC = () => {
         }
     }
 
-    // ----- Render -----
+    // ---------------- Render ----------------
+
     return (
         <div className="container" style={{ maxWidth: 700 }}>
             <div className="d-flex flex-column align-items-center mb-3">
@@ -152,7 +220,7 @@ const Comparatif: React.FC = () => {
                     style={{ minWidth: 170 }}
                     onClick={() => setShowForm((f) => !f)}
                 >
-                    <i className="bi bi-plus-circle me-1"></i>
+                    <i className="bi bi-plus-circle me-1" />
                     <span className="d-none d-sm-inline">Nouveau comparatif</span>
                     <span className="d-sm-none">Nouveau</span>
                 </button>
@@ -191,7 +259,9 @@ const Comparatif: React.FC = () => {
             {loading ? (
                 <div>Chargement…</div>
             ) : years.length === 0 ? (
-                <div className="alert alert-secondary text-center">Aucune année disponible.</div>
+                <div className="alert alert-secondary text-center">
+                    Aucune année disponible.
+                </div>
             ) : (
                 <div>
                     {years.map((y) => {
@@ -216,13 +286,14 @@ const Comparatif: React.FC = () => {
                                     </div>
 
                                     <div className="d-flex gap-2 ms-auto">
-                                        {/* (Re)Generate */}
                                         <button
                                             className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"
                                                 }`}
                                             onClick={() => handleGenerateReport(y.annee)}
                                             disabled={busy}
-                                            title={generated ? "Régénérer le rapport" : "Générer un rapport"}
+                                            title={
+                                                generated ? "Régénérer le rapport" : "Générer un rapport"
+                                            }
                                         >
                                             {busy ? (
                                                 <>
@@ -242,7 +313,9 @@ const Comparatif: React.FC = () => {
                                             ) : (
                                                 <>
                                                     <i className="bi bi-gear me-1" />
-                                                    <span className="d-none d-sm-inline">Générer un rapport</span>
+                                                    <span className="d-none d-sm-inline">
+                                                        Générer un rapport
+                                                    </span>
                                                     <span className="d-sm-none">Générer</span>
                                                 </>
                                             )}

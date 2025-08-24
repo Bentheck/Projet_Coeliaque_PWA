@@ -1,14 +1,15 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+    getFacturesList,
+    putFacturesList,
+    putFacture,
+    removeFacture,
+    type Facture as IFacture
+} from "../../offline/db";
 
 /** Minimal invoice shape used in the listing & create form */
-interface Facture {
-    id: number;
-    annee: number;
-    factureId: string;
-    date: string; // ISO yyyy-mm-dd
-    magasin: string;
-}
+interface Facture extends IFacture { }
 
 /** Default values when starting a new invoice */
 const emptyFacture: Omit<Facture, "id"> = {
@@ -17,6 +18,8 @@ const emptyFacture: Omit<Facture, "id"> = {
     date: new Date().toISOString().slice(0, 10),
     magasin: "",
 };
+
+const LIST_KEY = "factures/all";
 
 const Factures: React.FC = () => {
     const navigate = useNavigate();
@@ -29,20 +32,56 @@ const Factures: React.FC = () => {
     const [current, setCurrent] = useState<Facture | null>(null); // target of edit mode
     const [formData, setFormData] = useState(emptyFacture);
 
-    /** Load all invoices for the table */
+    /** Load all invoices: cache-first (IDB), then network refresh */
     const fetchFactures = () => {
         setLoading(true);
+
+        // 1) render cached immediately if present
+        getFacturesList(LIST_KEY).then((cached: Facture[] | null) => {
+            if (cached) setFactures(cached);
+        });
+
+        // 2) refresh from network
         fetch("/api/factures", { credentials: "include" })
             .then(async res => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
-            .then(setFactures)
+            .then(async (data: Facture[]) => {
+                setFactures(data);
+                await putFacturesList(LIST_KEY, data);
+            })
             .catch(err => setError(err.message))
             .finally(() => setLoading(false));
     };
 
-    useEffect(fetchFactures, []);
+    useEffect(() => {
+        fetchFactures();
+
+        // Listen to SW messages to update UI after cache hits / replay
+        const onSwMsg = (evt: MessageEvent) => {
+            const msg = evt.data;
+            if (msg?.type === "api-cache-hit" && msg.url?.includes("/api/factures")) {
+                setFactures(msg.data as Facture[]);
+                putFacturesList(LIST_KEY, msg.data as Facture[]);
+            }
+            if (msg?.type === "mutation-sent" && msg.url?.includes("/api/factures")) {
+                // After outbox replay, trigger a refresh
+                fetchFactures();
+            }
+        };
+        navigator.serviceWorker?.addEventListener("message", onSwMsg);
+
+        // When we come back online, ask the SW to drain the outbox
+        const onOnline = () =>
+            navigator.serviceWorker?.controller?.postMessage?.({ type: "drain-outbox" });
+        window.addEventListener("online", onOnline);
+
+        return () => {
+            navigator.serviceWorker?.removeEventListener("message", onSwMsg);
+            window.removeEventListener("online", onOnline);
+        };
+    }, []);
 
     // ----- Handlers -----
 
@@ -73,6 +112,7 @@ const Factures: React.FC = () => {
      * - POST on create (with items: [] so backend can hydrate properly)
      * - PUT on edit
      * - On create success, navigate to the detail/editor page.
+     * - When offline, the service worker should respond 202 (queued).
      */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -90,6 +130,35 @@ const Factures: React.FC = () => {
                 body: JSON.stringify(payload),
             });
 
+            // Offline/queued path -> SW returns 202
+            if (res.status === 202) {
+                if (isEdit && current) {
+                    // optimistic update in list + cache
+                    const updated: Facture = { ...current, ...formData };
+                    setFactures((prev: Facture[]) =>
+                        prev.map((f: Facture) => (f.id === updated.id ? updated : f))
+                    );
+                    await putFacture(updated);
+                    const cachedList = (await getFacturesList(LIST_KEY)) ?? [];
+                    await putFacturesList(LIST_KEY, cachedList as Facture[]);
+                    alert("Modification enregistrée hors ligne. Elle sera synchronisée dès que possible.");
+                    handleCancel();
+                    return;
+                } else {
+                    // create queued: add a placeholder row (no real id yet)
+                    const phantom: Facture = {
+                        id: -Date.now(), // temporary local id
+                        ...formData
+                    } as Facture;
+                    setFactures((prev: Facture[]) => [phantom, ...prev]);
+                    const cachedList = (await getFacturesList(LIST_KEY)) ?? [];
+                    await putFacturesList(LIST_KEY, [phantom, ...(cachedList as Facture[])]);
+                    alert("Création enregistrée hors ligne. Elle sera synchronisée à la reconnexion.");
+                    handleCancel();
+                    return;
+                }
+            }
+
             if (!res.ok) throw new Error(await res.text());
 
             if (isEdit) {
@@ -104,6 +173,8 @@ const Factures: React.FC = () => {
             if (!newId) throw new Error("Réponse inattendue: id manquant.");
 
             handleCancel();
+            await putFacture({ id: newId, ...formData });
+            fetchFactures();
             navigate(`/factures/${newId}`);
         } catch (err: any) {
             setError(err.message ?? "Erreur lors de l’enregistrement.");
@@ -111,14 +182,39 @@ const Factures: React.FC = () => {
     };
 
     /** Permanently remove an invoice (with user confirmation) */
-    const handleDelete = (facture: Facture) => {
+    const handleDelete = async (facture: Facture) => {
         if (!window.confirm("Supprimer cette facture?")) return;
-        fetch(`/api/factures/${facture.id}`, { method: "DELETE", credentials: "include" })
-            .then(async res => {
-                if (!res.ok) throw new Error(await res.text());
-                fetchFactures();
-            })
-            .catch(err => setError(err.message));
+        try {
+            const res = await fetch(`/api/factures/${facture.id}`, {
+                method: "DELETE",
+                credentials: "include"
+            });
+
+            if (res.status === 202) {
+                // queued delete (offline) – optimistic removal
+                setFactures((prev: Facture[]) => prev.filter((f: Facture) => f.id !== facture.id));
+                await removeFacture(facture.id);
+                const cachedList = ((await getFacturesList(LIST_KEY)) ?? []) as Facture[];
+                await putFacturesList(
+                    LIST_KEY,
+                    cachedList.filter((f: Facture) => f.id !== facture.id)
+                );
+                alert("Suppression mise en file d’attente (hors ligne).");
+                return;
+            }
+
+            if (!res.ok) throw new Error(await res.text());
+
+            setFactures((prev: Facture[]) => prev.filter((f: Facture) => f.id !== facture.id));
+            await removeFacture(facture.id);
+            const cachedList = ((await getFacturesList(LIST_KEY)) ?? []) as Facture[];
+            await putFacturesList(
+                LIST_KEY,
+                cachedList.filter((f: Facture) => f.id !== facture.id)
+            );
+        } catch (err: any) {
+            setError(err.message ?? "Erreur lors de la suppression.");
+        }
     };
 
     // ----- Render -----
@@ -200,26 +296,28 @@ const Factures: React.FC = () => {
             ) : factures.length === 0 ? (
                 <div className="alert alert-secondary text-center">Aucune facture trouvée.</div>
             ) : (
-                factures.map(facture => (
+                factures.map((facture: Facture) => (
                     <div key={facture.id} className="card mb-2 border-0 shadow-sm">
                         <div className="card-body d-flex align-items-start" style={{ columnGap: "1rem" }}>
                             <span style={{ flex: 1 }}>
-                                <div><b>ID :</b> {facture.factureId}</div>
+                                <div><b>ID :</b> {facture.factureId || "(en attente…)"}</div>
                                 <div><b>Date :</b> {facture.date?.slice(0, 10)}</div>
                                 <div><b>Magasin :</b> {facture.magasin}</div>
                             </span>
 
                             {/* Action buttons; text hides under 600px */}
                             <div className="d-flex gap-2 only-icons-under-600">
-                                <button
-                                    className="btn btn-outline-primary btn-sm"
-                                    onClick={() => navigate(`/factures/${facture.id}`)}
-                                    aria-label="Voir la facture"
-                                    title="Voir la facture"
-                                >
-                                    <i className="bi bi-eye" aria-hidden="true"></i>{" "}
-                                    <span className="btn-text">Voir</span>
-                                </button>
+                                {facture.id > 0 && (
+                                    <button
+                                        className="btn btn-outline-primary btn-sm"
+                                        onClick={() => navigate(`/factures/${facture.id}`)}
+                                        aria-label="Voir la facture"
+                                        title="Voir la facture"
+                                    >
+                                        <i className="bi bi-eye" aria-hidden="true"></i>{" "}
+                                        <span className="btn-text">Voir</span>
+                                    </button>
+                                )}
 
                                 <button
                                     className="btn btn-outline-danger btn-sm"

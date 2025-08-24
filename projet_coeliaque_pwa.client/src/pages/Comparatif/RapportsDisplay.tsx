@@ -1,6 +1,9 @@
 ﻿import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+// offline helpers
+import { getCache, setCache } from "../../offline/db";
+
 interface ProductComparisonRow {
     typeItem: string;
     nomSansGluten: string;
@@ -22,6 +25,15 @@ interface ProductComparisonRow {
     prixPar100Unit: string;
 }
 
+type ReportPayload = {
+    reportRows: ProductComparisonRow[];
+    totalSousTotalProduit: number;
+    userName: string;
+};
+
+// per-year cache key
+const reportKey = (annee: string | number) => `rapports:${annee}`;
+
 const RapportsDisplay: React.FC = () => {
     const { annee } = useParams<{ annee: string }>();
     const [rows, setRows] = useState<ProductComparisonRow[]>([]);
@@ -32,44 +44,83 @@ const RapportsDisplay: React.FC = () => {
     const navigate = useNavigate();
     const printSectionRef = useRef<HTMLDivElement>(null);
 
-    // Print-time prompt (not persisted): collected only to render on the PDF
+    // Prompt before print
     const [showPrompt, setShowPrompt] = useState(false);
     const [printNom, setPrintNom] = useState("");
     const [printNAS, setPrintNAS] = useState("");
     const [triggerPrint, setTriggerPrint] = useState(false);
 
+    // ---------------- Cache-first load ----------------
+
     useEffect(() => {
+        if (!annee) return;
+
         setLoading(true);
+
+        // 1) Cache
+        getCache<ReportPayload>(reportKey(annee)).then((cached) => {
+            if (cached) {
+                setRows(cached.reportRows || []);
+                setTotal(cached.totalSousTotalProduit || 0);
+                setUserName(cached.userName || "");
+            }
+        });
+
+        // 2) Network
         fetch(`/api/rapports/${annee}`, { credentials: "include" })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
-            .then(data => {
+            .then(async (data: ReportPayload) => {
                 setRows(data.reportRows || []);
                 setTotal(data.totalSousTotalProduit || 0);
                 setUserName(data.userName || "");
+                await setCache(reportKey(annee), data);
             })
-            .catch(err => setError(err.message))
+            .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
     }, [annee]);
 
-    // When triggered, defer briefly so DOM updates, then invoke the browser print dialog
+    // react to SW refresh
+    useEffect(() => {
+        const onSwMsg = (evt: MessageEvent) => {
+            const msg = evt.data;
+            if (!msg || typeof msg !== "object") return;
+
+            if (
+                msg.type === "api-cache-hit" &&
+                typeof msg.url === "string" &&
+                annee &&
+                msg.url.includes(`/api/rapports/${annee}`)
+            ) {
+                const data: ReportPayload = msg.data;
+                if (data && typeof data === "object") {
+                    setRows(data.reportRows || []);
+                    setTotal(data.totalSousTotalProduit || 0);
+                    setUserName(data.userName || "");
+                    setCache(reportKey(annee), data);
+                }
+            }
+        };
+
+        navigator.serviceWorker?.addEventListener("message", onSwMsg);
+        return () => navigator.serviceWorker?.removeEventListener("message", onSwMsg);
+    }, [annee]);
+
+    // print scheduling to let DOM update
     useEffect(() => {
         if (!triggerPrint) return;
         setTimeout(() => {
             window.print();
             setShowPrompt(false);
             setTriggerPrint(false);
-            // If desired, uncomment to clear after printing:
-            // setPrintNom(""); setPrintNAS("");
         }, 200);
     }, [triggerPrint]);
 
     function handlePrintClick() {
         setShowPrompt(true);
     }
-
     function handlePromptSubmit(e: React.FormEvent) {
         e.preventDefault();
         setShowPrompt(false);
@@ -81,10 +132,20 @@ const RapportsDisplay: React.FC = () => {
 
     return (
         <div className="container py-3" style={{ maxWidth: 1200 }}>
-            {/* Inform users that NOM/NAS are only used for the printed output and never stored */}
             <div className="alert alert-info no-print mb-3" style={{ fontSize: "1.06em" }}>
                 <i className="bi bi-info-circle me-2"></i>
-                <b>Note :</b> Lorsque vous cliquerez sur “Imprimer”, vous pourrez entrer votre <b><i>NOM</i></b> et votre <b><i>NAS</i></b> pour qu’ils soient inclus en haut du rapport. <b><i>Ceux-ci ne seront pas sauvegardés.</i></b>
+                <b>Note :</b> Lorsque vous cliquerez sur “Imprimer”, vous pourrez entrer votre{" "}
+                <b>
+                    <i>NOM</i>
+                </b>{" "}
+                et votre{" "}
+                <b>
+                    <i>NAS</i>
+                </b>{" "}
+                pour qu’ils soient inclus en haut du rapport.{" "}
+                <b>
+                    <i>Ceux-ci ne seront pas sauvegardés.</i>
+                </b>
             </div>
 
             <button className="btn btn-success no-print mb-3" onClick={handlePrintClick}>
@@ -94,18 +155,22 @@ const RapportsDisplay: React.FC = () => {
                 Retour
             </button>
 
-            {/* Minimal, dependency-free modal for print metadata */}
+            {/* Minimal modal */}
             {showPrompt && (
                 <div
                     style={{
                         position: "fixed",
-                        top: 0, left: 0, right: 0, bottom: 0,
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
                         zIndex: 9999,
                         background: "rgba(0,0,0,0.35)",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center"
-                    }}>
+                        justifyContent: "center",
+                    }}
+                >
                     <form
                         onSubmit={handlePromptSubmit}
                         autoComplete="off"
@@ -114,7 +179,7 @@ const RapportsDisplay: React.FC = () => {
                             borderRadius: 12,
                             padding: 32,
                             minWidth: 350,
-                            boxShadow: "0 4px 30px rgba(0,0,0,0.17)"
+                            boxShadow: "0 4px 30px rgba(0,0,0,0.17)",
                         }}
                     >
                         <h4 className="mb-4">Informations à inclure dans le rapport</h4>
@@ -127,7 +192,7 @@ const RapportsDisplay: React.FC = () => {
                                 className="form-control"
                                 type="text"
                                 value={printNom}
-                                onChange={e => setPrintNom(e.target.value)}
+                                onChange={(e) => setPrintNom(e.target.value)}
                                 placeholder="Votre nom"
                                 maxLength={80}
                                 autoFocus
@@ -141,7 +206,7 @@ const RapportsDisplay: React.FC = () => {
                                 className="form-control"
                                 type="text"
                                 value={printNAS}
-                                onChange={e => setPrintNAS(e.target.value)}
+                                onChange={(e) => setPrintNAS(e.target.value)}
                                 placeholder="XXX XXX XXX"
                                 maxLength={20}
                                 autoComplete="off"
@@ -149,17 +214,10 @@ const RapportsDisplay: React.FC = () => {
                             />
                         </div>
                         <div className="d-flex justify-content-end gap-2">
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => setShowPrompt(false)}
-                            >
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowPrompt(false)}>
                                 Annuler
                             </button>
-                            <button
-                                type="submit"
-                                className="btn btn-success"
-                            >
+                            <button type="submit" className="btn btn-success">
                                 Continuer et imprimer
                             </button>
                         </div>
@@ -168,7 +226,6 @@ const RapportsDisplay: React.FC = () => {
             )}
 
             <div id="print-section" ref={printSectionRef}>
-                {/* Print-only CSS toggles fields/controls for hardcopy vs on-screen */}
                 <style>
                     {`
           @media screen {
@@ -177,11 +234,13 @@ const RapportsDisplay: React.FC = () => {
           @media print {
             .print-only { display: flex !important; }
             .no-print { display: none !important; }
+            /* optional: expand to full width on print */
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           }
-          `}
+        `}
                 </style>
 
-                {/* Boxes rendered into the PDF; values are transient and not persisted */}
+                {/* Print-only header fields */}
                 <div className="d-flex gap-4 align-items-end mb-4 mt-2 print-only" style={{ marginTop: 18 }}>
                     <div>
                         <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>Nom&nbsp;:</div>
@@ -195,7 +254,7 @@ const RapportsDisplay: React.FC = () => {
                                 display: "flex",
                                 alignItems: "center",
                                 fontSize: "1.07em",
-                                paddingLeft: 10
+                                paddingLeft: 10,
                             }}
                         >
                             {printNom || <span style={{ color: "#fff" }}>-</span>}
@@ -213,7 +272,7 @@ const RapportsDisplay: React.FC = () => {
                                 display: "flex",
                                 alignItems: "center",
                                 fontSize: "1.07em",
-                                paddingLeft: 10
+                                paddingLeft: 10,
                             }}
                         >
                             {printNAS || <span style={{ color: "#fff" }}>-</span>}
@@ -227,8 +286,12 @@ const RapportsDisplay: React.FC = () => {
                 <table className="comparatif-table">
                     <thead>
                         <tr>
-                            <th colSpan={7} className="comparatif-header-sg double-divider">PRODUIT SANS GLUTEN</th>
-                            <th colSpan={6} className="comparatif-header-ag double-divider">PRODUIT COMPARATIF AVEC GLUTEN</th>
+                            <th colSpan={7} className="comparatif-header-sg double-divider">
+                                PRODUIT SANS GLUTEN
+                            </th>
+                            <th colSpan={6} className="comparatif-header-ag double-divider">
+                                PRODUIT COMPARATIF AVEC GLUTEN
+                            </th>
                             <th colSpan={3} className="comparatif-header-total"></th>
                         </tr>
                         <tr>
@@ -257,7 +320,6 @@ const RapportsDisplay: React.FC = () => {
                                 <td className="comparatif-th-sg">{row.quantiteSansGluten}</td>
                                 <td className="comparatif-th-sg">{row.formatSansGluten}</td>
                                 <td className="comparatif-th-sg">{row.uniteSansGluten}</td>
-                                {/* CAD locale for consistent currency in French-Canada */}
                                 <td className="comparatif-th-sg">
                                     {row.prixSansGluten.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
                                 </td>
@@ -289,43 +351,39 @@ const RapportsDisplay: React.FC = () => {
                     <b>TOTAL = {total.toFixed(2)} $</b>
                 </div>
 
-                {/* Human-readable breakdown of formulas used to compute the report */}
                 <div className="mt-5 p-4 rounded-3 bg-light border" style={{ fontSize: "1em", maxWidth: 900 }}>
-                    <h4 className="fw-bold mb-2"><i className="bi bi-calculator me-2"></i>Explications des calculs</h4>
+                    <h4 className="fw-bold mb-2">
+                        <i className="bi bi-calculator me-2"></i>Explications des calculs
+                    </h4>
                     <ul>
                         <li>
                             <b>Prix/100 (Sans Gluten ou Avec Gluten):</b>
                             <br />
                             <span>
                                 <code>Prix / Poids × 100</code> <br />
-                                Exemple : Pour un produit de 2,99 $ pour 500 g, le prix par 100 g = <b>2,99 / 500 × 100 = 0,60 $</b>
+                                Exemple : 2,99 $ pour 500 g → <b>2,99 / 500 × 100 = 0,60 $</b>
                             </span>
                         </li>
                         <li className="mt-2">
                             <b>Différence par 100 (Diff/100):</b>
                             <br />
                             <span>
-                                <code>Prix/100 Sans Gluten – Prix/100 Avec Gluten</code><br />
-                                (Représente le coût supplémentaire du produit sans gluten par rapport au produit avec gluten, pour une même quantité.)
+                                <code>Prix/100 SG – Prix/100 AG</code>
                             </span>
                         </li>
                         <li className="mt-2">
                             <b>Sous-total produit:</b>
                             <br />
                             <span>
-                                <code>Différence par 100 × Quantité totale achetée (exprimée en 100g/100ml/unité selon le format)</code><br />
-                                Exemple : Si la différence est 0,60 $ par 100g et vous avez acheté 2 kg (soit 2000g), alors : <br />
-                                <b>0,60 × (2000/100) = 0,60 × 20 = 12,00 $</b>
+                                <code>Diff/100 × Quantité totale (en “100” selon l’unité)</code>
                             </span>
                         </li>
                         <li className="mt-2">
-                            <b>TOTAL :</b> Somme de tous les sous-totaux produits. Il s’agit du montant total admissible au remboursement.
+                            <b>TOTAL :</b> Somme de tous les sous-totaux produits.
                         </li>
                     </ul>
                     <div className="mt-2 text-secondary" style={{ fontSize: "0.95em" }}>
-                        <i>
-                            Les conversions d’unités (kg, lb, ml, etc.) sont automatiquement prises en compte pour garantir des comparaisons équitables.
-                        </i>
+                        <i>Les conversions d’unités sont prises en compte automatiquement.</i>
                     </div>
                 </div>
             </div>
