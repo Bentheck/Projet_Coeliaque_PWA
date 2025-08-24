@@ -16,18 +16,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly IConfiguration _config;
         private readonly ApplicationDbContext _db;
         private readonly ILogger<StripeWebhookController> _logger;
-        private readonly IAccountStatusService _statusSvc;
 
         public StripeWebhookController(
             IConfiguration config,
             ApplicationDbContext db,
-            ILogger<StripeWebhookController> logger,
-            IAccountStatusService statusSvc)
+            ILogger<StripeWebhookController> logger)
         {
             _config = config;
             _db = db;
             _logger = logger;
-            _statusSvc = statusSvc;
+
         }
 
         [HttpPost]
@@ -339,8 +337,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
                 await _db.SaveChangesAsync();
 
-                if (!string.IsNullOrWhiteSpace(userId))
-                    await SendAccountStatusPushAsync(userId);
                 Debug.WriteLine(">>> [UpsertMembership] Created membership");
                 _logger.LogInformation("[UpsertMembership] Created");
             }
@@ -349,42 +345,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 Debug.WriteLine(">>> [UpsertMembership] No userId; nothing to write");
                 _logger.LogWarning("[UpsertMembership] No userId for sub {Sub}", subscriptionId);
             }
-        }
-
-        private async Task SendAccountStatusPushAsync(string userId)
-        {
-            var subs = await _db.PushSubscriptions.Where(s => s.UserId == userId).ToListAsync();
-            if (subs.Count == 0) return;
-
-            var statusPayload = await _statusSvc.BuildStatusAsync(userId);
-            var envelope = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                type = "account-status",
-                v = 1,
-                payload = statusPayload
-            });
-
-            var vapidPublic = _config["VAPID:PublicKey"];
-            var vapidPrivate = _config["VAPID:PrivateKey"];
-            var subject = _config["VAPID:Subject"] ?? "mailto:support@example.com";
-
-            var client = new WebPush.WebPushClient();
-            var details = new WebPush.VapidDetails(subject, vapidPublic, vapidPrivate);
-
-            foreach (var s in subs.ToList())
-            {
-                try
-                {
-                    var sub = new WebPush.PushSubscription(s.Endpoint, s.P256dh, s.Auth);
-                    await client.SendNotificationAsync(sub, envelope, details);
-                }
-                catch (WebPush.WebPushException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Gone or System.Net.HttpStatusCode.NotFound)
-                {
-                    _db.PushSubscriptions.Remove(s); // prune dead endpoints
-                }
-                catch { /* ignore transient */ }
-            }
-            await _db.SaveChangesAsync();
         }
 
         /* ========================= Helpers (version-safe) ========================= */
