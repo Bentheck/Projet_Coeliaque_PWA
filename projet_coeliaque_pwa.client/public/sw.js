@@ -1,20 +1,17 @@
 ﻿/* =========================
    Service Worker — per-user API cache + deep offline support
-   - App shell precache
-   - Stable runtime cache for static assets
-   - API GET: network-first -> per-user cache fallback
-     * Cache any 2xx (not just 200)
-     * Return [] only for known collection endpoints; otherwise 503
-   - Queue offline writes (POST/PUT/PATCH/DELETE) for liste/factures
-   - Matches kebab/PascalCase where relevant
-   - SET_USER ACK + purge other user caches
-   - Invalidate List caches after replaying queued mutations
+   + Heartbeat-based 24h countdown (no API dependency)
+   + Dev-safe static asset strategy (Vite / localhost = network-first)
    ========================= */
 
-const APP_VERSION = "v1.0.10";
+const APP_VERSION = "v1.0.15"; // bump when you change this file
 const PRECACHE = `precache-${APP_VERSION}`;
 const RUNTIME = "runtime";
 const API_CACHE_PREFIX = "api-runtime";
+
+/* ------- TTL (24h by default) ------- */
+const OFFLINE_MAX_AGE_MS_DEFAULT = 24 * 60 * 60 * 1000; // 24h
+let OFFLINE_MAX_AGE_MS = OFFLINE_MAX_AGE_MS_DEFAULT;
 
 /* ------- Precache ------- */
 const PRECACHE_URLS = [
@@ -28,21 +25,17 @@ const PRECACHE_URLS = [
 /* ------- Navigation denylist ------- */
 const NAV_DENYLIST = [/^\/forum(\/.*)?$/i, /^\/subscribe(\/.*)?$/i];
 
-/* ------- API patterns (add more here as needed) ------- */
-// Lists (kebab + PascalCase)
+/* ------- API patterns (kebab + PascalCase) ------- */
 const LISTES_ROOT = /^\/api\/(?:liste-epicerie|ListeEpicerie)\/?$/i;
 const LISTES_ITEM = /^\/api\/(?:liste-epicerie|ListeEpicerie)\/\d+(?:\/.*)?$/i;
 const LISTES_COMPLETED = /^\/api\/(?:liste-epicerie|ListeEpicerie)\/\d+\/completed(?:\/.*)?$/i;
 
-// Factures
 const FACTURES_ROOT = /^\/api\/factures\/?$/i;
 const FACTURES_API = /^\/api\/factures(?:\/.*)?$/i;
-const FACTURE_ITEMS_API = /^\/api\/factureitems(?:\/.*)?$/i; // detail rows
+const FACTURE_ITEMS_API = /^\/api\/factureitems(?:\/.*)?$/i;
 
-// Free items (custom catalog)
 const FREE_ITEMS_API = /^\/api\/freeitems(?:\/.*)?$/i;
 
-// Other collections you want offline by default
 const FAQ_ROOT = /^\/api\/faq\/?$/i;
 const FAQ_API = /^\/api\/faq(?:\/.*)?$/i;
 const COMPARATIF_ROOT = /^\/api\/comparatifyears\/?$/i;
@@ -90,9 +83,41 @@ const isApiPath = (p) =>
     FREE_ITEMS_API.test(p) ||
     FAQ_API.test(p) || COMPARATIF_API.test(p) || RAPPORTS_API.test(p);
 
-/** Only these are treated as “collection endpoints” for offline [] fallbacks */
 const isCollectionEndpoint = (p) =>
     LISTES_ROOT.test(p) || FACTURES_ROOT.test(p) || FAQ_ROOT.test(p) || COMPARATIF_ROOT.test(p);
+
+/* --------- Meta KV (last-online heartbeat) --------- */
+const META_DB = "sw-meta";
+const META_STORE = "kv";
+const LAST_OK_TS_KEY = "last-ok-ts";
+
+function openMeta() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(META_DB, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(META_STORE, { keyPath: "key" });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function metaSet(key, value) {
+    const db = await openMeta();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(META_STORE, "readwrite");
+        tx.objectStore(META_STORE).put({ key, value });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+    });
+}
+async function metaGet(key) {
+    const db = await openMeta();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(META_STORE, "readonly");
+        const req = tx.objectStore(META_STORE).get(key);
+        req.onsuccess = () => resolve(req.result?.value ?? null);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function bumpLastOnline() { try { await metaSet(LAST_OK_TS_KEY, Date.now()); } catch { } }
 
 /* ------- Fetch: navigations ------- */
 self.addEventListener("fetch", (event) => {
@@ -118,12 +143,14 @@ self.addEventListener("fetch", (event) => {
                 if (preload) {
                     const run = await caches.open(RUNTIME);
                     run.put(req, preload.clone());
+                    await bumpLastOnline();
                     return preload;
                 }
                 const fresh = await fetch(req);
                 if (fresh.ok) {
                     const run = await caches.open(RUNTIME);
                     run.put(req, fresh.clone());
+                    await bumpLastOnline();
                 }
                 return fresh;
             } catch {
@@ -136,19 +163,41 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    /* ------- Fetch: static assets ------- */
-    if (req.method === "GET" && /\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|woff2?)$/i.test(url.pathname)) {
+    /* ------- Fetch: static assets (DEV/Vite = network-first; PROD = network-first+cache) ------- */
+    const isStaticAsset = (p) => /\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|woff2?)$/i.test(p);
+    const looksLikeViteDev =
+        self.location.hostname === "localhost" ||
+        url.pathname.startsWith("/@vite") ||
+        url.pathname.startsWith("/@react-refresh") ||
+        url.pathname.startsWith("/src/") ||
+        url.searchParams.has("t");
+
+    if (req.method === "GET" && (isStaticAsset(url.pathname) || looksLikeViteDev)) {
         event.respondWith((async () => {
-            const prec = await caches.open(PRECACHE);
+            if (looksLikeViteDev) {
+                // Dev / Vite: never cache; always try network, fallback to whatever cached copy exists.
+                try {
+                    return await fetch(req);
+                } catch {
+                    const run = await caches.open(RUNTIME);
+                    const hit = await run.match(req);
+                    if (hit) return hit;
+                    const prec = await caches.open(PRECACHE);
+                    return (await prec.match(req)) || new Response("", { status: 503 });
+                }
+            }
+
+            // Production: network-first, then cache; fallback to cache if offline.
             const run = await caches.open(RUNTIME);
-            const hit = (await prec.match(req)) || (await run.match(req));
-            if (hit) return hit;
             try {
                 const resp = await fetch(req);
                 if (resp.ok) await run.put(req, resp.clone());
                 return resp;
             } catch {
-                return new Response("", { status: 503 });
+                const cached = await run.match(req);
+                if (cached) return cached;
+                const prec = await caches.open(PRECACHE);
+                return (await prec.match(req)) || new Response("", { status: 503 });
             }
         })());
         return;
@@ -160,15 +209,15 @@ self.addEventListener("fetch", (event) => {
             const apiCache = await openApiCache();
             try {
                 const fresh = await fetch(req);
-                if (fresh.ok) {                 // cache any 2xx
-                    await apiCache.put(req, fresh.clone());
+                if (fresh.ok) {
+                    await apiCache.put(req, fresh.clone()); // cache any 2xx
+                    await bumpLastOnline();
                 }
                 return fresh;
             } catch {
                 const cached = await apiCache.match(req);
                 if (cached) return cached;
 
-                // Only “collection” endpoints spoof [] to keep UI list contracts
                 if (isCollectionEndpoint(url.pathname)) {
                     return new Response("[]", { headers: { "Content-Type": "application/json" }, status: 200 });
                 }
@@ -184,7 +233,7 @@ self.addEventListener("fetch", (event) => {
             const run = await caches.open(RUNTIME);
             try {
                 const resp = await fetch(req);
-                if (resp.ok) run.put(req, resp.clone());
+                if (resp.ok) { run.put(req, resp.clone()); await bumpLastOnline(); }
                 return resp;
             } catch {
                 const cached = await run.match(req);
@@ -207,9 +256,7 @@ self.addEventListener("message", (event) => {
     if (msg.type === "SET_USER") {
         USER_CACHE_KEY = msg.id ? String(msg.id) : "anon";
         event.waitUntil?.(purgeUserCaches());
-        if (event.ports && event.ports[0]) {
-            event.ports[0].postMessage({ ok: true, userKey: USER_CACHE_KEY });
-        }
+        event.ports?.[0]?.postMessage({ ok: true, userKey: USER_CACHE_KEY });
     }
 
     if (msg.type === "PURGE_USER_CACHES") {
@@ -220,19 +267,55 @@ self.addEventListener("message", (event) => {
         event.waitUntil?.(drainOutbox());
     }
 
-    // debug: list current user's API cache keys
     if (msg.type === "LIST_API_CACHE") {
         (async () => {
             const api = await openApiCache();
             const keys = await api.keys();
             const urls = keys.map(k => k.url);
-            if (event.ports && event.ports[0]) event.ports[0].postMessage({ ok: true, urls });
+            event.ports?.[0]?.postMessage({ ok: true, urls });
         })();
+    }
+
+    // Override TTL in hours (optional)
+    if (msg.type === "SET_OFFLINE_MAX_AGE_HOURS") {
+        const hours = Number(msg.hours);
+        OFFLINE_MAX_AGE_MS = (Number.isFinite(hours) && hours > 0)
+            ? hours * 60 * 60 * 1000
+            : OFFLINE_MAX_AGE_MS_DEFAULT;
+        event.ports?.[0]?.postMessage({ ok: true, ms: OFFLINE_MAX_AGE_MS });
+    }
+
+    // Heartbeat: set last-online timestamp NOW (no network needed)
+    if (msg.type === "SET_LAST_ONLINE_NOW") {
+        event.waitUntil(bumpLastOnline());
+        event.ports?.[0]?.postMessage({ ok: true });
+    }
+
+    // Report remaining TTL from heartbeat; also include count of cached API entries
+    if (msg.type === "GET_OFFLINE_STATUS") {
+        event.waitUntil((async () => {
+            const api = await openApiCache();
+            const keys = await api.keys();
+            const entries = keys.length;
+
+            const lastOkTs = await metaGet(LAST_OK_TS_KEY);
+            const remainingMs = (typeof lastOkTs === "number")
+                ? Math.max(0, OFFLINE_MAX_AGE_MS - (Date.now() - lastOkTs))
+                : 0;
+
+            event.ports?.[0]?.postMessage({
+                ok: true,
+                ttlMs: OFFLINE_MAX_AGE_MS,
+                remainingMs,
+                entries,
+                source: "last-online"
+            });
+        })());
     }
 });
 
 /* =========================
-   Offline mutations outbox
+   Offline mutations outbox (unchanged)
    ========================= */
 
 const OUTBOX_DB = "pwa-outbox";
@@ -274,7 +357,6 @@ async function outboxDelete(id) {
     });
 }
 
-/* ---- Cache invalidation helpers (Lists) ---- */
 function extractListIdFromPath(pathname) {
     const m = pathname.match(/^\/api\/(?:liste-epicerie|ListeEpicerie)\/(\d+)(?:\/.*)?$/i);
     return m ? m[1] : null;
@@ -288,10 +370,7 @@ async function invalidateListCaches(listId) {
             const u = new URL(req.url);
             if (u.origin !== self.location.origin) return null;
 
-            // Invalidate the collection
             if (LISTES_ROOT.test(u.pathname)) return api.delete(req);
-
-            // Invalidate this list detail (any sub-path)
             const m = u.pathname.match(/^\/api\/(?:liste-epicerie|ListeEpicerie)\/(\d+)(?:\/.*)?$/i);
             if (m && m[1] === String(listId)) return api.delete(req);
 
@@ -299,7 +378,6 @@ async function invalidateListCaches(listId) {
         } catch { return null; }
     }));
 
-    // Best-effort re-warm
     try {
         fetch("/api/ListeEpicerie", { credentials: "include" }).catch(() => { });
         fetch(`/api/ListeEpicerie/${listId}`, { credentials: "include" }).catch(() => { });
@@ -356,14 +434,12 @@ async function drainOutbox() {
             if (resp.ok || resp.status === 409) {
                 await outboxDelete(item.id);
 
-                // Invalidate caches if this write touched a list
                 try {
                     const p = new URL(item.url).pathname;
                     const lid = extractListIdFromPath(p);
                     if (lid) await invalidateListCaches(lid);
                 } catch { }
 
-                // Tell pages a mutation was sent
                 const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
                 for (const c of clients) c.postMessage({ type: "mutation-sent", url: item.url, method: item.method });
             }

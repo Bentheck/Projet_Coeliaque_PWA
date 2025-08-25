@@ -37,6 +37,7 @@ namespace Projet_Coeliaque_PWA.Server
                 .AddEntityFrameworkStores<ApplicationDbContext>();
 
             // App services
+            builder.Services.AddHostedService<StripeMembershipReconciler>();
             builder.Services.AddScoped<IMembershipService, MembershipService>();
             builder.Services.AddTransient<IEmailSender, DevEmailSender>();
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
