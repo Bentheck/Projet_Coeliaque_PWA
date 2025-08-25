@@ -1,6 +1,6 @@
 ﻿import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { useEffect, useState, useCallback } from "react";
 import "./app.css";
+
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 
@@ -52,59 +52,230 @@ import RequireForumAdmin from "./components/RequireForumAdmin";
 import { FaqPage as FaqPublic, FaqAdmin as FaqAdminPage } from "./pages/FAQ/FaqModule";
 
 export default function App() {
-    const [user, setUser] = useState<any>(null);
-    const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
-
-    const refreshStatus = useCallback(() => {
-        fetch("/api/account/status", { credentials: "include" })
-            .then((res) => (res.ok ? res.json() : null))
-            .then((data) => {
-                setUser(data?.user ?? null);
-                setMembershipStatus(data?.membershipStatus ?? null);
-            })
-            .catch(() => {
-                setUser(null);
-                setMembershipStatus(null);
-            });
-    }, []);
-
-    useEffect(() => {
-        refreshStatus();
-    }, [refreshStatus]);
-
     return (
         <AuthProvider>
             <Router>
-                <Layout user={user} membershipStatus={membershipStatus}>
+                <Layout>
                     <Routes>
                         <Route path="/" element={<Home />} />
-                        <Route path="/factures" element={<AuthGuard><MembershipGuard><Factures /></MembershipGuard></AuthGuard>} />
-                        <Route path="/factures/:id" element={<AuthGuard><MembershipGuard><FactureEdit /></MembershipGuard></AuthGuard>} />
-                        <Route path="/comparatif" element={<AuthGuard><MembershipGuard><Comparatif /></MembershipGuard></AuthGuard>} />
-                        <Route path="/comparatif/:id" element={<AuthGuard><MembershipGuard><ComparatifEdit /></MembershipGuard></AuthGuard>} />
-                        <Route path="/rapports" element={<AuthGuard><MembershipGuard><Rapports /></MembershipGuard></AuthGuard>} />
-                        <Route path="/rapports/:annee" element={<AuthGuard><MembershipGuard><RapportsDisplay /></MembershipGuard></AuthGuard>} />
-                        <Route path="/liste-epicerie" element={<AuthGuard><MembershipGuard><ListeEpicerieIndex /></MembershipGuard></AuthGuard>} />
-                        <Route path="/liste-epicerie/edit/:id?" element={<AuthGuard><MembershipGuard><ListeEpicerieEdit /></MembershipGuard></AuthGuard>} />
-                        <Route path="/liste-epicerie/view/:id" element={<AuthGuard><MembershipGuard><ListeEpicerieView /></MembershipGuard></AuthGuard>} />
-                        <Route path="/forum" element={<AuthGuard><ForumCategories /></AuthGuard>} />
-                        <Route path="/forum/c/:categoryId" element={<AuthGuard><ForumThreads /></AuthGuard>} />
-                        <Route path="/forum/t/:id" element={<AuthGuard><ForumThreadView /></AuthGuard>} />
-                        <Route path="/forum/new" element={<AuthGuard><ForumNewThread /></AuthGuard>} />
+
+                        <Route
+                            path="/factures"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <Factures />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/factures/:id"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <FactureEdit />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+
+                        <Route
+                            path="/comparatif"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <Comparatif />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/comparatif/:id"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <ComparatifEdit />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+
+                        <Route
+                            path="/rapports"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <Rapports />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/rapports/:annee"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <RapportsDisplay />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+
+                        <Route
+                            path="/liste-epicerie"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <ListeEpicerieIndex />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/liste-epicerie/edit/:id?"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <ListeEpicerieEdit />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/liste-epicerie/view/:id"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <ListeEpicerieView />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+
+                        {/* Forum */}
+                        <Route
+                            path="/forum"
+                            element={
+                                <AuthGuard>
+                                    <ForumCategories />
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/forum/c/:categoryId"
+                            element={
+                                <AuthGuard>
+                                    <ForumThreads />
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/forum/t/:id"
+                            element={
+                                <AuthGuard>
+                                    <ForumThreadView />
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/forum/new"
+                            element={
+                                <AuthGuard>
+                                    <ForumNewThread />
+                                </AuthGuard>
+                            }
+                        />
+
+                        {/* Admin */}
+                        <Route
+                            path="/admin/forum"
+                            element={
+                                <AuthGuard>
+                                    <RequireForumAdmin>
+                                        <ForumAdminPanel />
+                                    </RequireForumAdmin>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/super/admins"
+                            element={
+                                <AuthGuard>
+                                    <RequireSuperAdmin>
+                                        <SuperAdminPanel />
+                                    </RequireSuperAdmin>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/super/faq"
+                            element={
+                                <AuthGuard>
+                                    <RequireSuperAdmin>
+                                        <FaqAdminPage />
+                                    </RequireSuperAdmin>
+                                </AuthGuard>
+                            }
+                        />
+
+                        {/* FAQ */}
                         <Route path="/faq" element={<FaqPublic />} />
                         <Route path="/faq/calculateur" element={<FaqPublic />} />
-                        <Route path="/admin/forum" element={<AuthGuard><RequireForumAdmin><ForumAdminPanel /></RequireForumAdmin></AuthGuard>} />
-                        <Route path="/super/admins" element={<AuthGuard><RequireSuperAdmin><SuperAdminPanel /></RequireSuperAdmin></AuthGuard>} />
-                        <Route path="/super/faq" element={<AuthGuard><RequireSuperAdmin><FaqAdminPage /></RequireSuperAdmin></AuthGuard>} />
+
+                        {/* User */}
                         <Route path="/u/:userId" element={<UserProfileView />} />
-                        <Route path="/u/me/edit" element={<AuthGuard><UserProfileEdit /></AuthGuard>} />
+                        <Route
+                            path="/u/me/edit"
+                            element={
+                                <AuthGuard>
+                                    <UserProfileEdit />
+                                </AuthGuard>
+                            }
+                        />
+
+                        {/* Auth */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
-                        <Route path="/subscribe" element={<AuthGuard><Subscribe /></AuthGuard>} />
-                        <Route path="/subscribe/success" element={<AuthGuard><SubscribeSuccess /></AuthGuard>} />
-                        <Route path="/subscribe/cancel" element={<AuthGuard><SubscribeCancel /></AuthGuard>} />
-                        <Route path="/membership" element={<AuthGuard><MembershipGuard><Membership /></MembershipGuard></AuthGuard>} />
                         <Route path="/logout" element={<Logout />} />
+
+                        {/* Membership */}
+                        <Route
+                            path="/subscribe"
+                            element={
+                                <AuthGuard>
+                                    <Subscribe />
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/subscribe/success"
+                            element={
+                                <AuthGuard>
+                                    <SubscribeSuccess />
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/subscribe/cancel"
+                            element={
+                                <AuthGuard>
+                                    <SubscribeCancel />
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/membership"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <Membership />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+
+                        {/* 404 */}
                         <Route path="*" element={<NotFound />} />
                     </Routes>
                 </Layout>

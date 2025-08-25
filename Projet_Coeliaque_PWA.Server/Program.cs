@@ -66,7 +66,7 @@ namespace Projet_Coeliaque_PWA.Server
 
             // Controllers
             builder.Services.AddControllers();
-
+            
             var app = builder.Build();
 
             // ---- Seed roles + default SuperAdmin from configuration ----

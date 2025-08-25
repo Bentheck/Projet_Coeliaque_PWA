@@ -3,6 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import CreatableSelect from "react-select/creatable";
 import type { SingleValue } from "react-select";
+import {
+    getFacture,
+    putFacture,
+    type Facture as IFacture,
+    type FactureItem as IFactureItem
+} from "../../offline/db";
 
 /** Canonical unit options for validation and consistent UI */
 const UNIT_OPTIONS = [
@@ -11,23 +17,8 @@ const UNIT_OPTIONS = [
     "un", "dozen"
 ];
 
-interface FactureItem {
-    id: number;
-    item: string;          // Brand / product label
-    typeItem: string;      // Product category (user-creatable)
-    quantite: number;
-    prix: number;
-    poidsValeur: number;
-    poidsUnite: string;
-    wasOnSale: boolean;
-}
-
-interface Facture {
-    id: number;
-    annee: number;
-    factureId: string;
-    date: string;
-    magasin: string;
+interface FactureItem extends IFactureItem { }
+interface Facture extends IFacture {
     items: FactureItem[];
 }
 
@@ -43,6 +34,7 @@ const emptyItem: Omit<FactureItem, "id"> = {
 
 export default function FactureEdit() {
     const { id } = useParams<{ id: string }>();
+    const factureId = Number(id);
     const navigate = useNavigate();
 
     const [facture, setFacture] = useState<Facture | null>(null);
@@ -57,45 +49,54 @@ export default function FactureEdit() {
 
     // Global list of unique product types (across all invoices) for suggestion/creation
     const [allTypeItems, setAllTypeItems] = useState<string[]>([]);
+    const typeOptions = allTypeItems.map(type => ({ label: type, value: type }));
 
-    /** Load current facture being edited */
+    /** Load current facture being edited (network first, fallback to IDB) */
     useEffect(() => {
+        let mounted = true;
         setLoading(true);
-        fetch(`/api/factures/${id}`, { credentials: "include" })
-            .then(async res => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(setFacture)
-            .catch(err => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [id]);
 
-    /** Build product type suggestions from all factures (drives CreatableSelect) */
-    useEffect(() => {
-        fetch("/api/factures", { credentials: "include" })
+        fetch(`/api/factures/${factureId}`, { credentials: "include" })
             .then(async res => {
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
-            .then((allFactures: Facture[]) => {
+            .then(async (data: Facture) => {
+                if (!mounted) return;
+                setFacture(data);
+                await putFacture(data);
+            })
+            .catch(async () => {
+                const cached = await getFacture(factureId);
+                if (mounted && cached) {
+                    setFacture({ items: [], ...cached } as Facture);
+                } else if (mounted) {
+                    setError("Impossible de charger la facture (hors ligne et non en cache).");
+                }
+            })
+            .finally(() => mounted && setLoading(false));
+
+        // Build product type suggestions (best-effort)
+        fetch("/api/factures", { credentials: "include" })
+            .then(async res => (res.ok ? res.json() : []))
+            .then((all: Facture[]) => {
                 const types = new Set<string>();
-                allFactures.forEach(f =>
-                    f.items.forEach(i => {
+                all.forEach(f =>
+                    (f.items ?? []).forEach(i => {
                         if (i.typeItem && i.typeItem.trim()) types.add(i.typeItem.trim());
                     })
                 );
                 setAllTypeItems([...types]);
             })
             .catch(() => setAllTypeItems([]));
-    }, []);
 
-    const typeOptions = allTypeItems.map(type => ({ label: type, value: type }));
+        return () => { mounted = false; };
+    }, [factureId]);
 
     /** Top-level facture field changes (simple name/value mapping) */
     function handleFactureChange(e: React.ChangeEvent<HTMLInputElement>) {
         if (!facture) return;
-        setFacture({ ...facture, [e.target.name]: e.target.value });
+        setFacture({ ...facture, [e.target.name]: e.target.value } as Facture);
     }
 
     /** Inline edit for one item (immutable update) */
@@ -143,7 +144,7 @@ export default function FactureEdit() {
     function handleAddItemSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
-        const items = [...facture.items, { ...modalForm, id: 0, typeItem: modalTypeItem }];
+        const items = [...(facture.items ?? []), { ...modalForm, id: 0, typeItem: modalTypeItem }];
         setFacture({ ...facture, items });
         setShowAddModal(false);
         setModalStep(1);
@@ -151,22 +152,35 @@ export default function FactureEdit() {
         setModalForm(emptyItem);
     }
 
-    /** Persist facture with all current items */
-    function handleSubmit(e: React.FormEvent) {
+    /** Persist facture with all current items (offline-safe) */
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
         setError(null);
-        fetch(`/api/factures/${facture.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(facture),
-        })
-            .then(async res => {
-                if (!res.ok) throw new Error(await res.text());
+
+        try {
+            const res = await fetch(`/api/factures/${facture.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(facture),
+            });
+
+            if (res.status === 202) {
+                // queued offline – persist locally and return to list
+                await putFacture(facture);
+                alert("Modifications enregistrées hors ligne. Elles seront synchronisées automatiquement.");
                 navigate("/factures");
-            })
-            .catch(err => setError(err.message));
+                return;
+            }
+
+            if (!res.ok) throw new Error(await res.text());
+
+            await putFacture(facture);
+            navigate("/factures");
+        } catch (err: any) {
+            setError(err.message ?? "Erreur lors de l’enregistrement.");
+        }
     }
 
     if (loading) return <div>Chargement…</div>;

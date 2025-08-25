@@ -1,63 +1,93 @@
 ﻿// src/pages/FAQ/FaqModule.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PostEditor from "../../components/PostEditor";
+import {
+    getFaqForQuery,
+    putFaqForQuery,
+    touchFaqLastSync,
+    type FaqCategoryDto,
+    type FaqQuestionDto,
+    type FaqCategorySummaryDto,
+} from "../../offline/db";
 
-/** FAQ entities (mirror API DTOs) */
-export type FaqQuestionDto = {
-    id: number;
-    question: string;
-    answerHtml: string;      // trusted/sanitized HTML from server
-    tagsCsv?: string | null;
-    sortOrder: number;
-};
-
-export type FaqCategoryDto = {
-    id: number;
-    name: string;
-    slug: string;
-    description?: string | null; // trusted/sanitized HTML from server
-    sortOrder: number;
-    questions: FaqQuestionDto[];
-};
-
-export type FaqCategorySummaryDto = {
-    id: number;
-    name: string;
-    slug: string;
-    description?: string | null; // trusted/sanitized HTML from server
-    sortOrder: number;
-    isActive: boolean;
-    activeQuestions: number;
-};
-
-/* ========================
-   Public FAQ Page
-   - Client-side search via ?q=
-   - Renders server-provided HTML (assumed sanitized)
-   ======================== */
+/** ========================
+ * Public FAQ Page (offline-ready)
+ *  - Client-side search via ?q= (local state)
+ *  - Mirrors results to IndexedDB by query key ("" for no search)
+ *  - Listens to SW "api-cache-hit" to hydrate cache on background fetches
+ * ======================== */
 export function FaqPage({ className = "" }: { className?: string }) {
     const [q, setQ] = useState("");
     const [data, setData] = useState<FaqCategoryDto[] | null>(null);
     const [loading, setLoading] = useState(false);
+    const queryKey = q.trim(); // normalize
 
+    // On mount / query change: try IDB first (instant), then fetch network
     useEffect(() => {
-        const controller = new AbortController();
+        let cancelled = false;
+
         (async () => {
+            // 1) Show cached data (if any) — be defensive around IDB version bumps
+            try {
+                const cached = await getFaqForQuery(queryKey);
+                if (!cancelled && cached) setData(cached);
+            } catch {
+                // ignore; network step will still run
+            }
+
+            // 2) Try network
             setLoading(true);
             try {
-                const url = q ? `/api/faq?q=${encodeURIComponent(q)}` : "/api/faq";
-                const res = await fetch(url, { signal: controller.signal });
+                const url = queryKey ? `/api/faq?q=${encodeURIComponent(queryKey)}` : "/api/faq";
+                const res = await fetch(url, {
+                    credentials: "include",
+                    headers: { Accept: "application/json" },
+                });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const json = (await res.json()) as FaqCategoryDto[];
-                setData(json);
-            } catch (e: any) {
-                if (e?.name !== "AbortError") console.error(e);
+                if (!cancelled) {
+                    setData(json);
+                    await putFaqForQuery(queryKey, json);
+                    await touchFaqLastSync();
+                }
+            } catch {
+                // keep whatever we had (cached or null)
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         })();
-        return () => controller.abort();
-    }, [q]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [queryKey]);
+
+    // Listen for SW broadcasts for /api/faq hits (any tab)
+    useEffect(() => {
+        if (!("serviceWorker" in navigator)) return;
+        const handler = (event: MessageEvent) => {
+            const msg = event.data;
+            if (!msg || msg.type !== "api-cache-hit" || typeof msg.url !== "string") return;
+
+            try {
+                const u = new URL(msg.url, location.origin);
+                if (u.origin !== location.origin || u.pathname !== "/api/faq") return;
+
+                const urlQ = u.searchParams.get("q") ?? "";
+                const payload = msg.data as FaqCategoryDto[] | undefined;
+                if (!payload) return;
+
+                // Mirror to IDB and refresh if this matches the current query
+                void putFaqForQuery(urlQ, payload).then(() => {
+                    if (urlQ === queryKey) setData(payload);
+                });
+            } catch {
+                /* ignore */
+            }
+        };
+        navigator.serviceWorker.addEventListener("message", handler);
+        return () => navigator.serviceWorker.removeEventListener("message", handler);
+    }, [queryKey]);
 
     const totalCount = useMemo(
         () => data?.reduce((sum, c) => sum + c.questions.length, 0) ?? 0,
@@ -99,7 +129,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                             {cat.name}
                         </summary>
 
-                        {/* Server HTML. Must be sanitized server-side before sending to client. */}
+                        {/* Server HTML. Must be sanitized server-side. */}
                         {cat.description && (
                             <div
                                 className="prose mt-2 max-w-none text-sm text-neutral-700"
@@ -111,7 +141,6 @@ export function FaqPage({ className = "" }: { className?: string }) {
                             {cat.questions.map((qq) => (
                                 <details key={qq.id} className="rounded-xl border p-3">
                                     <summary className="cursor-pointer font-medium">{qq.question}</summary>
-                                    {/* Same note: render trusted/sanitized HTML */}
                                     <div
                                         className="prose mt-2 max-w-none text-sm"
                                         dangerouslySetInnerHTML={{ __html: qq.answerHtml }}
@@ -137,12 +166,10 @@ export function FaqPage({ className = "" }: { className?: string }) {
     );
 }
 
-/* ========================
-   SuperAdmin Admin Panel
-   - CRUD for categories/questions
-   - Uses PostEditor to author HTML (stored as HTML)
-   - After mutations, refresh lists
-   ======================== */
+/** ========================
+ * SuperAdmin Admin Panel (online only)
+ *  - unchanged in behavior; no offline caching or outbox here
+ * ======================== */
 export function FaqAdmin({ className = "" }: { className?: string }) {
     const [q, setQ] = useState("");
     const [cats, setCats] = useState<FaqCategorySummaryDto[]>([]);
@@ -153,8 +180,11 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         setLoading(true);
         try {
             const [cRes, tRes] = await Promise.all([
-                fetch("/api/faq/categories"),
-                fetch(q ? `/api/faq?q=${encodeURIComponent(q)}` : "/api/faq"),
+                fetch("/api/faq/categories", { credentials: "include", headers: { Accept: "application/json" } }),
+                fetch(q ? `/api/faq?q=${encodeURIComponent(q)}` : "/api/faq", {
+                    credentials: "include",
+                    headers: { Accept: "application/json" },
+                }),
             ]);
             const cJson = (await cRes.json()) as FaqCategorySummaryDto[];
             const tJson = (await tRes.json()) as FaqCategoryDto[];
@@ -167,19 +197,18 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
     useEffect(() => {
         void refresh();
-        // q changes refetch the public tree filtered by query
     }, [q]);
 
-    /** Create or update a category (name/slug required) */
     const upsertCategory = async (payload: Partial<FaqCategorySummaryDto> & { id?: number }) => {
         const isEdit = !!payload.id;
         const res = await fetch(isEdit ? `/api/faq/categories/${payload.id}` : "/api/faq/categories", {
             method: isEdit ? "PUT" : "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
                 name: payload.name,
                 slug: payload.slug,
-                description: payload.description, // HTML from PostEditor
+                description: payload.description,
                 sortOrder: payload.sortOrder ?? 0,
                 isActive: payload.isActive ?? true,
             }),
@@ -188,15 +217,13 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         await refresh();
     };
 
-    /** Irreversible category delete (with confirmation) */
     const deleteCategory = async (id: number) => {
         if (!confirm("Supprimer cette catégorie?")) return;
-        const res = await fetch(`/api/faq/categories/${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/faq/categories/${id}`, { method: "DELETE", credentials: "include" });
         if (!res.ok) throw new Error("Erreur suppression catégorie");
         await refresh();
     };
 
-    /** Create or update a question within a category */
     const upsertQuestion = async (
         payload: Partial<FaqQuestionDto> & { id?: number; categoryId: number; isActive?: boolean }
     ) => {
@@ -204,10 +231,11 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         const res = await fetch(isEdit ? `/api/faq/questions/${payload.id}` : "/api/faq/questions", {
             method: isEdit ? "PUT" : "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
                 categoryId: payload.categoryId,
                 question: payload.question,
-                answerHtml: payload.answerHtml, // HTML from PostEditor
+                answerHtml: payload.answerHtml,
                 tagsCsv: (payload as any).tagsCsv ?? null,
                 sortOrder: payload.sortOrder ?? 0,
                 isActive: (payload as any).isActive ?? true,
@@ -217,15 +245,13 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         await refresh();
     };
 
-    /** Irreversible question delete (with confirmation) */
     const deleteQuestion = async (id: number) => {
         if (!confirm("Supprimer cette question?")) return;
-        const res = await fetch(`/api/faq/questions/${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/faq/questions/${id}`, { method: "DELETE", credentials: "include" });
         if (!res.ok) throw new Error("Erreur suppression question");
         await refresh();
     };
 
-    // ---- UI State for forms ----
     const [editingCatId, setEditingCatId] = useState<number | null>(null);
     const [catForm, setCatForm] = useState<Partial<FaqCategorySummaryDto>>({
         name: "",
@@ -312,11 +338,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                     </label>
                 </div>
 
-                {/* Author category HTML via PostEditor */}
                 <div className="mt-3">
                     <div className="text-sm mb-2">Description (HTML)</div>
                     <PostEditor
-                        key={`cat-desc-${editingCatId ?? "new"}`}   // force re-mount when target changes
+                        key={`cat-desc-${editingCatId ?? "new"}`}
                         initialHTML={catForm.description ?? ""}
                         onChange={(html) => setCatForm((prev) => ({ ...prev, description: html }))}
                         ariaLabel="Description de la catégorie"
@@ -392,10 +417,9 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         />
                     </label>
 
-                    {/* Author answer HTML via PostEditor */}
                     <div className="text-sm">Réponse (HTML)</div>
                     <PostEditor
-                        key={`q-answer-${qForm.id ?? "new"}`}  // force re-mount when switching edited question
+                        key={`q-answer-${qForm.id ?? "new"}`}
                         initialHTML={qForm.answerHtml}
                         onChange={(html) => setQForm((prev) => ({ ...prev, answerHtml: html }))}
                         ariaLabel="Réponse"
@@ -458,7 +482,6 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                             <span className="text-xs text-neutral-500">{cat.questions.length} question(s)</span>
                         </summary>
 
-                        {/* Render category description HTML in admin view */}
                         {cat.description && (
                             <div
                                 className="prose mt-2 max-w-none text-sm text-neutral-700"

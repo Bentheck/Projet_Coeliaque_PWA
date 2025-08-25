@@ -1,9 +1,7 @@
-﻿import React, { createContext, useContext, useState, useEffect } from "react";
+﻿import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { warmAfterLogin } from "../swUser"; // deep warm + SET_USER + ACK inside
+import { onUpdateReady, hasUpdate, applyUpdate } from "../swUpdates";
 
-/**
- * Authenticated user shape returned by /api/account/status.
- * Keep fields optional to tolerate partial payloads from the backend.
- */
 type AuthUser = {
     id?: string;
     name?: string;
@@ -11,23 +9,15 @@ type AuthUser = {
     displayName?: string;
 } | null;
 
-/**
- * What the auth context exposes to consumers.
- * - `refresh()` re-fetches the server-side session (no cache).
- */
 type AuthInfo = {
     user: AuthUser;
-    /** Null = no active membership (or unknown); non-null = status label from backend. */
     membershipStatus: string | null;
     isForumAdmin: boolean;
     isSuperAdmin: boolean;
-    /** True while the latest status request is in-flight. */
     loading: boolean;
-    /** Force a re-check against the server (e.g., after login/logout/role change). */
     refresh: () => void;
 };
 
-/** Safe defaults so `useAuth()` is usable before the first provider render. */
 const AuthContext = createContext<AuthInfo>({
     user: null,
     membershipStatus: null,
@@ -46,47 +36,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    /**
-     * Bump this key to trigger a fresh fetch.
-     * (Intentionally not tied to route changes to give explicit control to callers.)
-     */
+    // bump this to refetch /api/account/status
     const [key, setKey] = useState(0);
     const refresh = () => setKey((k) => k + 1);
 
+    // 1) Fetch current auth status
     useEffect(() => {
-        let cancelled = false; // prevents state updates if the provider unmounts mid-request
+        let cancelled = false;
+        const ac = new AbortController();
         setLoading(true);
 
-        fetch("/api/account/status", {
-            // Include cookies for auth (same-origin by default in most setups,
-            // but explicit here to survive cross-origin dev proxies).
-            credentials: "include",
-        })
-            .then((res) => (res.ok ? res.json() : null))
-            .then((data) => {
+        (async () => {
+            try {
+                const res = await fetch("/api/account/status", {
+                    credentials: "include",
+                    signal: ac.signal,
+                });
+                const data = res.ok ? await res.json() : null;
+
                 if (cancelled) return;
-                setUser(data?.user ?? null);
+
+                const u: AuthUser = data?.user ?? null;
+                setUser(u);
                 setMembershipStatus(data?.membershipStatus ?? null);
                 setIsForumAdmin(!!data?.isForumAdmin);
                 setIsSuperAdmin(!!data?.isSuperAdmin);
-            })
-            .catch(() => {
+            } catch {
                 if (cancelled) return;
-                // On any failure, fall back to a signed-out baseline.
                 setUser(null);
                 setMembershipStatus(null);
                 setIsForumAdmin(false);
                 setIsSuperAdmin(false);
-            })
-            .finally(() => {
-                if (cancelled) return;
-                setLoading(false);
-            });
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
 
         return () => {
             cancelled = true;
+            ac.abort();
         };
     }, [key]);
+
+    // 2) Whenever the effective user changes, coordinate with SW and warm caches
+    const userId = useMemo(() => user?.id ?? null, [user]);
+    useEffect(() => {
+        // best-effort; don't block UI
+        warmAfterLogin(userId, true).catch(() => { });
+        // If you prefer a lighter warm, pass false instead of true.
+    }, [userId]);
+
+    // 3) Show the update prompt ONLY once the user is logged in
+    useEffect(() => {
+        if (!userId) return; // not logged in yet → don't prompt
+
+        const ask = () => {
+            // Minimal UX; replace with your modal/toast if you have one
+            const ok = confirm("Une nouvelle version est disponible. Recharger maintenant ?");
+            if (ok) applyUpdate(); // triggers controllerchange → reload
+        };
+
+        // If an update was already waiting before login, prompt now
+        if (hasUpdate()) {
+            ask();
+        }
+
+        // And prompt whenever a future update becomes ready during this session
+        const off = onUpdateReady(() => {
+            // only prompt if still logged in
+            if (userId) ask();
+        });
+
+        // return a cleanup that returns void
+        return () => {
+            off();
+        };
+    }, [userId]);
 
     return (
         <AuthContext.Provider
