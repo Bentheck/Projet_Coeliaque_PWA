@@ -6,6 +6,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { initOutboxDrainer } from "./swOutboxHooks";
 import { initSWUpdates } from "./swUpdates";
+import { initSWHeartbeat } from "./swOfflineStatus";
 
 const SW_PATH = "/sw.js";
 const SW_SCOPE = "/";
@@ -17,28 +18,29 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </React.StrictMode>
 );
 
-// Service Worker registration + outbox drainer
+// Service Worker registration + heartbeat + outbox drainer
 if ("serviceWorker" in navigator) {
     window.addEventListener("DOMContentLoaded", () => {
         navigator.serviceWorker
             .register(SW_PATH, { scope: SW_SCOPE })
             .then((reg) => {
-                // Initialize update tracking (no prompt here)
+                // Track updates
                 initSWUpdates(reg);
 
-                // Reload when the new SW takes control (only after we call applyUpdate later)
+                // Start heartbeat (writes "last online" instantly; no API dependency)
+                void initSWHeartbeat();
+
+                // Reload when the new SW takes control
                 navigator.serviceWorker.addEventListener("controllerchange", () => {
                     window.location.reload();
                 });
 
-                // Start the outbox drainer once the SW is ready (covers no-BackgroundSync cases)
+                // Start the outbox drainer once the SW is ready
                 navigator.serviceWorker.ready
                     .then(() => {
                         initOutboxDrainer();
                     })
-                    .catch(() => {
-                        // ignore
-                    });
+                    .catch(() => { /* ignore */ });
             })
             .catch(() => {
                 /* ignore in dev */

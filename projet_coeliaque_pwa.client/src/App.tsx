@@ -47,6 +47,7 @@ import AuthGuard from "./components/AuthGuard";
 import { AuthProvider } from "./components/AuthContext";
 import RequireSuperAdmin from "./components/RequireSuperAdmin";
 import RequireForumAdmin from "./components/RequireForumAdmin";
+import GlobalOfflineGuard from "./components/GlobalOfflineGuard";
 
 // FAQ (DB-backed): named exports from your file at src/pages/FAQ/FaqModule.tsx
 import { FaqPage as FaqPublic, FaqAdmin as FaqAdminPage } from "./pages/FAQ/FaqModule";
@@ -55,6 +56,7 @@ export default function App() {
     return (
         <AuthProvider>
             <Router>
+                <GlobalOfflineGuard />
                 <Layout>
                     <Routes>
                         <Route path="/" element={<Home />} />
