@@ -15,24 +15,21 @@ export async function refreshUserCachesAfterLogin(): Promise<void> {
             return;
         }
 
-        // Ensure a controller exists; if the SW just installed, wait for it.
-        const reg = await navigator.serviceWorker.ready.catch(() => null as any);
-        const controller = navigator.serviceWorker.controller;
+        // Ensure the SW is ready; there might still be no controller on first load.
+        const reg = await navigator.serviceWorker.ready.catch(() => null);
+        const target: ServiceWorker | null =
+            navigator.serviceWorker.controller || reg?.active || null;
 
-        if (controller) {
-            // Ask the active SW to purge cached API GETs (it listens for PURGE_USER_CACHES)
-            controller.postMessage({ type: "PURGE_USER_CACHES" });
-
-            // Give the SW a moment to delete entries. This is intentionally small;
-            // the hard reload below guarantees we re-request everything anyway.
-            await new Promise((r) => setTimeout(r, 150));
-        } else if (reg?.active) {
-            // Edge case: ready() resolved but no controller (very rare).
-            // Still try messaging the active worker via clients.
+        if (target) {
+            // Ask the active SW to purge cached API GETs (the SW listens for PURGE_USER_CACHES)
             try {
-                const clients = await reg.active.getNotifications?.().catch(() => null);
-                // No direct postMessage on reg.active across all browsers; just reload.
-            } catch { /* ignore */ }
+                target.postMessage({ type: "PURGE_USER_CACHES" });
+            } catch {
+                /* ignore postMessage errors */
+            }
+
+            // Give the SW a moment to delete entries (small, best-effort).
+            await new Promise((r) => setTimeout(r, 150));
         }
     } catch {
         // Ignore errors; we will reload regardless.

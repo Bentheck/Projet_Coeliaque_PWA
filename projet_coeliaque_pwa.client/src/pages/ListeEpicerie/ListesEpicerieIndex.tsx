@@ -44,10 +44,11 @@ const ListesEpicerieIndex: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
+            // ✅ relative URL so SW can intercept; PascalCase kept for server route
             const res = await fetch("/api/ListeEpicerie", { signal, credentials: "include" });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = (await res.json()) as ListeEpicerieDTO[];
-            setListes(data);
+            setListes(Array.isArray(data) ? data : []);
         } catch (e: any) {
             if (e?.name !== "AbortError") setError("Impossible de charger les listes.");
         } finally {
@@ -112,7 +113,8 @@ const ListesEpicerieIndex: React.FC = () => {
     /**
      * Optimistic toggle of "completed":
      * - flip UI immediately and track pending state
-     * - rollback on error and show a small alert
+     * - treat 202 (queued by SW while offline) as success
+     * - rollback on error
      */
     const toggleCompleted = async (l: ListeEpicerieDTO, next: boolean) => {
         setPending(p => ({ ...p, [l.id]: true }));
@@ -124,7 +126,23 @@ const ListesEpicerieIndex: React.FC = () => {
                 credentials: "include",
                 body: JSON.stringify({ completed: next }),
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            // ✅ offline queued by SW
+            if (res.status === 202) {
+                // Optional: toast instead of alert
+                // console.info("Action queued; will sync when online.");
+                return;
+            }
+
+            if (res.status === 409) {
+                // already in target state or list locked; treat as success or handle separately
+                return;
+            }
+
+            if (!res.ok) {
+                const dbg = await res.text().catch(() => "");
+                throw new Error(`HTTP ${res.status} — ${dbg}`);
+            }
         } catch (e) {
             console.error(e);
             setListes(prev => prev.map(x => (x.id === l.id ? { ...x, completed: !next } : x)));
@@ -138,11 +156,18 @@ const ListesEpicerieIndex: React.FC = () => {
         }
     };
 
-    /** Hard delete with an inline confirm; remove from local state on success */
+    /** Hard delete with confirm; remove from local state on success (202 queued treated as success) */
     const onDelete = async (l: ListeEpicerieDTO) => {
         if (!confirm(`Supprimer « ${l.name} » ?`)) return;
         try {
             const res = await fetch(`/api/ListeEpicerie/${l.id}`, { method: "DELETE", credentials: "include" });
+
+            if (res.status === 202) {
+                // queued offline — optimistic removal kept
+                setListes(prev => prev.filter(x => x.id !== l.id));
+                return;
+            }
+
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             setListes(prev => prev.filter(x => x.id !== l.id));
         } catch (e) {
@@ -158,7 +183,7 @@ const ListesEpicerieIndex: React.FC = () => {
                 <div className="text-muted small">Gérez, triez et retrouvez vos listes. Les plus récentes d’abord.</div>
             </div>
 
-            {/* Controls: search • status pills (URL-synced) • sort • new list */}
+            {/* Controls */}
             <div className="card shadow-sm mb-4">
                 <div className="card-body">
                     <div className="row g-2 align-items-center justify-content-center">
@@ -238,7 +263,7 @@ const ListesEpicerieIndex: React.FC = () => {
                 </div>
             </div>
 
-            {/* Errors are retryable without leaving the page */}
+            {/* Errors */}
             {error && (
                 <div className="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
                     <span className="me-2">{error}</span>
@@ -246,7 +271,7 @@ const ListesEpicerieIndex: React.FC = () => {
                 </div>
             )}
 
-            {/* Skeletons while loading */}
+            {/* Content */}
             {loading ? (
                 <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -268,7 +293,6 @@ const ListesEpicerieIndex: React.FC = () => {
                     ))}
                 </div>
             ) : filtered.length === 0 ? (
-                // Empty state with quick action
                 <div className="border rounded-3 p-5 text-center bg-light">
                     <div className="display-6 mb-2">🛒</div>
                     <h2 className="h5">Aucune liste trouvée</h2>
@@ -276,7 +300,6 @@ const ListesEpicerieIndex: React.FC = () => {
                     <Link to="/liste-epicerie/edit" className="btn btn-primary">Créer une liste</Link>
                 </div>
             ) : (
-                // Cards grid
                 <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
                     {filtered.map((l) => {
                         const count = Array.isArray(l.items) ? l.items.length : 0;
@@ -294,7 +317,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                             </span>
                                         </div>
 
-                                        {/* Completion switch (optimistic; spinner while saving) */}
+                                        {/* Completion switch */}
                                         <div className="form-check form-switch d-flex align-items-center gap-2 mt-2 mb-2">
                                             <input
                                                 className="form-check-input"
@@ -317,7 +340,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                             <small className="text-muted">Créée le {formatDate(l.created)}</small>
                                         </div>
 
-                                        {/* Primary actions: view / edit / delete (edit disabled when completed) */}
+                                        {/* Actions */}
                                         <div className="mt-auto d-flex align-items-center gap-2">
                                             <Link to={`/liste-epicerie/view/${l.id}`} className="btn btn-outline-secondary w-100">Voir</Link>
                                             <Link
