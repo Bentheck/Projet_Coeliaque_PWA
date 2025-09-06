@@ -76,7 +76,7 @@ const ReportListItem: React.FC<{
                         </button>
                     </>
                 ) : (
-                    <button className="btn btn-sm btn.success" onClick={handleGenerate} disabled={loading}>
+                    <button className="btn btn-sm btn-success" onClick={handleGenerate} disabled={loading}>
                         {loading ? (
                             <>
                                 <span className="spinner-border spinner-border-sm me-1"></span>{" "}
