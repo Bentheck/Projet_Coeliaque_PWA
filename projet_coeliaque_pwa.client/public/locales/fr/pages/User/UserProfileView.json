@@ -1,0 +1,16 @@
+﻿{
+  "loading": "Chargement…",
+  "errors": {
+    "load": "Impossible de charger le profil."
+  },
+  "avatarAlt": "Avatar de {{name}}",
+  "fallback": {
+    "user": "Utilisateur"
+  },
+  "memberSince": "Membre depuis {{date}}",
+  "threads_one": "{{count}} fil",
+  "threads_other": "{{count}} fils",
+  "posts_one": "{{count}} message",
+  "posts_other": "{{count}} messages",
+  "back": "Retour"
+}

@@ -1,0 +1,68 @@
+﻿{
+  "loading": "Chargement…",
+  "notFound": "Introuvable",
+  "header": {
+    "title": "Modifier Comparatif — {{year}}"
+  },
+  "actions": {
+    "addLine": "Ajouter une ligne"
+  },
+  "table": {
+    "headers": {
+      "type": "Type de produit",
+      "brand": "Marque",
+      "price": "Prix",
+      "weight": "Poids",
+      "unit": "Unité",
+      "store": "Magasin"
+    }
+  },
+  "labels": {
+    "type": "Type",
+    "brand": "Marque",
+    "price": "Prix",
+    "weight": "Poids",
+    "unit": "Unité",
+    "store": "Magasin"
+  },
+  "placeholders": {
+    "type": "Type…",
+    "brand": "Marque",
+    "price": "Prix",
+    "weight": "Poids",
+    "store": "Magasin"
+  },
+  "unit": {
+    "placeholder": "-- Unité --"
+  },
+  "delete": {
+    "title": "Supprimer",
+    "ariaLine": "Supprimer la ligne"
+  },
+  "mobile": {
+    "brandFallback": "Marque",
+    "typeFallback": "Type…"
+  },
+  "btn": {
+    "save": "Enregistrer",
+    "cancel": "Annuler"
+  },
+  "modal": {
+    "title": "Ajouter une ligne",
+    "step1": {
+      "labelType": "Type de produit",
+      "placeholderType": "Choisissez un type…",
+      "next": "Suivant"
+    },
+    "step2": {
+      "back": "Précédent",
+      "submit": "Ajouter"
+    }
+  },
+  "alerts": {
+    "offlineSaved": "Modifications enregistrées hors ligne — elles seront synchronisées plus tard."
+  },
+  "confirm": {
+    "deleteLine": "Supprimer cette ligne ?"
+  }
+}

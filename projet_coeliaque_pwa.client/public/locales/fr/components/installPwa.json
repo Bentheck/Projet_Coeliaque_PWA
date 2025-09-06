@@ -1,0 +1,26 @@
+﻿{
+  "button": {
+    "titleIos": "Ajouter à l’écran d’accueil",
+    "titleOther": "Installer l’application",
+    "labelIos": "Ajouter à l’écran d’accueil",
+    "labelOther": "Installer l’app"
+  },
+  "alerts": {
+    "notReady": "L’installation n’est pas encore disponible. Réessayez dans quelques secondes."
+  },
+  "ios": {
+    "header": "Installer sur iPhone / iPad",
+    "close": "Fermer",
+    "step1": {
+      "prefix": "Ouvrez le menu",
+      "suffix": ""
+    },
+    "shareText": "Partager",
+    "shareIconAria": "Icône Partager",
+    "shareIconHint": "(icône carré avec flèche ↑)",
+    "step2": "Choisissez Ajouter à l’écran d’accueil.",
+    "step3": "Confirmez en touchant Ajouter.",
+    "tip": "Astuce : si vous ne voyez pas l’option, faites défiler la feuille de partage vers le bas.",
+    "ok": "OK"
+  }
+}

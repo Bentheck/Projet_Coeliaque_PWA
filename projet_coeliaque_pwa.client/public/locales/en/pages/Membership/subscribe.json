@@ -1,0 +1,18 @@
+﻿{
+  "subscribe": {
+    "title": "Subscription",
+    "offlineBanner": "You’re offline. The subscription page requires an Internet connection.",
+    "buttons": {
+      "primary": "Subscribe (standard plan)",
+      "test": "Subscribe (DAILY TEST)",
+      "loading": "Redirecting…"
+    },
+    "keyLabel": "Stripe key in use:",
+    "errors": {
+      "offline": "You’re offline. Connect to continue.",
+      "missingSession": "Missing Stripe session.",
+      "stripeInit": "Stripe failed to initialize.",
+      "startFailed": "Unable to start the subscription process."
+    }
+  }
+}

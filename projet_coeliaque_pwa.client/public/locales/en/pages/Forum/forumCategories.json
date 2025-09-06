@@ -1,0 +1,15 @@
+﻿{
+  "title": "Forum",
+  "subtitle": "Choose a category to view discussions.",
+  "errors": {
+    "loadCategories": "Unable to load categories."
+  },
+  "empty": "No categories.",
+  "buttons": {
+    "open": "Open"
+  },
+  "badges": {
+    "threads_one": "{{count}} thread",
+    "threads_other": "{{count}} threads"
+  }
+}

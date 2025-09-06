@@ -1,6 +1,8 @@
-﻿import React from "react";
+﻿// src/components/MembershipGuard.tsx
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { useTranslation } from "react-i18next";
 
 /**
  * Restricts access to routes that require an active membership.
@@ -11,6 +13,7 @@ import { useAuth } from "./AuthContext";
 const MembershipGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { membershipStatus, loading } = useAuth();
     const navigate = useNavigate();
+    const { t } = useTranslation("components/membershipGuard");
 
     React.useEffect(() => {
         // Redirect as soon as we know membership is not active
@@ -20,7 +23,7 @@ const MembershipGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }, [membershipStatus, loading, navigate]);
 
     if (loading) {
-        return <div className="text-center mt-5">Vérification de l’adhésion…</div>;
+        return <div className="text-center mt-5">{t("loading")}</div>;
     }
 
     if (membershipStatus !== "Active") {

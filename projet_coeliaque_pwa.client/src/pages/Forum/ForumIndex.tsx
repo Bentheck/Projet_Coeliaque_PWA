@@ -1,5 +1,7 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/pages/ForumIndex.tsx
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 /** Minimal shape returned by /api/forum/categories */
 type Category = {
@@ -11,6 +13,8 @@ type Category = {
 };
 
 const ForumIndex: React.FC = () => {
+    const { t } = useTranslation("pages/Forum/forumIndex");
+
     const [cats, setCats] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
@@ -28,26 +32,27 @@ const ForumIndex: React.FC = () => {
                 if (!r.ok) throw new Error();
                 setCats(await r.json());
             } catch {
-                setErr("Impossible de charger les catégories.");
+                setErr(t("errors.loadCategories"));
             } finally {
                 setLoading(false);
             }
         })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
         <div className="container py-3">
-            <h1 className="h3 mb-3 text-center">Forum</h1>
+            <h1 className="h3 mb-3 text-center">{t("title")}</h1>
 
             {err && <div className="alert alert-danger">{err}</div>}
 
             {/* Render states: loading → empty → grid */}
             {loading ? (
-                <div className="text-center">
-                    <div className="spinner-border" />
+                <div className="text-center" aria-live="polite" aria-busy="true">
+                    <div className="spinner-border" role="status" />
                 </div>
             ) : cats.length === 0 ? (
-                <div className="border rounded-3 p-5 text-center bg-light">Aucune catégorie.</div>
+                <div className="border rounded-3 p-5 text-center bg-light">{t("empty")}</div>
             ) : (
                 <div className="row row-cols-1 row-cols-md-2 g-3">
                     {cats.map((c) => (
@@ -57,14 +62,14 @@ const ForumIndex: React.FC = () => {
                                     <div className="d-flex justify-content-between align-items-start">
                                         <h2 className="h5 mb-1">{c.name}</h2>
                                         <span className="badge text-bg-secondary">
-                                            {c.threadCount} fil{c.threadCount !== 1 ? "s" : ""}
+                                            {t("badges.threads", { count: c.threadCount })}
                                         </span>
                                     </div>
                                     <p className="text-muted mb-3">{c.description || "—"}</p>
                                     {/* Stretched CTA keeps buttons aligned at the bottom */}
                                     <div className="mt-auto">
                                         <Link to={`/forum/c/${c.id}`} className="btn btn-primary">
-                                            Voir les fils
+                                            {t("buttons.viewThreads")}
                                         </Link>
                                     </div>
                                 </div>

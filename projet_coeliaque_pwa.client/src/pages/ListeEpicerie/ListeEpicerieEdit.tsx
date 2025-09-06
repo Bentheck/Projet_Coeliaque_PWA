@@ -1,6 +1,8 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿// src/pages/ListeEpicerieEdit.tsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Modal, Button } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 
 /** Valid weight/volume units shown in selects. */
 const UNIT_OPTIONS = [
@@ -17,7 +19,7 @@ type FactureItemRow = {
     typeItem: string;
     prix: number;
     magasin: string;
-    date: string;          // ISO string from API
+    date: string;
     wasOnSale: boolean;
     quantite?: number | null;
     poidsValeur?: number | null;
@@ -48,8 +50,8 @@ type ListeEpicerieItemDto = {
     freeItemId?: number | null;
     customName?: string | null;
     quantity: number;
-    isFavorite: boolean;  // list-level flag
-    wasOnSale: boolean;   // list-level flag
+    isFavorite: boolean;
+    wasOnSale: boolean;
 };
 
 type ListeEpicerieDto = {
@@ -59,10 +61,7 @@ type ListeEpicerieDto = {
     items: ListeEpicerieItemDto[];
 };
 
-/** Robust fetch helper:
- *  - always sends credentials
- *  - throws detailed HTTP errors
- *  - tolerates empty bodies and non-JSON with best-effort parse */
+/** Robust fetch helper */
 async function fetchJSON<T = any>(input: RequestInfo, init?: RequestInit): Promise<T> {
     const res = await fetch(input, { credentials: "include", ...init });
     const ct = res.headers.get("content-type") || "";
@@ -90,6 +89,7 @@ async function fetchJSON<T = any>(input: RequestInfo, init?: RequestInit): Promi
 /* ========================================================================== */
 
 const ListeEpicerieEdit: React.FC = () => {
+    const { t } = useTranslation("pages/ListeEpicerie/listeEpicerieEdit");
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
@@ -100,7 +100,6 @@ const ListeEpicerieEdit: React.FC = () => {
     const [factureTypes, setFactureTypes] = useState<FactureType[]>([]);
     const [selectedFactureType, setSelectedFactureType] = useState<string>("");
     const [factureItems, setFactureItems] = useState<FactureItemRow[]>([]);
-    /** Local cache by ID for quick lookup when rendering the list table. */
     const [factureById, setFactureById] = useState<Record<number, FactureItemRow>>({});
     const [hideFactureOnSale, setHideFactureOnSale] = useState(false);
 
@@ -109,7 +108,6 @@ const ListeEpicerieEdit: React.FC = () => {
     const [freeTypes, setFreeTypes] = useState<FreeItemType[]>([]);
     const [selectedFreeType, setSelectedFreeType] = useState<string>("");
     const [freeItems, setFreeItems] = useState<FreeItem[]>([]);
-    /** Local cache by ID for quick lookup when rendering the list table. */
     const [freeById, setFreeById] = useState<Record<number, FreeItem>>({});
     const [hideFreeOnSale, setHideFreeOnSale] = useState(false);
 
@@ -136,7 +134,6 @@ const ListeEpicerieEdit: React.FC = () => {
     const [editWeight, setEditWeight] = useState<string>("");
     const [editUnit, setEditUnit] = useState<string>("");
 
-    /** When the free item modal opens with a selected type, prefill the create form type. */
     useEffect(() => {
         if (showFreeModal && selectedFreeType && !newFreeItemType) {
             setNewFreeItemType(selectedFreeType);
@@ -159,7 +156,6 @@ const ListeEpicerieEdit: React.FC = () => {
                 setFreeTypes(freetypes ?? []);
                 if (current) setListe(current);
 
-                // Prefer a default selection for invoices when possible.
                 if (!selectedFactureType && (ftypes?.length ?? 0) > 0) {
                     setSelectedFactureType(ftypes![0].type);
                 }
@@ -274,7 +270,6 @@ const ListeEpicerieEdit: React.FC = () => {
 
     /* ------------------------------- Add operations ------------------------------- */
 
-    /** Add an item from invoice rows; avoid duplicates. */
     const addFromFacture = (factureItemId: number) => {
         if (liste.items.some(i => i.factureItemId === factureItemId)) return;
         const src = factureById[factureItemId];
@@ -287,7 +282,6 @@ const ListeEpicerieEdit: React.FC = () => {
         }));
     };
 
-    /** Add an item from free item rows using their defaults. */
     const addFromFree = (fi: FreeItem) => {
         setListe(prev => ({
             ...prev,
@@ -337,24 +331,19 @@ const ListeEpicerieEdit: React.FC = () => {
                 return;
             }
 
-            // Try to rehydrate from response if server returns the created entity.
             let created: FreeItem | null = null;
             try {
                 const ct = res.headers.get("content-type") || "";
                 if (ct.includes("application/json")) {
                     created = (await res.json()) as FreeItem;
                 }
-            } catch {
-                /* ignore parse errors */
-            }
+            } catch { }
 
-            // Keep free type list fresh after creation.
             const types = await fetchJSON<FreeItemType[]>("/api/freeitems/types");
             setFreeTypes(types ?? []);
 
             const createdType = (created?.typeItem ?? newFreeItemType).trim();
 
-            // If viewing the same type, ensure the table shows the new row (without a full reload when possible).
             if (!selectedFreeType) {
                 if (createdType) setSelectedFreeType(createdType);
             } else if (createdType === selectedFreeType) {
@@ -374,7 +363,6 @@ const ListeEpicerieEdit: React.FC = () => {
                 }
             }
 
-            // Reset form with sensible defaults.
             setNewFreeItemName("");
             setNewFreeItemType(selectedFreeType || "");
             setNewFreeItemStore("");
@@ -394,12 +382,12 @@ const ListeEpicerieEdit: React.FC = () => {
 
         if (usedCount > 0) {
             const ok = confirm(
-                `Cet article est présent ${usedCount} fois dans la liste.\nVoulez-vous le retirer de la liste et le supprimer ?`
+                t("confirms.deleteUsed", { count: usedCount }) as string
             );
             if (!ok) return;
             setListe(prev => ({ ...prev, items: prev.items.filter(x => x.freeItemId !== fid) }));
         } else {
-            const ok = confirm("Supprimer ce produit libre ?");
+            const ok = confirm(t("confirms.deleteFreeProduct") as string);
             if (!ok) return;
         }
 
@@ -409,7 +397,6 @@ const ListeEpicerieEdit: React.FC = () => {
             return;
         }
 
-        // Refresh the current type and type counts after deletion.
         const [types, items] = await Promise.all([
             fetchJSON<FreeItemType[]>("/api/freeitems/types"),
             selectedFreeType
@@ -510,7 +497,6 @@ const ListeEpicerieEdit: React.FC = () => {
                 return;
             }
 
-            // Refresh current type listing or update cache if no type is selected.
             if (selectedFreeType) {
                 const items = await fetchJSON<FreeItem[]>(
                     `/api/freeitems?type=${encodeURIComponent(selectedFreeType)}`
@@ -546,14 +532,18 @@ const ListeEpicerieEdit: React.FC = () => {
     };
 
     /* ------------------------------ Small UI helpers ------------------------------ */
-    const SpecialDot: React.FC<{ on?: boolean }> = ({ on = false }) => (
-        <span
-            className={`d-inline-block rounded-circle ${on ? "bg-success" : "bg-danger"}`}
-            style={{ width: 10, height: 10 }}
-            title={on ? "En spécial" : "Non"}
-            aria-label={on ? "En spécial" : "Non"}
-        />
-    );
+    const SpecialDot: React.FC<{ on?: boolean }> = ({ on = false }) => {
+        const { t } = useTranslation("pages/ListeEpicerie/listeEpicerieEdit");
+        const label = on ? t("common.onSale") : t("common.no");
+        return (
+            <span
+                className={`d-inline-block rounded-circle ${on ? "bg-success" : "bg-danger"}`}
+                style={{ width: 10, height: 10 }}
+                title={label}
+                aria-label={label}
+            />
+        );
+    };
 
     /* ------------------- Filter invoice types to “remaining items” ------------------ */
     const availableFactureTypes = useMemo(() => {
@@ -561,28 +551,26 @@ const ListeEpicerieEdit: React.FC = () => {
         for (const li of liste.items) {
             if (!li.factureItemId) continue;
             const row = factureById[li.factureItemId];
-            const t = row?.typeItem;
-            if (!t) continue;
-            used.set(t, (used.get(t) || 0) + 1);
+            const tpe = row?.typeItem;
+            if (!tpe) continue;
+            used.set(tpe, (used.get(tpe) || 0) + 1);
         }
         return (factureTypes ?? [])
             .map(ft => ({ ...ft, remaining: ft.count - (used.get(ft.type) || 0) }))
             .filter(ft => ft.remaining > 0);
     }, [factureTypes, liste.items, factureById]);
 
-    /** Keep selected invoice type valid against the “remaining” list. */
     useEffect(() => {
         if (availableFactureTypes.length === 0) {
             if (selectedFactureType) setSelectedFactureType("");
             return;
         }
-        const stillExists = availableFactureTypes.some(t => t.type === selectedFactureType);
+        const stillExists = availableFactureTypes.some(tpe => tpe.type === selectedFactureType);
         if (!stillExists) {
             setSelectedFactureType(availableFactureTypes[0].type);
         }
     }, [availableFactureTypes, selectedFactureType]);
 
-    /** Compute “available items” table for the selected invoice type respecting filters & current list. */
     const factureListState = useMemo(() => {
         const all = factureItems;
         const afterSale = factureItems.filter(i => !(hideFactureOnSale && i.wasOnSale));
@@ -597,7 +585,6 @@ const ListeEpicerieEdit: React.FC = () => {
         return { all, afterSale, available };
     }, [factureItems, hideFactureOnSale, liste.items]);
 
-    /* --------------------------- Split list rows by origin -------------------------- */
     const factureRows = useMemo(
         () => liste.items.map((it, idx) => ({ it, idx })).filter(x => !!x.it.factureItemId),
         [liste.items]
@@ -607,11 +594,9 @@ const ListeEpicerieEdit: React.FC = () => {
         [liste.items]
     );
 
-    /* ----------------------------- Display-only total ----------------------------- */
     const totalPrice = useMemo(() => {
         let sum = 0;
 
-        // Sum invoice-based items (use invoice price * quantity)
         for (const { it } of factureRows) {
             const src = it.factureItemId ? factureById[it.factureItemId] : undefined;
             const price = typeof src?.prix === "number" ? src.prix : 0;
@@ -619,7 +604,6 @@ const ListeEpicerieEdit: React.FC = () => {
             sum += price * qty;
         }
 
-        // Sum free items (use defaultPrix * quantity)
         for (const { it } of freeRows) {
             const src = it.freeItemId
                 ? (freeById[it.freeItemId] || freeItems.find(f => f.id === it.freeItemId))
@@ -641,58 +625,61 @@ const ListeEpicerieEdit: React.FC = () => {
                     type="button"
                     className="btn btn-outline-secondary"
                     onClick={() => navigate(-1)}
-                    title="Retour"
+                    title={t("header.back")}
                 >
-                    ← Retour
+                    ← {t("header.back")}
                 </button>
 
                 <input
                     className="form-control"
                     value={liste.name}
                     onChange={e => setListe({ ...liste, name: e.target.value })}
-                    placeholder="Nom de la liste"
+                    placeholder={t("header.namePlaceholder") as string}
                     style={{ maxWidth: 420 }}
                 />
                 <button className="btn btn-primary" onClick={save}>
-                    Enregistrer
+                    {t("header.save")}
                 </button>
             </div>
 
             {/* Estimated total (CAD) */}
             <div className="mb-3">
                 <span className="badge text-bg-info">
-                    Total estimé : {totalPrice.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
+                    {t("totals.estimated")}{" "}
+                    {totalPrice.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
                 </span>
             </div>
 
             {/* Add sources */}
             <div className="mb-3">
                 <button className="btn btn-outline-success me-2" onClick={() => setShowFactureModal(true)}>
-                    + Ajouter depuis mes factures (sans gluten)
+                    {t("addButtons.fromInvoices")}
                 </button>
                 <button className="btn btn-outline-primary" onClick={() => setShowFreeModal(true)}>
-                    + Ajouter depuis mes produits libres
+                    {t("addButtons.fromFree")}
                 </button>
             </div>
 
             {/* --------------------------- Modal: invoice items --------------------------- */}
             <Modal show={showFactureModal} onHide={() => setShowFactureModal(false)} size="xl" centered>
                 <Modal.Header closeButton>
-                    <Modal.Title>Ajouter un item (factures)</Modal.Title>
+                    <Modal.Title>{t("modals.facture.title")}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <div className="d-flex align-items-center gap-2 mb-3">
-                        <label className="me-2 mb-0">Type</label>
+                        <label className="me-2 mb-0">{t("modals.facture.typeLabel")}</label>
                         <select
                             className="form-select"
                             style={{ maxWidth: 320 }}
                             value={selectedFactureType}
                             onChange={e => setSelectedFactureType(e.target.value)}
                         >
-                            {availableFactureTypes.length === 0 && <option value="">— Aucun type —</option>}
-                            {availableFactureTypes.map(t => (
-                                <option key={t.type} value={t.type}>
-                                    {t.type} ({t.remaining})
+                            {availableFactureTypes.length === 0 && (
+                                <option value="">{t("modals.facture.noType")}</option>
+                            )}
+                            {availableFactureTypes.map(tpe => (
+                                <option key={tpe.type} value={tpe.type}>
+                                    {tpe.type} ({tpe.remaining})
                                 </option>
                             ))}
                         </select>
@@ -706,7 +693,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                 onChange={e => setHideFactureOnSale(e.target.checked)}
                             />
                             <label htmlFor="hideFactureOnSale" className="form-check-label">
-                                Masquer “en spécial”
+                                {t("common.hideOnSale")}
                             </label>
                         </div>
                     </div>
@@ -715,28 +702,28 @@ const ListeEpicerieEdit: React.FC = () => {
                         <table className="table table-hover align-middle mb-0">
                             <thead className="table-light">
                                 <tr>
-                                    <th style={{ minWidth: 180 }}>Produit</th>
-                                    <th>Type</th>
-                                    <th>Magasin</th>
-                                    <th>Date</th>
-                                    <th className="text-end">Prix</th>
-                                    <th>Spécial</th>
-                                    <th className="text-end">Action</th>
+                                    <th style={{ minWidth: 180 }}>{t("table.product")}</th>
+                                    <th>{t("table.type")}</th>
+                                    <th>{t("table.store")}</th>
+                                    <th>{t("table.date")}</th>
+                                    <th className="text-end">{t("table.price")}</th>
+                                    <th>{t("table.special")}</th>
+                                    <th className="text-end">{t("table.action")}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {factureListState.all.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="text-muted text-center py-4">
-                                            Aucun article trouvé pour ce type.
+                                            {t("modals.facture.emptyForType")}
                                         </td>
                                     </tr>
                                 ) : factureListState.available.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="text-muted text-center py-4">
                                             {factureListState.afterSale.length === 0
-                                                ? "Aucun article disponible avec le filtre actuel."
-                                                : "Tous les articles de ce type sont déjà dans la liste."}
+                                                ? t("modals.facture.noneWithFilter")
+                                                : t("modals.facture.allAlreadyInList")}
                                         </td>
                                     </tr>
                                 ) : (
@@ -756,7 +743,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                             <td className="text-center"><SpecialDot on={i.wasOnSale} /></td>
                                             <td className="text-end">
                                                 <button className="btn btn-sm btn-success" onClick={() => addFromFacture(i.id)}>
-                                                    Ajouter à la liste
+                                                    {t("actions.addToList")}
                                                 </button>
                                             </td>
                                         </tr>
@@ -768,7 +755,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowFactureModal(false)}>
-                        Fermer
+                        {t("common.close")}
                     </Button>
                 </Modal.Footer>
             </Modal>
@@ -776,46 +763,46 @@ const ListeEpicerieEdit: React.FC = () => {
             {/* ---------------------------- Modal: free items ---------------------------- */}
             <Modal show={showFreeModal} onHide={() => setShowFreeModal(false)} size="xl" centered>
                 <Modal.Header closeButton>
-                    <Modal.Title>Ajouter un produit libre</Modal.Title>
+                    <Modal.Title>{t("modals.free.title")}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     {/* Inline creation form */}
-                    <h6 className="mb-2">Créer un produit libre</h6>
+                    <h6 className="mb-2">{t("modals.free.createTitle")}</h6>
                     <div className="row g-2 align-items-end mb-3">
                         <div className="col-md-3">
-                            <label className="form-label">Nom du produit</label>
+                            <label className="form-label">{t("fields.productName")}</label>
                             <input
                                 className="form-control"
                                 value={newFreeItemName}
                                 onChange={e => setNewFreeItemName(e.target.value)}
-                                placeholder="Ex.: Yogourt grec"
+                                placeholder={t("placeholders.exampleProduct") as string}
                             />
                         </div>
                         <div className="col-md-2">
-                            <label className="form-label">Type</label>
+                            <label className="form-label">{t("fields.type")}</label>
                             <input
                                 className="form-control"
                                 value={newFreeItemType}
                                 onChange={e => setNewFreeItemType(e.target.value)}
-                                placeholder="Ex.: Laitiers"
+                                placeholder={t("placeholders.exampleType") as string}
                                 list="type-suggestions"
                             />
                             <datalist id="type-suggestions">
-                                {freeTypes.map(t => <option key={t.type} value={t.type} />)}
+                                {freeTypes.map(tpe => <option key={tpe.type} value={tpe.type} />)}
                             </datalist>
                         </div>
                         <div className="col-md-2">
-                            <label className="form-label">Magasin</label>
+                            <label className="form-label">{t("fields.store")}</label>
                             <input
                                 className="form-control"
                                 value={newFreeItemStore}
                                 onChange={e => setNewFreeItemStore(e.target.value)}
                                 list="stores"
-                                placeholder="Ex.: IGA"
+                                placeholder={t("placeholders.exampleStore") as string}
                             />
                         </div>
                         <div className="col-md-1">
-                            <label className="form-label">Quantité</label>
+                            <label className="form-label">{t("fields.quantity")}</label>
                             <input
                                 className="form-control"
                                 inputMode="decimal"
@@ -825,7 +812,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             />
                         </div>
                         <div className="col-md-1">
-                            <label className="form-label">Prix ($)</label>
+                            <label className="form-label">{t("fields.price")}</label>
                             <input
                                 className="form-control"
                                 inputMode="decimal"
@@ -835,7 +822,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             />
                         </div>
                         <div className="col-md-1">
-                            <label className="form-label">Poids</label>
+                            <label className="form-label">{t("fields.weight")}</label>
                             <input
                                 className="form-control"
                                 inputMode="decimal"
@@ -845,7 +832,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             />
                         </div>
                         <div className="col-md-1">
-                            <label className="form-label">Unité</label>
+                            <label className="form-label">{t("fields.unit")}</label>
                             <select
                                 className="form-select"
                                 value={newFreeItemWeightUnit}
@@ -866,11 +853,11 @@ const ListeEpicerieEdit: React.FC = () => {
                                     checked={newFreeItemOnSale}
                                     onChange={e => setNewFreeItemOnSale(e.target.checked)}
                                 />
-                                <label htmlFor="freeOnSale" className="form-check-label">En spécial</label>
+                                <label htmlFor="freeOnSale" className="form-check-label">{t("common.onSale")}</label>
                             </div>
                         </div>
                         <div className="col-md-12 mt-1">
-                            <button className="btn btn-success" onClick={addNewFreeItem}>Créer</button>
+                            <button className="btn btn-success" onClick={addNewFreeItem}>{t("actions.create")}</button>
                         </div>
                     </div>
 
@@ -878,17 +865,17 @@ const ListeEpicerieEdit: React.FC = () => {
 
                     {/* Listing by free type */}
                     <div className="d-flex align-items-center gap-2 mb-2">
-                        <label className="me-2 mb-0">Type</label>
+                        <label className="me-2 mb-0">{t("modals.free.typeLabel")}</label>
                         <select
                             className="form-select"
                             style={{ maxWidth: 320 }}
                             value={selectedFreeType}
                             onChange={e => setSelectedFreeType(e.target.value)}
                         >
-                            <option value="">— Sélectionnez un type —</option>
-                            {freeTypes.map(t => (
-                                <option key={t.type} value={t.type}>
-                                    {t.type} ({t.count})
+                            <option value="">{t("modals.free.selectType")}</option>
+                            {freeTypes.map(tpe => (
+                                <option key={tpe.type} value={tpe.type}>
+                                    {tpe.type} ({tpe.count})
                                 </option>
                             ))}
                         </select>
@@ -901,28 +888,28 @@ const ListeEpicerieEdit: React.FC = () => {
                                 checked={hideFreeOnSale}
                                 onChange={e => setHideFreeOnSale(e.target.checked)}
                             />
-                            <label htmlFor="hideFreeOnSale" className="form-check-label">Masquer “en spécial”</label>
+                            <label htmlFor="hideFreeOnSale" className="form-check-label">{t("common.hideOnSale")}</label>
                         </div>
                     </div>
 
                     {!selectedFreeType ? (
-                        <div className="text-muted">Choisissez un type pour afficher vos produits libres.</div>
+                        <div className="text-muted">{t("modals.free.pickTypeHint")}</div>
                     ) : (
                         <div style={{ maxHeight: "40vh", overflowY: "auto" }}>
                             {freeItems.length === 0 ? (
-                                <div className="text-muted">Aucun produit libre dans ce type pour l’instant.</div>
+                                <div className="text-muted">{t("modals.free.emptyType")}</div>
                             ) : (
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="table-light">
                                         <tr>
-                                            <th style={{ minWidth: 180 }}>Produit</th>
-                                            <th>Type</th>
-                                            <th>Magasin</th>
-                                            <th className="text-end">Déf. quantité</th>
-                                            <th className="text-end">Prix</th>
-                                            <th>Poids</th>
-                                            <th>Spécial</th>
-                                            <th className="text-end" style={{ minWidth: 200 }}>Action</th>
+                                            <th style={{ minWidth: 180 }}>{t("table.product")}</th>
+                                            <th>{t("table.type")}</th>
+                                            <th>{t("table.store")}</th>
+                                            <th className="text-end">{t("table.defaultQty")}</th>
+                                            <th className="text-end">{t("table.price")}</th>
+                                            <th>{t("table.weight")}</th>
+                                            <th>{t("table.special")}</th>
+                                            <th className="text-end" style={{ minWidth: 200 }}>{t("table.action")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -950,20 +937,20 @@ const ListeEpicerieEdit: React.FC = () => {
                                                                     className="btn btn-sm btn-outline-secondary"
                                                                     onClick={() => openEditFree(fi.id)}
                                                                 >
-                                                                    Modifier
+                                                                    {t("actions.edit")}
                                                                 </button>
                                                                 <button
                                                                     className="btn btn-sm btn-primary"
                                                                     onClick={() => addFromFree(fi)}
                                                                 >
-                                                                    Ajouter
+                                                                    {t("actions.add")}
                                                                 </button>
                                                                 <button
                                                                     className="btn btn-sm btn-outline-danger"
                                                                     onClick={() => deleteFreeItem(fi.id)}
-                                                                    title="Supprimer"
+                                                                    title={t("actions.delete") as string}
                                                                 >
-                                                                    Supprimer
+                                                                    {t("actions.delete")}
                                                                 </button>
                                                             </div>
                                                         </td>
@@ -977,31 +964,31 @@ const ListeEpicerieEdit: React.FC = () => {
                     )}
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowFreeModal(false)}>Fermer</Button>
+                    <Button variant="secondary" onClick={() => setShowFreeModal(false)}>{t("common.close")}</Button>
                 </Modal.Footer>
             </Modal>
 
             {/* ------------------------------- List section ------------------------------- */}
-            <h4 className="mt-4">Articles dans la liste</h4>
+            <h4 className="mt-4">{t("sections.itemsInList")}</h4>
 
             {/* Items originating from invoices */}
-            <h5 className="mt-3">Depuis mes factures</h5>
+            <h5 className="mt-3">{t("sections.fromInvoices")}</h5>
             {factureRows.length === 0 ? (
-                <div className="text-muted">Aucun article provenant des factures.</div>
+                <div className="text-muted">{t("sections.noInvoiceItems")}</div>
             ) : (
                 <div className="table-responsive">
                     <table className="table align-middle">
                         <thead className="table-light">
                             <tr>
-                                <th style={{ minWidth: 180 }}>Produit</th>
-                                <th>Type</th>
-                                <th>Magasin</th>
-                                <th>Date ajout</th>
-                                <th className="text-end">Prix</th>
-                                <th>Poids</th>
-                                <th className="text-center">Spécial</th>
-                                <th style={{ width: 140 }}>Quantité</th>
-                                <th className="text-end" style={{ minWidth: 120 }}>Action</th>
+                                <th style={{ minWidth: 180 }}>{t("table.product")}</th>
+                                <th>{t("table.type")}</th>
+                                <th>{t("table.store")}</th>
+                                <th>{t("table.addedDate")}</th>
+                                <th className="text-end">{t("table.price")}</th>
+                                <th>{t("table.weight")}</th>
+                                <th className="text-center">{t("table.special")}</th>
+                                <th style={{ width: 140 }}>{t("table.quantity")}</th>
+                                <th className="text-end" style={{ minWidth: 120 }}>{t("table.action")}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1033,7 +1020,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                         </td>
                                         <td className="text-end">
                                             <button className="btn btn-sm btn-outline-danger" onClick={() => removeAtIndex(idx)}>
-                                                Supprimer
+                                                {t("actions.delete")}
                                             </button>
                                         </td>
                                     </tr>
@@ -1045,22 +1032,22 @@ const ListeEpicerieEdit: React.FC = () => {
             )}
 
             {/* Items created as “free” products */}
-            <h5 className="mt-4">Produits libres</h5>
+            <h5 className="mt-4">{t("sections.freeProducts")}</h5>
             {freeRows.length === 0 ? (
-                <div className="text-muted">Aucun produit libre.</div>
+                <div className="text-muted">{t("sections.noFreeProducts")}</div>
             ) : (
                 <div className="table-responsive">
                     <table className="table align-middle">
                         <thead className="table-light">
                             <tr>
-                                <th style={{ minWidth: 180 }}>Produit</th>
-                                <th>Type</th>
-                                <th>Magasin</th>
-                                <th className="text-end">Déf. prix</th>
-                                <th>Poids</th>
-                                <th className="text-center">Spécial</th>
-                                <th style={{ width: 140 }}>Quantité</th>
-                                <th className="text-end" style={{ minWidth: 200 }}>Action</th>
+                                <th style={{ minWidth: 180 }}>{t("table.product")}</th>
+                                <th>{t("table.type")}</th>
+                                <th>{t("table.store")}</th>
+                                <th className="text-end">{t("table.defaultPrice")}</th>
+                                <th>{t("table.weight")}</th>
+                                <th className="text-center">{t("table.special")}</th>
+                                <th style={{ width: 140 }}>{t("table.quantity")}</th>
+                                <th className="text-end" style={{ minWidth: 200 }}>{t("table.action")}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1098,13 +1085,13 @@ const ListeEpicerieEdit: React.FC = () => {
                                                     onClick={() => it.freeItemId && openEditFree(it.freeItemId)}
                                                     disabled={!it.freeItemId}
                                                 >
-                                                    Modifier
+                                                    {t("actions.edit")}
                                                 </button>
                                                 <button
                                                     className="btn btn-sm btn-outline-danger"
                                                     onClick={() => removeAtIndex(idx)}
                                                 >
-                                                    Supprimer
+                                                    {t("actions.delete")}
                                                 </button>
                                             </div>
                                         </td>
@@ -1124,20 +1111,20 @@ const ListeEpicerieEdit: React.FC = () => {
             {/* ---------------------------- Modal: edit free item ---------------------------- */}
             <Modal show={editFreeOpen} onHide={() => setEditFreeOpen(false)} size="xl" centered>
                 <Modal.Header closeButton>
-                    <Modal.Title>Modifier le produit libre</Modal.Title>
+                    <Modal.Title>{t("modals.editFree.title")}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <div className="row g-3">
                         <div className="col-md-4">
-                            <label className="form-label">Nom du produit</label>
+                            <label className="form-label">{t("fields.productName")}</label>
                             <input className="form-control" value={editName} onChange={e => setEditName(e.target.value)} />
                         </div>
                         <div className="col-md-3">
-                            <label className="form-label">Type</label>
+                            <label className="form-label">{t("fields.type")}</label>
                             <input className="form-control" value={editType} onChange={e => setEditType(e.target.value)} />
                         </div>
                         <div className="col-md-3">
-                            <label className="form-label">Magasin</label>
+                            <label className="form-label">{t("fields.store")}</label>
                             <input className="form-control" value={editStore} onChange={e => setEditStore(e.target.value)} list="stores" />
                         </div>
                         <div className="col-md-2 d-flex align-items-end">
@@ -1149,11 +1136,11 @@ const ListeEpicerieEdit: React.FC = () => {
                                     checked={editFav}
                                     onChange={e => setEditFav(e.target.checked)}
                                 />
-                                <label htmlFor="editFav" className="form-check-label">Favori</label>
+                                <label htmlFor="editFav" className="form-check-label">{t("fields.favorite")}</label>
                             </div>
                         </div>
                         <div className="col-md-2">
-                            <label className="form-label">Déf. quantité</label>
+                            <label className="form-label">{t("fields.defaultQty")}</label>
                             <input
                                 className="form-control"
                                 inputMode="decimal"
@@ -1162,7 +1149,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             />
                         </div>
                         <div className="col-md-2">
-                            <label className="form-label">Déf. prix ($)</label>
+                            <label className="form-label">{t("fields.defaultPrice")}</label>
                             <input
                                 className="form-control"
                                 inputMode="decimal"
@@ -1171,7 +1158,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             />
                         </div>
                         <div className="col-md-2">
-                            <label className="form-label">Poids</label>
+                            <label className="form-label">{t("fields.weight")}</label>
                             <input
                                 className="form-control"
                                 inputMode="decimal"
@@ -1180,7 +1167,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             />
                         </div>
                         <div className="col-md-2">
-                            <label className="form-label">Unité</label>
+                            <label className="form-label">{t("fields.unit")}</label>
                             <select
                                 className="form-select"
                                 value={editUnit}
@@ -1199,15 +1186,15 @@ const ListeEpicerieEdit: React.FC = () => {
                                     checked={editOnSale}
                                     onChange={e => setEditOnSale(e.target.checked)}
                                 />
-                                <label htmlFor="editOnSale" className="form-check-label">En spécial</label>
+                                <label htmlFor="editOnSale" className="form-check-label">{t("common.onSale")}</label>
                             </div>
                         </div>
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setEditFreeOpen(false)}>Annuler</Button>
+                    <Button variant="secondary" onClick={() => setEditFreeOpen(false)}>{t("common.cancel")}</Button>
                     <Button variant="primary" onClick={saveEditFree} disabled={!editName.trim() || !editType.trim()}>
-                        Enregistrer
+                        {t("common.save")}
                     </Button>
                 </Modal.Footer>
             </Modal>

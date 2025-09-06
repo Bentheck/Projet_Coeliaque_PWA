@@ -1,0 +1,55 @@
+﻿{
+  "title": "Listes d’épicerie",
+  "subtitle": "Créez, suivez et terminez vos listes d’épicerie.",
+  "search": {
+    "placeholder": "Rechercher par nom ou date…",
+    "aria": "Rechercher des listes"
+  },
+  "filters": {
+    "active": "Actives",
+    "completed": "Terminées",
+    "all": "Toutes"
+  },
+  "sort": {
+    "aria": "Trier les listes",
+    "recent": "Plus récentes",
+    "oldest": "Plus anciennes",
+    "name": "Nom (A–Z)"
+  },
+  "newList": "Nouvelle liste",
+  "empty": {
+    "title": "Aucune liste",
+    "subtitle": "Créez votre première liste pour commencer.",
+    "create": "Créer une liste"
+  },
+  "status": {
+    "completed": "Terminée",
+    "active": "Active"
+  },
+  "markComplete": "Marquer comme terminée",
+  "items_one": "{{count}} article",
+  "items_other": "{{count}} articles",
+  "createdOn": "Créée le {{date}}",
+  "editDisabledTitle": "Cette liste est terminée — modification désactivée.",
+  "deleteTitle": "Supprimer cette liste",
+  "deleteAria": "Supprimer la liste {{name}}",
+  "confirmDelete": "Supprimer la liste « {{name}} » ?",
+  "footer": {
+    "total": "Total : {{count}}",
+    "active": "Actives : {{count}}",
+    "completed": "Terminées : {{count}}"
+  },
+  "errors": {
+    "loadLists": "Échec du chargement des listes.",
+    "updateStatus": "Impossible de mettre à jour l’état de la liste.",
+    "deleteFailed": "Échec de la suppression de la liste."
+  },
+  "common": {
+    "clear": "Effacer",
+    "refresh": "Actualiser",
+    "retry": "Réessayer",
+    "view": "Voir",
+    "edit": "Modifier",
+    "deleteShort": "Suppr."
+  }
+}

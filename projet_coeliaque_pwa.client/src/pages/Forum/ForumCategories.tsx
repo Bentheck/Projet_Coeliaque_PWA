@@ -1,7 +1,9 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/pages/ForumCategories.tsx
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto } from "../../lib/types";
+import { useTranslation } from "react-i18next";
 
 /** Accent stripes for cards (cycled by index) */
 const PALETTE = [
@@ -14,6 +16,8 @@ const PALETTE = [
 ];
 
 const ForumCategories: React.FC = () => {
+    const { t } = useTranslation("pages/Forum/forumCategories");
+
     const [cats, setCats] = useState<ForumCategoryDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
@@ -31,7 +35,7 @@ const ForumCategories: React.FC = () => {
                 if (alive) setCats(data);
             } catch (e) {
                 console.error(e);
-                if (alive) setErr("Impossible de charger les catégories.");
+                if (alive) setErr(t("errors.loadCategories"));
             } finally {
                 if (alive) setLoading(false);
             }
@@ -39,14 +43,15 @@ const ForumCategories: React.FC = () => {
         return () => {
             alive = false;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
         <div className="container py-3">
             {/* Header / context */}
             <div className="rounded-4 p-4 p-md-5 mb-4 border bg-light">
-                <h1 className="h3 mb-1">Forum</h1>
-                <div className="text-muted">Choisissez une catégorie pour voir les discussions.</div>
+                <h1 className="h3 mb-1">{t("title")}</h1>
+                <div className="text-muted">{t("subtitle")}</div>
             </div>
 
             {err && <div className="alert alert-danger">{err}</div>}
@@ -75,7 +80,7 @@ const ForumCategories: React.FC = () => {
                     ))}
                 </div>
             ) : cats.length === 0 ? (
-                <div className="alert alert-info">Aucune catégorie.</div>
+                <div className="alert alert-info">{t("empty")}</div>
             ) : (
                 // Categories grid
                 <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
@@ -93,13 +98,13 @@ const ForumCategories: React.FC = () => {
                                     </p>
                                     <div className="d-flex justify-content-between align-items-center">
                                         <span className="badge text-bg-secondary">
-                                            {c.threadCount} fil{c.threadCount !== 1 ? "s" : ""}
+                                            {t("badges.threads", { count: c.threadCount })}
                                         </span>
                                         <Link
                                             to={`/forum/c/${c.id}`}
                                             className="stretched-link btn btn-outline-primary btn-sm"
                                         >
-                                            Ouvrir
+                                            {t("buttons.open")}
                                         </Link>
                                     </div>
                                 </div>

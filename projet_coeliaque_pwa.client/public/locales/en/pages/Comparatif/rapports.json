@@ -1,0 +1,23 @@
+﻿{
+  "title": "Available Comparison Reports",
+  "loading": "Loading…",
+  "empty": "No reports available.",
+  "item": {
+    "year": "Year {{year}}"
+  },
+  "buttons": {
+    "view": "View",
+    "regen": {
+      "title": "Regenerate the report for this year",
+      "label": "Regenerate",
+      "loading": "Regenerating…"
+    },
+    "generate": {
+      "label": "Generate",
+      "loading": "Generating…"
+    }
+  },
+  "status": {
+    "ok": "OK"
+  }
+}

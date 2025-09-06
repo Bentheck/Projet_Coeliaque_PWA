@@ -10,5 +10,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="public\icons\" />
+    <Folder Include="public\locales\en\pages\FAQ\" />
+    <Folder Include="public\locales\en\pages\Super\" />
+    <Folder Include="public\locales\fr\pages\FAQ\" />
+    <Folder Include="public\locales\fr\pages\Super\" />
   </ItemGroup>
 </Project>

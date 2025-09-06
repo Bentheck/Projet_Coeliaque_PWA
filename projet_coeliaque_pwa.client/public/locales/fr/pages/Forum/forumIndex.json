@@ -1,0 +1,14 @@
+﻿{
+  "title": "Forum",
+  "errors": {
+    "loadCategories": "Impossible de charger les catégories."
+  },
+  "empty": "Aucune catégorie.",
+  "buttons": {
+    "viewThreads": "Voir les fils"
+  },
+  "badges": {
+    "threads_one": "{{count}} fil",
+    "threads_other": "{{count}} fils"
+  }
+}

@@ -1,5 +1,7 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿// ListeEpicerieView.tsx
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 /* ============================== Types (DTOs) ============================== */
 
@@ -33,9 +35,7 @@ interface ListeEpicerieItemDto {
     isFavorite: boolean;
     wasOnSale: boolean;
     isChecked: boolean;
-    /** Per-list override for the unit price; falls back to source price if null */
     unitPrice?: number | null;
-    /** Optional inlined sources if server provided them with the list */
     factureItem?: FactureItemRow | null;
     freeItem?: FreeItemRow | null;
 }
@@ -44,7 +44,6 @@ interface ListeEpicerieDto {
     name: string;
     created: string;
     items: ListeEpicerieItemDto[];
-    /** Server-computed: may be true even if some items were added without price */
     completed?: boolean;
 }
 
@@ -72,6 +71,7 @@ const fmtDate = (iso?: string) =>
 /* ============================== Component ============================== */
 
 const ListeEpicerieView: React.FC = () => {
+    const { t } = useTranslation("pages/ListeEpicerie/listeEpicerieView");
     const { id } = useParams<{ id: string }>();
 
     const [liste, setListe] = useState<ListeEpicerieDto | null>(null);
@@ -79,11 +79,9 @@ const ListeEpicerieView: React.FC = () => {
     const [detailLoading, setDetailLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    /** Local caches for product lookups referenced by items (avoid n+1 at render) */
     const [factureById, setFactureById] = useState<Record<number, FactureItemRow>>({});
     const [freeById, setFreeById] = useState<Record<number, FreeItemRow>>({});
 
-    /** Load the list skeleton (items may include embedded sources or just IDs) */
     const reload = async () => {
         setLoading(true);
         setError(null);
@@ -93,7 +91,7 @@ const ListeEpicerieView: React.FC = () => {
             const data = (await res.json()) as ListeEpicerieDto;
             setListe(data ?? null);
         } catch (e) {
-            setError("Impossible de charger la liste.");
+            setError(t("errors.loadList"));
             console.error(e);
         } finally {
             setLoading(false);
@@ -105,14 +103,11 @@ const ListeEpicerieView: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
-    // Re-load when the SW reports a replayed mutation that targeted this list
     useEffect(() => {
         if (!("serviceWorker" in navigator)) return;
-
         const onMsg = (ev: MessageEvent) => {
             const data = ev.data || {};
             if (data?.type !== "mutation-sent" || !data.url) return;
-
             try {
                 const u = new URL(data.url, window.location.origin);
                 const m = u.pathname.match(/^\/api\/(?:liste-epicerie|ListeEpicerie)\/(\d+)(?:\/.*)?$/i);
@@ -121,13 +116,11 @@ const ListeEpicerieView: React.FC = () => {
                 }
             } catch { /* ignore */ }
         };
-
         navigator.serviceWorker.addEventListener("message", onMsg);
         return () => navigator.serviceWorker.removeEventListener("message", onMsg);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
-    // Optional: refresh on network reconnect
     useEffect(() => {
         const onOnline = () => reload();
         window.addEventListener("online", onOnline);
@@ -135,10 +128,6 @@ const ListeEpicerieView: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
-    /**
-     * Ensure we have full details for any referenced product that was not embedded
-     * in the list payload. We fetch only missing ones and fill the caches.
-     */
     useEffect(() => {
         if (!liste) return;
 
@@ -208,9 +197,6 @@ const ListeEpicerieView: React.FC = () => {
         checked: boolean;
     };
 
-    /**
-     * Build render-ready rows
-     */
     const rows: DisplayRow[] = useMemo(() => {
         if (!liste) return [];
         return (liste.items ?? [])
@@ -223,15 +209,20 @@ const ListeEpicerieView: React.FC = () => {
                 const name =
                     it.customName ??
                     (src && "item" in src ? (src as any).item : "") ??
-                    (it.factureItemId ? `Article #${it.factureItemId}` : it.freeItemId ? `Produit libre #${it.freeItemId}` : "—");
+                    (it.factureItemId
+                        ? t("fallbacks.invoiceItem", { id: it.factureItemId })
+                        : it.freeItemId
+                            ? t("fallbacks.freeItem", { id: it.freeItemId })
+                            : "—");
 
-                const type = (src && "typeItem" in src ? (src as any).typeItem : "") || (it.customName ? "Personnalisé" : "—");
+                const type =
+                    (src && "typeItem" in src ? (src as any).typeItem : "") ||
+                    (it.customName ? t("fallbacks.custom") : "—");
 
                 const store = (src && "magasin" in src ? ((src as any).magasin || "—") : "—") as string;
                 const weight = renderWeight(src as any);
                 const qty = Math.max(1, Number(it.quantity) || 1);
 
-                // list override > facture.prix > free.defaultPrix
                 const override = (it as any).unitPrice;
                 const fallback =
                     src && "prix" in (src as any) && typeof (src as any).prix === "number"
@@ -250,7 +241,7 @@ const ListeEpicerieView: React.FC = () => {
                 return { key, id: it.id, name, type, store, weight, qty, special, favorite, unitPrice, subtotal, checked: !!it.isChecked };
             })
             .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
-    }, [liste, factureById, freeById]);
+    }, [liste, factureById, freeById, t]);
 
     /* ------------------------------ Aggregates ------------------------------ */
 
@@ -260,13 +251,11 @@ const ListeEpicerieView: React.FC = () => {
     const totalCost = rows.reduce((acc, r) => acc + (r.subtotal ?? 0), 0);
     const anyPrice = rows.some((r) => r.unitPrice != null);
 
-    // If server didn’t compute completed, fallback to “all checked”.
     const allChecked = rows.length > 0 && rows.every((r) => r.checked);
     const isCompleted = !!(liste?.completed ?? allChecked);
 
     /* ------------------------------ Mutations ------------------------------ */
 
-    /** Mark the whole list as completed (optimistic UI; 202 queued treated as success). */
     const setCompleted = async (next: boolean) => {
         if (!liste) return;
         setListe((prev) => (prev ? { ...prev, completed: next } : prev));
@@ -279,26 +268,22 @@ const ListeEpicerieView: React.FC = () => {
             });
 
             if (res.status === 202) {
-                // queued by SW while offline — keep optimistic UI
                 return;
             }
             if (res.status === 409) {
-                // list locked or already in state — optional: reload or ignore
                 return;
             }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
         } catch (e) {
             console.error(e);
             setListe((prev) => (prev ? { ...prev, completed: !next } : prev));
-            alert("Échec lors de la mise à jour de l’état de la liste.");
+            alert(t("errors.updateListState"));
         }
     };
 
-    /** Toggle a single item’s checked state (optimistic; 202 queued treated as success). */
     const setItemChecked = async (itemId: number | undefined, next: boolean) => {
         if (!liste || itemId == null) return;
 
-        // optimistic flip
         setListe((prev) =>
             prev
                 ? {
@@ -317,17 +302,15 @@ const ListeEpicerieView: React.FC = () => {
             });
 
             if (res.status === 202) {
-                // queued by SW — keep optimistic state
                 return;
             }
             if (res.status === 409) {
-                alert("La liste est complétée et ne peut pas être modifiée.");
+                alert(t("errors.listCompletedLocked"));
                 await reload();
                 return;
             }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-            // Keep completed in sync after success (only compute when toggling to true)
             if (next) {
                 setListe((prev) => {
                     if (!prev) return prev;
@@ -340,7 +323,6 @@ const ListeEpicerieView: React.FC = () => {
             }
         } catch (e) {
             console.error(e);
-            // rollback on error
             setListe((prev) =>
                 prev
                     ? {
@@ -349,7 +331,7 @@ const ListeEpicerieView: React.FC = () => {
                     }
                     : prev
             );
-            alert("Échec lors de la mise à jour de l’article.");
+            alert(t("errors.updateItem"));
         }
     };
 
@@ -360,7 +342,7 @@ const ListeEpicerieView: React.FC = () => {
             <div className="container py-4">
                 <div className="d-flex align-items-center gap-2">
                     <div className="spinner-border" role="status" aria-hidden="true"></div>
-                    <strong>Chargement…</strong>
+                    <strong>{t("loading")}</strong>
                 </div>
             </div>
         );
@@ -370,9 +352,9 @@ const ListeEpicerieView: React.FC = () => {
         return (
             <div className="container py-4">
                 <div className="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
-                    <span>{error ?? "Erreur"}</span>
+                    <span>{error ?? t("errorGeneric")}</span>
                     <Link to="/liste-epicerie" className="btn btn-sm btn-outline-light">
-                        Retour
+                        {t("back")}
                     </Link>
                 </div>
             </div>
@@ -385,17 +367,19 @@ const ListeEpicerieView: React.FC = () => {
             <div className="d-flex flex-wrap justify-content-between align-items-end mb-2">
                 <div className="d-flex align-items-center gap-2">
                     <Link to="/liste-epicerie" className="btn btn-outline-secondary d-print-none">
-                        ← Retour
+                        ← {t("back")}
                     </Link>
                     <div className="d-flex align-items-center gap-2">
                         <div>
-                            <h1 className="h5 mb-0">{liste.name || "Liste d'épicerie"}</h1>
-                            <div className="text-muted small">Créée le {fmtDate(liste.created)}</div>
+                            <h1 className="h5 mb-0">{liste.name || t("titleDefault")}</h1>
+                            <div className="text-muted small">
+                                {t("createdOn", { date: fmtDate(liste.created) })}
+                            </div>
                         </div>
                         {detailLoading && (
                             <span className="ms-2 small text-muted d-flex align-items-center gap-2">
                                 <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                <span>Chargement des détails…</span>
+                                <span>{t("detailLoading")}</span>
                             </span>
                         )}
                     </div>
@@ -411,33 +395,33 @@ const ListeEpicerieView: React.FC = () => {
                             onChange={(e) => setCompleted(e.target.checked)}
                         />
                         <label className="form-check-label" htmlFor="completeSwitch">
-                            Complétée
+                            {t("completed")}
                         </label>
                     </div>
                     <Link to={`/liste-epicerie/edit/${liste.id}`} className={`btn btn-outline-primary ${isCompleted ? "disabled" : ""}`}>
-                        Éditer
+                        {t("edit")}
                     </Link>
                     <button className="btn btn-outline-secondary" onClick={() => window.print()}>
-                        Imprimer
+                        {t("print")}
                     </button>
                 </div>
             </div>
 
-            {/* Tiny summary bar (uses totals/favorites/specials) */}
+            {/* Tiny summary bar */}
             <div className="text-muted small mb-3 d-print-none">
-                <span className="me-3">Lignes: {rows.length}</span>
-                <span className="me-3">Quantité totale: {totalQty}</span>
-                <span className="me-3">Favoris: {favoritesCount}</span>
-                <span>En spécial: {specialsCount}</span>
+                <span className="me-3">{t("summary.rows", { count: rows.length })}</span>
+                <span className="me-3">{t("summary.totalQty", { count: totalQty })}</span>
+                <span className="me-3">{t("summary.favorites", { count: favoritesCount })}</span>
+                <span>{t("summary.onSale", { count: specialsCount })}</span>
             </div>
 
             {/* Minimal print metadata */}
             <div className="d-none d-print-block mb-2">
-                <div className="small">Imprimé le {new Date().toLocaleString("fr-CA")}</div>
+                <div className="small">{t("printedOn", { date: new Date().toLocaleString("fr-CA") })}</div>
             </div>
 
             {rows.length === 0 ? (
-                <div className="border rounded-3 p-4 text-center bg-light">Aucun article.</div>
+                <div className="border rounded-3 p-4 text-center bg-light">{t("empty")}</div>
             ) : (
                 <>
                     {/* Desktop / print table */}
@@ -447,18 +431,18 @@ const ListeEpicerieView: React.FC = () => {
                                 <thead className="table-light">
                                     <tr>
                                         <th className="text-center" style={{ width: 80 }}>
-                                            Fait
+                                            {t("table.done")}
                                         </th>
-                                        <th style={{ width: "28%" }}>Produit</th>
-                                        <th>Type</th>
-                                        <th>Magasin</th>
-                                        <th>Poids</th>
-                                        <th className="text-end">Prix unitaire</th>
+                                        <th style={{ width: "28%" }}>{t("table.product")}</th>
+                                        <th>{t("table.type")}</th>
+                                        <th>{t("table.store")}</th>
+                                        <th>{t("table.weight")}</th>
+                                        <th className="text-end">{t("table.unitPrice")}</th>
                                         <th className="text-end" style={{ width: 110 }}>
-                                            Quantité
+                                            {t("table.quantity")}
                                         </th>
-                                        <th className="text-end">Sous-total</th>
-                                        <th className="text-center">Spécial</th>
+                                        <th className="text-end">{t("table.subtotal")}</th>
+                                        <th className="text-center">{t("table.special")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -471,13 +455,13 @@ const ListeEpicerieView: React.FC = () => {
                                                     checked={r.checked}
                                                     disabled={isCompleted || r.id == null}
                                                     onChange={(e) => setItemChecked(r.id, e.target.checked)}
-                                                    aria-label={`Marquer ${r.name} comme fait`}
+                                                    aria-label={t("aria.markAsDone", { name: r.name })}
                                                 />
                                                 <span className="d-none d-print-inline">{r.checked ? "✓" : ""}</span>
                                             </td>
                                             <td>
                                                 <strong className={r.checked ? "text-decoration-line-through" : ""}>{r.name}</strong>{" "}
-                                                {r.favorite && <span className="badge bg-warning text-dark align-middle">★ Favori</span>}
+                                                {r.favorite && <span className="badge bg-warning text-dark align-middle">★ {t("badges.favorite")}</span>}
                                             </td>
                                             <td>
                                                 <small className="text-muted">{r.type || "—"}</small>
@@ -487,7 +471,13 @@ const ListeEpicerieView: React.FC = () => {
                                             <td className="text-end">{fmtMoney(r.unitPrice ?? undefined)}</td>
                                             <td className="text-end">{r.qty}</td>
                                             <td className="text-end">{fmtMoney(r.subtotal ?? undefined)}</td>
-                                            <td className="text-center">{r.special ? <span className="badge bg-success">Oui</span> : <span className="badge bg-secondary">Non</span>}</td>
+                                            <td className="text-center">
+                                                {r.special ? (
+                                                    <span className="badge bg-success">{t("common.yes")}</span>
+                                                ) : (
+                                                    <span className="badge bg-secondary">{t("common.no")}</span>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -495,7 +485,7 @@ const ListeEpicerieView: React.FC = () => {
                                     <tfoot>
                                         <tr>
                                             <th colSpan={7} className="text-end">
-                                                Total
+                                                {t("table.total")}
                                             </th>
                                             <th className="text-end">{fmtMoney(totalCost)}</th>
                                             <th></th>
@@ -523,7 +513,7 @@ const ListeEpicerieView: React.FC = () => {
                                                             checked={r.checked}
                                                             disabled={isCompleted || r.id == null}
                                                             onChange={(e) => setItemChecked(r.id, e.target.checked)}
-                                                            aria-label={`Marquer ${r.name} comme fait`}
+                                                            aria-label={t("aria.markAsDone", { name: r.name })}
                                                         />
                                                     </div>
                                                     <div>
@@ -533,28 +523,32 @@ const ListeEpicerieView: React.FC = () => {
                                                 </div>
                                                 <div className="text-end">
                                                     <div className="fw-semibold">{fmtMoney(r.unitPrice ?? undefined)}</div>
-                                                    <div className="text-muted small">Qté: {r.qty}</div>
+                                                    <div className="text-muted small">{t("mobile.qtyShort")} {r.qty}</div>
                                                 </div>
                                             </div>
 
                                             <div className="mt-2 small">
                                                 <div className="d-flex justify-content-between">
-                                                    <span className="text-muted">Magasin</span>
+                                                    <span className="text-muted">{t("table.store")}</span>
                                                     <span>{r.store || "—"}</span>
                                                 </div>
                                                 <div className="d-flex justify-content-between">
-                                                    <span className="text-muted">Poids</span>
+                                                    <span className="text-muted">{t("table.weight")}</span>
                                                     <span>{r.weight}</span>
                                                 </div>
                                                 <div className="d-flex justify-content-between">
-                                                    <span className="text-muted">Sous-total</span>
+                                                    <span className="text-muted">{t("table.subtotal")}</span>
                                                     <span className="fw-semibold">{fmtMoney(r.subtotal ?? undefined)}</span>
                                                 </div>
                                             </div>
 
                                             <div className="mt-2 d-flex gap-2 flex-wrap">
-                                                {r.favorite && <span className="badge bg-warning text-dark">★ Favori</span>}
-                                                {r.special ? <span className="badge bg-success">En spécial</span> : <span className="badge bg-secondary">Prix régulier</span>}
+                                                {r.favorite && <span className="badge bg-warning text-dark">★ {t("badges.favorite")}</span>}
+                                                {r.special ? (
+                                                    <span className="badge bg-success">{t("badges.onSale")}</span>
+                                                ) : (
+                                                    <span className="badge bg-secondary">{t("badges.regularPrice")}</span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -564,7 +558,7 @@ const ListeEpicerieView: React.FC = () => {
 
                         {anyPrice && (
                             <div className="mt-3 d-flex justify-content-end">
-                                <div className="h6 mb-0">Total: {fmtMoney(totalCost)}</div>
+                                <div className="h6 mb-0">{t("mobile.total")}: {fmtMoney(totalCost)}</div>
                             </div>
                         )}
                     </div>
@@ -573,7 +567,7 @@ const ListeEpicerieView: React.FC = () => {
 
             <div className="mt-3">
                 <small className="text-muted">
-                    Astuce : utilisez l’option « Ajuster à la page » de votre navigateur pour un meilleur rendu à l’impression.
+                    {t("tip")}
                 </small>
             </div>
         </div>

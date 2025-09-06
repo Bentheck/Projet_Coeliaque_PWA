@@ -1,0 +1,66 @@
+﻿{
+  "loading": "Loading…",
+  "notFound": "Not found",
+  "title": {
+    "editInvoice": "Edit Invoice"
+  },
+  "fields": {
+    "factureId": "Invoice ID",
+    "date": "Date",
+    "annee": "Year",
+    "magasin": "Store"
+  },
+  "items": {
+    "title": "Items",
+    "addButton": "Add item"
+  },
+  "table": {
+    "typeProduit": "Product type",
+    "marque": "Brand / Product",
+    "prix": "Price",
+    "poids": "Weight",
+    "unite": "Unit",
+    "quantite": "Quantity",
+    "enSoldeQ": "On sale?"
+  },
+  "placeholders": {
+    "type": "Type…",
+    "marqueProduit": "Brand / Product",
+    "prix": "Price",
+    "poids": "Weight",
+    "quantite": "Quantity",
+    "unitFallback": "-- Unit --"
+  },
+  "buttons": {
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "actions": {
+    "remove": "Remove"
+  },
+  "modal": {
+    "title": "Add an item to the invoice",
+    "next": "Next",
+    "prev": "Back",
+    "add": "Add",
+    "step1": {
+      "typeLabel": "Product type",
+      "placeholder": "Choose or add a type…"
+    },
+    "step2": {
+      "itemBrand": "Product brand",
+      "quantity": "Quantity",
+      "unitPrice": "Unit price",
+      "weight": "Weight",
+      "unit": "Unit",
+      "onSale": "On sale?"
+    }
+  },
+  "alerts": {
+    "offlineSaved": "Changes saved offline. They’ll sync automatically."
+  },
+  "error": {
+    "loadInvoiceOffline": "Unable to load the invoice (offline and not cached).",
+    "saveFailed": "Error while saving."
+  }
+}

@@ -1,5 +1,7 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/pages/ForumThreads.tsx
+import React, { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto, ForumThreadListItemDto, PagedResult } from "../../lib/types";
 import Pagination from "../../components/Pagination";
@@ -11,6 +13,7 @@ import Pagination from "../../components/Pagination";
  * - Fetches category metadata (name/description) and a paged list of threads.
  */
 const ForumThreads: React.FC = () => {
+    const { t, i18n } = useTranslation("pages/Forum/forumThreads");
     const { categoryId } = useParams<{ categoryId: string }>();
     const cid = Number(categoryId);
 
@@ -23,11 +26,6 @@ const ForumThreads: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
-    /**
-     * Load category info and the current page of threads.
-     * - Category details are fetched from the full list and filtered locally for simplicity.
-     * - Errors are shown with a user-friendly message and logged to console for diagnostics.
-     */
     const load = async () => {
         try {
             setLoading(true);
@@ -41,7 +39,7 @@ const ForumThreads: React.FC = () => {
             );
             setData(res);
         } catch (e: any) {
-            setErr("Impossible de charger les fils.");
+            setErr(t("errors.loadThreads"));
             console.error(e);
         } finally {
             setLoading(false);
@@ -51,15 +49,17 @@ const ForumThreads: React.FC = () => {
     // Reload when category or page changes.
     useEffect(() => {
         load();
-        // eslint-disable-next-line
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cid, page]);
 
     // Keep page in the URL (triggers useEffect to reload).
     const setPage = (p: number) => setSearchParams({ page: String(p) });
 
     // Compact, localized timestamp display for “created” and “last post”.
-    const fmt = (iso: string) =>
-        new Date(iso).toLocaleString("fr-CA", { dateStyle: "medium", timeStyle: "short" });
+    const fmt = (iso: string) => {
+        const locale = i18n.language?.startsWith("fr") ? "fr-CA" : "en-CA";
+        return new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
+    };
 
     return (
         <div className="container py-3">
@@ -68,16 +68,16 @@ const ForumThreads: React.FC = () => {
                 <div className="d-flex align-items-start gap-2">
                     <Link to="/forum" className="btn btn-outline-secondary">
                         <i className="bi bi-arrow-left me-2" />
-                        Catégories
+                        {t("buttons.categories")}
                     </Link>
                     <div>
-                        <h1 className="h4 mb-1">{cat?.name || `Catégorie #${cid}`}</h1>
+                        <h1 className="h4 mb-1">{cat?.name || t("fallback.categoryWithId", { id: cid })}</h1>
                         <div className="text-muted small">{cat?.description || "—"}</div>
                     </div>
                 </div>
                 <Link className="btn btn-primary" to={`/forum/new?categoryId=${cid}`}>
                     <i className="bi bi-plus-circle me-2" />
-                    Nouveau fil
+                    {t("buttons.newThread")}
                 </Link>
             </div>
 
@@ -102,35 +102,39 @@ const ForumThreads: React.FC = () => {
                     ))}
                 </div>
             ) : !data || data.items.length === 0 ? (
-                <div className="alert alert-info">Aucun fil.</div>
+                <div className="alert alert-info">{t("empty")}</div>
             ) : (
                 <>
                     {/* Thread cards: show pinned/locked badges before the title for quick scanning */}
                     <div className="row g-3">
-                        {data.items.map((t) => (
-                            <div className="col-12" key={t.id}>
-                                <Link to={`/forum/t/${t.id}`} className="text-decoration-none">
+                        {data.items.map((tItem) => (
+                            <div className="col-12" key={tItem.id}>
+                                <Link to={`/forum/t/${tItem.id}`} className="text-decoration-none">
                                     <div className="card shadow-sm h-100 border-0 hover-shadow">
                                         <div className="card-body">
                                             <div className="d-flex justify-content-between align-items-start gap-3">
                                                 <h5 className="mb-1 text-dark">
-                                                    {t.isPinned && (
-                                                        <span className="badge bg-warning text-dark me-2">Épinglé</span>
+                                                    {tItem.isPinned && (
+                                                        <span className="badge bg-warning text-dark me-2">{t("badges.pinned")}</span>
                                                     )}
-                                                    {t.isLocked && (
-                                                        <span className="badge bg-secondary me-2">Verrouillé</span>
+                                                    {tItem.isLocked && (
+                                                        <span className="badge bg-secondary me-2">{t("badges.locked")}</span>
                                                     )}
-                                                    {t.title}
+                                                    {tItem.title}
                                                 </h5>
                                                 <small className="text-muted text-end">
-                                                    Dernier&nbsp;: {fmt(t.lastPostUtc)}
+                                                    {t("meta.lastPrefix")}&nbsp;{fmt(tItem.lastPostUtc)}
                                                     <br />
-                                                    par {t.lastBy}
+                                                    {t("meta.by")} {tItem.lastBy}
                                                 </small>
                                             </div>
                                             <div className="mt-1 text-muted small">
-                                                Par {t.createdBy} • {fmt(t.createdUtc)} • {t.postCount} message
-                                                {t.postCount !== 1 ? "s" : ""}
+                                                {t("meta.createdLine", {
+                                                    author: tItem.createdBy,
+                                                    date: fmt(tItem.createdUtc),
+                                                    count: tItem.postCount,
+                                                    posts: t("counts.post", { count: tItem.postCount })
+                                                })}
                                             </div>
                                         </div>
                                     </div>

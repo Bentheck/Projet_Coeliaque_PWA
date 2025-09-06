@@ -1,0 +1,66 @@
+﻿{
+  "loading": "Chargement…",
+  "print": {
+    "noteLabel": "Note :",
+    "noteMain": "Lorsque vous cliquerez sur « Imprimer », vous pourrez entrer votre NOM et votre NAS pour qu’ils apparaissent en haut du rapport.",
+    "noteNotSaved": "Ceux-ci ne seront pas sauvegardés.",
+    "printButton": "Télécharger/Imprimer le PDF",
+    "backButton": "Retour"
+  },
+  "prompt": {
+    "title": "Informations à inclure dans le rapport",
+    "help": "Vous pouvez laisser ces champs vides si vous préférez écrire à la main sur le PDF imprimé.",
+    "nameLabel": "Nom :",
+    "namePlaceholder": "Votre nom",
+    "nasLabel": "NAS :",
+    "nasPlaceholder": "XXX XXX XXX",
+    "cancel": "Annuler",
+    "continuePrint": "Continuer et imprimer"
+  },
+  "title": "Rapport Comparatif — Année {{year}}",
+  "user": "Utilisateur : {{name}}",
+  "table": {
+    "groups": {
+      "sansGluten": "PRODUIT SANS GLUTEN",
+      "avecGluten": "PRODUIT COMPARATIF AVEC GLUTEN"
+    },
+    "columns": {
+      "typeItem": "Type de produit",
+      "nomSansGluten": "Nom Sans Gluten",
+      "quantite": "Quantité",
+      "format": "Format",
+      "unite": "Unité",
+      "prixSans": "Prix Sans Gluten",
+      "prixPar100Sans": "Prix/100g-100ml-Unité (SG)",
+      "marqueAvec": "Marque Avec Gluten",
+      "nomAvec": "Nom Avec Gluten",
+      "formatAvec": "Format (AG)",
+      "uniteAvec": "Unité (AG)",
+      "prixAvec": "Prix Avec Gluten",
+      "prixPar100Avec": "Prix/100g-100ml-Unité (AG)",
+      "diffPar100": "Différence par 100g/100ml/unité",
+      "sousTotalProduit": "Sous-total produit"
+    }
+  },
+  "total": "TOTAL = {{total}}",
+  "explain": {
+    "title": "Explications des calculs",
+    "pricePer100": {
+      "title": "Prix/100 (Sans Gluten ou Avec Gluten) :",
+      "formula": "Prix ÷ Poids × 100",
+      "example": "Exemple : 2,99 $ pour 500 g → 2,99 ÷ 500 × 100 = 0,60 $"
+    },
+    "diff": {
+      "title": "Différence par 100 (Diff/100) :",
+      "formula": "Prix/100 SG – Prix/100 AG"
+    },
+    "sousTotal": {
+      "title": "Sous-total produit :",
+      "formula": "Diff/100 × Quantité totale (en « 100 » selon l’unité)"
+    },
+    "total": {
+      "title": "TOTAL : Somme de tous les sous-totaux produits."
+    },
+    "note": "Les conversions d’unités sont prises en compte automatiquement."
+  }
+}

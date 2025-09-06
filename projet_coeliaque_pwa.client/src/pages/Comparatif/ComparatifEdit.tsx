@@ -1,14 +1,15 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/pages/ComparatifEdit.tsx
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import Select from "react-select";
 import type { SingleValue } from "react-select";
+import { useTranslation } from "react-i18next";
 
 // --- Offline helpers & DTOs ---
 import {
     getCache,
     setCache,
-    // typed DTOs
     type ProductComparisonDto,
     type ComparatifYearDto,
 } from "../../offline/db";
@@ -20,6 +21,8 @@ const yearKey = (id: string | number) => `comparatif:year:${id}`;
 const typeKey = (annee: number) => `comparatif:types:${annee}`;
 
 const ComparatifEdit: React.FC = () => {
+    const { t } = useTranslation("pages/Comparatif/comparatifEdit");
+
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
@@ -63,7 +66,6 @@ const ComparatifEdit: React.FC = () => {
         );
 
     // ---------------- Cache-first loaders ----------------
-
     useEffect(() => {
         if (!id) return;
 
@@ -137,14 +139,16 @@ const ComparatifEdit: React.FC = () => {
                 // After outbox replay, refresh the page data
                 if (id) {
                     fetch(`/api/comparatifyears/${id}`, { credentials: "include" })
-                        .then((r) => r.ok ? r.json() : null)
+                        .then((r) => (r.ok ? r.json() : null))
                         .then((data: ComparatifYearDto | null) => {
                             if (!data) return;
                             setYear(data);
                             setLines(data.lines.map((l) => ({ ...l })));
                             setCache(yearKey(id), data);
                         })
-                        .catch(() => { /* ignore */ });
+                        .catch(() => {
+                            /* ignore */
+                        });
                 }
             }
         };
@@ -154,7 +158,6 @@ const ComparatifEdit: React.FC = () => {
     }, [id, year]);
 
     // ---------------- Local editing ----------------
-
     function handleLineChange(idx: number, field: keyof ProductComparisonDto, value: any) {
         setLines((prev) => {
             const arr = [...prev];
@@ -165,7 +168,7 @@ const ComparatifEdit: React.FC = () => {
 
     function handleDeleteLine(idx: number) {
         if (!year) return;
-        if (!window.confirm("Supprimer cette ligne?")) return;
+        if (!window.confirm(t("confirm.deleteLine"))) return;
 
         const target = lines[idx];
         fetch(`/api/comparatifyears/${year.id}/lines/${target.id}`, {
@@ -201,7 +204,7 @@ const ComparatifEdit: React.FC = () => {
         })
             .then(async (res) => {
                 if (res.status === 202) {
-                    alert("Modifications enregistrées hors ligne — elles seront synchronisées plus tard.");
+                    alert(t("alerts.offlineSaved"));
                     await setCache(yearKey(year.id), { ...year, lines });
                     navigate("/comparatif");
                     return;
@@ -214,7 +217,6 @@ const ComparatifEdit: React.FC = () => {
     }
 
     // ------------- Add line modal -------------
-
     function openAddModal() {
         setShowAddModal(true);
         setModalStep(1);
@@ -253,7 +255,7 @@ const ComparatifEdit: React.FC = () => {
             .then(async (res) => {
                 if (res.status === 202) {
                     // optimistic add
-                    const tempId = Math.floor(Math.random() * 1e9) * -1; // negative temp id
+                    const tempId = Math.floor(Math.random() * 1e9) * -1;
                     const next = [
                         ...lines,
                         {
@@ -295,13 +297,12 @@ const ComparatifEdit: React.FC = () => {
         const { name, value } = e.target;
         setModalForm((prev) => ({
             ...prev,
-            [name]:
-                name === "prix" || name === "poidsValeur" ? Number(value) : value,
+            [name]: name === "prix" || name === "poidsValeur" ? Number(value) : value,
         }));
     };
 
-    if (loading) return <div>Chargement…</div>;
-    if (!year) return <div>Not found</div>;
+    if (loading) return <div>{t("loading")}</div>;
+    if (!year) return <div>{t("notFound")}</div>;
 
     return (
         <div className="container py-3">
@@ -309,7 +310,8 @@ const ComparatifEdit: React.FC = () => {
                 <div className="card-body">
                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                         <h2 className="mb-0">
-                            <i className="bi bi-sliders me-2"></i>Modifier Comparatif — {year.annee}
+                            <i className="bi bi-sliders me-2"></i>
+                            {t("header.title", { year: year.annee })}
                         </h2>
                         <div>
                             <Button
@@ -319,7 +321,7 @@ const ComparatifEdit: React.FC = () => {
                                 onClick={openAddModal}
                                 type="button"
                             >
-                                <i className="bi bi-plus-circle"></i> Ajouter une ligne
+                                <i className="bi bi-plus-circle"></i> {t("actions.addLine")}
                             </Button>
                         </div>
                     </div>
@@ -332,12 +334,12 @@ const ComparatifEdit: React.FC = () => {
                             <Table bordered hover className="align-middle">
                                 <thead className="table-light text-center">
                                     <tr>
-                                        <th style={{ minWidth: 220 }}>Type de produit</th>
-                                        <th>Marque</th>
-                                        <th style={{ width: 140 }}>Prix</th>
-                                        <th style={{ width: 160 }}>Poids</th>
-                                        <th style={{ width: 140 }}>Unité</th>
-                                        <th>Magasin</th>
+                                        <th style={{ minWidth: 220 }}>{t("table.headers.type")}</th>
+                                        <th>{t("table.headers.brand")}</th>
+                                        <th style={{ width: 140 }}>{t("table.headers.price")}</th>
+                                        <th style={{ width: 160 }}>{t("table.headers.weight")}</th>
+                                        <th style={{ width: 140 }}>{t("table.headers.unit")}</th>
+                                        <th>{t("table.headers.store")}</th>
                                         <th style={{ width: 90 }}></th>
                                     </tr>
                                 </thead>
@@ -352,15 +354,11 @@ const ComparatifEdit: React.FC = () => {
                                                             !lines.some((l, j) => l.typeItem === opt.value && j !== i) ||
                                                             item.typeItem === opt.value
                                                     )}
-                                                    value={
-                                                        item.typeItem
-                                                            ? { value: item.typeItem, label: item.typeItem }
-                                                            : null
-                                                    }
+                                                    value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
                                                     onChange={(opt: SingleValue<{ label: string; value: string }>) =>
                                                         handleLineChange(i, "typeItem", opt?.value || "")
                                                     }
-                                                    placeholder="Type…"
+                                                    placeholder={t("placeholders.type") as string}
                                                     styles={{
                                                         container: (base) => ({ ...base, minWidth: 0 }),
                                                         menu: (base) => ({ ...base, zIndex: 9999 }),
@@ -372,7 +370,7 @@ const ComparatifEdit: React.FC = () => {
                                                     className="form-control border-black rounded-2"
                                                     value={item.marque}
                                                     onChange={(e) => handleLineChange(i, "marque", e.target.value)}
-                                                    placeholder="Marque"
+                                                    placeholder={t("placeholders.brand") as string}
                                                 />
                                             </td>
                                             <td>
@@ -382,7 +380,7 @@ const ComparatifEdit: React.FC = () => {
                                                     step="0.01"
                                                     value={item.prix}
                                                     onChange={(e) => handleLineChange(i, "prix", +e.target.value)}
-                                                    placeholder="Prix"
+                                                    placeholder={t("placeholders.price") as string}
                                                 />
                                             </td>
                                             <td>
@@ -392,7 +390,7 @@ const ComparatifEdit: React.FC = () => {
                                                     step="0.01"
                                                     value={item.poidsValeur}
                                                     onChange={(e) => handleLineChange(i, "poidsValeur", +e.target.value)}
-                                                    placeholder="Poids"
+                                                    placeholder={t("placeholders.weight") as string}
                                                 />
                                             </td>
                                             <td>
@@ -401,7 +399,7 @@ const ComparatifEdit: React.FC = () => {
                                                     value={item.poidsUnite}
                                                     onChange={(e) => handleLineChange(i, "poidsUnite", e.target.value)}
                                                 >
-                                                    <option value="">-- Unité --</option>
+                                                    <option value="">{t("unit.placeholder")}</option>
                                                     {UNIT_OPTIONS.map((u) => (
                                                         <option key={u} value={u}>
                                                             {u}
@@ -414,7 +412,7 @@ const ComparatifEdit: React.FC = () => {
                                                     className="form-control border-black rounded-2"
                                                     value={item.magasin}
                                                     onChange={(e) => handleLineChange(i, "magasin", e.target.value)}
-                                                    placeholder="Magasin"
+                                                    placeholder={t("placeholders.store") as string}
                                                 />
                                             </td>
                                             <td className="text-center">
@@ -422,8 +420,8 @@ const ComparatifEdit: React.FC = () => {
                                                     type="button"
                                                     className="btn btn-outline-danger btn-sm rounded-pill px-3"
                                                     onClick={() => handleDeleteLine(i)}
-                                                    aria-label="Supprimer la ligne"
-                                                    title="Supprimer"
+                                                    aria-label={t("delete.ariaLine")}
+                                                    title={t("delete.title")}
                                                 >
                                                     <i className="bi bi-x-lg"></i>
                                                 </button>
@@ -444,9 +442,11 @@ const ComparatifEdit: React.FC = () => {
                                                 <div className="mb-2 d-flex justify-content-between align-items-start">
                                                     <div className="me-2">
                                                         <div className="fw-bold">
-                                                            {item.marque || <span className="text-muted">Marque</span>}
+                                                            {item.marque || <span className="text-muted">{t("mobile.brandFallback")}</span>}
                                                         </div>
-                                                        <div className="small text-muted">{item.typeItem || "Type…"}</div>
+                                                        <div className="small text-muted">
+                                                            {item.typeItem || t("mobile.typeFallback")}
+                                                        </div>
                                                     </div>
                                                     <Button
                                                         size="sm"
@@ -454,8 +454,8 @@ const ComparatifEdit: React.FC = () => {
                                                         className="rounded-pill px-2 py-0"
                                                         style={{ lineHeight: 1 }}
                                                         onClick={() => handleDeleteLine(i)}
-                                                        aria-label="Supprimer"
-                                                        title="Supprimer"
+                                                        aria-label={t("delete.title")}
+                                                        title={t("delete.title")}
                                                     >
                                                         <i className="bi bi-x-lg"></i>
                                                     </Button>
@@ -463,17 +463,17 @@ const ComparatifEdit: React.FC = () => {
 
                                                 {/* Type */}
                                                 <div className="mb-1">
-                                                    <label className="form-label small mb-0">Type</label>
+                                                    <label className="form-label small mb-0">{t("labels.type")}</label>
                                                     {isMobile ? (
                                                         <select
                                                             className="form-select form-select-sm border-black rounded-2"
                                                             value={item.typeItem}
                                                             onChange={(e) => handleLineChange(i, "typeItem", e.target.value)}
                                                         >
-                                                            <option value="">Type…</option>
-                                                            {allowedTypeOptionsFor(i).map((t) => (
-                                                                <option key={t} value={t}>
-                                                                    {t}
+                                                            <option value="">{t("placeholders.type")}</option>
+                                                            {allowedTypeOptionsFor(i).map((topt) => (
+                                                                <option key={topt} value={topt}>
+                                                                    {topt}
                                                                 </option>
                                                             ))}
                                                         </select>
@@ -486,15 +486,11 @@ const ComparatifEdit: React.FC = () => {
                                                                     !lines.some((l, j) => l.typeItem === opt.value && j !== i) ||
                                                                     item.typeItem === opt.value
                                                             )}
-                                                            value={
-                                                                item.typeItem
-                                                                    ? { value: item.typeItem, label: item.typeItem }
-                                                                    : null
-                                                            }
+                                                            value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
                                                             onChange={(opt: SingleValue<{ label: string; value: string }>) =>
                                                                 handleLineChange(i, "typeItem", opt?.value || "")
                                                             }
-                                                            placeholder="Type…"
+                                                            placeholder={t("placeholders.type") as string}
                                                             styles={{
                                                                 control: (base) => ({ ...base, minHeight: 28, fontSize: 14 }),
                                                                 valueContainer: (base) => ({ ...base, padding: "0 6px" }),
@@ -506,20 +502,20 @@ const ComparatifEdit: React.FC = () => {
                                                     )}
                                                 </div>
 
-                                                {/* Marque */}
+                                                {/* Brand */}
                                                 <div className="mb-1">
-                                                    <label className="form-label small mb-0">Marque</label>
+                                                    <label className="form-label small mb-0">{t("labels.brand")}</label>
                                                     <input
                                                         className="form-control form-control-sm border-black rounded-2"
                                                         value={item.marque}
                                                         onChange={(e) => handleLineChange(i, "marque", e.target.value)}
-                                                        placeholder="Marque"
+                                                        placeholder={t("placeholders.brand") as string}
                                                     />
                                                 </div>
 
-                                                {/* Prix */}
+                                                {/* Price */}
                                                 <div className="mb-1">
-                                                    <label className="form-label small mb-0">Prix</label>
+                                                    <label className="form-label small mb-0">{t("labels.price")}</label>
                                                     <input
                                                         className="form-control form-control-sm border-black rounded-2"
                                                         type="number"
@@ -527,13 +523,13 @@ const ComparatifEdit: React.FC = () => {
                                                         inputMode="decimal"
                                                         value={item.prix}
                                                         onChange={(e) => handleLineChange(i, "prix", +e.target.value)}
-                                                        placeholder="Prix"
+                                                        placeholder={t("placeholders.price") as string}
                                                     />
                                                 </div>
 
-                                                {/* Poids */}
+                                                {/* Weight */}
                                                 <div className="mb-1">
-                                                    <label className="form-label small mb-0">Poids</label>
+                                                    <label className="form-label small mb-0">{t("labels.weight")}</label>
                                                     <input
                                                         className="form-control form-control-sm border-black rounded-2"
                                                         type="number"
@@ -541,19 +537,19 @@ const ComparatifEdit: React.FC = () => {
                                                         inputMode="decimal"
                                                         value={item.poidsValeur}
                                                         onChange={(e) => handleLineChange(i, "poidsValeur", +e.target.value)}
-                                                        placeholder="Poids"
+                                                        placeholder={t("placeholders.weight") as string}
                                                     />
                                                 </div>
 
-                                                {/* Unité */}
+                                                {/* Unit */}
                                                 <div className="mb-1">
-                                                    <label className="form-label small mb-0">Unité</label>
+                                                    <label className="form-label small mb-0">{t("labels.unit")}</label>
                                                     <select
                                                         className="form-select form-select-sm border-black rounded-2"
                                                         value={item.poidsUnite}
                                                         onChange={(e) => handleLineChange(i, "poidsUnite", e.target.value)}
                                                     >
-                                                        <option value="">-- Unité --</option>
+                                                        <option value="">{t("unit.placeholder")}</option>
                                                         {UNIT_OPTIONS.map((u) => (
                                                             <option key={u} value={u}>
                                                                 {u}
@@ -562,14 +558,14 @@ const ComparatifEdit: React.FC = () => {
                                                     </select>
                                                 </div>
 
-                                                {/* Magasin */}
+                                                {/* Store */}
                                                 <div className="mb-1">
-                                                    <label className="form-label small mb-0">Magasin</label>
+                                                    <label className="form-label small mb-0">{t("labels.store")}</label>
                                                     <input
                                                         className="form-control form-control-sm border-black rounded-2"
                                                         value={item.magasin}
                                                         onChange={(e) => handleLineChange(i, "magasin", e.target.value)}
-                                                        placeholder="Magasin"
+                                                        placeholder={t("placeholders.store") as string}
                                                     />
                                                 </div>
                                             </div>
@@ -581,7 +577,8 @@ const ComparatifEdit: React.FC = () => {
 
                         <div className="d-flex justify-content-end gap-2">
                             <Button type="submit" className="btn btn-primary rounded-pill px-4">
-                                <i className="bi bi-save me-2"></i>Enregistrer
+                                <i className="bi bi-save me-2"></i>
+                                {t("btn.save")}
                             </Button>
                             <Button
                                 variant="secondary"
@@ -589,7 +586,8 @@ const ComparatifEdit: React.FC = () => {
                                 type="button"
                                 onClick={() => navigate("/comparatif")}
                             >
-                                <i className="bi bi-arrow-return-left me-2"></i>Annuler
+                                <i className="bi bi-arrow-return-left me-2"></i>
+                                {t("btn.cancel")}
                             </Button>
                         </div>
                     </form>
@@ -600,7 +598,8 @@ const ComparatifEdit: React.FC = () => {
             <Modal show={showAddModal} onHide={closeAddModal} centered size="xl" fullscreen="sm-down">
                 <Modal.Header closeButton>
                     <Modal.Title>
-                        <i className="bi bi-plus-circle me-2"></i>Ajouter une ligne
+                        <i className="bi bi-plus-circle me-2"></i>
+                        {t("modal.title")}
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
@@ -608,18 +607,18 @@ const ComparatifEdit: React.FC = () => {
                         {modalStep === 1 ? (
                             <>
                                 <Form.Group className="mb-3">
-                                    <Form.Label className="fw-bold">Type de produit</Form.Label>
+                                    <Form.Label className="fw-bold">{t("modal.step1.labelType")}</Form.Label>
                                     {isMobile ? (
                                         <Form.Select
                                             value={modalTypeItem}
                                             onChange={(e) => setModalTypeItem(e.target.value)}
                                         >
-                                            <option value="">Choisissez un type…</option>
+                                            <option value="">{t("modal.step1.placeholderType")}</option>
                                             {typeOptionsList
                                                 .filter((opt) => !lines.some((l) => l.typeItem === opt))
-                                                .map((t) => (
-                                                    <option key={t} value={t}>
-                                                        {t}
+                                                .map((topt) => (
+                                                    <option key={topt} value={topt}>
+                                                        {topt}
                                                     </option>
                                                 ))}
                                         </Form.Select>
@@ -633,7 +632,7 @@ const ComparatifEdit: React.FC = () => {
                                             onChange={(opt: SingleValue<{ label: string; value: string }>) =>
                                                 setModalTypeItem(opt?.value || "")
                                             }
-                                            placeholder="Choisissez un type…"
+                                            placeholder={t("modal.step1.placeholderType") as string}
                                             styles={{
                                                 container: (base) => ({ ...base, minWidth: 0 }),
                                                 menu: (base) => ({ ...base, zIndex: 9999 }),
@@ -648,7 +647,7 @@ const ComparatifEdit: React.FC = () => {
                                         disabled={!modalTypeItem.trim()}
                                         onClick={() => setModalStep(2)}
                                     >
-                                        Suivant <i className="bi bi-arrow-right ms-2"></i>
+                                        {t("modal.step1.next")} <i className="bi bi-arrow-right ms-2"></i>
                                     </Button>
                                 </div>
                             </>
@@ -656,7 +655,7 @@ const ComparatifEdit: React.FC = () => {
                             <>
                                 <Row className="g-2 mb-3">
                                     <Col md={6}>
-                                        <Form.Label className="fw-bold">Marque</Form.Label>
+                                        <Form.Label className="fw-bold">{t("labels.brand")}</Form.Label>
                                         <Form.Control
                                             type="text"
                                             name="marque"
@@ -667,7 +666,7 @@ const ComparatifEdit: React.FC = () => {
                                         />
                                     </Col>
                                     <Col md={3}>
-                                        <Form.Label className="fw-bold">Prix</Form.Label>
+                                        <Form.Label className="fw-bold">{t("labels.price")}</Form.Label>
                                         <Form.Control
                                             type="number"
                                             step="0.01"
@@ -680,7 +679,7 @@ const ComparatifEdit: React.FC = () => {
                                         />
                                     </Col>
                                     <Col md={3}>
-                                        <Form.Label className="fw-bold">Poids</Form.Label>
+                                        <Form.Label className="fw-bold">{t("labels.weight")}</Form.Label>
                                         <Form.Control
                                             type="number"
                                             step="0.01"
@@ -695,7 +694,7 @@ const ComparatifEdit: React.FC = () => {
                                 </Row>
                                 <Row className="g-2 mb-3">
                                     <Col md={6}>
-                                        <Form.Label className="fw-bold">Unité</Form.Label>
+                                        <Form.Label className="fw-bold">{t("labels.unit")}</Form.Label>
                                         <Form.Select
                                             name="poidsUnite"
                                             required
@@ -703,7 +702,7 @@ const ComparatifEdit: React.FC = () => {
                                             onChange={handleModalChange}
                                             className="border-black rounded-3"
                                         >
-                                            <option value="">-- Unité --</option>
+                                            <option value="">{t("unit.placeholder")}</option>
                                             {UNIT_OPTIONS.map((u) => (
                                                 <option key={u} value={u}>
                                                     {u}
@@ -712,7 +711,7 @@ const ComparatifEdit: React.FC = () => {
                                         </Form.Select>
                                     </Col>
                                     <Col md={6}>
-                                        <Form.Label className="fw-bold">Magasin</Form.Label>
+                                        <Form.Label className="fw-bold">{t("labels.store")}</Form.Label>
                                         <Form.Control
                                             type="text"
                                             name="magasin"
@@ -729,7 +728,8 @@ const ComparatifEdit: React.FC = () => {
                                         className="btn btn-secondary rounded-pill px-4"
                                         onClick={() => setModalStep(1)}
                                     >
-                                        <i className="bi bi-arrow-left me-2"></i>Précédent
+                                        <i className="bi bi-arrow-left me-2"></i>
+                                        {t("modal.step2.back")}
                                     </Button>
                                     <Button
                                         type="submit"
@@ -740,7 +740,8 @@ const ComparatifEdit: React.FC = () => {
                                             !modalTypeItem.trim()
                                         }
                                     >
-                                        <i className="bi bi-plus-circle me-2"></i>Ajouter
+                                        <i className="bi bi-plus-circle me-2"></i>
+                                        {t("modal.step2.submit")}
                                     </Button>
                                 </div>
                             </>

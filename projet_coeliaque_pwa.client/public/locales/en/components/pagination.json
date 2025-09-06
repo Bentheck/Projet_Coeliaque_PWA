@@ -1,0 +1,6 @@
+﻿{
+  "ariaLabel": "Pagination",
+  "prev": "Previous",
+  "next": "Next",
+  "indicator": "{{page}} / {{total}}"
+}

@@ -1,4 +1,5 @@
-﻿import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
+﻿// ForumThreadView.tsx
+import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
 import type { ForumThreadDto, PagedResult, ForumPostTreeDto } from "../../lib/types";
@@ -6,6 +7,7 @@ import Pagination from "../../components/Pagination";
 import { useAuth } from "../../components/AuthContext";
 import PostEditor from "../../components/PostEditor";
 import DOMPurify from "dompurify";
+import { useTranslation } from "react-i18next";
 
 /** One of the two vote UIs will be active:
  *  - "thread": vote on the whole thread via header bar (all comments, incl. OP, show no vote bar)
@@ -121,7 +123,6 @@ const SafeHtml = memo(function SafeHtml({
                     "h4",
                     "img",
                 ],
-                // Intentionally disallow inline styles. Allow only safe attributes.
                 ALLOWED_ATTR: ["href", "target", "rel", "class", "dir", "src", "alt", "width", "height"],
                 FORBID_TAGS: ["script", "iframe", "object", "embed"],
             }),
@@ -140,26 +141,33 @@ type ReplyBoxProps = {
     disabled?: boolean;
 };
 
-const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending, disabled }) => (
-    <div className="mt-2">
-        <PostEditor
-            initialHTML={value}
-            onChange={onChange}
-            ariaLabel="Rédiger une réponse"
-            giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
-            giphyLang="fr"
-            giphyRating="g"
-        />
-        <div className="d-flex justify-content-end gap-2 mt-2">
-            <button className="btn btn-secondary" onClick={() => onChange("")} disabled={disabled || !!sending}>
-                Effacer
-            </button>
-            <button className="btn btn-primary" onClick={onSubmit} disabled={disabled || !!sending || !value.trim()}>
-                {sending ? "Envoi…" : "Publier"}
-            </button>
+const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending, disabled }) => {
+    const { t } = useTranslation("pages/Forum/forumThreadView");
+    return (
+        <div className="mt-2">
+            <PostEditor
+                initialHTML={value}
+                onChange={onChange}
+                ariaLabel={t("replyBox.ariaLabel")}
+                giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
+                giphyLang="fr"
+                giphyRating="g"
+            />
+            <div className="d-flex justify-content-end gap-2 mt-2">
+                <button className="btn btn-secondary" onClick={() => onChange("")} disabled={disabled || !!sending}>
+                    {t("replyBox.clear")}
+                </button>
+                <button
+                    className="btn btn-primary"
+                    onClick={onSubmit}
+                    disabled={disabled || !!sending || !value.trim()}
+                >
+                    {sending ? t("replyBox.sending") : t("replyBox.publish")}
+                </button>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 /* ---------- Voting UI ---------- */
 type VoteBarProps = {
@@ -171,6 +179,7 @@ type VoteBarProps = {
 };
 
 const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size = "sm" }) => {
+    const { t } = useTranslation("pages/Forum/forumThreadView");
     const upActive = myVote === 1;
     const downActive = myVote === -1;
     const btnSize = size === "sm" ? "btn-sm" : "";
@@ -180,7 +189,7 @@ const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size
                 className={`btn btn-outline-success ${btnSize} ${upActive ? "active" : ""}`}
                 onClick={() => onVote(upActive ? 0 : 1)}
                 disabled={disabled}
-                title="J'aime"
+                title={t("vote.like")}
             >
                 <i className="bi bi-hand-thumbs-up" />
             </button>
@@ -191,7 +200,7 @@ const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size
                 className={`btn btn-outline-danger ${btnSize} ${downActive ? "active" : ""}`}
                 onClick={() => onVote(downActive ? 0 : -1)}
                 disabled={disabled}
-                title="Je n'aime pas"
+                title={t("vote.dislike")}
             >
                 <i className="bi bi-hand-thumbs-down" />
             </button>
@@ -260,6 +269,8 @@ const PostCard: React.FC<PostCardProps> = memo(
         setEditText,
         saving,
     }) => {
+        const { t } = useTranslation("pages/Forum/forumThreadView");
+
         const indentPx = Math.min(depth, 8) * 8;
         const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false; // top-level comments stay open
         const directReplies = p.replies ? p.replies.length : 0;
@@ -270,6 +281,9 @@ const PostCard: React.FC<PostCardProps> = memo(
 
         const bodyHtml: string = (p as any).body ?? "";
         const isEditing = editing[p.id] === true;
+
+        const editedBy = (p as any).editedBy as string | undefined;
+        const editedUtc = (p as any).editedUtc as string | undefined;
 
         return (
             <div className="card shadow-sm border-0 mb-2">
@@ -288,17 +302,17 @@ const PostCard: React.FC<PostCardProps> = memo(
                                             onClick={() => onToggleCollapsed(p.id)}
                                             aria-expanded={!isCollapsed}
                                             aria-controls={`post-${p.id}-body`}
-                                            title={isCollapsed ? "Développer" : "Réduire"}
+                                            title={isCollapsed ? t("buttons.expand") : t("buttons.collapse")}
                                         >
                                             {isCollapsed ? (
                                                 <>
                                                     <i className="bi bi-chevron-down me-1" />
-                                                    Développer
+                                                    {t("buttons.expand")}
                                                 </>
                                             ) : (
                                                 <>
                                                     <i className="bi bi-chevron-up me-1" />
-                                                    Réduire
+                                                    {t("buttons.collapse")}
                                                 </>
                                             )}
                                         </button>
@@ -312,10 +326,13 @@ const PostCard: React.FC<PostCardProps> = memo(
                                         <>
                                             <SafeHtml html={bodyHtml} className="mt-2 post-body" />
 
-                                            {(p as any).editedUtc || (p as any).editedBy ? (
+                                            {(editedUtc || editedBy) ? (
                                                 <div className="text-muted small mt-2">
-                                                    Édité {(p as any).editedBy ? `par ${(p as any).editedBy} ` : ""}
-                                                    {(p as any).editedUtc && `le ${fmt((p as any).editedUtc)}`}
+                                                    {editedBy && editedUtc
+                                                        ? t("post.editedByOn", { by: editedBy, date: fmt(editedUtc!) })
+                                                        : editedBy
+                                                            ? t("post.editedBy", { by: editedBy })
+                                                            : t("post.editedOn", { date: fmt(editedUtc!) })}
                                                 </div>
                                             ) : null}
 
@@ -326,7 +343,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                     disabled={!canReply}
                                                 >
                                                     <i className="bi bi-reply me-1" />
-                                                    Répondre
+                                                    {t("post.reply")}
                                                 </button>
 
                                                 {showVoteOnThisCard && (
@@ -339,7 +356,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                 )}
 
                                                 <small className="text-muted ms-auto">
-                                                    {directReplies} réponse{directReplies !== 1 ? "s" : ""}
+                                                    {t("post.repliesCount", { count: directReplies })}
                                                 </small>
 
                                                 {canEdit && (
@@ -348,10 +365,10 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                             className="btn btn-outline-secondary"
                                                             onClick={() => onStartEdit(p.id, bodyHtml)}
                                                         >
-                                                            Modifier
+                                                            {t("actions.edit")}
                                                         </button>
                                                         <button className="btn btn-outline-danger" onClick={() => onDeletePost(p.id)}>
-                                                            Supprimer
+                                                            {t("actions.delete")}
                                                         </button>
                                                     </div>
                                                 )}
@@ -407,21 +424,21 @@ const PostCard: React.FC<PostCardProps> = memo(
                                             <PostEditor
                                                 initialHTML={editText[p.id] ?? bodyHtml}
                                                 onChange={(v) => setEditText((t) => ({ ...t, [p.id]: v }))}
-                                                ariaLabel="Modifier le message"
+                                                ariaLabel={t("actions.edit")}
                                                 giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
                                                 giphyLang="fr"
                                                 giphyRating="g"
                                             />
                                             <div className="d-flex gap-2 justify-content-end mt-2">
                                                 <button className="btn btn-secondary btn-sm" onClick={() => onCancelEdit(p.id)} disabled={saving[p.id]}>
-                                                    Annuler
+                                                    {t("threadHeader.cancel")}
                                                 </button>
                                                 <button
                                                     className="btn btn-primary btn-sm"
                                                     onClick={() => onSaveEdit(p.id)}
                                                     disabled={saving[p.id] || !(editText[p.id] || "").trim()}
                                                 >
-                                                    {saving[p.id] ? "Sauvegarde…" : "Enregistrer"}
+                                                    {saving[p.id] ? t("saving") : t("threadHeader.save")}
                                                 </button>
                                             </div>
                                         </div>
@@ -445,6 +462,7 @@ const ForumThreadView: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
     const { user } = useAuth();
+    const { t } = useTranslation("pages/Forum/forumThreadView");
 
     const [thread, setThread] = useState<ForumThreadDto | null>(null);
     const [posts, setPosts] = useState<PagedResult<ForumPostTreeDto> | null>(null);
@@ -473,20 +491,20 @@ const ForumThreadView: React.FC = () => {
         try {
             setLoading(true);
             setErr(null);
-            const t = await fetchJSON<ForumThreadDto>(`/api/forum/threads/${threadId}`);
-            setThread(t);
-            setTitleDraft(t.title || "");
+            const tData = await fetchJSON<ForumThreadDto>(`/api/forum/threads/${threadId}`);
+            setThread(tData);
+            setTitleDraft(tData.title || "");
             const p = await fetchJSON<PagedResult<ForumPostTreeDto>>(
                 `/api/forum/threads/${threadId}/posts?page=${page}&pageSize=20`
             );
             setPosts(p);
         } catch (e: any) {
-            setErr("Impossible de charger le fil.");
+            setErr(t("alerts.loadError"));
             console.error(e);
         } finally {
             setLoading(false);
         }
-    }, [threadId, page]);
+    }, [threadId, page, t]);
 
     useEffect(() => {
         load();
@@ -557,7 +575,7 @@ const ForumThreadView: React.FC = () => {
                 await load();
             } catch (e) {
                 console.error(e);
-                alert("Échec de l’envoi.");
+                alert(t("alerts.sendFailed"));
             } finally {
                 setSending((s) => {
                     const n = { ...s };
@@ -566,7 +584,7 @@ const ForumThreadView: React.FC = () => {
                 });
             }
         },
-        [replyText, threadId, load]
+        [replyText, threadId, load, t]
     );
 
     /** Thread-level voting (active only in "thread" mode). */
@@ -579,7 +597,7 @@ const ForumThreadView: React.FC = () => {
             const delta = next - prevVote;
 
             // optimistic
-            setThread((t) => (t ? ({ ...(t as any), score: prevScore + delta, myVote: next } as any) : t));
+            setThread((tState) => (tState ? ({ ...(tState as any), score: prevScore + delta, myVote: next } as any) : tState));
             setVoting(true);
             try {
                 const res = await fetchJSON<{ score: number; myVote: number }>(`/api/forum/threads/${threadId}/vote`, {
@@ -587,16 +605,18 @@ const ForumThreadView: React.FC = () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ value: next }),
                 });
-                setThread((t) => (t ? ({ ...(t as any), score: res.score ?? 0, myVote: res.myVote ?? 0 } as any) : t));
+                setThread((tState) =>
+                    tState ? ({ ...(tState as any), score: res.score ?? 0, myVote: res.myVote ?? 0 } as any) : tState
+                );
             } catch (e) {
                 console.error(e);
-                setThread((t) => (t ? ({ ...(t as any), score: prevScore, myVote: prevVote } as any) : t));
-                alert("Échec du vote.");
+                setThread((tState) => (tState ? ({ ...(tState as any), score: prevScore, myVote: prevVote } as any) : tState));
+                alert(t("alerts.voteFailed"));
             } finally {
                 setVoting(false);
             }
         },
-        [voteMode, thread, canVote, voting, threadId]
+        [voteMode, thread, canVote, voting, threadId, t]
     );
 
     /** Per-post voting. In "thread" mode, OP is not votable (header owns the vote). */
@@ -638,16 +658,16 @@ const ForumThreadView: React.FC = () => {
                 setPosts((p) =>
                     p ? { ...p, items: updateNodeInTree(p.items, postId, { score: prevScore, myVote: prevVote } as any) } : p
                 );
-                alert("Échec du vote.");
+                alert(t("alerts.voteFailed"));
             }
         },
-        [posts, canVote, opOnPage, voteMode]
+        [posts, canVote, opOnPage, voteMode, t]
     );
 
     // post edit/delete
     const onStartEdit = useCallback((postId: number, currentHtml: string) => {
         setEditing((e) => ({ ...e, [postId]: true }));
-        setEditText((t) => ({ ...t, [postId]: currentHtml }));
+        setEditText((tState) => ({ ...tState, [postId]: currentHtml }));
     }, []);
 
     const onCancelEdit = useCallback((postId: number) => {
@@ -656,8 +676,8 @@ const ForumThreadView: React.FC = () => {
             delete n[postId];
             return n;
         });
-        setEditText((t) => {
-            const n = { ...t };
+        setEditText((tState) => {
+            const n = { ...tState };
             delete n[postId];
             return n;
         });
@@ -678,7 +698,7 @@ const ForumThreadView: React.FC = () => {
                 onCancelEdit(postId);
             } catch (e) {
                 console.error(e);
-                alert("Échec de la sauvegarde.");
+                alert(t("alerts.saveFailed"));
             } finally {
                 setSaving((s) => {
                     const n = { ...s };
@@ -687,66 +707,66 @@ const ForumThreadView: React.FC = () => {
                 });
             }
         },
-        [editText, load, onCancelEdit]
+        [editText, load, onCancelEdit, t]
     );
 
     const onDeletePost = useCallback(
         async (postId: number) => {
-            if (!confirm("Supprimer ce message ?")) return;
+            if (!confirm(t("confirm.deletePost"))) return;
             try {
                 await fetchJSON(`/api/forum/posts/${postId}`, { method: "DELETE" });
                 await load();
             } catch (e) {
                 console.error(e);
-                alert("Échec de la suppression.");
+                alert(t("alerts.deleteFailed"));
             }
         },
-        [load]
+        [load, t]
     );
 
     // thread title edit
     const saveTitle = useCallback(async () => {
         if (!thread) return;
-        const t = titleDraft.trim();
-        if (!t) return;
+        const titleVal = titleDraft.trim();
+        if (!titleVal) return;
         try {
             await fetchJSON(`/api/forum/threads/${thread.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: t }),
+                body: JSON.stringify({ title: titleVal }),
             });
             setTitleEditing(false);
             await load();
         } catch (e) {
             console.error(e);
-            alert("Échec de la mise à jour du titre.");
+            alert(t("alerts.titleUpdateFailed"));
         }
-    }, [thread, titleDraft, load]);
+    }, [thread, titleDraft, load, t]);
 
     /** Controls displayed under the OP (or first when OP not on page). */
     const Controls = (
         <div className="my-3 d-flex flex-wrap gap-2 align-items-center">
             <div className="input-group input-group-sm" style={{ width: 240 }}>
-                <span className="input-group-text">Ordre</span>
+                <span className="input-group-text">{t("controls.order.label")}</span>
                 <select
                     className="form-select"
                     value={order}
                     onChange={(e) => setOrder(e.target.value as Order)}
-                    aria-label="Trier les commentaires"
+                    aria-label={t("controls.order.aria")}
                 >
-                    <option value="recent">Plus récents</option>
-                    <option value="old">Plus anciens</option>
+                    <option value="recent">{t("controls.order.recent")}</option>
+                    <option value="old">{t("controls.order.old")}</option>
                 </select>
             </div>
 
-            <div className="btn-group btn-group-sm" role="group" aria-label="Plier/Déplier réponses">
+            <div className="btn-group btn-group-sm" role="group" aria-label="collapse/expand replies">
                 <button className="btn btn-outline-secondary" onClick={collapseAllReplies}>
                     <i className="bi bi-chevron-up me-1" />
-                    Replier les réponses
+                    {t("controls.collapseReplies")}
                 </button>
                 <button className="btn btn-outline-secondary" onClick={expandAllReplies}>
                     <i className="bi bi-chevron-down me-1" />
-                    Déplier les réponses
+                    {t("controls.expandReplies")}
                 </button>
             </div>
         </div>
@@ -772,21 +792,21 @@ const ForumThreadView: React.FC = () => {
 
                             <div>
                                 <div className="mb-1">
-                                    {thread?.isPinned && <span className="badge bg-warning text-dark me-2">Épinglé</span>}
-                                    {thread?.isLocked && <span className="badge bg-secondary me-2">Verrouillé</span>}
+                                    {thread?.isPinned && <span className="badge bg-warning text-dark me-2">{t("threadHeader.pinned")}</span>}
+                                    {thread?.isLocked && <span className="badge bg-secondary me-2">{t("threadHeader.locked")}</span>}
                                 </div>
 
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
                                     {!titleEditing ? (
                                         <>
-                                            <h1 className="h4 mb-1 mb-0">{thread?.title ?? "Fil"}</h1>
+                                            <h1 className="h4 mb-1 mb-0">{thread?.title ?? t("threadHeader.defaultTitle")}</h1>
                                             {thread?.canEditTitle && (
                                                 <button
                                                     className="btn btn-sm btn-outline-secondary"
                                                     onClick={() => setTitleEditing(true)}
-                                                    title="Modifier le titre"
+                                                    title={t("threadHeader.editTitle")}
                                                 >
-                                                    Modifier
+                                                    {t("threadHeader.edit")}
                                                 </button>
                                             )}
                                         </>
@@ -805,10 +825,10 @@ const ForumThreadView: React.FC = () => {
                                                     setTitleDraft(thread?.title ?? "");
                                                 }}
                                             >
-                                                Annuler
+                                                {t("threadHeader.cancel")}
                                             </button>
                                             <button className="btn btn-sm btn-primary" onClick={saveTitle} disabled={!titleDraft.trim()}>
-                                                Enregistrer
+                                                {t("threadHeader.save")}
                                             </button>
                                         </>
                                     )}
@@ -816,8 +836,7 @@ const ForumThreadView: React.FC = () => {
 
                                 {thread && (
                                     <div className="text-muted small">
-                                        Par {thread.createdBy} • {fmt(thread.createdUtc)} • {thread.postCount} commentaire
-                                        {thread.postCount !== 1 ? "s" : ""}
+                                        {t("threadHeader.by", { name: thread.createdBy })} • {fmt(thread.createdUtc)} • {t("commentsCount", { count: thread.postCount })}
                                     </div>
                                 )}
                             </div>
@@ -826,7 +845,7 @@ const ForumThreadView: React.FC = () => {
                         <div className="ms-auto d-flex align-items-center gap-3">
                             <Link to={`/forum/c/${thread?.categoryId ?? ""}`} className="btn btn-outline-secondary btn-sm">
                                 <i className="bi bi-arrow-left me-2" />
-                                Retour à la catégorie
+                                {t("threadHeader.back")}
                             </Link>
                         </div>
                     </div>
@@ -853,7 +872,7 @@ const ForumThreadView: React.FC = () => {
                     ))}
                 </div>
             ) : !posts || !posts.items.length ? (
-                <div className="alert alert-info">Aucun message.</div>
+                <div className="alert alert-info">{t("noPosts")}</div>
             ) : (
                 <>
                     {/* Comments tree */}

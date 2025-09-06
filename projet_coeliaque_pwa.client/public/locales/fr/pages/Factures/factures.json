@@ -1,0 +1,48 @@
+﻿{
+  "loading": "Chargement…",
+  "headings": {
+    "title": "Mes Factures"
+  },
+  "buttons": {
+    "new": "Nouvelle Facture",
+    "save": "Enregistrer",
+    "create": "Créer",
+    "cancel": "Annuler"
+  },
+  "form": {
+    "labels": {
+      "year": "Année",
+      "invoiceId": "Facture ID",
+      "date": "Date",
+      "store": "Magasin"
+    }
+  },
+  "empty": {
+    "noneFound": "Aucune facture trouvée."
+  },
+  "list": {
+    "viewBtn": "Voir",
+    "deleteBtn": "Supprimer",
+    "viewAria": "Voir la facture",
+    "deleteAria": "Supprimer la facture",
+    "viewTitle": "Voir la facture",
+    "deleteTitle": "Supprimer la facture",
+    "idLabel": "ID :",
+    "dateLabel": "Date :",
+    "storeLabel": "Magasin :"
+  },
+  "confirm": {
+    "delete": "Supprimer cette facture?"
+  },
+  "alerts": {
+    "offlineEditSaved": "Modification enregistrée hors ligne. Elle sera synchronisée dès que possible.",
+    "offlineCreateSaved": "Création enregistrée hors ligne. Elle sera synchronisée à la reconnexion.",
+    "offlineDeleteQueued": "Suppression mise en file d’attente (hors ligne)."
+  },
+  "errors": {
+    "unexpectedMissingId": "Réponse inattendue : id manquant.",
+    "saveFailed": "Erreur lors de l’enregistrement.",
+    "deleteFailed": "Erreur lors de la suppression."
+  },
+  "pending": "(en attente…)"
+}

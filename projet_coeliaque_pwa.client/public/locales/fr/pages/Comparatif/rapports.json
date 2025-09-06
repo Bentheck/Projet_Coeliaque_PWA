@@ -1,0 +1,23 @@
+﻿{
+  "title": "Rapports Comparatifs Disponibles",
+  "loading": "Chargement…",
+  "empty": "Aucun rapport disponible.",
+  "item": {
+    "year": "Année {{year}}"
+  },
+  "buttons": {
+    "view": "Voir",
+    "regen": {
+      "title": "Régénérer le rapport pour cette année",
+      "label": "Régénérer",
+      "loading": "Régénération…"
+    },
+    "generate": {
+      "label": "Générer",
+      "loading": "Génération…"
+    }
+  },
+  "status": {
+    "ok": "OK"
+  }
+}

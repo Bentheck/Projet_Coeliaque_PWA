@@ -1,0 +1,36 @@
+﻿{
+  "ariaLabel": "Message editor",
+  "placeholder": "Write your message…",
+  "toolbar": {
+    "imageTitle": "Image",
+    "gifTitle": "GIF",
+    "formattingTitle": "Formatting tools",
+    "ul": "• List",
+    "ol": "1. List",
+    "removeList": "⨯ List",
+    "link": "Link",
+    "linkPrompt": "Link URL (leave empty to remove):",
+    "imageInsertTitle": "Insert an image",
+    "gifInsertTitle": "Insert a GIF",
+    "image": "Image",
+    "gif": "GIF",
+    "hide": "Hide",
+    "collapseTitle": "Collapse"
+  },
+  "errors": {
+    "loadGifs": "Unable to load GIFs.",
+    "selectImage": "Please select an image.",
+    "imageTooLarge": "Image too large (max {{max}} MB).",
+    "addImageFailed": "Couldn't add image."
+  },
+  "giphy": {
+    "searchPlaceholder": "Search a GIF (GIPHY)…",
+    "search": "Search",
+    "close": "Close",
+    "loading": "Loading…",
+    "empty": "No results.",
+    "loadMore": "Load more",
+    "byline": "GIFs by GIPHY"
+  },
+  "gifAlt": "gif"
+}

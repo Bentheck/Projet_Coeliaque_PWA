@@ -2,6 +2,7 @@
 import React from "react";
 import { getOfflineStatus, markLastOnlineNow, type OfflineStatus } from "../swOfflineStatus";
 import { useAuth } from "../components/AuthContext";
+import { useTranslation } from "react-i18next";
 
 /** Track online/offline */
 function useOnlineStatus() {
@@ -35,6 +36,7 @@ const bigDigits: React.CSSProperties = {
 };
 
 const Home: React.FC = () => {
+    const { t } = useTranslation("pages/home");
     const isOnline = useOnlineStatus();
     const { user } = useAuth();
 
@@ -99,11 +101,17 @@ const Home: React.FC = () => {
         ss = String(s).padStart(2, "0");
     }
 
+    // TTL hours shown in footer (fallback to 24h if status unknown)
+    const ttlHours =
+        status && (status as any).ok === true
+            ? Math.round(((status as any).ttlMs) / 3600000)
+            : 24;
+
     return (
         <div className="container mt-5">
             <div className="text-center mb-4">
-                <h1 className="display-5">Bienvenue</h1>
-                <p className="text-muted mb-0">Bienvenue sur Site Coeliaque PWA/SPA !</p>
+                <h1 className="display-5">{t("welcome.title")}</h1>
+                <p className="text-muted mb-0">{t("welcome.subtitle")}</p>
             </div>
 
             {showCountdown && (
@@ -113,11 +121,11 @@ const Home: React.FC = () => {
                             <div className="card-header d-flex align-items-center justify-content-between">
                                 <span className="d-inline-flex align-items-center gap-2">
                                     <i className="bi bi-hdd-network" aria-hidden="true" />
-                                    <span>Disponibilité hors ligne</span>
+                                    <span>{t("offline.card.title")}</span>
                                 </span>
                                 <span className="badge bg-secondary d-inline-flex align-items-center gap-1">
                                     <i className="bi bi-wifi-off" aria-hidden="true" />
-                                    Hors ligne
+                                    {t("offline.badge")}
                                 </span>
                             </div>
 
@@ -132,21 +140,15 @@ const Home: React.FC = () => {
                                 </div>
                                 <div className="text-muted mt-2">
                                     {deadlineMs && deadlineMs > now
-                                        ? "Disponible hors ligne"
-                                        : "Hors ligne expiré — veuillez vous reconnecter"}
+                                        ? t("offline.status.available")
+                                        : t("offline.status.expired")}
                                 </div>
                             </div>
 
                             <div className="card-footer text-muted small d-flex justify-content-between">
-                                <span>
-                                    Fenêtre TTL&nbsp;:{" "}
-                                    {status && (status as any).ok === true
-                                        ? (((status as any).ttlMs) / 3600000).toFixed(0)
-                                        : "24"}{" "}
-                                    h
-                                </span>
+                                <span>{t("offline.footer.ttl", { hours: ttlHours })}</span>
                                 {status && (status as any).ok === true ? (
-                                    <span>Données en cache: {(status as any).entries}</span>
+                                    <span>{t("offline.footer.cached", { count: (status as any).entries })}</span>
                                 ) : (
                                     <span>&nbsp;</span>
                                 )}

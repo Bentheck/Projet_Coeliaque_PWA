@@ -58,28 +58,30 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterRequest req)
         {
             if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
-                return BadRequest(new { error = "Email et mot de passe sont requis." });
+                return BadRequest(new { errorCode = ErrorCodes.MissingEmailOrPassword });
 
             var user = new IdentityUser { UserName = req.Email, Email = req.Email };
             var result = await _userManager.CreateAsync(user, req.Password);
 
             if (!result.Succeeded)
-                return BadRequest(new { errors = result.Errors.Select(e => e.Description).ToArray() });
+                return BadRequest(new
+                {
+                    errorCode = ErrorCodes.IdentityValidationFailed,
+                    identityErrors = result.Errors.Select(e => e.Code).ToArray()
+                });
 
-            // Build confirmation link back to API, which will redirect to frontend.
+            // (Email body/subject can stay in FR if you want; UI strings won't depend on them)
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var encodedToken = HttpUtility.UrlEncode(token);
             var confirmationUrl =
                 $"{Request.Scheme}://{Request.Host}/api/account/confirm-email?userId={user.Id}&token={encodedToken}";
 
             await _emailSender.SendEmailAsync(
-                user.Email!,
-                "Confirmez votre compte",
+                user.Email!, "Confirmez votre compte",
                 $"Merci de vous être inscrit !<br/>" +
                 $"Pour activer votre compte, cliquez : <a href=\"{confirmationUrl}\">Confirmer l’email</a>");
 
-            // We do not sign-in until the email is confirmed.
-            return Ok(new { message = "Inscription réussie. Veuillez confirmer votre adresse email." });
+            return Ok(new { ok = true });
         }
 
         /// <summary>Confirm a user's email and redirect them back to the frontend.</summary>
@@ -107,10 +109,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var user = await _userManager.FindByEmailAsync(req.Email);
             if (user == null)
-                return NotFound(new { error = "Utilisateur introuvable." });
+                return NotFound(new { errorCode = ErrorCodes.UserNotFound });
 
             if (await _userManager.IsEmailConfirmedAsync(user))
-                return BadRequest(new { error = "Adresse email déjà confirmée." });
+                return BadRequest(new { errorCode = ErrorCodes.EmailAlreadyConfirmed });
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var encodedToken = HttpUtility.UrlEncode(token);
@@ -118,11 +120,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 $"{Request.Scheme}://{Request.Host}/api/account/confirm-email?userId={user.Id}&token={encodedToken}";
 
             await _emailSender.SendEmailAsync(
-                user.Email!,
-                "Confirmez votre compte",
+                user.Email!, "Confirmez votre compte",
                 $"Pour activer votre compte, cliquez : <a href=\"{confirmationUrl}\">Confirmer l’email</a>");
 
-            return Ok(new { message = "Un nouveau lien de confirmation a été envoyé." });
+            return Ok(new { ok = true });
         }
 
         /// <summary>Sign in with email/password (only if email confirmed).</summary>
@@ -133,18 +134,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var user = await _userManager.FindByEmailAsync(req.Email);
             if (user == null)
-                return Unauthorized(new { error = "Utilisateur introuvable." });
+                return Unauthorized(new { errorCode = ErrorCodes.UserNotFound });
 
             if (!await _userManager.IsEmailConfirmedAsync(user))
-                return Unauthorized(new { error = "EmailNotConfirmed" });
+                return Unauthorized(new { errorCode = ErrorCodes.EmailNotConfirmed });
 
             var result = await _signInManager.PasswordSignInAsync(
                 user.UserName!, req.Password, isPersistent: false, lockoutOnFailure: false);
 
             if (result.Succeeded)
-                return Ok(new { message = "Connexion réussie." });
+                return Ok(new { ok = true });
 
-            return Unauthorized(new { error = "Mot de passe incorrect." });
+            return Unauthorized(new { errorCode = ErrorCodes.InvalidCredentials });
         }
 
         /// <summary>Sign out the current user.</summary>
@@ -154,7 +155,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
-            return Ok(new { message = "Déconnexion réussie." });
+            return Ok(new { ok = true });
         }
 
         /// <summary>Returns the current auth/user profile snapshot (used by the navbar / AuthContext).</summary>
@@ -261,5 +262,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             return $"{scheme}://{host}{pathBase}/{normalized}";
         }
+    }
+
+    public static class ErrorCodes
+    {
+        public const string MissingEmailOrPassword = "MissingEmailOrPassword";
+        public const string UserNotFound = "UserNotFound";
+        public const string EmailNotConfirmed = "EmailNotConfirmed";
+        public const string EmailAlreadyConfirmed = "EmailAlreadyConfirmed";
+        public const string InvalidCredentials = "InvalidCredentials";
+        public const string IdentityValidationFailed = "IdentityValidationFailed";
     }
 }

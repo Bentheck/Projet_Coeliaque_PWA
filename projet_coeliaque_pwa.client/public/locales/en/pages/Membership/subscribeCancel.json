@@ -1,0 +1,6 @@
+﻿{
+  "subscribeCancel": {
+    "title": "Payment canceled",
+    "message": "Your payment has been canceled. You can try again anytime."
+  }
+}

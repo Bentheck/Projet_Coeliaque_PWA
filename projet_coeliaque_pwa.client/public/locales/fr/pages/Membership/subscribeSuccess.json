@@ -1,0 +1,8 @@
+﻿{
+  "subscribeSuccess": {
+    "loading": "Chargement…",
+    "title": "Paiement réussi !",
+    "thankYou": "Merci pour votre abonnement.",
+    "sessionIdLabel": "ID de la transaction :"
+  }
+}

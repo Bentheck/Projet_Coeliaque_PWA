@@ -1,0 +1,7 @@
+﻿{
+  "header": "Offline — Connection required",
+  "body": {
+    "line1": "You are <strong>offline</strong> and not logged in.",
+    "line2": "To use the app offline, you must <strong>log in</strong> at least once while you are online."
+  }
+}

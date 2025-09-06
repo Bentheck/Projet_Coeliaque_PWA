@@ -1,0 +1,64 @@
+﻿{
+  "replyBox": {
+    "ariaLabel": "Write your reply",
+    "clear": "Clear",
+    "publish": "Publish",
+    "sending": "Publishing…"
+  },
+  "vote": {
+    "like": "Like",
+    "dislike": "Dislike"
+  },
+  "buttons": {
+    "expand": "Expand",
+    "collapse": "Collapse"
+  },
+  "post": {
+    "editedByOn": "Edited by {{by}} on {{date}}",
+    "editedBy": "Edited by {{by}}",
+    "editedOn": "Edited on {{date}}",
+    "reply": "Reply",
+    "repliesCount_one": "{{count}} reply",
+    "repliesCount_other": "{{count}} replies"
+  },
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "saving": "Saving…",
+  "alerts": {
+    "loadError": "Failed to load the thread.",
+    "sendFailed": "Failed to send your reply.",
+    "voteFailed": "Voting failed.",
+    "saveFailed": "Failed to save the post.",
+    "deleteFailed": "Failed to delete the post.",
+    "titleUpdateFailed": "Failed to update the title."
+  },
+  "confirm": {
+    "deletePost": "Delete this post?"
+  },
+  "controls": {
+    "order": {
+      "label": "Order",
+      "aria": "Select comments order",
+      "recent": "Most recent first",
+      "old": "Oldest first"
+    },
+    "collapseReplies": "Collapse replies",
+    "expandReplies": "Expand replies"
+  },
+  "threadHeader": {
+    "pinned": "Pinned",
+    "locked": "Locked",
+    "defaultTitle": "Untitled thread",
+    "editTitle": "Edit title",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "by": "By {{name}}",
+    "back": "Back to category"
+  },
+  "commentsCount_one": "{{count}} comment",
+  "commentsCount_other": "{{count}} comments",
+  "noPosts": "No posts yet."
+}

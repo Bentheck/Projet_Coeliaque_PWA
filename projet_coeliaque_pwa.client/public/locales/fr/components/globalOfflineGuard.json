@@ -1,0 +1,7 @@
+﻿{
+  "header": "Hors ligne — Connexion requise",
+  "body": {
+    "line1": "Vous êtes <strong>hors ligne</strong> et vous n’êtes pas connecté.",
+    "line2": "Pour utiliser l’application hors ligne, vous devez vous <strong>connecter</strong> au moins une fois pendant que vous êtes en ligne."
+  }
+}

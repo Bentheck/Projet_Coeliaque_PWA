@@ -1,5 +1,7 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿// ListesEpicerieIndex.tsx
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 /** Server DTO for list metadata shown on the index */
 interface ListeEpicerieDTO {
@@ -14,6 +16,7 @@ type SortKey = "recent" | "oldest" | "name";
 type StatusFilter = "all" | "active" | "completed";
 
 const ListesEpicerieIndex: React.FC = () => {
+    const { t } = useTranslation("pages/ListeEpicerie/listesEpicerieIndex");
     const [listes, setListes] = useState<ListeEpicerieDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -44,13 +47,12 @@ const ListesEpicerieIndex: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            // ✅ relative URL so SW can intercept; PascalCase kept for server route
             const res = await fetch("/api/ListeEpicerie", { signal, credentials: "include" });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = (await res.json()) as ListeEpicerieDTO[];
             setListes(Array.isArray(data) ? data : []);
         } catch (e: any) {
-            if (e?.name !== "AbortError") setError("Impossible de charger les listes.");
+            if (e?.name !== "AbortError") setError(t("errors.loadLists"));
         } finally {
             setLoading(false);
         }
@@ -60,6 +62,7 @@ const ListesEpicerieIndex: React.FC = () => {
         const ac = new AbortController();
         load(ac.signal);
         return () => ac.abort();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     /** Small counters used for the filter pills */
@@ -127,15 +130,11 @@ const ListesEpicerieIndex: React.FC = () => {
                 body: JSON.stringify({ completed: next }),
             });
 
-            // ✅ offline queued by SW
             if (res.status === 202) {
-                // Optional: toast instead of alert
-                // console.info("Action queued; will sync when online.");
                 return;
             }
 
             if (res.status === 409) {
-                // already in target state or list locked; treat as success or handle separately
                 return;
             }
 
@@ -146,7 +145,7 @@ const ListesEpicerieIndex: React.FC = () => {
         } catch (e) {
             console.error(e);
             setListes(prev => prev.map(x => (x.id === l.id ? { ...x, completed: !next } : x)));
-            alert("Échec de la mise à jour du statut.");
+            alert(t("errors.updateStatus"));
         } finally {
             setPending(p => {
                 const n = { ...p };
@@ -158,12 +157,11 @@ const ListesEpicerieIndex: React.FC = () => {
 
     /** Hard delete with confirm; remove from local state on success (202 queued treated as success) */
     const onDelete = async (l: ListeEpicerieDTO) => {
-        if (!confirm(`Supprimer « ${l.name} » ?`)) return;
+        if (!confirm(t("confirmDelete", { name: l.name }))) return;
         try {
             const res = await fetch(`/api/ListeEpicerie/${l.id}`, { method: "DELETE", credentials: "include" });
 
             if (res.status === 202) {
-                // queued offline — optimistic removal kept
                 setListes(prev => prev.filter(x => x.id !== l.id));
                 return;
             }
@@ -172,15 +170,15 @@ const ListesEpicerieIndex: React.FC = () => {
             setListes(prev => prev.filter(x => x.id !== l.id));
         } catch (e) {
             console.error(e);
-            alert("Suppression impossible.");
+            alert(t("errors.deleteFailed"));
         }
     };
 
     return (
         <div className="container py-3">
             <div className="text-center mb-3">
-                <h1 className="h3 mb-1">Mes listes d&apos;épicerie</h1>
-                <div className="text-muted small">Gérez, triez et retrouvez vos listes. Les plus récentes d’abord.</div>
+                <h1 className="h3 mb-1">{t("title")}</h1>
+                <div className="text-muted small">{t("subtitle")}</div>
             </div>
 
             {/* Controls */}
@@ -193,19 +191,19 @@ const ListesEpicerieIndex: React.FC = () => {
                                 <input
                                     type="search"
                                     className="form-control"
-                                    placeholder="Rechercher une liste…"
-                                    aria-label="Rechercher"
+                                    placeholder={t("search.placeholder")}
+                                    aria-label={t("search.aria")}
                                     aria-describedby="search-addon"
                                     value={q}
                                     onChange={(e) => setQ(e.target.value)}
                                 />
                                 {q && (
-                                    <button className="btn btn-outline-secondary" onClick={() => setQ("")} title="Effacer">
-                                        Effacer
+                                    <button className="btn btn-outline-secondary" onClick={() => setQ("")} title={t("common.clear")}>
+                                        {t("common.clear")}
                                     </button>
                                 )}
                                 <button className="btn btn-outline-secondary" onClick={() => load()}>
-                                    Actualiser
+                                    {t("common.refresh")}
                                 </button>
                             </div>
                         </div>
@@ -219,7 +217,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                         className={`nav-link ${status === "active" ? "active" : ""}`}
                                         onClick={() => applyStatus("active")}
                                     >
-                                        Actives <span className="badge text-bg-light ms-1">{counts.active}</span>
+                                        {t("filters.active")} <span className="badge text-bg-light ms-1">{counts.active}</span>
                                     </button>
                                 </li>
                                 <li className="nav-item">
@@ -227,7 +225,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                         className={`nav-link ${status === "completed" ? "active" : ""}`}
                                         onClick={() => applyStatus("completed")}
                                     >
-                                        Complétées <span className="badge text-bg-light ms-1">{counts.completed}</span>
+                                        {t("filters.completed")} <span className="badge text-bg-light ms-1">{counts.completed}</span>
                                     </button>
                                 </li>
                                 <li className="nav-item">
@@ -235,7 +233,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                         className={`nav-link ${status === "all" ? "active" : ""}`}
                                         onClick={() => applyStatus("all")}
                                     >
-                                        Toutes <span className="badge text-bg-light ms-1">{counts.total}</span>
+                                        {t("filters.all")} <span className="badge text-bg-light ms-1">{counts.total}</span>
                                     </button>
                                 </li>
                             </ul>
@@ -246,17 +244,17 @@ const ListesEpicerieIndex: React.FC = () => {
                                 className="form-select form-select-sm"
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as SortKey)}
-                                aria-label="Trier"
+                                aria-label={t("sort.aria")}
                             >
-                                <option value="recent">Plus récentes</option>
-                                <option value="oldest">Plus anciennes</option>
-                                <option value="name">Nom (A→Z)</option>
+                                <option value="recent">{t("sort.recent")}</option>
+                                <option value="oldest">{t("sort.oldest")}</option>
+                                <option value="name">{t("sort.name")}</option>
                             </select>
                         </div>
 
                         <div className="col-auto">
                             <Link to="/liste-epicerie/edit" className="btn btn-primary">
-                                Nouvelle liste
+                                {t("newList")}
                             </Link>
                         </div>
                     </div>
@@ -267,7 +265,7 @@ const ListesEpicerieIndex: React.FC = () => {
             {error && (
                 <div className="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
                     <span className="me-2">{error}</span>
-                    <button className="btn btn-sm btn-outline-light" onClick={() => load()}>Réessayer</button>
+                    <button className="btn btn-sm btn-outline-light" onClick={() => load()}>{t("common.retry")}</button>
                 </div>
             )}
 
@@ -295,9 +293,9 @@ const ListesEpicerieIndex: React.FC = () => {
             ) : filtered.length === 0 ? (
                 <div className="border rounded-3 p-5 text-center bg-light">
                     <div className="display-6 mb-2">🛒</div>
-                    <h2 className="h5">Aucune liste trouvée</h2>
-                    <p className="text-muted mb-3">Créez une nouvelle liste ou ajustez votre recherche / filtres.</p>
-                    <Link to="/liste-epicerie/edit" className="btn btn-primary">Créer une liste</Link>
+                    <h2 className="h5">{t("empty.title")}</h2>
+                    <p className="text-muted mb-3">{t("empty.subtitle")}</p>
+                    <Link to="/liste-epicerie/edit" className="btn btn-primary">{t("empty.create")}</Link>
                 </div>
             ) : (
                 <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
@@ -313,7 +311,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                         <div className="d-flex align-items-start justify-content-between">
                                             <h5 className="card-title text-truncate mb-0" title={l.name}>{l.name}</h5>
                                             <span className={`badge ms-2 ${isCompleted ? "bg-success" : "bg-secondary"}`}>
-                                                {isCompleted ? "Complétée" : "Active"}
+                                                {isCompleted ? t("status.completed") : t("status.active")}
                                             </span>
                                         </div>
 
@@ -328,38 +326,38 @@ const ListesEpicerieIndex: React.FC = () => {
                                                 onChange={(e) => toggleCompleted(l, e.target.checked)}
                                             />
                                             <label className="form-check-label" htmlFor={`complete-${l.id}`}>
-                                                Marquer comme complétée
+                                                {t("markComplete")}
                                             </label>
                                             {saving && <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>}
                                         </div>
 
                                         <div className="mb-2 d-flex justify-content-between flex-wrap gap-2">
                                             <span className="badge text-bg-secondary">
-                                                {count} article{count !== 1 ? "s" : ""}
+                                                {t("items", { count })}
                                             </span>
-                                            <small className="text-muted">Créée le {formatDate(l.created)}</small>
+                                            <small className="text-muted">{t("createdOn", { date: formatDate(l.created) })}</small>
                                         </div>
 
                                         {/* Actions */}
                                         <div className="mt-auto d-flex align-items-center gap-2">
-                                            <Link to={`/liste-epicerie/view/${l.id}`} className="btn btn-outline-secondary w-100">Voir</Link>
+                                            <Link to={`/liste-epicerie/view/${l.id}`} className="btn btn-outline-secondary w-100">{t("common.view")}</Link>
                                             <Link
                                                 to={isCompleted ? "#" : `/liste-epicerie/edit/${l.id}`}
                                                 onClick={(e) => { if (isCompleted) e.preventDefault(); }}
                                                 className={`btn btn-primary w-100 ${isCompleted ? "disabled" : ""}`}
-                                                title={isCompleted ? "Liste complétée : modif. désactivée" : "Éditer"}
+                                                title={isCompleted ? t("editDisabledTitle") : t("common.edit")}
                                                 aria-disabled={isCompleted}
                                             >
-                                                Éditer
+                                                {t("common.edit")}
                                             </Link>
                                             <button
                                                 type="button"
                                                 className="btn btn-outline-danger btn-sm"
-                                                title="Supprimer la liste"
-                                                aria-label={`Supprimer ${l.name}`}
+                                                title={t("deleteTitle")}
+                                                aria-label={t("deleteAria", { name: l.name })}
                                                 onClick={() => onDelete(l)}
                                             >
-                                                Suppr.
+                                                {t("common.deleteShort")}
                                             </button>
                                         </div>
                                     </div>
@@ -371,7 +369,7 @@ const ListesEpicerieIndex: React.FC = () => {
             )}
 
             <div className="text-center text-muted small mt-4">
-                {counts.total} liste{counts.total !== 1 ? "s" : ""} • {counts.active} active{counts.active !== 1 ? "s" : ""} • {counts.completed} complétée{counts.completed !== 1 ? "s" : ""}
+                {t("footer.total", { count: counts.total })} • {t("footer.active", { count: counts.active })} • {t("footer.completed", { count: counts.completed })}
             </div>
         </div>
     );

@@ -1,10 +1,16 @@
-﻿import React from 'react';
+﻿// SubscribeCancel.tsx
+import React from "react";
+import { useTranslation } from "react-i18next";
 
-const SubscribeCancel: React.FC = () => (
-    <div style={{ padding: 32 }}>
-        <h1>Paiement annulé</h1>
-        <p>Votre paiement a été annulé. Vous pouvez réessayer à tout moment.</p>
-    </div>
-);
+const SubscribeCancel: React.FC = () => {
+    const { t } = useTranslation("pages/Membership/subscribeCancel");
+
+    return (
+        <div className="container py-4">
+            <h1>{t("title")}</h1>
+            <p>{t("message")}</p>
+        </div>
+    );
+};
 
 export default SubscribeCancel;

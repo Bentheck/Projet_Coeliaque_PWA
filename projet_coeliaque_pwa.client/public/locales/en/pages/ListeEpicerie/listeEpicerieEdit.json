@@ -1,0 +1,92 @@
+﻿{
+  "header": {
+    "back": "Back",
+    "namePlaceholder": "List name",
+    "save": "Save"
+  },
+  "totals": {
+    "estimated": "Estimated total:"
+  },
+  "addButtons": {
+    "fromInvoices": "Add from invoices",
+    "fromFree": "Add from free products"
+  },
+  "modals": {
+    "facture": {
+      "title": "Invoice items",
+      "typeLabel": "Product type",
+      "noType": "No type available",
+      "emptyForType": "No items for this type.",
+      "noneWithFilter": "No items with the current filter.",
+      "allAlreadyInList": "All items of this type are already in the list."
+    },
+    "free": {
+      "title": "Free products",
+      "createTitle": "Quick create",
+      "typeLabel": "Free product type",
+      "selectType": "Select a type…",
+      "pickTypeHint": "Pick a type to view products.",
+      "emptyType": "No products for this type."
+    },
+    "editFree": {
+      "title": "Edit free product"
+    }
+  },
+  "fields": {
+    "productName": "Product name",
+    "type": "Type",
+    "store": "Store",
+    "quantity": "Quantity",
+    "price": "Price (CAD)",
+    "weight": "Weight",
+    "unit": "Unit",
+    "defaultQty": "Default qty",
+    "defaultPrice": "Default price (CAD)",
+    "favorite": "Favorite"
+  },
+  "placeholders": {
+    "exampleProduct": "e.g. Yogurt 2% 750 g",
+    "exampleType": "Dairy",
+    "exampleStore": "Metro"
+  },
+  "table": {
+    "product": "Product",
+    "type": "Type",
+    "store": "Store",
+    "date": "Date",
+    "price": "Price",
+    "special": "On sale",
+    "action": "Action",
+    "defaultQty": "Default qty",
+    "weight": "Weight",
+    "addedDate": "Added on",
+    "quantity": "Quantity",
+    "defaultPrice": "Default price"
+  },
+  "actions": {
+    "addToList": "Add to list",
+    "create": "Create",
+    "edit": "Edit",
+    "add": "Add",
+    "delete": "Delete"
+  },
+  "sections": {
+    "itemsInList": "Items in this list",
+    "fromInvoices": "From invoices",
+    "noInvoiceItems": "No invoice items yet.",
+    "freeProducts": "Free products",
+    "noFreeProducts": "No free products yet."
+  },
+  "common": {
+    "onSale": "On sale",
+    "no": "No",
+    "hideOnSale": "Hide items on sale",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "confirms": {
+    "deleteUsed": "This product is used in {{count}} item(s) of this list. Delete it anyway? It will also be removed from the list.",
+    "deleteFreeProduct": "Delete this free product?"
+  }
+}

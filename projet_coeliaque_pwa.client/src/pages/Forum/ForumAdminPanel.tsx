@@ -1,11 +1,15 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/pages/ForumAdminPanel.tsx
+import React, { useEffect, useState } from "react";
 import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto } from "../../lib/types";
+import { useTranslation } from "react-i18next";
 
 type CreateCategoryInput = { slug: string; name: string; description?: string | null };
 type UpdateCategoryInput = CreateCategoryInput;
 
 const ForumAdminPanel: React.FC = () => {
+    const { t } = useTranslation("pages/Forum/forumAdminPanel");
+
     // Category data & page state
     const [cats, setCats] = useState<ForumCategoryDto[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,14 +38,15 @@ const ForumAdminPanel: React.FC = () => {
             setCats(data);
         } catch (e) {
             console.error(e);
-            setErr("Impossible de charger les catégories.");
+            setErr(t("errors.loadCategories"));
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        load();
+        void load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     /** Create a new category, then refresh list */
@@ -59,7 +64,7 @@ const ForumAdminPanel: React.FC = () => {
             await load();
         } catch (e) {
             console.error(e);
-            alert("Échec de la création.");
+            alert(t("errors.createFailed"));
         }
     };
 
@@ -77,7 +82,7 @@ const ForumAdminPanel: React.FC = () => {
             await load();
         } catch (e) {
             console.error(e);
-            alert("Échec de la sauvegarde.");
+            alert(t("errors.saveFailed"));
         }
     };
 
@@ -87,14 +92,14 @@ const ForumAdminPanel: React.FC = () => {
      * - force=true : delete even if threads exist (server-side policy)
      */
     const deleteCat = async (id: number, force: boolean) => {
-        if (!confirm("Supprimer cette catégorie ?")) return;
+        if (!confirm(t("confirm.deleteCategory"))) return;
         try {
             const url = `/api/forum/admin/categories/${id}${force ? "?force=true" : ""}`;
             await fetchJSON(url, { method: "DELETE" });
             await load();
         } catch (e) {
             console.error(e);
-            alert("Échec de la suppression.");
+            alert(t("errors.deleteFailed"));
         }
     };
 
@@ -116,10 +121,10 @@ const ForumAdminPanel: React.FC = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ locked: lock }),
             });
-            alert("Appliqué.");
+            alert(t("alerts.applied"));
         } catch (e) {
             console.error(e);
-            alert("Échec.");
+            alert(t("alerts.failed"));
         }
     };
 
@@ -136,36 +141,36 @@ const ForumAdminPanel: React.FC = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ deleted }),
             });
-            alert("Appliqué.");
+            alert(t("alerts.applied"));
         } catch (e) {
             console.error(e);
-            alert("Échec.");
+            alert(t("alerts.failed"));
         }
     };
 
     return (
         <div className="container py-3">
-            <h1 className="h4 mb-3">Administration du forum</h1>
+            <h1 className="h4 mb-3">{t("titles.admin")}</h1>
             {err && <div className="alert alert-danger">{err}</div>}
 
             {/* Categories table + creation form */}
             <div className="card mb-4">
-                <div className="card-header">Catégories</div>
+                <div className="card-header">{t("sections.categories.title")}</div>
                 <div className="card-body">
                     {loading ? (
-                        <div>Chargement…</div>
+                        <div>{t("loading")}</div>
                     ) : (
                         <>
                             <div className="table-responsive">
                                 <table className="table align-middle">
                                     <thead className="table-light">
                                         <tr>
-                                            <th>ID</th>
-                                            <th>Slug</th>
-                                            <th>Nom</th>
-                                            <th>Description</th>
-                                            <th>Fils</th>
-                                            <th className="text-end">Actions</th>
+                                            <th>{t("table.headers.id")}</th>
+                                            <th>{t("table.headers.slug")}</th>
+                                            <th>{t("table.headers.name")}</th>
+                                            <th>{t("table.headers.description")}</th>
+                                            <th>{t("table.headers.threads")}</th>
+                                            <th className="text-end">{t("table.headers.actions")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -217,14 +222,14 @@ const ForumAdminPanel: React.FC = () => {
                                                         className="btn btn-sm btn-outline-danger"
                                                         onClick={() => deleteCat(c.id, false)}
                                                     >
-                                                        Supprimer
+                                                        {t("buttons.delete")}
                                                     </button>
                                                     <button
                                                         className="btn btn-sm btn-outline-danger ms-2"
                                                         onClick={() => deleteCat(c.id, true)}
-                                                        title="Forcer (avec fils)"
+                                                        title={t("buttons.forceTooltip") as string}
                                                     >
-                                                        Forcer
+                                                        {t("buttons.force")}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -234,28 +239,28 @@ const ForumAdminPanel: React.FC = () => {
                             </div>
 
                             <hr />
-                            <h6>Nouvelle catégorie</h6>
+                            <h6>{t("newCategory.title")}</h6>
                             <div className="row g-2 align-items-end">
                                 <div className="col-md-3">
-                                    <label className="form-label">Slug</label>
+                                    <label className="form-label">{t("newCategory.labels.slug")}</label>
                                     <input
                                         className="form-control"
                                         value={slug}
                                         onChange={(e) => setSlug(e.target.value)}
-                                        placeholder="ex: general"
+                                        placeholder={t("newCategory.placeholders.slug")}
                                     />
                                 </div>
                                 <div className="col-md-3">
-                                    <label className="form-label">Nom</label>
+                                    <label className="form-label">{t("newCategory.labels.name")}</label>
                                     <input
                                         className="form-control"
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        placeholder="ex: Général"
+                                        placeholder={t("newCategory.placeholders.name")}
                                     />
                                 </div>
                                 <div className="col-md-4">
-                                    <label className="form-label">Description</label>
+                                    <label className="form-label">{t("newCategory.labels.description")}</label>
                                     <input
                                         className="form-control"
                                         value={desc}
@@ -268,7 +273,7 @@ const ForumAdminPanel: React.FC = () => {
                                         onClick={createCat}
                                         disabled={!slug.trim() || !name.trim()}
                                     >
-                                        Créer
+                                        {t("buttons.create")}
                                     </button>
                                 </div>
                             </div>
@@ -279,11 +284,11 @@ const ForumAdminPanel: React.FC = () => {
 
             {/* Quick thread tools */}
             <div className="card mb-4">
-                <div className="card-header">Outils rapides (fil)</div>
+                <div className="card-header">{t("sections.quickThread.title")}</div>
                 <div className="card-body">
                     <div className="row g-2 align-items-center">
                         <div className="col-md-2">
-                            <label className="form-label">ID du fil</label>
+                            <label className="form-label">{t("quickThread.labels.threadId")}</label>
                             <input
                                 className="form-control"
                                 value={threadId}
@@ -299,7 +304,7 @@ const ForumAdminPanel: React.FC = () => {
                                 onChange={(e) => setPin(e.target.checked)}
                             />
                             <label htmlFor="pin" className="form-check-label">
-                                Épinglé
+                                {t("quickThread.labels.pinned")}
                             </label>
                         </div>
                         <div className="col-md-2 form-check mt-4">
@@ -311,7 +316,7 @@ const ForumAdminPanel: React.FC = () => {
                                 onChange={(e) => setLock(e.target.checked)}
                             />
                             <label htmlFor="lock" className="form-check-label">
-                                Verrouillé
+                                {t("quickThread.labels.locked")}
                             </label>
                         </div>
                         <div className="col-md-2 mt-4">
@@ -320,7 +325,7 @@ const ForumAdminPanel: React.FC = () => {
                                 onClick={applyThreadFlags}
                                 disabled={!threadId.trim()}
                             >
-                                Appliquer
+                                {t("buttons.apply")}
                             </button>
                         </div>
                     </div>
@@ -329,11 +334,11 @@ const ForumAdminPanel: React.FC = () => {
 
             {/* Post moderation */}
             <div className="card">
-                <div className="card-header">Modération (message)</div>
+                <div className="card-header">{t("sections.moderation.title")}</div>
                 <div className="card-body">
                     <div className="row g-2 align-items-center">
                         <div className="col-md-3">
-                            <label className="form-label">ID du message</label>
+                            <label className="form-label">{t("moderation.labels.postId")}</label>
                             <input
                                 className="form-control"
                                 value={postId}
@@ -349,7 +354,7 @@ const ForumAdminPanel: React.FC = () => {
                                 onChange={(e) => setDeleted(e.target.checked)}
                             />
                             <label htmlFor="deleted" className="form-check-label">
-                                Supprimé
+                                {t("moderation.labels.deleted")}
                             </label>
                         </div>
                         <div className="col-md-3 mt-4">
@@ -358,7 +363,7 @@ const ForumAdminPanel: React.FC = () => {
                                 onClick={setPostState}
                                 disabled={!postId.trim()}
                             >
-                                Appliquer
+                                {t("buttons.apply")}
                             </button>
                         </div>
                     </div>

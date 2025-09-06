@@ -1,0 +1,64 @@
+﻿{
+  "replyBox": {
+    "ariaLabel": "Rédiger votre réponse",
+    "clear": "Effacer",
+    "publish": "Publier",
+    "sending": "Publication…"
+  },
+  "vote": {
+    "like": "Aimer",
+    "dislike": "Ne pas aimer"
+  },
+  "buttons": {
+    "expand": "Développer",
+    "collapse": "Réduire"
+  },
+  "post": {
+    "editedByOn": "Modifié par {{by}} le {{date}}",
+    "editedBy": "Modifié par {{by}}",
+    "editedOn": "Modifié le {{date}}",
+    "reply": "Répondre",
+    "repliesCount_one": "{{count}} réponse",
+    "repliesCount_other": "{{count}} réponses"
+  },
+  "actions": {
+    "edit": "Modifier",
+    "delete": "Supprimer"
+  },
+  "saving": "Enregistrement…",
+  "alerts": {
+    "loadError": "Échec du chargement du fil.",
+    "sendFailed": "Échec de l’envoi de votre réponse.",
+    "voteFailed": "Échec du vote.",
+    "saveFailed": "Échec de l’enregistrement du message.",
+    "deleteFailed": "Échec de la suppression du message.",
+    "titleUpdateFailed": "Échec de la mise à jour du titre."
+  },
+  "confirm": {
+    "deletePost": "Supprimer ce message ?"
+  },
+  "controls": {
+    "order": {
+      "label": "Ordre",
+      "aria": "Sélectionner l’ordre des commentaires",
+      "recent": "Plus récents d’abord",
+      "old": "Plus anciens d’abord"
+    },
+    "collapseReplies": "Réduire les réponses",
+    "expandReplies": "Développer les réponses"
+  },
+  "threadHeader": {
+    "pinned": "Épinglé",
+    "locked": "Fermé",
+    "defaultTitle": "Sujet sans titre",
+    "editTitle": "Modifier le titre",
+    "edit": "Modifier",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "by": "Par {{name}}",
+    "back": "Retour à la catégorie"
+  },
+  "commentsCount_one": "{{count}} commentaire",
+  "commentsCount_other": "{{count}} commentaires",
+  "noPosts": "Aucun message pour le moment."
+}

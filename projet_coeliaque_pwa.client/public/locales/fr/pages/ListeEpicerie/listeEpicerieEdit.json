@@ -1,0 +1,92 @@
+﻿{
+  "header": {
+    "back": "Retour",
+    "namePlaceholder": "Nom de la liste",
+    "save": "Enregistrer"
+  },
+  "totals": {
+    "estimated": "Total estimé :"
+  },
+  "addButtons": {
+    "fromInvoices": "Ajouter depuis les factures",
+    "fromFree": "Ajouter des produits libres"
+  },
+  "modals": {
+    "facture": {
+      "title": "Articles de facture",
+      "typeLabel": "Type de produit",
+      "noType": "Aucun type disponible",
+      "emptyForType": "Aucun article pour ce type.",
+      "noneWithFilter": "Aucun article avec ce filtre.",
+      "allAlreadyInList": "Tous les articles de ce type sont déjà dans la liste."
+    },
+    "free": {
+      "title": "Produits libres",
+      "createTitle": "Création rapide",
+      "typeLabel": "Type de produit libre",
+      "selectType": "Choisir un type…",
+      "pickTypeHint": "Choisissez un type pour voir les produits.",
+      "emptyType": "Aucun produit pour ce type."
+    },
+    "editFree": {
+      "title": "Modifier le produit libre"
+    }
+  },
+  "fields": {
+    "productName": "Nom du produit",
+    "type": "Type",
+    "store": "Magasin",
+    "quantity": "Quantité",
+    "price": "Prix (CAD)",
+    "weight": "Poids",
+    "unit": "Unité",
+    "defaultQty": "Qté par défaut",
+    "defaultPrice": "Prix par défaut (CAD)",
+    "favorite": "Favori"
+  },
+  "placeholders": {
+    "exampleProduct": "ex. Yogourt 2% 750 g",
+    "exampleType": "Laitier",
+    "exampleStore": "Métro"
+  },
+  "table": {
+    "product": "Produit",
+    "type": "Type",
+    "store": "Magasin",
+    "date": "Date",
+    "price": "Prix",
+    "special": "Spécial",
+    "action": "Action",
+    "defaultQty": "Qté par défaut",
+    "weight": "Poids",
+    "addedDate": "Ajouté le",
+    "quantity": "Quantité",
+    "defaultPrice": "Prix par défaut"
+  },
+  "actions": {
+    "addToList": "Ajouter à la liste",
+    "create": "Créer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "delete": "Supprimer"
+  },
+  "sections": {
+    "itemsInList": "Articles dans la liste",
+    "fromInvoices": "Depuis les factures",
+    "noInvoiceItems": "Aucun article de facture.",
+    "freeProducts": "Produits libres",
+    "noFreeProducts": "Aucun produit libre."
+  },
+  "common": {
+    "onSale": "En spécial",
+    "no": "Non",
+    "hideOnSale": "Masquer les articles en spécial",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "save": "Enregistrer"
+  },
+  "confirms": {
+    "deleteUsed": "Ce produit est utilisé dans {{count}} ligne(s) de la liste. Le supprimer quand même ? Il sera aussi retiré de la liste.",
+    "deleteFreeProduct": "Supprimer ce produit libre ?"
+  }
+}

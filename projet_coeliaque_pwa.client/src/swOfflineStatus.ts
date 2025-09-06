@@ -3,6 +3,8 @@
     | { ok: false; error?: string }
     | null;
 
+const LS_EVER_ONLINE = "app:everOnline";
+
 /** Ask the active/controlling SW for offline status via MessageChannel. */
 export async function getOfflineStatus(): Promise<OfflineStatus> {
     if (!("serviceWorker" in navigator)) return null;
@@ -44,7 +46,18 @@ export async function initSWHeartbeat(): Promise<void> {
     try {
         const reg = await navigator.serviceWorker.ready;
         if (!reg) return;
-        if (navigator.onLine) await markLastOnlineNow();
+        if (navigator.onLine) {
+            await markLastOnlineNow();
+            try { localStorage.setItem(LS_EVER_ONLINE, "1"); } catch { }
+        }
     } catch { }
-    window.addEventListener("online", () => { void markLastOnlineNow(); });
+    window.addEventListener("online", () => {
+        void markLastOnlineNow();
+        try { localStorage.setItem(LS_EVER_ONLINE, "1"); } catch { }
+    });
+}
+
+/** Helper others can read */
+export function hasEverBeenOnline(): boolean {
+    try { return localStorage.getItem(LS_EVER_ONLINE) === "1"; } catch { return false; }
 }

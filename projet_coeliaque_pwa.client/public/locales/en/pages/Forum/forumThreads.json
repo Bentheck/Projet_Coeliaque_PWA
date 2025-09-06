@@ -1,0 +1,26 @@
+﻿{
+  "buttons": {
+    "categories": "Categories",
+    "newThread": "New thread"
+  },
+  "errors": {
+    "loadThreads": "Unable to load threads."
+  },
+  "empty": "No threads.",
+  "badges": {
+    "pinned": "Pinned",
+    "locked": "Locked"
+  },
+  "meta": {
+    "lastPrefix": "Last",
+    "by": "by",
+    "createdLine": "By {{author}} • {{date}} • {{count}} {{posts}}"
+  },
+  "counts": {
+    "post_one": "post",
+    "post_other": "posts"
+  },
+  "fallback": {
+    "categoryWithId": "Category #{{id}}"
+  }
+}

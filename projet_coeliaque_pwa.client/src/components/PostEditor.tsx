@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿// src/components/PostEditor.tsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as LexicalErrorBoundaryPkg from "@lexical/react/LexicalErrorBoundary";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
@@ -30,6 +31,7 @@ import { CodeNode } from "@lexical/code";
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 
 import { ImageNode, $createImageNode } from "./editor/ImageNode";
+import { useTranslation } from "react-i18next";
 
 /* ================== Types ================== */
 type PostEditorProps = {
@@ -64,9 +66,10 @@ const ErrorBoundary: any =
 
 /* ================== Placeholder ================== */
 function Placeholder() {
+    const { t } = useTranslation("components/postEditor");
     return (
         <div style={{ position: "absolute", pointerEvents: "none", top: 10, left: 12, opacity: 0.5 }}>
-            Écrire votre message…
+            {t("placeholder")}
         </div>
     );
 }
@@ -152,15 +155,16 @@ function CollapsedBar({
     onOpenGif: () => void;
     gifEnabled: boolean;
 }) {
+    const { t } = useTranslation("postEditor");
     return (
         <div className="d-flex align-items-center gap-3 px-2 pb-2">
-            <button type="button" className="btn btn-sm btn-outline-secondary" title="Image" onClick={onPickImage}>
+            <button type="button" className="btn btn-sm btn-outline-secondary" title={t("toolbar.imageTitle")} onClick={onPickImage}>
                 <i className="bi bi-image" />
             </button>
             <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
-                title="GIF"
+                title={t("toolbar.gifTitle")}
                 onClick={onOpenGif}
                 disabled={!gifEnabled}
             >
@@ -169,7 +173,7 @@ function CollapsedBar({
             <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
-                title="Outils de mise en forme"
+                title={t("toolbar.formattingTitle")}
                 onClick={onExpand}
             >
                 Aa
@@ -190,9 +194,10 @@ function RichToolbar({
     gifEnabled: boolean;
 }) {
     const [editor] = useLexicalComposerContext();
+    const { t } = useTranslation("postEditor");
 
     const toggleLink = () => {
-        const url = prompt("URL du lien (laisser vide pour retirer) :", "https://");
+        const url = prompt(t("toolbar.linkPrompt"), "https://");
         editor.dispatchCommand(TOGGLE_LINK_COMMAND, url && url.trim() ? url.trim() : null);
     };
 
@@ -211,36 +216,36 @@ function RichToolbar({
             <div className="vr mx-1" />
 
             <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}>
-                • Liste
+                {t("toolbar.ul")}
             </button>
             <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}>
-                1. Liste
+                {t("toolbar.ol")}
             </button>
             <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined)}>
-                ⨯ Liste
+                {t("toolbar.removeList")}
             </button>
 
             <div className="vr mx-1" />
 
             <button className="btn btn-sm btn-outline-secondary" onClick={toggleLink}>
-                🔗 Lien
+                🔗 {t("toolbar.link")}
             </button>
 
-            <button className="btn btn-sm btn-outline-secondary" title="Insérer une image" onClick={onPickImage}>
-                <i className="bi bi-image" /> Image
+            <button className="btn btn-sm btn-outline-secondary" title={t("toolbar.imageInsertTitle")} onClick={onPickImage}>
+                <i className="bi bi-image" /> {t("toolbar.image")}
             </button>
             <button
                 className="btn btn-sm btn-outline-secondary"
-                title="Insérer un GIF"
+                title={t("toolbar.gifInsertTitle")}
                 onClick={onOpenGif}
                 disabled={!gifEnabled}
             >
-                GIF
+                {t("toolbar.gif")}
             </button>
 
             <div className="ms-auto d-flex align-items-center gap-2">
-                <button className="btn btn-sm btn-outline-secondary" onClick={onCollapse} title="Réduire">
-                    Masquer
+                <button className="btn btn-sm btn-outline-secondary" onClick={onCollapse} title={t("toolbar.collapseTitle")}>
+                    {t("toolbar.hide")}
                 </button>
             </div>
         </div>
@@ -318,6 +323,7 @@ function GifPickerModalGiphy({
     onClose: () => void;
     onPick: (url: string, alt?: string, w?: number, h?: number) => void;
 }) {
+    const { t } = useTranslation("postEditor");
     const [query, setQuery] = useState("");
     const [items, setItems] = useState<GiphyItem[]>([]);
     const [offset, setOffset] = useState(0);
@@ -356,7 +362,7 @@ function GifPickerModalGiphy({
             setTotal(typeof pagination.total_count === "number" ? pagination.total_count : null);
         } catch (e: any) {
             console.error(e);
-            setErr("Impossible de charger les GIFs.");
+            setErr(t("errors.loadGifs"));
         } finally {
             setLoading(false);
         }
@@ -392,16 +398,16 @@ function GifPickerModalGiphy({
                     <form className="d-flex flex-grow-1 gap-2" onSubmit={onSubmit}>
                         <input
                             className="form-control"
-                            placeholder="Rechercher un GIF (GIPHY)…"
+                            placeholder={t("giphy.searchPlaceholder")}
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                         />
                         <button className="btn btn-primary" type="submit" disabled={loading}>
-                            Rechercher
+                            {t("giphy.search")}
                         </button>
                     </form>
                     <button className="btn btn-outline-secondary" onClick={onClose}>
-                        Fermer
+                        {t("giphy.close")}
                     </button>
                 </div>
 
@@ -409,9 +415,9 @@ function GifPickerModalGiphy({
 
                 <div className="p-3" style={{ overflow: "auto", maxHeight: "calc(85vh - 120px)" }}>
                     {loading && items.length === 0 ? (
-                        <div>Chargement…</div>
+                        <div>{t("giphy.loading")}</div>
                     ) : items.length === 0 ? (
-                        <div>Aucun résultat.</div>
+                        <div>{t("giphy.empty")}</div>
                     ) : (
                         <div
                             className="d-grid"
@@ -423,7 +429,7 @@ function GifPickerModalGiphy({
                             {items.map((it) => {
                                 const m = bestGiphyVariantMax480(it);
                                 if (!m) return null;
-                                const alt = it.title || "gif";
+                                const alt = it.title || t("gifAlt");
                                 const w = parseInt(m.width || "0", 10) || undefined;
                                 const h = parseInt(m.height || "0", 10) || undefined;
                                 return (
@@ -444,18 +450,18 @@ function GifPickerModalGiphy({
                             })}
                         </div>
                     )}
-                    {canLoadMore && (
-                        <div className="text-center mt-3">
+                    <div className="text-center mt-3">
+                        {canLoadMore && (
                             <button
                                 className="btn btn-outline-secondary"
                                 disabled={loading}
                                 onClick={() => run(query.trim() ? "search" : "trending", offset, true)}
                             >
-                                {loading ? "Chargement…" : "Charger plus"}
+                                {loading ? t("giphy.loading") : t("giphy.loadMore")}
                             </button>
-                        </div>
-                    )}
-                    <div className="text-center text-muted small mt-2">GIFs by GIPHY</div>
+                        )}
+                    </div>
+                    <div className="text-center text-muted small mt-2">{t("giphy.byline")}</div>
                 </div>
             </div>
         </div>
@@ -467,13 +473,14 @@ function GifPickerModalGiphy({
 export default function PostEditor({
     initialHTML,
     onChange,
-    ariaLabel = "Éditeur de message",
+    ariaLabel,
     uploadImage,
     maxImageSizeMB = 8,
     giphyApiKey,
     giphyLang = "fr",
     giphyRating = "g",
 }: PostEditorProps) {
+    const { t } = useTranslation("postEditor");
     const [expanded, setExpanded] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const editorRef = useRef<LexicalEditor | null>(null);
@@ -492,12 +499,13 @@ export default function PostEditor({
         []
     );
 
+    const computedAriaLabel = ariaLabel ?? t("ariaLabel");
     const pickImage = () => fileInputRef.current?.click();
 
     const fileToDataURL = (file: File) =>
         new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onerror = () => reject(new Error("Échec de lecture du fichier."));
+            reader.onerror = () => reject(new Error("read_error"));
             reader.onload = () => resolve(String(reader.result));
             reader.readAsDataURL(file);
         });
@@ -517,11 +525,11 @@ export default function PostEditor({
 
     const handleImageFile = async (file: File) => {
         if (!file || !file.type.startsWith("image/")) {
-            alert("Veuillez sélectionner une image.");
+            alert(t("errors.selectImage"));
             return;
         }
         if (file.size > maxImageSizeMB * 1024 * 1024) {
-            alert(`Image trop volumineuse (max ${maxImageSizeMB} Mo).`);
+            alert(t("errors.imageTooLarge", { max: maxImageSizeMB }));
             return;
         }
         try {
@@ -530,7 +538,7 @@ export default function PostEditor({
             insertImageAtSelection(url, alt);
         } catch (e) {
             console.error(e);
-            alert("Impossible d’ajouter l’image.");
+            alert(t("errors.addImageFailed"));
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
@@ -560,7 +568,7 @@ export default function PostEditor({
     };
 
     const onPickGif = (url: string, alt?: string, w?: number, h?: number) => {
-        insertImageAtSelection(url, alt || "gif", w, h);
+        insertImageAtSelection(url, alt || t("gifAlt"), w, h);
         setGifOpen(false);
     };
 
@@ -619,7 +627,7 @@ export default function PostEditor({
                 <RichTextPlugin
                     contentEditable={
                         <ContentEditable
-                            aria-label={ariaLabel}
+                            aria-label={computedAriaLabel}
                             spellCheck
                             className="w-100"
                             style={{ outline: "none", whiteSpace: "pre-wrap" }}

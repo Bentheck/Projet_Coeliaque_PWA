@@ -1,12 +1,15 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/pages/Account/UserProfileView.tsx
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
 import type { UserProfileDto } from "../../lib/types";
 import { useAuth } from "../../components/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const PLACEHOLDER = "https://via.placeholder.com/96x96?text=👤";
 
 const UserProfileView: React.FC = () => {
+    const { t } = useTranslation("pages/User/UserProfileView");
     const { userId } = useParams<{ userId: string }>();
     const navigate = useNavigate();
     const { user: me } = useAuth() as any;
@@ -25,13 +28,15 @@ const UserProfileView: React.FC = () => {
                 if (alive) setP(data);
             } catch (e) {
                 console.error(e);
-                if (alive) setErr("Impossible de charger le profil.");
+                if (alive) setErr(t("errors.load"));
             } finally {
                 if (alive) setLoading(false);
             }
         })();
-        return () => { alive = false; };
-    }, [userId]);
+        return () => {
+            alive = false;
+        };
+    }, [userId, t]);
 
     if (err) {
         return (
@@ -43,7 +48,7 @@ const UserProfileView: React.FC = () => {
     if (loading || !p) {
         return (
             <div className="container py-3">
-                <div>Chargement…</div>
+                <div>{t("loading")}</div>
             </div>
         );
     }
@@ -52,7 +57,7 @@ const UserProfileView: React.FC = () => {
     const isMe = !!(me?.id && userId && me.id === userId);
     const avatarSrc = (isMe ? me?.avatarUrl : p.avatarUrl) || PLACEHOLDER;
 
-    const displayName = p.displayName || "Utilisateur";
+    const displayName = p.displayName || t("fallback.user");
     const joined = p.joinedUtc ? new Date(p.joinedUtc).toLocaleDateString("fr-CA") : "—";
 
     return (
@@ -61,7 +66,7 @@ const UserProfileView: React.FC = () => {
                 <div className="card-body d-flex">
                     <img
                         src={avatarSrc}
-                        alt={`${displayName} avatar`}
+                        alt={t("avatarAlt", { name: displayName })}
                         className="rounded me-3"
                         style={{ width: 96, height: 96, objectFit: "cover" }}
                     />
@@ -70,7 +75,7 @@ const UserProfileView: React.FC = () => {
                         <h1 className="h4 mb-1">{displayName}</h1>
 
                         <div className="text-muted small">
-                            Membre depuis {joined}
+                            {t("memberSince", { date: joined })}
                             {p.location ? ` • ${p.location}` : ""}
                             {p.website ? (
                                 <>
@@ -91,10 +96,10 @@ const UserProfileView: React.FC = () => {
 
                         <div className="mt-2">
                             <span className="badge bg-secondary me-2">
-                                {p.threadCount} fil{p.threadCount !== 1 ? "s" : ""}
+                                {t("threads", { count: p.threadCount })}
                             </span>
                             <span className="badge bg-secondary">
-                                {p.postCount} message{p.postCount !== 1 ? "s" : ""}
+                                {t("posts", { count: p.postCount })}
                             </span>
                         </div>
                     </div>
@@ -103,7 +108,7 @@ const UserProfileView: React.FC = () => {
 
             <div className="mt-3 d-flex gap-2">
                 <button className="btn btn-outline-secondary" onClick={() => navigate(-1)}>
-                    Retour
+                    {t("back")}
                 </button>
             </div>
         </div>

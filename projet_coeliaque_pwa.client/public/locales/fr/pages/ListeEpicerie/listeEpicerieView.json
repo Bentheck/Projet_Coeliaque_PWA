@@ -1,0 +1,62 @@
+﻿{
+  "loading": "Chargement…",
+  "errorGeneric": "Une erreur est survenue.",
+  "back": "Retour",
+  "titleDefault": "Liste d’épicerie",
+  "createdOn": "Créée le {{date}}",
+  "detailLoading": "Chargement des détails des produits…",
+  "completed": "Terminée",
+  "edit": "Modifier",
+  "print": "Imprimer",
+  "printedOn": "Imprimée le {{date}}",
+  "empty": "Cette liste est vide.",
+  "summary": {
+    "rows_one": "{{count}} article",
+    "rows_other": "{{count}} articles",
+    "totalQty_one": "Total : {{count}} unité",
+    "totalQty_other": "Total : {{count}} unités",
+    "favorites_one": "{{count}} favori",
+    "favorites_other": "{{count}} favoris",
+    "onSale_one": "{{count}} en spécial",
+    "onSale_other": "{{count}} en spécial"
+  },
+  "table": {
+    "done": "Fait",
+    "product": "Produit",
+    "type": "Type",
+    "store": "Magasin",
+    "weight": "Poids",
+    "unitPrice": "Prix unitaire",
+    "quantity": "Qté",
+    "subtotal": "Sous-total",
+    "special": "Spécial",
+    "total": "Total"
+  },
+  "badges": {
+    "favorite": "Favori",
+    "onSale": "En spécial",
+    "regularPrice": "Prix régulier"
+  },
+  "mobile": {
+    "qtyShort": "Qté",
+    "total": "Total"
+  },
+  "aria": {
+    "markAsDone": "Marquer {{name}} comme fait"
+  },
+  "common": {
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "fallbacks": {
+    "invoiceItem": "Article de facture n° {{id}}",
+    "freeItem": "Produit n° {{id}}",
+    "custom": "Article personnalisé"
+  },
+  "errors": {
+    "loadList": "Échec du chargement de la liste.",
+    "updateListState": "Impossible de mettre à jour l’état de la liste.",
+    "listCompletedLocked": "Cette liste est terminée et verrouillée. Décochez « Terminée » pour la modifier.",
+    "updateItem": "Impossible de mettre à jour l’article."
+  }
+}

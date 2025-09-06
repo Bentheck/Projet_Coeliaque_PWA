@@ -1,12 +1,14 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/pages/Comparatif.tsx
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 // --- Offline helpers & shared DTOs (from your offline/db.ts) ---
 import {
     // generic cache helpers
     getCache,
     setCache,
-    // typed aliases (optional niceties — feel free to collapse to getCache/setCache)
+    // typed aliases
     type ComparatifYearDto,
     type ReportYearDto,
 } from "../../offline/db";
@@ -18,6 +20,8 @@ const REPORTS_CACHE_KEY = "comparatif:reports";
 const REPORT_ROUTE = (annee: number) => `/rapports/${annee}`;
 
 const Comparatif: React.FC = () => {
+    const { t } = useTranslation("pages/Comparatif/comparatif");
+
     const [years, setYears] = useState<ComparatifYearDto[]>([]);
     const [reports, setReports] = useState<ReportYearDto[]>([]);
     const [loading, setLoading] = useState(true);
@@ -138,7 +142,7 @@ const Comparatif: React.FC = () => {
         })
             .then(async (res) => {
                 if (res.status === 202) {
-                    alert("Nouvelle année ajoutée hors ligne — elle se synchronisera plus tard.");
+                    alert(t("alerts.yearQueued"));
                     setShowForm(false);
                     setNewYear(new Date().getFullYear());
                     // optimistic add (optional): re-fetch to read SW cache too
@@ -154,8 +158,8 @@ const Comparatif: React.FC = () => {
             .catch((err) => setError(err.message));
     }
 
-    function handleDelete(id: number) {
-        if (!window.confirm("Supprimer cette année et toutes ses lignes?")) return;
+    function handleDelete(id: number, year?: number) {
+        if (!window.confirm(t("confirm.deleteYear", { year }))) return;
 
         fetch(`/api/comparatifyears/${id}`, {
             method: "DELETE",
@@ -181,9 +185,7 @@ const Comparatif: React.FC = () => {
     async function handleGenerateReport(annee: number) {
         try {
             if (isReportGenerated(annee)) {
-                const ok = window.confirm(
-                    `Le rapport ${annee} existe déjà.\nVoulez-vous le régénérer ?`
-                );
+                const ok = window.confirm(t("confirm.regenExisting", { year: annee }));
                 if (!ok) return;
             }
 
@@ -196,14 +198,14 @@ const Comparatif: React.FC = () => {
             });
 
             if (res.status === 202) {
-                alert("Commande de génération enregistrée hors ligne — la création sera traitée à la reconnexion.");
+                alert(t("alerts.generateQueued"));
                 return;
             }
 
             if (!res.ok) throw new Error(await res.text());
             navigate(REPORT_ROUTE(annee));
         } catch (err: any) {
-            setGenError(err.message ?? "Erreur lors de la génération du rapport.");
+            setGenError(err.message ?? t("errors.generateFailed"));
         } finally {
             setGenLoading(null);
         }
@@ -214,15 +216,15 @@ const Comparatif: React.FC = () => {
     return (
         <div className="container" style={{ maxWidth: 700 }}>
             <div className="d-flex flex-column align-items-center mb-3">
-                <h2 className="mb-2">Comparatif Annuel</h2>
+                <h2 className="mb-2">{t("header.title")}</h2>
                 <button
                     className="btn btn-primary"
                     style={{ minWidth: 170 }}
                     onClick={() => setShowForm((f) => !f)}
                 >
                     <i className="bi bi-plus-circle me-1" />
-                    <span className="d-none d-sm-inline">Nouveau comparatif</span>
-                    <span className="d-sm-none">Nouveau</span>
+                    <span className="d-none d-sm-inline">{t("actions.new.long")}</span>
+                    <span className="d-sm-none">{t("actions.new.short")}</span>
                 </button>
             </div>
 
@@ -240,14 +242,14 @@ const Comparatif: React.FC = () => {
                             style={{ maxWidth: 130 }}
                         />
                         <button className="btn btn-success" type="submit">
-                            Créer
+                            {t("form.create")}
                         </button>
                         <button
                             className="btn btn-secondary"
                             type="button"
                             onClick={() => setShowForm(false)}
                         >
-                            Annuler
+                            {t("form.cancel")}
                         </button>
                     </div>
                 </form>
@@ -257,10 +259,10 @@ const Comparatif: React.FC = () => {
             {genError && <div className="alert alert-danger">{genError}</div>}
 
             {loading ? (
-                <div>Chargement…</div>
+                <div>{t("loading")}</div>
             ) : years.length === 0 ? (
                 <div className="alert alert-secondary text-center">
-                    Aucune année disponible.
+                    {t("empty")}
                 </div>
             ) : (
                 <div>
@@ -275,12 +277,14 @@ const Comparatif: React.FC = () => {
                                     style={{ columnGap: "1rem" }}
                                 >
                                     <div style={{ flex: 1, minWidth: 220 }}>
-                                        <div className="fw-bold">Année : {y.annee}</div>
+                                        <div className="fw-bold">
+                                            {t("year")}: {y.annee}
+                                        </div>
                                         <div>
                                             {generated ? (
-                                                <span className="text-success fw-bold">Rapport généré</span>
+                                                <span className="text-success fw-bold">{t("report.generated")}</span>
                                             ) : (
-                                                <span className="text-muted">Rapport non généré</span>
+                                                <span className="text-muted">{t("report.notGenerated")}</span>
                                             )}
                                         </div>
                                     </div>
@@ -291,9 +295,7 @@ const Comparatif: React.FC = () => {
                                                 }`}
                                             onClick={() => handleGenerateReport(y.annee)}
                                             disabled={busy}
-                                            title={
-                                                generated ? "Régénérer le rapport" : "Générer un rapport"
-                                            }
+                                            title={generated ? t("buttons.generate.titleRegenerate") : t("buttons.generate.titleGenerate")}
                                         >
                                             {busy ? (
                                                 <>
@@ -301,22 +303,22 @@ const Comparatif: React.FC = () => {
                                                         className="spinner-border spinner-border-sm me-2"
                                                         role="status"
                                                     />
-                                                    <span className="d-none d-sm-inline">Traitement…</span>
-                                                    <span className="d-sm-none">…</span>
+                                                    <span className="d-none d-sm-inline">{t("busy.long")}</span>
+                                                    <span className="d-sm-none">{t("busy.short")}</span>
                                                 </>
                                             ) : generated ? (
                                                 <>
                                                     <i className="bi bi-arrow-repeat me-1" />
-                                                    <span className="d-none d-sm-inline">Régénérer</span>
-                                                    <span className="d-sm-none">Regen</span>
+                                                    <span className="d-none d-sm-inline">{t("buttons.generate.regenerateLong")}</span>
+                                                    <span className="d-sm-none">{t("buttons.generate.regenerateShort")}</span>
                                                 </>
                                             ) : (
                                                 <>
                                                     <i className="bi bi-gear me-1" />
                                                     <span className="d-none d-sm-inline">
-                                                        Générer un rapport
+                                                        {t("buttons.generate.generateLong")}
                                                     </span>
-                                                    <span className="d-sm-none">Générer</span>
+                                                    <span className="d-sm-none">{t("buttons.generate.generateShort")}</span>
                                                 </>
                                             )}
                                         </button>
@@ -324,19 +326,19 @@ const Comparatif: React.FC = () => {
                                         <button
                                             className="btn btn-outline-primary btn-sm"
                                             onClick={() => navigate(`/comparatif/${y.id}`)}
-                                            title="Voir"
+                                            title={t("buttons.view.title")}
                                         >
                                             <i className="bi bi-eye" />
-                                            <span className="d-none d-sm-inline ms-1">Voir</span>
+                                            <span className="d-none d-sm-inline ms-1">{t("buttons.view.label")}</span>
                                         </button>
 
                                         <button
                                             className="btn btn-outline-danger btn-sm"
-                                            onClick={() => handleDelete(y.id)}
-                                            title="Supprimer"
+                                            onClick={() => handleDelete(y.id, y.annee)}
+                                            title={t("buttons.delete.title")}
                                         >
                                             <i className="bi bi-trash" />
-                                            <span className="d-none d-sm-inline ms-1">Supprimer</span>
+                                            <span className="d-none d-sm-inline ms-1">{t("buttons.delete.label")}</span>
                                         </button>
                                     </div>
                                 </div>

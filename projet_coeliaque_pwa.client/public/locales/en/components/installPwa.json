@@ -1,0 +1,26 @@
+﻿{
+  "button": {
+    "titleIos": "Add to Home Screen",
+    "titleOther": "Install app",
+    "labelIos": "Add to Home Screen",
+    "labelOther": "Install the app"
+  },
+  "alerts": {
+    "notReady": "Installation isn't available yet. Try again in a few seconds."
+  },
+  "ios": {
+    "header": "Install on iPhone / iPad",
+    "close": "Close",
+    "step1": {
+      "prefix": "Open the",
+      "suffix": ""
+    },
+    "shareText": "Share",
+    "shareIconAria": "Share icon",
+    "shareIconHint": "(square icon with up arrow ↑)",
+    "step2": "Choose Add to Home Screen.",
+    "step3": "Confirm by tapping Add.",
+    "tip": "Tip: if you don't see the option, scroll the share sheet down.",
+    "ok": "OK"
+  }
+}

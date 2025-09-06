@@ -1,0 +1,14 @@
+﻿{
+  "title": "Forum",
+  "errors": {
+    "loadCategories": "Unable to load categories."
+  },
+  "empty": "No categories.",
+  "buttons": {
+    "viewThreads": "View threads"
+  },
+  "badges": {
+    "threads_one": "{{count}} thread",
+    "threads_other": "{{count}} threads"
+  }
+}

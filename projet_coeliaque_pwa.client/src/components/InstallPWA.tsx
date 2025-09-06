@@ -1,5 +1,6 @@
 ﻿// src/components/InstallPWA.tsx
 import React, { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 /**
  * Detect platform / installability
@@ -24,6 +25,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 export default function InstallPWA() {
+    const { t } = useTranslation("components/installPwa");
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [installed, setInstalled] = useState<boolean>(isInStandaloneMode());
     const [showIosHelp, setShowIosHelp] = useState<boolean>(false);
@@ -36,7 +38,7 @@ export default function InstallPWA() {
     useEffect(() => {
         const handler = (e: Event) => {
             // Chrome-specific event but typed loosely
-            e.preventDefault?.();
+            (e as any).preventDefault?.();
             setDeferredPrompt(e as BeforeInstallPromptEvent);
             setEligible(true);
         };
@@ -76,7 +78,7 @@ export default function InstallPWA() {
 
         if (!deferredPrompt) {
             // Not eligible yet (maybe SW/manifest not ready) — small UX nudge
-            alert("L’installation n’est pas encore disponible. Réessayez dans quelques secondes.");
+            alert(t("alerts.notReady"));
             return;
         }
 
@@ -96,10 +98,13 @@ export default function InstallPWA() {
         } catch {
             // Swallow; user may have dismissed
         }
-    }, [deferredPrompt, installed]);
+    }, [deferredPrompt, installed, t]);
 
     // If installed or not eligible, render nothing
     if (installed || !eligible) return null;
+
+    const btnTitle = isIOS() ? t("button.titleIos") : t("button.titleOther");
+    const btnLabel = isIOS() ? t("button.labelIos") : t("button.labelOther");
 
     return (
         <>
@@ -108,10 +113,10 @@ export default function InstallPWA() {
                 type="button"
                 onClick={onClickInstall}
                 className="btn btn-outline-primary ms-lg-2"
-                title={isIOS() ? "Ajouter à l’écran d’accueil" : "Installer l’application"}
+                title={btnTitle}
             >
                 <i className="bi bi-download me-1" />
-                {isIOS() ? "Ajouter à l’écran d’accueil" : "Installer l’app"}
+                {btnLabel}
             </button>
 
             {/* iOS help: lightweight, self-contained banner */}
@@ -134,33 +139,29 @@ export default function InstallPWA() {
                         <div className="d-flex justify-content-between align-items-start">
                             <h5 className="mb-3">
                                 <i className="bi bi-phone me-2" />
-                                Installer sur iPhone / iPad
+                                {t("ios.header")}
                             </h5>
                             <button
                                 type="button"
                                 className="btn-close"
-                                aria-label="Fermer"
+                                aria-label={t("ios.close")}
                                 onClick={() => setShowIosHelp(false)}
                             />
                         </div>
 
                         <ol className="mb-3 ps-3">
                             <li className="mb-2">
-                                Ouvrez le menu <b>Partager</b>{" "}
-                                <span aria-label="Share icon" title="Share">
-                                    (icône carré avec flèche ↑)
+                                {t("ios.step1.prefix")} <b>{t("ios.shareText")}</b>{" "}
+                                <span aria-label={t("ios.shareIconAria")} title={t("ios.shareText")}>
+                                    {t("ios.shareIconHint")}
                                 </span>
                                 .
                             </li>
-                            <li className="mb-2">
-                                Choisissez <b>Ajouter à l’écran d’accueil</b>.
-                            </li>
-                            <li>Confirmez en touchant <b>Ajouter</b>.</li>
+                            <li className="mb-2">{t("ios.step2")}</li>
+                            <li>{t("ios.step3")}</li>
                         </ol>
 
-                        <div className="text-muted small">
-                            Astuce : si vous ne voyez pas l’option, faites défiler la feuille de partage vers le bas.
-                        </div>
+                        <div className="text-muted small">{t("ios.tip")}</div>
 
                         <div className="mt-3 text-end">
                             <button
@@ -168,7 +169,7 @@ export default function InstallPWA() {
                                 className="btn btn-primary"
                                 onClick={() => setShowIosHelp(false)}
                             >
-                                OK
+                                {t("ios.ok")}
                             </button>
                         </div>
                     </div>
