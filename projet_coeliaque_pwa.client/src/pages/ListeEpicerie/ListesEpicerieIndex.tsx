@@ -1,25 +1,21 @@
-﻿// ListesEpicerieIndex.tsx
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db, type ListeEpicerieDto } from "../../offline/db";
+import { syncDown } from "../../offline/sync";
 
 /** Server DTO for list metadata shown on the index */
-interface ListeEpicerieDTO {
-    id: number;
-    name: string;
-    created: string; // ISO
-    items: any[];
-    completed?: boolean;
-}
-
 type SortKey = "recent" | "oldest" | "name";
 type StatusFilter = "all" | "active" | "completed";
 
 const ListesEpicerieIndex: React.FC = () => {
     const { t } = useTranslation("pages/ListeEpicerie/listesEpicerieIndex");
-    const [listes, setListes] = useState<ListeEpicerieDTO[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+
+    const listes = useLiveQuery<ListeEpicerieDto[] | undefined>(
+        () => db.listeEpicerie.toArray(),
+        []
+    ) || [];
 
     // UI state
     const [q, setQ] = useState("");
@@ -37,33 +33,15 @@ const ListesEpicerieIndex: React.FC = () => {
         }
     }, [searchParams]);
 
+    // warm DB on mount
+    useEffect(() => {
+        if (navigator.onLine) void syncDown(false);
+    }, []);
+
     const applyStatus = (s: StatusFilter) => {
         setStatus(s);
-        setSearchParams({ status: s }); // keep URL in sync with the filter
+        setSearchParams({ status: s });
     };
-
-    /** Fetch lists; supports AbortController so refresh cannot race with unmount */
-    const load = async (signal?: AbortSignal) => {
-        try {
-            setLoading(true);
-            setError(null);
-            const res = await fetch("/api/ListeEpicerie", { signal, credentials: "include" });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = (await res.json()) as ListeEpicerieDTO[];
-            setListes(Array.isArray(data) ? data : []);
-        } catch (e: any) {
-            if (e?.name !== "AbortError") setError(t("errors.loadLists"));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        const ac = new AbortController();
-        load(ac.signal);
-        return () => ac.abort();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     /** Small counters used for the filter pills */
     const counts = useMemo(() => {
@@ -115,13 +93,14 @@ const ListesEpicerieIndex: React.FC = () => {
 
     /**
      * Optimistic toggle of "completed":
-     * - flip UI immediately and track pending state
+     * - flip Dexie immediately and track pending state
      * - treat 202 (queued by SW while offline) as success
      * - rollback on error
      */
-    const toggleCompleted = async (l: ListeEpicerieDTO, next: boolean) => {
+    const toggleCompleted = async (l: ListeEpicerieDto, next: boolean) => {
         setPending(p => ({ ...p, [l.id]: true }));
-        setListes(prev => prev.map(x => (x.id === l.id ? { ...x, completed: next } : x)));
+        await db.listeEpicerie.update(l.id, { completed: next });
+
         try {
             const res = await fetch(`/api/ListeEpicerie/${l.id}/completed`, {
                 method: "PATCH",
@@ -130,21 +109,15 @@ const ListesEpicerieIndex: React.FC = () => {
                 body: JSON.stringify({ completed: next }),
             });
 
-            if (res.status === 202) {
-                return;
-            }
-
-            if (res.status === 409) {
-                return;
-            }
-
+            if (res.status === 202) return;
+            if (res.status === 409) return;
             if (!res.ok) {
                 const dbg = await res.text().catch(() => "");
                 throw new Error(`HTTP ${res.status} — ${dbg}`);
             }
         } catch (e) {
             console.error(e);
-            setListes(prev => prev.map(x => (x.id === l.id ? { ...x, completed: !next } : x)));
+            await db.listeEpicerie.update(l.id, { completed: !next });
             alert(t("errors.updateStatus"));
         } finally {
             setPending(p => {
@@ -155,19 +128,17 @@ const ListesEpicerieIndex: React.FC = () => {
         }
     };
 
-    /** Hard delete with confirm; remove from local state on success (202 queued treated as success) */
-    const onDelete = async (l: ListeEpicerieDTO) => {
+    /** Hard delete with confirm; remove from Dexie on success (202 queued treated as success) */
+    const onDelete = async (l: ListeEpicerieDto) => {
         if (!confirm(t("confirmDelete", { name: l.name }))) return;
         try {
             const res = await fetch(`/api/ListeEpicerie/${l.id}`, { method: "DELETE", credentials: "include" });
 
-            if (res.status === 202) {
-                setListes(prev => prev.filter(x => x.id !== l.id));
+            if (res.status === 202 || res.ok) {
+                await db.listeEpicerie.delete(l.id);
                 return;
             }
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            setListes(prev => prev.filter(x => x.id !== l.id));
+            throw new Error(`HTTP ${res.status}`);
         } catch (e) {
             console.error(e);
             alert(t("errors.deleteFailed"));
@@ -202,7 +173,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                         {t("common.clear")}
                                     </button>
                                 )}
-                                <button className="btn btn-outline-secondary" onClick={() => load()}>
+                                <button className="btn btn-outline-secondary" onClick={() => syncDown(false)}>
                                     {t("common.refresh")}
                                 </button>
                             </div>
@@ -261,36 +232,8 @@ const ListesEpicerieIndex: React.FC = () => {
                 </div>
             </div>
 
-            {/* Errors */}
-            {error && (
-                <div className="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
-                    <span className="me-2">{error}</span>
-                    <button className="btn btn-sm btn-outline-light" onClick={() => load()}>{t("common.retry")}</button>
-                </div>
-            )}
-
             {/* Content */}
-            {loading ? (
-                <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div className="col" key={i}>
-                            <div className="card h-100 shadow-sm">
-                                <div className="card-body">
-                                    <h5 className="card-title placeholder-glow"><span className="placeholder col-8"></span></h5>
-                                    <p className="card-text placeholder-glow mb-2">
-                                        <span className="placeholder col-4 me-2"></span>
-                                        <span className="placeholder col-5"></span>
-                                    </p>
-                                    <div className="d-flex gap-2">
-                                        <span className="btn btn-outline-secondary disabled placeholder col-5"></span>
-                                        <span className="btn btn-primary disabled placeholder col-5"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : filtered.length === 0 ? (
+            {filtered.length === 0 ? (
                 <div className="border rounded-3 p-5 text-center bg-light">
                     <div className="display-6 mb-2">🛒</div>
                     <h2 className="h5">{t("empty.title")}</h2>

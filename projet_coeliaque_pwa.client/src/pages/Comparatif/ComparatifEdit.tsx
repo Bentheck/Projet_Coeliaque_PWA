@@ -1,37 +1,183 @@
-﻿// src/pages/ComparatifEdit.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import Select from "react-select";
 import type { SingleValue } from "react-select";
 import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
 
-// --- Offline helpers & DTOs ---
 import {
-    getCache,
-    setCache,
+    db,
     type ProductComparisonDto,
     type ComparatifYearDto,
+    putComparatifYear,
+    replaceProductComparisonsForYear,
+    putComparatifTypes,
 } from "../../offline/db";
+import { syncDown } from "../../offline/sync";
 
 const UNIT_OPTIONS = ["mg", "g", "kg", "lb", "oz", "ml", "l", "fl oz"];
 
-// Per-year cache key helpers
-const yearKey = (id: string | number) => `comparatif:year:${id}`;
-const typeKey = (annee: number) => `comparatif:types:${annee}`;
-
 const ComparatifEdit: React.FC = () => {
     const { t } = useTranslation("pages/Comparatif/comparatifEdit");
-
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    const [year, setYear] = useState<ComparatifYearDto | null>(null);
-    const [lines, setLines] = useState<ProductComparisonDto[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    // Live: current year with lines in comparatifYears
+    const year = useLiveQuery<ComparatifYearDto | undefined>(
+        () => (id ? db.comparatifYears.get(Number(id)) : Promise.resolve(undefined)),
+        [id]
+    );
 
-    // “Add line” modal
+    // Live: type options per year
+    const typeRow = useLiveQuery(
+        () => (year ? db.comparatifTypes.get(year.annee) : Promise.resolve(undefined)),
+        [year?.annee]
+    ) as { annee: number; types: string[] } | undefined;
+    const typeOptionsList: string[] = typeRow?.types ?? [];
+
+    // Local editable snapshot
+    const [lines, setLines] = useState<ProductComparisonDto[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    // mobile tweak
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const mq = window.matchMedia("(max-width: 599.98px)");
+        const apply = () => setIsMobile(mq.matches);
+        apply();
+        mq.addEventListener?.("change", apply);
+        return () => mq.removeEventListener?.("change", apply);
+    }, []);
+
+    // Initial fetch → populate Dexie if missing
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            if (!id) return;
+            setLoading(true);
+            setError(null);
+
+            try {
+                if (!year && navigator.onLine) {
+                    const res = await fetch(`/api/comparatifyears/${id}`, { credentials: "include" });
+                    if (res.ok) {
+                        const data: ComparatifYearDto = await res.json();
+                        await putComparatifYear(data);
+                    }
+                }
+            } catch (e: any) {
+                if (!cancelled) setError(e?.message ?? String(e));
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id, year]);
+
+    // fetch types if missing
+    useEffect(() => {
+        (async () => {
+            if (!year || !navigator.onLine) return;
+            if (typeRow?.types && typeRow.types.length) return;
+            try {
+                const resT = await fetch(`/api/comparatifyears/types?annee=${year.annee}`, {
+                    credentials: "include",
+                });
+                if (resT.ok) {
+                    const types: string[] = await resT.json();
+                    await putComparatifTypes(year.annee, types || []);
+                }
+            } catch {
+                /* ignore */
+            }
+        })();
+    }, [year?.annee, typeRow?.types]);
+
+    // Keep local editable snapshot in sync with DB
+    useEffect(() => {
+        if (year) {
+            setLines((year.lines ?? []).map((l) => ({ ...l })));
+            setLoading(false);
+        }
+    }, [year?.id, year?.annee]);
+
+    const allowedTypeOptionsFor = (index: number) =>
+        (typeOptionsList || []).filter(
+            (opt) => !lines.some((l, j) => l.typeItem === opt && j !== index) || lines[index].typeItem === opt
+        );
+
+    function handleLineChange(idx: number, field: keyof ProductComparisonDto, value: any) {
+        setLines((prev) => {
+            const arr = [...prev];
+            arr[idx] = { ...arr[idx], [field]: value };
+            return arr;
+        });
+    }
+
+    async function handleDeleteLine(idx: number) {
+        if (!year) return;
+        if (!window.confirm(t("confirm.deleteLine"))) return;
+
+        const target = lines[idx];
+        try {
+            const res = await fetch(`/api/comparatifyears/${year.id}/lines/${target.id}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+
+            const next = lines.filter((_, i) => i !== idx);
+
+            if (res.status === 202) {
+                // optimistic
+                setLines(next);
+                await replaceProductComparisonsForYear(year.id, next);
+                return;
+            }
+            if (!res.ok) throw new Error(await res.text());
+
+            setLines(next);
+            await replaceProductComparisonsForYear(year.id, next);
+            if (navigator.onLine) await syncDown(false);
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        }
+    }
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!year) return;
+        setError(null);
+
+        try {
+            const res = await fetch(`/api/comparatifyears/${year.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ ...year, lines }),
+            });
+
+            if (res.status === 202) {
+                alert(t("alerts.offlineSaved"));
+                await replaceProductComparisonsForYear(year.id, lines);
+                navigate("/comparatif");
+                return;
+            }
+            if (!res.ok) throw new Error(await res.text());
+
+            await replaceProductComparisonsForYear(year.id, lines);
+            if (navigator.onLine) await syncDown(false);
+            navigate("/comparatif");
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        }
+    }
+
+    // Add line modal state
     const [showAddModal, setShowAddModal] = useState(false);
     const [modalStep, setModalStep] = useState(1);
     const [modalTypeItem, setModalTypeItem] = useState("");
@@ -45,189 +191,11 @@ const ComparatifEdit: React.FC = () => {
         magasin: "",
     });
 
-    // small layout tweak
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-        const mq = window.matchMedia("(max-width: 599.98px)");
-        const apply = () => setIsMobile(mq.matches);
-        apply();
-        mq.addEventListener?.("change", apply);
-        return () => mq.removeEventListener?.("change", apply);
-    }, []);
-
-    // Type options restricted to current annee
-    const [typeOptionsList, setTypeOptionsList] = useState<string[]>([]);
-    const typeSelectOptions = typeOptionsList.map((t) => ({ label: t, value: t }));
-
-    // Only allow each typeItem once per year
-    const allowedTypeOptionsFor = (index: number) =>
-        typeOptionsList.filter(
-            (opt) => !lines.some((l, j) => l.typeItem === opt && j !== index) || lines[index].typeItem === opt
-        );
-
-    // ---------------- Cache-first loaders ----------------
-    useEffect(() => {
-        if (!id) return;
-
-        setLoading(true);
-
-        // 1) cache for the year
-        getCache<ComparatifYearDto>(yearKey(id)).then((cached) => {
-            if (cached) {
-                setYear(cached);
-                setLines(cached.lines.map((l) => ({ ...l })));
-            }
-        });
-
-        // 2) network refresh
-        fetch(`/api/comparatifyears/${id}`, { credentials: "include" })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: ComparatifYearDto) => {
-                setYear(data);
-                setLines(data.lines.map((l) => ({ ...l })));
-                await setCache(yearKey(id), data);
-            })
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [id]);
-
-    useEffect(() => {
-        if (!year) return;
-
-        // types cache-first
-        getCache<string[]>(typeKey(year.annee)).then((cached) => {
-            if (cached) setTypeOptionsList(cached);
-        });
-
-        fetch(`/api/comparatifyears/types?annee=${year.annee}`, { credentials: "include" })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (types: string[]) => {
-                setTypeOptionsList(types || []);
-                await setCache(typeKey(year.annee), types || []);
-            })
-            .catch(() => setTypeOptionsList([]));
-    }, [year]);
-
-    useEffect(() => {
-        const onSwMsg = (evt: MessageEvent) => {
-            const msg = evt.data;
-            if (!msg || typeof msg !== "object") return;
-
-            if (msg.type === "api-cache-hit" && typeof msg.url === "string") {
-                if (id && msg.url.includes(`/api/comparatifyears/${id}`)) {
-                    if (msg.data && typeof msg.data === "object") {
-                        setYear(msg.data);
-                        setLines((msg.data.lines as ProductComparisonDto[]).map((l) => ({ ...l })));
-                        setCache(yearKey(id), msg.data);
-                    }
-                }
-                if (year && msg.url.includes(`/api/comparatifyears/types?annee=${year.annee}`)) {
-                    if (Array.isArray(msg.data)) {
-                        setTypeOptionsList(msg.data);
-                        setCache(typeKey(year.annee), msg.data);
-                    }
-                }
-            }
-
-            if (msg.type === "mutation-sent") {
-                // After outbox replay, refresh the page data
-                if (id) {
-                    fetch(`/api/comparatifyears/${id}`, { credentials: "include" })
-                        .then((r) => (r.ok ? r.json() : null))
-                        .then((data: ComparatifYearDto | null) => {
-                            if (!data) return;
-                            setYear(data);
-                            setLines(data.lines.map((l) => ({ ...l })));
-                            setCache(yearKey(id), data);
-                        })
-                        .catch(() => {
-                            /* ignore */
-                        });
-                }
-            }
-        };
-
-        navigator.serviceWorker?.addEventListener("message", onSwMsg);
-        return () => navigator.serviceWorker?.removeEventListener("message", onSwMsg);
-    }, [id, year]);
-
-    // ---------------- Local editing ----------------
-    function handleLineChange(idx: number, field: keyof ProductComparisonDto, value: any) {
-        setLines((prev) => {
-            const arr = [...prev];
-            arr[idx] = { ...arr[idx], [field]: value };
-            return arr;
-        });
-    }
-
-    function handleDeleteLine(idx: number) {
-        if (!year) return;
-        if (!window.confirm(t("confirm.deleteLine"))) return;
-
-        const target = lines[idx];
-        fetch(`/api/comparatifyears/${year.id}/lines/${target.id}`, {
-            method: "DELETE",
-            credentials: "include",
-        })
-            .then(async (res) => {
-                if (res.status === 202) {
-                    const next = lines.filter((_, i) => i !== idx);
-                    setLines(next);
-                    await setCache(yearKey(year.id), { ...year, lines: next });
-                    return;
-                }
-                if (!res.ok) throw new Error(await res.text());
-                const next = lines.filter((_, i) => i !== idx);
-                setLines(next);
-                setYear({ ...year, lines: next });
-                await setCache(yearKey(year.id), { ...year, lines: next });
-            })
-            .catch((err) => setError(err.message));
-    }
-
-    function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        if (!year) return;
-        setError(null);
-
-        fetch(`/api/comparatifyears/${year.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ ...year, lines }),
-        })
-            .then(async (res) => {
-                if (res.status === 202) {
-                    alert(t("alerts.offlineSaved"));
-                    await setCache(yearKey(year.id), { ...year, lines });
-                    navigate("/comparatif");
-                    return;
-                }
-                if (!res.ok) throw new Error(await res.text());
-                await setCache(yearKey(year.id), { ...year, lines });
-                navigate("/comparatif");
-            })
-            .catch((err) => setError(err.message));
-    }
-
-    // ------------- Add line modal -------------
     function openAddModal() {
         setShowAddModal(true);
         setModalStep(1);
         setModalTypeItem("");
-        setModalForm({
-            marque: "",
-            prix: 0,
-            poidsValeur: 0,
-            poidsUnite: "",
-            magasin: "",
-        });
+        setModalForm({ marque: "", prix: 0, poidsValeur: 0, poidsUnite: "", magasin: "" });
     }
     function closeAddModal() {
         setShowAddModal(false);
@@ -235,71 +203,62 @@ const ComparatifEdit: React.FC = () => {
         setModalTypeItem("");
     }
 
-    function handleAddLineSubmit(e: React.FormEvent) {
+    async function handleAddLineSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!year) return;
 
-        fetch(`/api/comparatifyears/${year.id}/lines`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-                typeItem: modalTypeItem,
-                marque: modalForm.marque,
-                prix: modalForm.prix,
-                poidsValeur: modalForm.poidsValeur,
-                poidsUnite: modalForm.poidsUnite,
-                magasin: modalForm.magasin,
-            }),
-        })
-            .then(async (res) => {
-                if (res.status === 202) {
-                    // optimistic add
-                    const tempId = Math.floor(Math.random() * 1e9) * -1;
-                    const next = [
-                        ...lines,
-                        {
-                            id: tempId,
-                            comparatifYearId: year.id,
-                            typeItem: modalTypeItem,
-                            marque: modalForm.marque,
-                            prix: modalForm.prix,
-                            poidsValeur: modalForm.poidsValeur,
-                            poidsUnite: modalForm.poidsUnite,
-                            magasin: modalForm.magasin,
-                        } as ProductComparisonDto,
-                    ];
-                    setLines(next);
-                    await setCache(yearKey(year.id), { ...year, lines: next });
-                    closeAddModal();
-                    return;
-                }
+        try {
+            const res = await fetch(`/api/comparatifyears/${year.id}/lines`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    typeItem: modalTypeItem,
+                    marque: modalForm.marque,
+                    prix: modalForm.prix,
+                    poidsValeur: modalForm.poidsValeur,
+                    poidsUnite: modalForm.poidsUnite,
+                    magasin: modalForm.magasin,
+                }),
+            });
 
-                if (!res.ok) throw new Error(await res.text());
-
-                // Re-fetch server version to get real id & normalized values
-                return fetch(`/api/comparatifyears/${year.id}`, { credentials: "include" });
-            })
-            .then(async (r) => {
-                if (!r) return;
-                const data: ComparatifYearDto = await r.json();
-                setYear(data);
-                setLines(data.lines.map((l) => ({ ...l })));
-                await setCache(yearKey(year.id), data);
+            if (res.status === 202) {
+                // optimistic add with temp id
+                const tempId = -Date.now();
+                const next = [
+                    ...lines,
+                    {
+                        id: tempId,
+                        comparatifYearId: year.id,
+                        typeItem: modalTypeItem,
+                        marque: modalForm.marque,
+                        prix: modalForm.prix,
+                        poidsValeur: modalForm.poidsValeur,
+                        poidsUnite: modalForm.poidsUnite,
+                        magasin: modalForm.magasin,
+                    } as ProductComparisonDto,
+                ];
+                setLines(next);
+                await replaceProductComparisonsForYear(year.id, next);
                 closeAddModal();
-            })
-            .catch((err) => setError(err.message));
-    }
+                return;
+            }
 
-    const handleModalChange: React.ChangeEventHandler<
-        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    > = (e) => {
-        const { name, value } = e.target;
-        setModalForm((prev) => ({
-            ...prev,
-            [name]: name === "prix" || name === "poidsValeur" ? Number(value) : value,
-        }));
-    };
+            if (!res.ok) throw new Error(await res.text());
+
+            // refresh single year to get server ids
+            const rf = await fetch(`/api/comparatifyears/${year.id}`, { credentials: "include" });
+            if (rf.ok) {
+                const data: ComparatifYearDto = await rf.json();
+                await putComparatifYear(data);
+                setLines(data.lines.map((l) => ({ ...l })));
+            }
+            if (navigator.onLine) await syncDown(false);
+            closeAddModal();
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        }
+    }
 
     if (loading) return <div>{t("loading")}</div>;
     if (!year) return <div>{t("notFound")}</div>;
@@ -349,11 +308,7 @@ const ComparatifEdit: React.FC = () => {
                                             <td>
                                                 <Select
                                                     isClearable
-                                                    options={typeSelectOptions.filter(
-                                                        (opt) =>
-                                                            !lines.some((l, j) => l.typeItem === opt.value && j !== i) ||
-                                                            item.typeItem === opt.value
-                                                    )}
+                                                    options={allowedTypeOptionsFor(i).map((v) => ({ label: v, value: v }))}
                                                     value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
                                                     onChange={(opt: SingleValue<{ label: string; value: string }>) =>
                                                         handleLineChange(i, "typeItem", opt?.value || "")
@@ -420,8 +375,8 @@ const ComparatifEdit: React.FC = () => {
                                                     type="button"
                                                     className="btn btn-outline-danger btn-sm rounded-pill px-3"
                                                     onClick={() => handleDeleteLine(i)}
-                                                    aria-label={t("delete.ariaLine")}
-                                                    title={t("delete.title")}
+                                                    aria-label={t("delete.ariaLine") as string}
+                                                    title={t("delete.title") as string}
                                                 >
                                                     <i className="bi bi-x-lg"></i>
                                                 </button>
@@ -432,7 +387,7 @@ const ComparatifEdit: React.FC = () => {
                             </Table>
                         </div>
 
-                        {/* Mobile/Tablet: cards */}
+                        {/* Mobile/Tablet cards */}
                         <div className="d-block d-xl-none">
                             <div className="row g-3">
                                 {lines.map((item, i) => (
@@ -444,9 +399,7 @@ const ComparatifEdit: React.FC = () => {
                                                         <div className="fw-bold">
                                                             {item.marque || <span className="text-muted">{t("mobile.brandFallback")}</span>}
                                                         </div>
-                                                        <div className="small text-muted">
-                                                            {item.typeItem || t("mobile.typeFallback")}
-                                                        </div>
+                                                        <div className="small text-muted">{item.typeItem || t("mobile.typeFallback")}</div>
                                                     </div>
                                                     <Button
                                                         size="sm"
@@ -454,8 +407,8 @@ const ComparatifEdit: React.FC = () => {
                                                         className="rounded-pill px-2 py-0"
                                                         style={{ lineHeight: 1 }}
                                                         onClick={() => handleDeleteLine(i)}
-                                                        aria-label={t("delete.title")}
-                                                        title={t("delete.title")}
+                                                        aria-label={t("delete.title") as string}
+                                                        title={t("delete.title") as string}
                                                     >
                                                         <i className="bi bi-x-lg"></i>
                                                     </Button>
@@ -481,11 +434,7 @@ const ComparatifEdit: React.FC = () => {
                                                         <Select
                                                             isClearable
                                                             menuPlacement="top"
-                                                            options={typeSelectOptions.filter(
-                                                                (opt) =>
-                                                                    !lines.some((l, j) => l.typeItem === opt.value && j !== i) ||
-                                                                    item.typeItem === opt.value
-                                                            )}
+                                                            options={allowedTypeOptionsFor(i).map((v) => ({ label: v, value: v }))}
                                                             value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
                                                             onChange={(opt: SingleValue<{ label: string; value: string }>) =>
                                                                 handleLineChange(i, "typeItem", opt?.value || "")
@@ -594,7 +543,7 @@ const ComparatifEdit: React.FC = () => {
                 </div>
             </div>
 
-            {/* Add Line Modal — fullscreen on small screens */}
+            {/* Add Line Modal */}
             <Modal show={showAddModal} onHide={closeAddModal} centered size="xl" fullscreen="sm-down">
                 <Modal.Header closeButton>
                     <Modal.Title>
@@ -609,12 +558,9 @@ const ComparatifEdit: React.FC = () => {
                                 <Form.Group className="mb-3">
                                     <Form.Label className="fw-bold">{t("modal.step1.labelType")}</Form.Label>
                                     {isMobile ? (
-                                        <Form.Select
-                                            value={modalTypeItem}
-                                            onChange={(e) => setModalTypeItem(e.target.value)}
-                                        >
+                                        <Form.Select value={modalTypeItem} onChange={(e) => setModalTypeItem(e.target.value)}>
                                             <option value="">{t("modal.step1.placeholderType")}</option>
-                                            {typeOptionsList
+                                            {(typeOptionsList || [])
                                                 .filter((opt) => !lines.some((l) => l.typeItem === opt))
                                                 .map((topt) => (
                                                     <option key={topt} value={topt}>
@@ -625,9 +571,9 @@ const ComparatifEdit: React.FC = () => {
                                     ) : (
                                         <Select
                                             isClearable
-                                            options={typeSelectOptions.filter(
-                                                (opt) => !lines.some((l) => l.typeItem === opt.value)
-                                            )}
+                                            options={(typeOptionsList || [])
+                                                .filter((opt) => !lines.some((l) => l.typeItem === opt))
+                                                .map((v) => ({ label: v, value: v }))}
                                             value={modalTypeItem ? { value: modalTypeItem, label: modalTypeItem } : null}
                                             onChange={(opt: SingleValue<{ label: string; value: string }>) =>
                                                 setModalTypeItem(opt?.value || "")
@@ -661,7 +607,7 @@ const ComparatifEdit: React.FC = () => {
                                             name="marque"
                                             required
                                             value={modalForm.marque}
-                                            onChange={handleModalChange}
+                                            onChange={(e) => setModalForm((p) => ({ ...p, marque: e.target.value }))}
                                             className="border-black rounded-3"
                                         />
                                     </Col>
@@ -674,7 +620,7 @@ const ComparatifEdit: React.FC = () => {
                                             name="prix"
                                             required
                                             value={modalForm.prix}
-                                            onChange={handleModalChange}
+                                            onChange={(e) => setModalForm((p) => ({ ...p, prix: Number(e.target.value) }))}
                                             className="border-black rounded-3"
                                         />
                                     </Col>
@@ -687,7 +633,7 @@ const ComparatifEdit: React.FC = () => {
                                             name="poidsValeur"
                                             required
                                             value={modalForm.poidsValeur}
-                                            onChange={handleModalChange}
+                                            onChange={(e) => setModalForm((p) => ({ ...p, poidsValeur: Number(e.target.value) }))}
                                             className="border-black rounded-3"
                                         />
                                     </Col>
@@ -699,7 +645,7 @@ const ComparatifEdit: React.FC = () => {
                                             name="poidsUnite"
                                             required
                                             value={modalForm.poidsUnite}
-                                            onChange={handleModalChange}
+                                            onChange={(e) => setModalForm((p) => ({ ...p, poidsUnite: e.target.value }))}
                                             className="border-black rounded-3"
                                         >
                                             <option value="">{t("unit.placeholder")}</option>
@@ -717,28 +663,20 @@ const ComparatifEdit: React.FC = () => {
                                             name="magasin"
                                             required
                                             value={modalForm.magasin}
-                                            onChange={handleModalChange}
+                                            onChange={(e) => setModalForm((p) => ({ ...p, magasin: e.target.value }))}
                                             className="border-black rounded-3"
                                         />
                                     </Col>
                                 </Row>
                                 <div className="d-flex justify-content-between">
-                                    <Button
-                                        type="button"
-                                        className="btn btn-secondary rounded-pill px-4"
-                                        onClick={() => setModalStep(1)}
-                                    >
+                                    <Button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setModalStep(1)}>
                                         <i className="bi bi-arrow-left me-2"></i>
                                         {t("modal.step2.back")}
                                     </Button>
                                     <Button
                                         type="submit"
                                         className="btn btn-success rounded-pill px-4"
-                                        disabled={
-                                            !modalForm.marque.trim() ||
-                                            !modalForm.poidsUnite.trim() ||
-                                            !modalTypeItem.trim()
-                                        }
+                                        disabled={!modalForm.marque.trim() || !modalForm.poidsUnite.trim() || !modalTypeItem.trim()}
                                     >
                                         <i className="bi bi-plus-circle me-2"></i>
                                         {t("modal.step2.submit")}

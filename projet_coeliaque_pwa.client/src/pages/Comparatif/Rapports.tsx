@@ -1,12 +1,10 @@
-﻿// src/pages/Rapports.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
 
-// offline helpers
-import { getCache, setCache, type ReportYearDto as ReportYear } from "../../offline/db";
-
-const REPORTS_CACHE_KEY = "rapports:years";
+import { db, type ReportYearDto as ReportYear, putReportYearsMany } from "../../offline/db";
+import { syncDown } from "../../offline/sync";
 
 const ReportListItem: React.FC<{
     y: ReportYear;
@@ -18,30 +16,33 @@ const ReportListItem: React.FC<{
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    function handleGenerate() {
+    async function handleGenerate() {
         setLoading(true);
         setError(null);
         setSuccess(false);
 
-        fetch(`/api/rapports/generate/${y.year}`, {
-            method: "POST",
-            credentials: "include",
-        })
-            .then(async (res) => {
-                if (res.status === 202) {
-                    // queued offline
-                    setSuccess(true);
-                    setTimeout(() => setSuccess(false), 2500);
-                    onReportGenerated?.();
-                    return;
-                }
-                if (!res.ok) throw new Error(await res.text());
+        try {
+            const res = await fetch(`/api/rapports/generate/${y.year}`, {
+                method: "POST",
+                credentials: "include",
+            });
+
+            if (res.status === 202) {
                 setSuccess(true);
                 setTimeout(() => setSuccess(false), 2500);
                 onReportGenerated?.();
-            })
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false));
+                return;
+            }
+            if (!res.ok) throw new Error(await res.text());
+
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 2500);
+            onReportGenerated?.();
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
@@ -64,7 +65,8 @@ const ReportListItem: React.FC<{
                         >
                             {loading ? (
                                 <>
-                                    <span className="spinner-border spinner-border-sm me-1"></span> {t("buttons.regen.loading")}
+                                    <span className="spinner-border spinner-border-sm me-1"></span>{" "}
+                                    {t("buttons.regen.loading")}
                                 </>
                             ) : (
                                 <>
@@ -74,10 +76,11 @@ const ReportListItem: React.FC<{
                         </button>
                     </>
                 ) : (
-                    <button className="btn btn-sm btn-success" onClick={handleGenerate} disabled={loading}>
+                    <button className="btn btn-sm btn.success" onClick={handleGenerate} disabled={loading}>
                         {loading ? (
                             <>
-                                <span className="spinner-border spinner-border-sm me-1"></span> {t("buttons.generate.loading")}
+                                <span className="spinner-border spinner-border-sm me-1"></span>{" "}
+                                {t("buttons.generate.loading")}
                             </>
                         ) : (
                             <>
@@ -95,52 +98,32 @@ const ReportListItem: React.FC<{
 
 const Rapports: React.FC = () => {
     const { t } = useTranslation("rapports");
-    const [years, setYears] = useState<ReportYear[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
-    const fetchYears = () => {
+    const years = useLiveQuery(() => db.reportYears.orderBy("year").reverse().toArray(), []);
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchYears = async () => {
         setLoading(true);
-
-        // cache-first
-        getCache<ReportYear[]>(REPORTS_CACHE_KEY).then((cached) => {
-            if (cached) setYears(cached);
-        });
-
-        fetch("/api/rapports", { credentials: "include" })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: ReportYear[]) => {
-                setYears(data);
-                await setCache(REPORTS_CACHE_KEY, data);
-            })
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false));
+        setError(null);
+        try {
+            const res = await fetch("/api/rapports", { credentials: "include" });
+            if (!res.ok) throw new Error(await res.text());
+            const data: ReportYear[] = await res.json();
+            await putReportYearsMany(data);
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
-        fetchYears();
-
-        const onSwMsg = (evt: MessageEvent) => {
-            const msg = evt.data;
-            if (!msg || typeof msg !== "object") return;
-
-            if (msg.type === "api-cache-hit" && typeof msg.url === "string" && msg.url.includes("/api/rapports")) {
-                if (Array.isArray(msg.data)) {
-                    setYears(msg.data);
-                    setCache(REPORTS_CACHE_KEY, msg.data);
-                }
-            }
-            if (msg.type === "mutation-sent") {
-                fetchYears();
-            }
-        };
-
-        navigator.serviceWorker?.addEventListener("message", onSwMsg);
-        return () => navigator.serviceWorker?.removeEventListener("message", onSwMsg);
+        if (navigator.onLine) void syncDown(false);
+        if ((!years || years.length === 0) && navigator.onLine) void fetchYears();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -154,7 +137,7 @@ const Rapports: React.FC = () => {
                         <div className="text-center py-4">{t("loading")}</div>
                     ) : error ? (
                         <div className="alert alert-danger m-3">{error}</div>
-                    ) : years.length === 0 ? (
+                    ) : !years || years.length === 0 ? (
                         <div className="text-center text-secondary py-4">{t("empty")}</div>
                     ) : (
                         <ul className="list-group list-group-flush">

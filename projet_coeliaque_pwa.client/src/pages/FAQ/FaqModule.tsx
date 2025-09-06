@@ -1,97 +1,100 @@
 ﻿// src/pages/FAQ/FaqModule.tsx
 import { useEffect, useMemo, useState } from "react";
 import PostEditor from "../../components/PostEditor";
-import {
-    getFaqForQuery,
-    putFaqForQuery,
-    touchFaqLastSync,
-    type FaqCategoryDto,
-    type FaqQuestionDto,
-    type FaqCategorySummaryDto,
+
+// Dexie repo + sync
+import { repo } from "../../offline/repo";
+import { syncDown } from "../../offline/sync";
+
+// Types mirror your DTOs
+import type {
+    FaqCategoryDto,
+    FaqQuestionDto,
+    FaqCategorySummaryDto,
 } from "../../offline/db";
 
-/** ========================
- * Public FAQ Page (offline-ready)
- *  - Client-side search via ?q= (local state)
- *  - Mirrors results to IndexedDB by query key ("" for no search)
- *  - Listens to SW "api-cache-hit" to hydrate cache on background fetches
- * ======================== */
+/* -------------------------------------------
+   Helpers
+------------------------------------------- */
+
+function stripHtml(s: string) {
+    const el = document.createElement("div");
+    el.innerHTML = s || "";
+    return el.textContent || el.innerText || "";
+}
+
+function filterFaqTree(tree: FaqCategoryDto[], q: string): FaqCategoryDto[] {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return tree;
+
+    return tree
+        .map((cat) => {
+            const questions = cat.questions.filter((qq) => {
+                const inQ = qq.question?.toLowerCase().includes(needle);
+                const inA = stripHtml(qq.answerHtml || "").toLowerCase().includes(needle);
+                const inTags = (qq as any).tagsCsv?.toLowerCase?.().includes(needle) ?? false;
+                const inCat = cat.name?.toLowerCase().includes(needle);
+                return inQ || inA || inTags || inCat;
+            });
+            return { ...cat, questions };
+        })
+        .filter((c) => c.questions.length > 0);
+}
+
+/* ===========================================
+ * Public FAQ Page (offline-first, Dexie-backed)
+ * =========================================== */
 export function FaqPage({ className = "" }: { className?: string }) {
     const [q, setQ] = useState("");
-    const [data, setData] = useState<FaqCategoryDto[] | null>(null);
-    const [loading, setLoading] = useState(false);
-    const queryKey = q.trim(); // normalize
+    const [tree, setTree] = useState<FaqCategoryDto[] | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
 
-    // On mount / query change: try IDB first (instant), then fetch network
+    // Subscribe to Dexie FAQ tree
+    useEffect(() => {
+        const sub = repo.getFaqTree().subscribe({
+            // 👇 add explicit type to avoid TS7006
+            next: (val: FaqCategoryDto[]) => setTree(val),
+            error: () => setTree([]),
+        });
+        return () => sub.unsubscribe();
+    }, []);
+
+    // Initial sync + keep fresh when back online
     useEffect(() => {
         let cancelled = false;
-
-        (async () => {
-            // 1) Show cached data (if any) — be defensive around IDB version bumps
+        const doSync = async () => {
             try {
-                const cached = await getFaqForQuery(queryKey);
-                if (!cancelled && cached) setData(cached);
-            } catch {
-                // ignore; network step will still run
-            }
-
-            // 2) Try network
-            setLoading(true);
-            try {
-                const url = queryKey ? `/api/faq?q=${encodeURIComponent(queryKey)}` : "/api/faq";
-                const res = await fetch(url, {
-                    credentials: "include",
-                    headers: { Accept: "application/json" },
-                });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const json = (await res.json()) as FaqCategoryDto[];
-                if (!cancelled) {
-                    setData(json);
-                    await putFaqForQuery(queryKey, json);
-                    await touchFaqLastSync();
-                }
-            } catch {
-                // keep whatever we had (cached or null)
+                setIsSyncing(true);
+                await syncDown(); // pulls /api/faq and stores to Dexie ("faq:all")
             } finally {
-                if (!cancelled) setLoading(false);
+                if (!cancelled) setIsSyncing(false);
             }
-        })();
+        };
+        void doSync();
+
+        const onOnline = () => void doSync();
+        window.addEventListener("online", onOnline);
+
+        // If SW replays mutations anywhere, refresh
+        const onSwMsg = (evt: MessageEvent) => {
+            const msg = evt.data;
+            if (msg?.type === "mutation-sent" && typeof msg.url === "string" && msg.url.includes("/api/faq")) {
+                void doSync();
+            }
+        };
+        navigator.serviceWorker?.addEventListener("message", onSwMsg);
 
         return () => {
             cancelled = true;
+            window.removeEventListener("online", onOnline);
+            navigator.serviceWorker?.removeEventListener("message", onSwMsg);
         };
-    }, [queryKey]);
+    }, []);
 
-    // Listen for SW broadcasts for /api/faq hits (any tab)
-    useEffect(() => {
-        if (!("serviceWorker" in navigator)) return;
-        const handler = (event: MessageEvent) => {
-            const msg = event.data;
-            if (!msg || msg.type !== "api-cache-hit" || typeof msg.url !== "string") return;
-
-            try {
-                const u = new URL(msg.url, location.origin);
-                if (u.origin !== location.origin || u.pathname !== "/api/faq") return;
-
-                const urlQ = u.searchParams.get("q") ?? "";
-                const payload = msg.data as FaqCategoryDto[] | undefined;
-                if (!payload) return;
-
-                // Mirror to IDB and refresh if this matches the current query
-                void putFaqForQuery(urlQ, payload).then(() => {
-                    if (urlQ === queryKey) setData(payload);
-                });
-            } catch {
-                /* ignore */
-            }
-        };
-        navigator.serviceWorker.addEventListener("message", handler);
-        return () => navigator.serviceWorker.removeEventListener("message", handler);
-    }, [queryKey]);
-
+    const filtered = useMemo(() => filterFaqTree(tree ?? [], q), [tree, q]);
     const totalCount = useMemo(
-        () => data?.reduce((sum, c) => sum + c.questions.length, 0) ?? 0,
-        [data]
+        () => filtered.reduce((sum, c) => sum + c.questions.length, 0),
+        [filtered]
     );
 
     return (
@@ -118,18 +121,15 @@ export function FaqPage({ className = "" }: { className?: string }) {
                 </div>
 
                 <div className="mt-2 text-xs text-neutral-500">
-                    {loading ? "Chargement…" : `${totalCount} résultat(s)`}
+                    {isSyncing ? "Mise à jour…" : `${totalCount} résultat(s)`}
                 </div>
             </header>
 
             <div className="space-y-4">
-                {data?.map((cat) => (
+                {filtered.map((cat) => (
                     <details key={cat.id} className="group rounded-2xl border bg-white p-4 shadow-sm">
-                        <summary className="cursor-pointer select-none text-base font-semibold">
-                            {cat.name}
-                        </summary>
+                        <summary className="cursor-pointer select-none text-base font-semibold">{cat.name}</summary>
 
-                        {/* Server HTML. Must be sanitized server-side. */}
                         {cat.description && (
                             <div
                                 className="prose mt-2 max-w-none text-sm text-neutral-700"
@@ -153,7 +153,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                         </div>
                     </details>
                 ))}
-                {(!data || data.length === 0) && !loading && (
+                {(filtered.length === 0 || !tree) && !isSyncing && (
                     <p className="text-sm text-neutral-500">Aucun résultat.</p>
                 )}
             </div>
@@ -166,15 +166,24 @@ export function FaqPage({ className = "" }: { className?: string }) {
     );
 }
 
-/** ========================
- * SuperAdmin Admin Panel (online only)
- *  - unchanged in behavior; no offline caching or outbox here
- * ======================== */
+/* ===========================================
+ * SuperAdmin Admin Panel (online writes)
+ * =========================================== */
 export function FaqAdmin({ className = "" }: { className?: string }) {
     const [q, setQ] = useState("");
     const [cats, setCats] = useState<FaqCategorySummaryDto[]>([]);
     const [tree, setTree] = useState<FaqCategoryDto[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // Subscribe to Dexie tree for the right pane
+    useEffect(() => {
+        const sub = repo.getFaqTree().subscribe({
+            // 👇 add explicit type to avoid TS7006
+            next: (val: FaqCategoryDto[]) => setTree(val),
+            error: () => setTree([]),
+        });
+        return () => sub.unsubscribe();
+    }, []);
 
     const refresh = async () => {
         setLoading(true);
@@ -189,7 +198,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             const cJson = (await cRes.json()) as FaqCategorySummaryDto[];
             const tJson = (await tRes.json()) as FaqCategoryDto[];
             setCats(cJson);
+            // Keep right pane in sync with server search results too (admin convenience)
             setTree(tJson);
+            // Also mirror to Dexie so public page/viewers update
+            await syncDown(); // will fetch latest /api/faq and store cats+questions under "faq:all"
         } finally {
             setLoading(false);
         }
@@ -286,7 +298,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         setQForm({ categoryId: 0, question: "", answerHtml: "", tagsCsv: "", sortOrder: 0, isActive: true });
     };
 
-    const totalQuestions = useMemo(() => cats.reduce((s, c) => s + c.activeQuestions, 0), [cats]);
+    const totalQuestions = useMemo(
+        () => cats.reduce((s, c) => s + c.activeQuestions, 0),
+        [cats]
+    );
 
     return (
         <section className={`mx-auto max-w-5xl ${className}`}>
@@ -303,11 +318,6 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         placeholder="Rechercher…"
                         className="w-full rounded-xl border px-3 py-2 text-sm shadow-sm"
                     />
-                    {q && (
-                        <button onClick={() => setQ("")} className="rounded-xl border px-3 py-2 text-sm">
-                            Effacer
-                        </button>
-                    )}
                 </div>
 
                 <div className="mt-2 text-xs text-neutral-500">
@@ -317,7 +327,9 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
             {/* Category form */}
             <div className="mb-6 rounded-2xl border bg-white p-4 shadow-sm">
-                <h2 className="text-lg font-semibold">{editingCatId ? "Modifier la catégorie" : "Nouvelle catégorie"}</h2>
+                <h2 className="text-lg font-semibold">
+                    {editingCatId ? "Modifier la catégorie" : "Nouvelle catégorie"}
+                </h2>
 
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                     <label className="text-sm">
@@ -546,9 +558,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                     </div>
                                 </details>
                             ))}
-                            {cat.questions.length === 0 && (
-                                <p className="text-sm text-neutral-500">Aucune question.</p>
-                            )}
+                            {cat.questions.length === 0 && <p className="text-sm text-neutral-500">Aucune question.</p>}
                         </div>
                     </details>
                 ))}

@@ -1,29 +1,24 @@
-﻿// src/pages/FactureEdit.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import CreatableSelect from "react-select/creatable";
 import type { SingleValue } from "react-select";
 import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
 
 import {
     getFacture,
     putFacture,
+    getFacturesList,
+    putFacturesList,
     type Facture as IFacture,
-    type FactureItem as IFactureItem
+    type FactureItem as IFactureItem,
 } from "../../offline/db";
 
-/** Canonical unit options for validation and consistent UI */
-const UNIT_OPTIONS = [
-    "g", "kg", "mg", "lb", "oz",
-    "ml", "l", "fl oz",
-    "un", "dozen"
-];
+const UNIT_OPTIONS = ["g", "kg", "mg", "lb", "oz", "ml", "l", "fl oz", "un", "dozen"];
 
 interface FactureItem extends IFactureItem { }
-interface Facture extends IFacture {
-    items: FactureItem[];
-}
+interface Facture extends IFacture { items: FactureItem[]; }
 
 const emptyItem: Omit<FactureItem, "id"> = {
     item: "",
@@ -35,75 +30,87 @@ const emptyItem: Omit<FactureItem, "id"> = {
     wasOnSale: false,
 };
 
+const LIST_KEY = "factures/all";
+
 export default function FactureEdit() {
     const { t } = useTranslation("pages/Factures/factureEdit");
     const { id } = useParams<{ id: string }>();
     const factureId = Number(id);
     const navigate = useNavigate();
 
+    // Live cache of this facture
+    const cachedFacture = useLiveQuery(() => getFacture(factureId), [factureId]);
+
+    // Live suggestions: gather all unique typeItem across cached list
+    const allTypeItems = useLiveQuery(async () => {
+        const list = (await getFacturesList(LIST_KEY)) as (Facture[] | null);
+        const types = new Set<string>();
+        (list ?? []).forEach(f =>
+            (f.items ?? []).forEach(i => {
+                const v = (i.typeItem || "").trim();
+                if (v) types.add(v);
+            })
+        );
+        return Array.from(types);
+    }, []);
+    const typeOptions = (allTypeItems ?? []).map(type => ({ label: type, value: type }));
+
     const [facture, setFacture] = useState<Facture | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // “Add item” 2-step wizard state
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [modalStep, setModalStep] = useState(1);
-    const [modalTypeItem, setModalTypeItem] = useState("");
-    const [modalForm, setModalForm] = useState(emptyItem);
+    // When cache changes, adopt it as the editable snapshot
+    useEffect(() => {
+        if (cachedFacture) {
+            setFacture({ items: [], ...cachedFacture } as Facture);
+            setLoading(false);
+        }
+    }, [cachedFacture?.id]);
 
-    // Global list of unique product types (across all invoices) for suggestion/creation
-    const [allTypeItems, setAllTypeItems] = useState<string[]>([]);
-    const typeOptions = allTypeItems.map(type => ({ label: type, value: type }));
-
-    /** Load current facture being edited (network first, fallback to IDB) */
+    // If no cache yet and we're online, fetch once & store
     useEffect(() => {
         let mounted = true;
-        setLoading(true);
-
-        fetch(`/api/factures/${factureId}`, { credentials: "include" })
-            .then(async res => {
+        (async () => {
+            if (!factureId || cachedFacture || !navigator.onLine) {
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
+            try {
+                const res = await fetch(`/api/factures/${factureId}`, { credentials: "include" });
                 if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: Facture) => {
+                const data: Facture = await res.json();
                 if (!mounted) return;
-                setFacture(data);
                 await putFacture(data);
-            })
-            .catch(async () => {
-                const cached = await getFacture(factureId);
-                if (mounted && cached) {
-                    setFacture({ items: [], ...cached } as Facture);
-                } else if (mounted) {
-                    setError(t("error.loadInvoiceOffline"));
-                }
-            })
-            .finally(() => mounted && setLoading(false));
-
-        // Build product type suggestions (best-effort)
-        fetch("/api/factures", { credentials: "include" })
-            .then(async res => (res.ok ? res.json() : []))
-            .then((all: Facture[]) => {
-                const types = new Set<string>();
-                all.forEach(f =>
-                    (f.items ?? []).forEach(i => {
-                        if (i.typeItem && i.typeItem.trim()) types.add(i.typeItem.trim());
-                    })
-                );
-                setAllTypeItems([...types]);
-            })
-            .catch(() => setAllTypeItems([]));
-
+            } catch (e: any) {
+                if (mounted) setError(e?.message ?? String(e));
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        })();
         return () => { mounted = false; };
-    }, [factureId, t]);
+    }, [factureId, !!cachedFacture]);
 
-    /** Top-level facture field changes (simple name/value mapping) */
+    // Also backfill suggestions if none yet and we're online
+    useEffect(() => {
+        if ((allTypeItems?.length ?? 0) > 0 || !navigator.onLine) return;
+        (async () => {
+            try {
+                const res = await fetch("/api/factures", { credentials: "include" });
+                if (!res.ok) return;
+                const data: Facture[] = await res.json();
+                await putFacturesList(LIST_KEY, data);
+            } catch {
+                /* ignore */
+            }
+        })();
+    }, [allTypeItems?.length]);
+
     function handleFactureChange(e: React.ChangeEvent<HTMLInputElement>) {
         if (!facture) return;
         setFacture({ ...facture, [e.target.name]: e.target.value } as Facture);
     }
 
-    /** Inline edit for one item (immutable update) */
     function handleItemChange(idx: number, field: keyof FactureItem, value: any) {
         if (!facture) return;
         const items = facture.items.slice();
@@ -111,7 +118,6 @@ export default function FactureEdit() {
         setFacture({ ...facture, items });
     }
 
-    /** Remove a single item row from the facture */
     function handleRemoveItem(idx: number) {
         if (!facture) return;
         const items = facture.items.slice();
@@ -120,6 +126,11 @@ export default function FactureEdit() {
     }
 
     // ----- Add Item Wizard -----
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [modalStep, setModalStep] = useState(1);
+    const [modalTypeItem, setModalTypeItem] = useState("");
+    const [modalForm, setModalForm] = useState(emptyItem);
+
     function openAddModal() {
         setShowAddModal(true);
         setModalStep(1);
@@ -130,10 +141,8 @@ export default function FactureEdit() {
         setModalForm(prev => ({ ...prev, typeItem: modalTypeItem }));
         setModalStep(2);
     }
-    function handleBackStep() {
-        setModalStep(1);
-    }
-    /** Normalize inputs and coerce checkbox to boolean */
+    function handleBackStep() { setModalStep(1); }
+
     function handleModalChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) {
@@ -141,10 +150,10 @@ export default function FactureEdit() {
         const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
         setModalForm(prev => ({
             ...prev,
-            [name]: type === "checkbox" ? !!checked : value
+            [name]: type === "checkbox" ? !!checked : (name === "quantite" || name === "prix" || name === "poidsValeur") ? Number(value) : value
         }));
     }
-    /** Append new item client-side (server will get full payload on Save) */
+
     function handleAddItemSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
@@ -156,7 +165,6 @@ export default function FactureEdit() {
         setModalForm(emptyItem);
     }
 
-    /** Persist facture with all current items (offline-safe) */
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
@@ -171,8 +179,7 @@ export default function FactureEdit() {
             });
 
             if (res.status === 202) {
-                // queued offline – persist locally and return to list
-                await putFacture(facture);
+                await putFacture(facture); // optimistic local persist
                 alert(t("alerts.offlineSaved"));
                 navigate("/factures");
                 return;
@@ -381,7 +388,7 @@ export default function FactureEdit() {
                                 </Table>
                             </div>
 
-                            {/* Mobile/Tablet cards (touch-friendly controls) */}
+                            {/* Mobile/Tablet cards */}
                             <div className="d-block d-xl-none">
                                 <div className="row g-3">
                                     {facture.items.map((item, i) => (
@@ -492,7 +499,7 @@ export default function FactureEdit() {
                                                         </label>
                                                     </div>
 
-                                                    {/* Remove button */}
+                                                    {/* Remove */}
                                                     <div className="mt-2 d-flex justify-content-end">
                                                         <Button
                                                             size="sm"

@@ -1,185 +1,89 @@
-﻿// src/pages/Comparatif.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
 
-// --- Offline helpers & shared DTOs (from your offline/db.ts) ---
-import {
-    // generic cache helpers
-    getCache,
-    setCache,
-    // typed aliases
-    type ComparatifYearDto,
-    type ReportYearDto,
-} from "../../offline/db";
-
-// Storage keys used in IndexedDB/Cache
-const YEARS_CACHE_KEY = "comparatif:years";
-const REPORTS_CACHE_KEY = "comparatif:reports";
+import { db, type ComparatifYearDto, type ReportYearDto } from "../../offline/db";
+import { syncDown } from "../../offline/sync";
 
 const REPORT_ROUTE = (annee: number) => `/rapports/${annee}`;
 
 const Comparatif: React.FC = () => {
     const { t } = useTranslation("pages/Comparatif/comparatif");
+    const navigate = useNavigate();
 
-    const [years, setYears] = useState<ComparatifYearDto[]>([]);
-    const [reports, setReports] = useState<ReportYearDto[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    // Live data from Dexie
+    const years = useLiveQuery(() => db.comparatifYears.orderBy("annee").reverse().toArray(), []);
+    const reportYears = useLiveQuery(() => db.reportYears.toArray(), []) as ReportYearDto[] | undefined;
 
-    // “new year” inline form
+    // UI state
     const [showForm, setShowForm] = useState(false);
     const [newYear, setNewYear] = useState<number>(new Date().getFullYear());
-
-    // (Re)generate progress per year
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [genLoading, setGenLoading] = useState<number | null>(null);
     const [genError, setGenError] = useState<string | null>(null);
 
-    const navigate = useNavigate();
+    const loading = years === undefined;
 
-    // ---------------- Cache-first loaders ----------------
-
-    const fetchYears = () => {
-        setLoading(true);
-
-        // 1) Immediate cache (if any)
-        getCache<ComparatifYearDto[]>(YEARS_CACHE_KEY).then((cached) => {
-            if (cached) setYears(cached);
-        });
-
-        // 2) Network (background refresh)
-        fetch("/api/comparatifyears", { credentials: "include" })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (list: ComparatifYearDto[]) => {
-                setYears(list);
-                await setCache(YEARS_CACHE_KEY, list);
-            })
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false));
-    };
-
-    const fetchReports = () => {
-        // quick cache
-        getCache<ReportYearDto[]>(REPORTS_CACHE_KEY).then((cached) => {
-            if (cached) setReports(cached);
-        });
-
-        fetch("/api/rapports", { credentials: "include" })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: ReportYearDto[]) => {
-                setReports(data);
-                await setCache(REPORTS_CACHE_KEY, data);
-            })
-            .catch(() => setReports([]));
-    };
-
+    // warm db
     useEffect(() => {
-        fetchYears();
-        fetchReports();
-
-        // react to SW messages (cache refresh, outbox replay, etc.)
-        const onSwMsg = (evt: MessageEvent) => {
-            const msg = evt.data;
-            if (!msg || typeof msg !== "object") return;
-
-            // if the SW announces cached JSON for this endpoint, adopt & cache
-            if (msg.type === "api-cache-hit" && typeof msg.url === "string") {
-                if (msg.url.includes("/api/comparatifyears")) {
-                    if (Array.isArray(msg.data)) {
-                        setYears(msg.data);
-                        setCache(YEARS_CACHE_KEY, msg.data);
-                    }
-                }
-                if (msg.url.includes("/api/rapports")) {
-                    if (Array.isArray(msg.data)) {
-                        setReports(msg.data);
-                        setCache(REPORTS_CACHE_KEY, msg.data);
-                    }
-                }
-            }
-
-            // mutation replay complete → refresh lists
-            if (msg.type === "mutation-sent") {
-                fetchYears();
-                setTimeout(fetchReports, 400);
-            }
-        };
-
-        navigator.serviceWorker?.addEventListener("message", onSwMsg);
-
-        const onOnline = () =>
-            navigator.serviceWorker?.controller?.postMessage?.({ type: "drain-outbox" });
-        window.addEventListener("online", onOnline);
-
-        return () => {
-            navigator.serviceWorker?.removeEventListener("message", onSwMsg);
-            window.removeEventListener("online", onOnline);
-        };
+        if (navigator.onLine) void syncDown(false);
     }, []);
 
-    // ---------------- Helpers ----------------
-
     const isReportGenerated = (annee: number) =>
-        reports.some((r) => r.year === annee && r.reportGenerated);
+        !!reportYears?.some((r) => r.year === annee && r.reportGenerated);
 
-    // ---------------- Actions ----------------
-
-    function handleCreate(e: React.FormEvent) {
+    async function handleCreate(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+        setSubmitting(true);
 
-        fetch("/api/comparatifyears", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ annee: newYear, lines: [] }),
-        })
-            .then(async (res) => {
-                if (res.status === 202) {
-                    alert(t("alerts.yearQueued"));
-                    setShowForm(false);
-                    setNewYear(new Date().getFullYear());
-                    // optimistic add (optional): re-fetch to read SW cache too
-                    fetchYears();
-                    return;
-                }
-                if (!res.ok) throw new Error(await res.text());
-                setShowForm(false);
-                setNewYear(new Date().getFullYear());
-                fetchYears();
-                setTimeout(fetchReports, 400);
-            })
-            .catch((err) => setError(err.message));
+        try {
+            const res = await fetch("/api/comparatifyears", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ annee: newYear, lines: [] }),
+            });
+
+            if (res.status === 202) {
+                alert(t("alerts.yearQueued"));
+                const temp: ComparatifYearDto = { id: -Date.now(), annee: newYear, lines: [] };
+                await db.comparatifYears.put(temp);
+            } else if (!res.ok) {
+                throw new Error(await res.text());
+            }
+
+            setShowForm(false);
+            setNewYear(new Date().getFullYear());
+            if (navigator.onLine) await syncDown(false);
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        } finally {
+            setSubmitting(false);
+        }
     }
 
-    function handleDelete(id: number, year?: number) {
+    async function handleDelete(id: number, year?: number) {
         if (!window.confirm(t("confirm.deleteYear", { year }))) return;
+        setError(null);
 
-        fetch(`/api/comparatifyears/${id}`, {
-            method: "DELETE",
-            credentials: "include",
-        })
-            .then(async (res) => {
-                if (res.status === 202) {
-                    // optimistic remove
-                    setYears((prev) => prev.filter((y) => y.id !== id));
-                    await setCache(
-                        YEARS_CACHE_KEY,
-                        years.filter((y) => y.id !== id)
-                    );
-                    return;
-                }
-                if (!res.ok) throw new Error(await res.text());
-                fetchYears();
-                setTimeout(fetchReports, 400);
-            })
-            .catch((err) => setError(err.message));
+        try {
+            const res = await fetch(`/api/comparatifyears/${id}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+
+            if (res.status === 202) {
+                await db.comparatifYears.delete(id);
+                return;
+            }
+            if (!res.ok) throw new Error(await res.text());
+            if (navigator.onLine) await syncDown(false);
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        }
     }
 
     async function handleGenerateReport(annee: number) {
@@ -199,19 +103,18 @@ const Comparatif: React.FC = () => {
 
             if (res.status === 202) {
                 alert(t("alerts.generateQueued"));
+                if (navigator.onLine) await syncDown(false);
                 return;
             }
 
             if (!res.ok) throw new Error(await res.text());
             navigate(REPORT_ROUTE(annee));
         } catch (err: any) {
-            setGenError(err.message ?? t("errors.generateFailed"));
+            setGenError(err?.message ?? t("errors.generateFailed"));
         } finally {
             setGenLoading(null);
         }
     }
-
-    // ---------------- Render ----------------
 
     return (
         <div className="container" style={{ maxWidth: 700 }}>
@@ -240,14 +143,16 @@ const Comparatif: React.FC = () => {
                             onChange={(e) => setNewYear(Number(e.target.value))}
                             required
                             style={{ maxWidth: 130 }}
+                            disabled={submitting}
                         />
-                        <button className="btn btn-success" type="submit">
+                        <button className="btn btn-success" type="submit" disabled={submitting}>
                             {t("form.create")}
                         </button>
                         <button
                             className="btn btn-secondary"
                             type="button"
                             onClick={() => setShowForm(false)}
+                            disabled={submitting}
                         >
                             {t("form.cancel")}
                         </button>
@@ -260,10 +165,8 @@ const Comparatif: React.FC = () => {
 
             {loading ? (
                 <div>{t("loading")}</div>
-            ) : years.length === 0 ? (
-                <div className="alert alert-secondary text-center">
-                    {t("empty")}
-                </div>
+            ) : !years || years.length === 0 ? (
+                <div className="alert alert-secondary text-center">{t("empty")}</div>
             ) : (
                 <div>
                     {years.map((y) => {
@@ -272,10 +175,7 @@ const Comparatif: React.FC = () => {
 
                         return (
                             <div key={y.id} className="card mb-2 border-0 shadow-sm">
-                                <div
-                                    className="card-body d-flex align-items-start flex-wrap gap-2"
-                                    style={{ columnGap: "1rem" }}
-                                >
+                                <div className="card-body d-flex align-items-start flex-wrap gap-2" style={{ columnGap: "1rem" }}>
                                     <div style={{ flex: 1, minWidth: 220 }}>
                                         <div className="fw-bold">
                                             {t("year")}: {y.annee}
@@ -291,18 +191,14 @@ const Comparatif: React.FC = () => {
 
                                     <div className="d-flex gap-2 ms-auto">
                                         <button
-                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"
-                                                }`}
+                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"}`}
                                             onClick={() => handleGenerateReport(y.annee)}
                                             disabled={busy}
-                                            title={generated ? t("buttons.generate.titleRegenerate") : t("buttons.generate.titleGenerate")}
+                                            title={generated ? (t("buttons.generate.titleRegenerate") as string) : (t("buttons.generate.titleGenerate") as string)}
                                         >
                                             {busy ? (
                                                 <>
-                                                    <span
-                                                        className="spinner-border spinner-border-sm me-2"
-                                                        role="status"
-                                                    />
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" />
                                                     <span className="d-none d-sm-inline">{t("busy.long")}</span>
                                                     <span className="d-sm-none">{t("busy.short")}</span>
                                                 </>
@@ -315,9 +211,7 @@ const Comparatif: React.FC = () => {
                                             ) : (
                                                 <>
                                                     <i className="bi bi-gear me-1" />
-                                                    <span className="d-none d-sm-inline">
-                                                        {t("buttons.generate.generateLong")}
-                                                    </span>
+                                                    <span className="d-none d-sm-inline">{t("buttons.generate.generateLong")}</span>
                                                     <span className="d-sm-none">{t("buttons.generate.generateShort")}</span>
                                                 </>
                                             )}
@@ -326,7 +220,7 @@ const Comparatif: React.FC = () => {
                                         <button
                                             className="btn btn-outline-primary btn-sm"
                                             onClick={() => navigate(`/comparatif/${y.id}`)}
-                                            title={t("buttons.view.title")}
+                                            title={t("buttons.view.title") as string}
                                         >
                                             <i className="bi bi-eye" />
                                             <span className="d-none d-sm-inline ms-1">{t("buttons.view.label")}</span>
@@ -335,7 +229,7 @@ const Comparatif: React.FC = () => {
                                         <button
                                             className="btn btn-outline-danger btn-sm"
                                             onClick={() => handleDelete(y.id, y.annee)}
-                                            title={t("buttons.delete.title")}
+                                            title={t("buttons.delete.title") as string}
                                         >
                                             <i className="bi bi-trash" />
                                             <span className="d-none d-sm-inline ms-1">{t("buttons.delete.label")}</span>

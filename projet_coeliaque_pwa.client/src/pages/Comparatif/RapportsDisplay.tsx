@@ -1,118 +1,54 @@
-﻿// src/pages/RapportsDisplay.tsx
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
 
-// offline helpers
-import { getCache, setCache } from "../../offline/db";
-
-interface ProductComparisonRow {
-    typeItem: string;
-    nomSansGluten: string;
-    quantiteSansGluten: number;
-    formatSansGluten: number;
-    uniteSansGluten: string;
-    prixSansGluten: number;
-
-    marqueAvecGluten?: string | null;
-    nomAvecGluten?: string | null;
-    formatAvecGluten?: number | null;
-    uniteAvecGluten?: string | null;
-    prixAvecGluten?: number | null;
-
-    prixPar100SansGluten: number;
-    prixPar100AvecGluten: number;
-    diffPar100: number;
-    sousTotalProduit: number;
-    prixPar100Unit: string;
-}
-
-type ReportPayload = {
-    reportRows: ProductComparisonRow[];
-    totalSousTotalProduit: number;
-    userName: string;
-};
-
-// per-year cache key
-const reportKey = (annee: string | number) => `rapports:${annee}`;
+import { db, type ReportPayload, putReportBody } from "../../offline/db";
 
 const RapportsDisplay: React.FC = () => {
     const { t, i18n } = useTranslation("pages/Comparatif/rapportsDisplay");
     const locale = i18n.language?.startsWith("fr") ? "fr-CA" : "en-CA";
 
     const { annee } = useParams<{ annee: string }>();
-    const [rows, setRows] = useState<ProductComparisonRow[]>([]);
-    const [total, setTotal] = useState(0);
-    const [userName, setUserName] = useState("");
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
-    const printSectionRef = useRef<HTMLDivElement>(null);
 
-    // Prompt before print
+    const row = useLiveQuery(
+        () => (annee ? db.reportBodies.get(Number(annee)) : Promise.resolve(undefined)),
+        [annee]
+    ) as { year: number; payload: ReportPayload } | undefined;
+
+    const payload = row?.payload;
+    const rows = payload?.reportRows ?? [];
+    const total = payload?.totalSousTotalProduit ?? 0;
+    const userName = payload?.userName ?? "";
+
+    const [error, setError] = useState<string | null>(null);
     const [showPrompt, setShowPrompt] = useState(false);
     const [printNom, setPrintNom] = useState("");
     const [printNAS, setPrintNAS] = useState("");
     const [triggerPrint, setTriggerPrint] = useState(false);
+    const printSectionRef = useRef<HTMLDivElement>(null);
 
-    // ---------------- Cache-first load ----------------
+    // Fetch if not in Dexie
     useEffect(() => {
-        if (!annee) return;
-
-        setLoading(true);
-
-        // 1) Cache
-        getCache<ReportPayload>(reportKey(annee)).then((cached) => {
-            if (cached) {
-                setRows(cached.reportRows || []);
-                setTotal(cached.totalSousTotalProduit || 0);
-                setUserName(cached.userName || "");
-            }
-        });
-
-        // 2) Network
-        fetch(`/api/rapports/${annee}`, { credentials: "include" })
-            .then(async (res) => {
+        let cancelled = false;
+        (async () => {
+            if (!annee || payload || !navigator.onLine) return;
+            try {
+                const res = await fetch(`/api/rapports/${annee}`, { credentials: "include" });
                 if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: ReportPayload) => {
-                setRows(data.reportRows || []);
-                setTotal(data.totalSousTotalProduit || 0);
-                setUserName(data.userName || "");
-                await setCache(reportKey(annee), data);
-            })
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [annee]);
-
-    // react to SW refresh
-    useEffect(() => {
-        const onSwMsg = (evt: MessageEvent) => {
-            const msg = evt.data;
-            if (!msg || typeof msg !== "object") return;
-
-            if (
-                msg.type === "api-cache-hit" &&
-                typeof msg.url === "string" &&
-                annee &&
-                msg.url.includes(`/api/rapports/${annee}`)
-            ) {
-                const data: ReportPayload = msg.data;
-                if (data && typeof data === "object") {
-                    setRows(data.reportRows || []);
-                    setTotal(data.totalSousTotalProduit || 0);
-                    setUserName(data.userName || "");
-                    setCache(reportKey(annee), data);
+                const data: ReportPayload = await res.json();
+                if (!cancelled) {
+                    await putReportBody(Number(annee), data);
                 }
+            } catch (e: any) {
+                if (!cancelled) setError(e?.message ?? String(e));
             }
-        };
+        })();
+        return () => { cancelled = true; };
+    }, [annee, payload]);
 
-        navigator.serviceWorker?.addEventListener("message", onSwMsg);
-        return () => navigator.serviceWorker?.removeEventListener("message", onSwMsg);
-    }, [annee]);
-
-    // print scheduling to let DOM update
+    // print scheduling
     useEffect(() => {
         if (!triggerPrint) return;
         setTimeout(() => {
@@ -122,16 +58,14 @@ const RapportsDisplay: React.FC = () => {
         }, 200);
     }, [triggerPrint]);
 
-    function handlePrintClick() {
-        setShowPrompt(true);
-    }
+    function handlePrintClick() { setShowPrompt(true); }
     function handlePromptSubmit(e: React.FormEvent) {
         e.preventDefault();
         setShowPrompt(false);
         setTriggerPrint(true);
     }
 
-    if (loading) return <div>{t("loading")}</div>;
+    if (!payload && !error) return <div>{t("loading")}</div>;
     if (error) return <div className="alert alert-danger">{error}</div>;
 
     const totalFormatted = total.toLocaleString(locale, { style: "currency", currency: "CAD" });
@@ -142,12 +76,10 @@ const RapportsDisplay: React.FC = () => {
                 <i className="bi bi-info-circle me-2"></i>
                 <b>{t("print.noteLabel")}</b>{" "}
                 {t("print.noteMain")}{" "}
-                <b>
-                    <i>{t("print.noteNotSaved")}</i>
-                </b>
+                <b><i>{t("print.noteNotSaved")}</i></b>
             </div>
 
-            <button className="btn btn-success no-print mb-3" onClick={handlePrintClick}>
+            <button className="btn btn.success no-print mb-3" onClick={handlePrintClick}>
                 {t("print.printButton")}
             </button>
             <button className="btn btn-outline-secondary no-print mb-3 ms-2" onClick={() => navigate(-1)}>
@@ -158,28 +90,14 @@ const RapportsDisplay: React.FC = () => {
             {showPrompt && (
                 <div
                     style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 9999,
-                        background: "rgba(0,0,0,0.35)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+                        background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center",
                     }}
                 >
                     <form
                         onSubmit={handlePromptSubmit}
                         autoComplete="off"
-                        style={{
-                            background: "#fff",
-                            borderRadius: 12,
-                            padding: 32,
-                            minWidth: 350,
-                            boxShadow: "0 4px 30px rgba(0,0,0,0.17)",
-                        }}
+                        style={{ background: "#fff", borderRadius: 12, padding: 32, minWidth: 350, boxShadow: "0 4px 30px rgba(0,0,0,0.17)" }}
                     >
                         <h4 className="mb-4">{t("prompt.title")}</h4>
                         <div className="alert alert-primary" style={{ fontSize: "1em" }}>
@@ -216,7 +134,7 @@ const RapportsDisplay: React.FC = () => {
                             <button type="button" className="btn btn-secondary" onClick={() => setShowPrompt(false)}>
                                 {t("prompt.cancel")}
                             </button>
-                            <button type="submit" className="btn btn-success">
+                            <button type="submit" className="btn btn.success">
                                 {t("prompt.continuePrint")}
                             </button>
                         </div>
@@ -227,15 +145,13 @@ const RapportsDisplay: React.FC = () => {
             <div id="print-section" ref={printSectionRef}>
                 <style>
                     {`
-          @media screen {
-            .print-only { display: none !important; }
-          }
-          @media print {
-            .print-only { display: flex !important; }
-            .no-print { display: none !important; }
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          }
-        `}
+            @media screen { .print-only { display: none !important; } }
+            @media print {
+              .print-only { display: flex !important; }
+              .no-print { display: none !important; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+          `}
                 </style>
 
                 {/* Print-only header fields */}
@@ -244,15 +160,8 @@ const RapportsDisplay: React.FC = () => {
                         <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>{t("prompt.nameLabel")}</div>
                         <div
                             style={{
-                                border: "2px solid #333",
-                                background: "#fff",
-                                width: 260,
-                                height: 36,
-                                marginBottom: 6,
-                                display: "flex",
-                                alignItems: "center",
-                                fontSize: "1.07em",
-                                paddingLeft: 10,
+                                border: "2px solid #333", background: "#fff", width: 260, height: 36, marginBottom: 6,
+                                display: "flex", alignItems: "center", fontSize: "1.07em", paddingLeft: 10,
                             }}
                         >
                             {printNom || <span style={{ color: "#fff" }}>-</span>}
@@ -262,15 +171,8 @@ const RapportsDisplay: React.FC = () => {
                         <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>{t("prompt.nasLabel")}</div>
                         <div
                             style={{
-                                border: "2px solid #333",
-                                background: "#fff",
-                                width: 180,
-                                height: 36,
-                                marginBottom: 6,
-                                display: "flex",
-                                alignItems: "center",
-                                fontSize: "1.07em",
-                                paddingLeft: 10,
+                                border: "2px solid #333", background: "#fff", width: 180, height: 36, marginBottom: 6,
+                                display: "flex", alignItems: "center", fontSize: "1.07em", paddingLeft: 10,
                             }}
                         >
                             {printNAS || <span style={{ color: "#fff" }}>-</span>}
@@ -284,12 +186,8 @@ const RapportsDisplay: React.FC = () => {
                 <table className="comparatif-table">
                     <thead>
                         <tr>
-                            <th colSpan={7} className="comparatif-header-sg double-divider">
-                                {t("table.groups.sansGluten")}
-                            </th>
-                            <th colSpan={6} className="comparatif-header-ag double-divider">
-                                {t("table.groups.avecGluten")}
-                            </th>
+                            <th colSpan={7} className="comparatif-header-sg double-divider">{t("table.groups.sansGluten")}</th>
+                            <th colSpan={6} className="comparatif-header-ag double-divider">{t("table.groups.avecGluten")}</th>
                             <th colSpan={3} className="comparatif-header-total"></th>
                         </tr>
                         <tr>
@@ -334,12 +232,8 @@ const RapportsDisplay: React.FC = () => {
                                 <td className="comparatif-th-ag double-divider">
                                     {row.prixPar100AvecGluten.toFixed(3)} {row.prixPar100Unit}
                                 </td>
-                                <td>
-                                    {row.diffPar100.toFixed(3)} {row.prixPar100Unit}
-                                </td>
-                                <td>
-                                    {row.sousTotalProduit.toLocaleString(locale, { style: "currency", currency: "CAD" })}
-                                </td>
+                                <td>{row.diffPar100.toFixed(3)} {row.prixPar100Unit}</td>
+                                <td>{row.sousTotalProduit.toLocaleString(locale, { style: "currency", currency: "CAD" })}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -356,27 +250,19 @@ const RapportsDisplay: React.FC = () => {
                     </h4>
                     <ul>
                         <li>
-                            <b>{t("explain.pricePer100.title")}</b>
-                            <br />
+                            <b>{t("explain.pricePer100.title")}</b><br />
                             <span>
-                                <code>{t("explain.pricePer100.formula")}</code>
-                                <br />
+                                <code>{t("explain.pricePer100.formula")}</code><br />
                                 {t("explain.pricePer100.example")}
                             </span>
                         </li>
                         <li className="mt-2">
-                            <b>{t("explain.diff.title")}</b>
-                            <br />
-                            <span>
-                                <code>{t("explain.diff.formula")}</code>
-                            </span>
+                            <b>{t("explain.diff.title")}</b><br />
+                            <span><code>{t("explain.diff.formula")}</code></span>
                         </li>
                         <li className="mt-2">
-                            <b>{t("explain.sousTotal.title")}</b>
-                            <br />
-                            <span>
-                                <code>{t("explain.sousTotal.formula")}</code>
-                            </span>
+                            <b>{t("explain.sousTotal.title")}</b><br />
+                            <span><code>{t("explain.sousTotal.formula")}</code></span>
                         </li>
                         <li className="mt-2">
                             <b>{t("explain.total.title")}</b>

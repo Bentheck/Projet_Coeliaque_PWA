@@ -1,19 +1,20 @@
-﻿// src/pages/Factures.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
+
 import {
     getFacturesList,
     putFacturesList,
     putFacture,
     removeFacture,
-    type Facture as IFacture
+    type Facture as IFacture,
 } from "../../offline/db";
-import { useTranslation } from "react-i18next";
 
-/** Minimal invoice shape used in the listing & create form */
+const LIST_KEY = "factures/all";
+
 interface Facture extends IFacture { }
 
-/** Default values when starting a new invoice */
 const emptyFacture: Omit<Facture, "id"> = {
     annee: new Date().getFullYear(),
     factureId: "",
@@ -21,102 +22,57 @@ const emptyFacture: Omit<Facture, "id"> = {
     magasin: "",
 };
 
-const LIST_KEY = "factures/all";
-
 const Factures: React.FC = () => {
     const { t } = useTranslation("pages/Factures/factures");
     const navigate = useNavigate();
-    const [factures, setFactures] = useState<Facture[]>([]);
-    const [loading, setLoading] = useState(true);
+
+    // Live list from Dexie (generic store)
+    const factures = useLiveQuery(() => getFacturesList(LIST_KEY), []);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    /** Form state: create/edit inline form above the list */
+    // Inline form state
     const [formMode, setFormMode] = useState<"none" | "create" | "edit">("none");
-    const [current, setCurrent] = useState<Facture | null>(null); // target of edit mode
+    const [current, setCurrent] = useState<Facture | null>(null);
     const [formData, setFormData] = useState(emptyFacture);
 
-    /** Load all invoices: cache-first (IDB), then network refresh */
-    const fetchFactures = () => {
+    // Initial background refresh to populate Dexie if online
+    const fetchFactures = async () => {
         setLoading(true);
-
-        // 1) render cached immediately if present
-        getFacturesList(LIST_KEY).then((cached: Facture[] | null) => {
-            if (cached) setFactures(cached);
-        });
-
-        // 2) refresh from network
-        fetch("/api/factures", { credentials: "include" })
-            .then(async res => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: Facture[]) => {
-                setFactures(data);
-                await putFacturesList(LIST_KEY, data);
-            })
-            .catch(err => setError(err.message))
-            .finally(() => setLoading(false));
+        setError(null);
+        try {
+            const res = await fetch("/api/factures", { credentials: "include" });
+            if (!res.ok) throw new Error(await res.text());
+            const data: Facture[] = await res.json();
+            await putFacturesList(LIST_KEY, data);
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
-        fetchFactures();
-
-        // Listen to SW messages to update UI after cache hits / replay
-        const onSwMsg = (evt: MessageEvent) => {
-            const msg = evt.data;
-            if (msg?.type === "api-cache-hit" && msg.url?.includes("/api/factures")) {
-                setFactures(msg.data as Facture[]);
-                putFacturesList(LIST_KEY, msg.data as Facture[]);
-            }
-            if (msg?.type === "mutation-sent" && msg.url?.includes("/api/factures")) {
-                // After outbox replay, trigger a refresh
-                fetchFactures();
-            }
-        };
-        navigator.serviceWorker?.addEventListener("message", onSwMsg);
-
-        // When we come back online, ask the SW to drain the outbox
-        const onOnline = () =>
-            navigator.serviceWorker?.controller?.postMessage?.({ type: "drain-outbox" });
-        window.addEventListener("online", onOnline);
-
-        return () => {
-            navigator.serviceWorker?.removeEventListener("message", onSwMsg);
-            window.removeEventListener("online", onOnline);
-        };
+        if (navigator.onLine) void fetchFactures();
     }, []);
 
     // ----- Handlers -----
-
-    /** Keep formData in sync with inputs */
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({
-            ...prev,
-            [e.target.name]: e.target.value,
-        }));
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    /** Enter create mode with a clean form */
     const startCreate = () => {
         setFormData(emptyFacture);
         setCurrent(null);
         setFormMode("create");
     };
 
-    /** Exit form without persisting */
     const handleCancel = () => {
         setFormMode("none");
         setCurrent(null);
         setFormData(emptyFacture);
     };
 
-    /**
-     * Create or update the invoice.
-     * - POST on create (with items: [] so backend can hydrate properly)
-     * - PUT on edit
-     * - On create success, navigate to the detail/editor page.
-     * - When offline, the service worker should respond 202 (queued).
-     */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -133,29 +89,24 @@ const Factures: React.FC = () => {
                 body: JSON.stringify(payload),
             });
 
-            // Offline/queued path -> SW returns 202
             if (res.status === 202) {
+                // Offline/queued
                 if (isEdit && current) {
-                    // optimistic update in list + cache
                     const updated: Facture = { ...current, ...formData };
-                    setFactures((prev: Facture[]) =>
-                        prev.map((f: Facture) => (f.id === updated.id ? updated : f))
+                    const existing = (await getFacturesList(LIST_KEY)) ?? [];
+                    await putFacturesList(
+                        LIST_KEY,
+                        (existing as Facture[]).map(f => (f.id === updated.id ? updated : f))
                     );
                     await putFacture(updated);
-                    const cachedList = (await getFacturesList(LIST_KEY)) ?? [];
-                    await putFacturesList(LIST_KEY, cachedList as Facture[]);
                     alert(t("alerts.offlineEditSaved"));
                     handleCancel();
                     return;
                 } else {
-                    // create queued: add a placeholder row (no real id yet)
-                    const phantom: Facture = {
-                        id: -Date.now(), // temporary local id
-                        ...formData
-                    } as Facture;
-                    setFactures((prev: Facture[]) => [phantom, ...prev]);
-                    const cachedList = (await getFacturesList(LIST_KEY)) ?? [];
-                    await putFacturesList(LIST_KEY, [phantom, ...(cachedList as Facture[])]);
+                    // create queued: phantom row
+                    const phantom: Facture = { id: -Date.now(), ...formData } as Facture;
+                    const existing = (await getFacturesList(LIST_KEY)) ?? [];
+                    await putFacturesList(LIST_KEY, [phantom, ...(existing as Facture[])]);
                     alert(t("alerts.offlineCreateSaved"));
                     handleCancel();
                     return;
@@ -166,64 +117,62 @@ const Factures: React.FC = () => {
 
             if (isEdit) {
                 handleCancel();
-                fetchFactures();
+                void fetchFactures();
                 return;
             }
 
-            // Create flow: expect new id to route to editor
+            // Create → navigate to editor
             const created = await res.json();
             const newId = created?.id ?? created?.Id;
             if (!newId) throw new Error(t("errors.unexpectedMissingId"));
 
-            handleCancel();
             await putFacture({ id: newId, ...formData });
-            fetchFactures();
+            handleCancel();
+            void fetchFactures();
             navigate(`/factures/${newId}`);
         } catch (err: any) {
             setError(err.message ?? t("errors.saveFailed"));
         }
     };
 
-    /** Permanently remove an invoice (with user confirmation) */
     const handleDelete = async (facture: Facture) => {
         if (!window.confirm(t("confirm.delete"))) return;
         try {
             const res = await fetch(`/api/factures/${facture.id}`, {
                 method: "DELETE",
-                credentials: "include"
+                credentials: "include",
             });
 
             if (res.status === 202) {
-                // queued delete (offline) – optimistic removal
-                setFactures((prev: Facture[]) => prev.filter((f: Facture) => f.id !== facture.id));
-                await removeFacture(facture.id);
-                const cachedList = ((await getFacturesList(LIST_KEY)) ?? []) as Facture[];
+                // optimistic removal
+                const existing = (await getFacturesList(LIST_KEY)) ?? [];
                 await putFacturesList(
                     LIST_KEY,
-                    cachedList.filter((f: Facture) => f.id !== facture.id)
+                    (existing as Facture[]).filter(f => f.id !== facture.id)
                 );
+                await removeFacture(facture.id);
                 alert(t("alerts.offlineDeleteQueued"));
                 return;
             }
 
             if (!res.ok) throw new Error(await res.text());
 
-            setFactures((prev: Facture[]) => prev.filter((f: Facture) => f.id !== facture.id));
-            await removeFacture(facture.id);
-            const cachedList = ((await getFacturesList(LIST_KEY)) ?? []) as Facture[];
+            const existing = (await getFacturesList(LIST_KEY)) ?? [];
             await putFacturesList(
                 LIST_KEY,
-                cachedList.filter((f: Facture) => f.id !== facture.id)
+                (existing as Facture[]).filter(f => f.id !== facture.id)
             );
+            await removeFacture(facture.id);
         } catch (err: any) {
             setError(err.message ?? t("errors.deleteFailed"));
         }
     };
 
     // ----- Render -----
+    const list = (factures ?? []) as Facture[];
+
     return (
         <div className="container" style={{ maxWidth: 700 }}>
-            {/* Hide button text under 600px to keep actions compact */}
             <style>{`
         @media (max-width: 600px) {
           .only-icons-under-600 .btn-text { display: none !important; }
@@ -296,10 +245,10 @@ const Factures: React.FC = () => {
 
             {loading ? (
                 <div>{t("loading")}</div>
-            ) : factures.length === 0 ? (
+            ) : list.length === 0 ? (
                 <div className="alert alert-secondary text-center">{t("empty.noneFound")}</div>
             ) : (
-                factures.map((facture: Facture) => (
+                list.map((facture: Facture) => (
                     <div key={facture.id} className="card mb-2 border-0 shadow-sm">
                         <div className="card-body d-flex align-items-start" style={{ columnGap: "1rem" }}>
                             <span style={{ flex: 1 }}>
@@ -308,7 +257,6 @@ const Factures: React.FC = () => {
                                 <div><b>{t("list.storeLabel")}</b> {facture.magasin}</div>
                             </span>
 
-                            {/* Action buttons; text hides under 600px */}
                             <div className="d-flex gap-2 only-icons-under-600">
                                 {facture.id > 0 && (
                                     <button
