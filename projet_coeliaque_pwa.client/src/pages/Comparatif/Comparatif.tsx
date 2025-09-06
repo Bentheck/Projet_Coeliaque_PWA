@@ -1,189 +1,95 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
 
-// --- Offline helpers & shared DTOs (from your offline/db.ts) ---
-import {
-    // generic cache helpers
-    getCache,
-    setCache,
-    // typed aliases (optional niceties — feel free to collapse to getCache/setCache)
-    type ComparatifYearDto,
-    type ReportYearDto,
-} from "../../offline/db";
-
-// Storage keys used in IndexedDB/Cache
-const YEARS_CACHE_KEY = "comparatif:years";
-const REPORTS_CACHE_KEY = "comparatif:reports";
+import { db, type ComparatifYearDto, type ReportYearDto } from "../../offline/db";
+import { syncDown } from "../../offline/sync";
 
 const REPORT_ROUTE = (annee: number) => `/rapports/${annee}`;
 
 const Comparatif: React.FC = () => {
-    const [years, setYears] = useState<ComparatifYearDto[]>([]);
-    const [reports, setReports] = useState<ReportYearDto[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { t } = useTranslation("pages/Comparatif/comparatif");
+    const navigate = useNavigate();
 
-    // “new year” inline form
+    // Live data from Dexie
+    const years = useLiveQuery(() => db.comparatifYears.orderBy("annee").reverse().toArray(), []);
+    const reportYears = useLiveQuery(() => db.reportYears.toArray(), []) as ReportYearDto[] | undefined;
+
+    // UI state
     const [showForm, setShowForm] = useState(false);
     const [newYear, setNewYear] = useState<number>(new Date().getFullYear());
-
-    // (Re)generate progress per year
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [genLoading, setGenLoading] = useState<number | null>(null);
     const [genError, setGenError] = useState<string | null>(null);
 
-    const navigate = useNavigate();
+    const loading = years === undefined;
 
-    // ---------------- Cache-first loaders ----------------
-
-    const fetchYears = () => {
-        setLoading(true);
-
-        // 1) Immediate cache (if any)
-        getCache<ComparatifYearDto[]>(YEARS_CACHE_KEY).then((cached) => {
-            if (cached) setYears(cached);
-        });
-
-        // 2) Network (background refresh)
-        fetch("/api/comparatifyears", { credentials: "include" })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (list: ComparatifYearDto[]) => {
-                setYears(list);
-                await setCache(YEARS_CACHE_KEY, list);
-            })
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false));
-    };
-
-    const fetchReports = () => {
-        // quick cache
-        getCache<ReportYearDto[]>(REPORTS_CACHE_KEY).then((cached) => {
-            if (cached) setReports(cached);
-        });
-
-        fetch("/api/rapports", { credentials: "include" })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: ReportYearDto[]) => {
-                setReports(data);
-                await setCache(REPORTS_CACHE_KEY, data);
-            })
-            .catch(() => setReports([]));
-    };
-
+    // warm db
     useEffect(() => {
-        fetchYears();
-        fetchReports();
-
-        // react to SW messages (cache refresh, outbox replay, etc.)
-        const onSwMsg = (evt: MessageEvent) => {
-            const msg = evt.data;
-            if (!msg || typeof msg !== "object") return;
-
-            // if the SW announces cached JSON for this endpoint, adopt & cache
-            if (msg.type === "api-cache-hit" && typeof msg.url === "string") {
-                if (msg.url.includes("/api/comparatifyears")) {
-                    if (Array.isArray(msg.data)) {
-                        setYears(msg.data);
-                        setCache(YEARS_CACHE_KEY, msg.data);
-                    }
-                }
-                if (msg.url.includes("/api/rapports")) {
-                    if (Array.isArray(msg.data)) {
-                        setReports(msg.data);
-                        setCache(REPORTS_CACHE_KEY, msg.data);
-                    }
-                }
-            }
-
-            // mutation replay complete → refresh lists
-            if (msg.type === "mutation-sent") {
-                fetchYears();
-                setTimeout(fetchReports, 400);
-            }
-        };
-
-        navigator.serviceWorker?.addEventListener("message", onSwMsg);
-
-        const onOnline = () =>
-            navigator.serviceWorker?.controller?.postMessage?.({ type: "drain-outbox" });
-        window.addEventListener("online", onOnline);
-
-        return () => {
-            navigator.serviceWorker?.removeEventListener("message", onSwMsg);
-            window.removeEventListener("online", onOnline);
-        };
+        if (navigator.onLine) void syncDown(false);
     }, []);
 
-    // ---------------- Helpers ----------------
-
     const isReportGenerated = (annee: number) =>
-        reports.some((r) => r.year === annee && r.reportGenerated);
+        !!reportYears?.some((r) => r.year === annee && r.reportGenerated);
 
-    // ---------------- Actions ----------------
-
-    function handleCreate(e: React.FormEvent) {
+    async function handleCreate(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+        setSubmitting(true);
 
-        fetch("/api/comparatifyears", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ annee: newYear, lines: [] }),
-        })
-            .then(async (res) => {
-                if (res.status === 202) {
-                    alert("Nouvelle année ajoutée hors ligne — elle se synchronisera plus tard.");
-                    setShowForm(false);
-                    setNewYear(new Date().getFullYear());
-                    // optimistic add (optional): re-fetch to read SW cache too
-                    fetchYears();
-                    return;
-                }
-                if (!res.ok) throw new Error(await res.text());
-                setShowForm(false);
-                setNewYear(new Date().getFullYear());
-                fetchYears();
-                setTimeout(fetchReports, 400);
-            })
-            .catch((err) => setError(err.message));
+        try {
+            const res = await fetch("/api/comparatifyears", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ annee: newYear, lines: [] }),
+            });
+
+            if (res.status === 202) {
+                alert(t("alerts.yearQueued"));
+                const temp: ComparatifYearDto = { id: -Date.now(), annee: newYear, lines: [] };
+                await db.comparatifYears.put(temp);
+            } else if (!res.ok) {
+                throw new Error(await res.text());
+            }
+
+            setShowForm(false);
+            setNewYear(new Date().getFullYear());
+            if (navigator.onLine) await syncDown(false);
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        } finally {
+            setSubmitting(false);
+        }
     }
 
-    function handleDelete(id: number) {
-        if (!window.confirm("Supprimer cette année et toutes ses lignes?")) return;
+    async function handleDelete(id: number, year?: number) {
+        if (!window.confirm(t("confirm.deleteYear", { year }))) return;
+        setError(null);
 
-        fetch(`/api/comparatifyears/${id}`, {
-            method: "DELETE",
-            credentials: "include",
-        })
-            .then(async (res) => {
-                if (res.status === 202) {
-                    // optimistic remove
-                    setYears((prev) => prev.filter((y) => y.id !== id));
-                    await setCache(
-                        YEARS_CACHE_KEY,
-                        years.filter((y) => y.id !== id)
-                    );
-                    return;
-                }
-                if (!res.ok) throw new Error(await res.text());
-                fetchYears();
-                setTimeout(fetchReports, 400);
-            })
-            .catch((err) => setError(err.message));
+        try {
+            const res = await fetch(`/api/comparatifyears/${id}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+
+            if (res.status === 202) {
+                await db.comparatifYears.delete(id);
+                return;
+            }
+            if (!res.ok) throw new Error(await res.text());
+            if (navigator.onLine) await syncDown(false);
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        }
     }
 
     async function handleGenerateReport(annee: number) {
         try {
             if (isReportGenerated(annee)) {
-                const ok = window.confirm(
-                    `Le rapport ${annee} existe déjà.\nVoulez-vous le régénérer ?`
-                );
+                const ok = window.confirm(t("confirm.regenExisting", { year: annee }));
                 if (!ok) return;
             }
 
@@ -196,33 +102,32 @@ const Comparatif: React.FC = () => {
             });
 
             if (res.status === 202) {
-                alert("Commande de génération enregistrée hors ligne — la création sera traitée à la reconnexion.");
+                alert(t("alerts.generateQueued"));
+                if (navigator.onLine) await syncDown(false);
                 return;
             }
 
             if (!res.ok) throw new Error(await res.text());
             navigate(REPORT_ROUTE(annee));
         } catch (err: any) {
-            setGenError(err.message ?? "Erreur lors de la génération du rapport.");
+            setGenError(err?.message ?? t("errors.generateFailed"));
         } finally {
             setGenLoading(null);
         }
     }
 
-    // ---------------- Render ----------------
-
     return (
         <div className="container" style={{ maxWidth: 700 }}>
             <div className="d-flex flex-column align-items-center mb-3">
-                <h2 className="mb-2">Comparatif Annuel</h2>
+                <h2 className="mb-2">{t("header.title")}</h2>
                 <button
                     className="btn btn-primary"
                     style={{ minWidth: 170 }}
                     onClick={() => setShowForm((f) => !f)}
                 >
                     <i className="bi bi-plus-circle me-1" />
-                    <span className="d-none d-sm-inline">Nouveau comparatif</span>
-                    <span className="d-sm-none">Nouveau</span>
+                    <span className="d-none d-sm-inline">{t("actions.new.long")}</span>
+                    <span className="d-sm-none">{t("actions.new.short")}</span>
                 </button>
             </div>
 
@@ -238,16 +143,18 @@ const Comparatif: React.FC = () => {
                             onChange={(e) => setNewYear(Number(e.target.value))}
                             required
                             style={{ maxWidth: 130 }}
+                            disabled={submitting}
                         />
-                        <button className="btn btn-success" type="submit">
-                            Créer
+                        <button className="btn btn-success" type="submit" disabled={submitting}>
+                            {t("form.create")}
                         </button>
                         <button
                             className="btn btn-secondary"
                             type="button"
                             onClick={() => setShowForm(false)}
+                            disabled={submitting}
                         >
-                            Annuler
+                            {t("form.cancel")}
                         </button>
                     </div>
                 </form>
@@ -257,11 +164,9 @@ const Comparatif: React.FC = () => {
             {genError && <div className="alert alert-danger">{genError}</div>}
 
             {loading ? (
-                <div>Chargement…</div>
-            ) : years.length === 0 ? (
-                <div className="alert alert-secondary text-center">
-                    Aucune année disponible.
-                </div>
+                <div>{t("loading")}</div>
+            ) : !years || years.length === 0 ? (
+                <div className="alert alert-secondary text-center">{t("empty")}</div>
             ) : (
                 <div>
                     {years.map((y) => {
@@ -270,53 +175,44 @@ const Comparatif: React.FC = () => {
 
                         return (
                             <div key={y.id} className="card mb-2 border-0 shadow-sm">
-                                <div
-                                    className="card-body d-flex align-items-start flex-wrap gap-2"
-                                    style={{ columnGap: "1rem" }}
-                                >
+                                <div className="card-body d-flex align-items-start flex-wrap gap-2" style={{ columnGap: "1rem" }}>
                                     <div style={{ flex: 1, minWidth: 220 }}>
-                                        <div className="fw-bold">Année : {y.annee}</div>
+                                        <div className="fw-bold">
+                                            {t("year")}: {y.annee}
+                                        </div>
                                         <div>
                                             {generated ? (
-                                                <span className="text-success fw-bold">Rapport généré</span>
+                                                <span className="text-success fw-bold">{t("report.generated")}</span>
                                             ) : (
-                                                <span className="text-muted">Rapport non généré</span>
+                                                <span className="text-muted">{t("report.notGenerated")}</span>
                                             )}
                                         </div>
                                     </div>
 
                                     <div className="d-flex gap-2 ms-auto">
                                         <button
-                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"
-                                                }`}
+                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"}`}
                                             onClick={() => handleGenerateReport(y.annee)}
                                             disabled={busy}
-                                            title={
-                                                generated ? "Régénérer le rapport" : "Générer un rapport"
-                                            }
+                                            title={generated ? (t("buttons.generate.titleRegenerate") as string) : (t("buttons.generate.titleGenerate") as string)}
                                         >
                                             {busy ? (
                                                 <>
-                                                    <span
-                                                        className="spinner-border spinner-border-sm me-2"
-                                                        role="status"
-                                                    />
-                                                    <span className="d-none d-sm-inline">Traitement…</span>
-                                                    <span className="d-sm-none">…</span>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" />
+                                                    <span className="d-none d-sm-inline">{t("busy.long")}</span>
+                                                    <span className="d-sm-none">{t("busy.short")}</span>
                                                 </>
                                             ) : generated ? (
                                                 <>
                                                     <i className="bi bi-arrow-repeat me-1" />
-                                                    <span className="d-none d-sm-inline">Régénérer</span>
-                                                    <span className="d-sm-none">Regen</span>
+                                                    <span className="d-none d-sm-inline">{t("buttons.generate.regenerateLong")}</span>
+                                                    <span className="d-sm-none">{t("buttons.generate.regenerateShort")}</span>
                                                 </>
                                             ) : (
                                                 <>
                                                     <i className="bi bi-gear me-1" />
-                                                    <span className="d-none d-sm-inline">
-                                                        Générer un rapport
-                                                    </span>
-                                                    <span className="d-sm-none">Générer</span>
+                                                    <span className="d-none d-sm-inline">{t("buttons.generate.generateLong")}</span>
+                                                    <span className="d-sm-none">{t("buttons.generate.generateShort")}</span>
                                                 </>
                                             )}
                                         </button>
@@ -324,19 +220,19 @@ const Comparatif: React.FC = () => {
                                         <button
                                             className="btn btn-outline-primary btn-sm"
                                             onClick={() => navigate(`/comparatif/${y.id}`)}
-                                            title="Voir"
+                                            title={t("buttons.view.title") as string}
                                         >
                                             <i className="bi bi-eye" />
-                                            <span className="d-none d-sm-inline ms-1">Voir</span>
+                                            <span className="d-none d-sm-inline ms-1">{t("buttons.view.label")}</span>
                                         </button>
 
                                         <button
                                             className="btn btn-outline-danger btn-sm"
-                                            onClick={() => handleDelete(y.id)}
-                                            title="Supprimer"
+                                            onClick={() => handleDelete(y.id, y.annee)}
+                                            title={t("buttons.delete.title") as string}
                                         >
                                             <i className="bi bi-trash" />
-                                            <span className="d-none d-sm-inline ms-1">Supprimer</span>
+                                            <span className="d-none d-sm-inline ms-1">{t("buttons.delete.label")}</span>
                                         </button>
                                     </div>
                                 </div>

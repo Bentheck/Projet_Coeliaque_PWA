@@ -1,0 +1,66 @@
+﻿{
+  "loading": "Chargement…",
+  "notFound": "Introuvable",
+  "title": {
+    "editInvoice": "Modifier Facture"
+  },
+  "fields": {
+    "factureId": "Facture ID",
+    "date": "Date",
+    "annee": "Année",
+    "magasin": "Magasin"
+  },
+  "items": {
+    "title": "Items",
+    "addButton": "Ajouter un item"
+  },
+  "table": {
+    "typeProduit": "Type de produit",
+    "marque": "Marque / Produit",
+    "prix": "Prix",
+    "poids": "Poids",
+    "unite": "Unité",
+    "quantite": "Quantité",
+    "enSoldeQ": "En solde ?"
+  },
+  "placeholders": {
+    "type": "Type…",
+    "marqueProduit": "Marque / Produit",
+    "prix": "Prix",
+    "poids": "Poids",
+    "quantite": "Quantité",
+    "unitFallback": "-- Unité --"
+  },
+  "buttons": {
+    "save": "Enregistrer",
+    "cancel": "Annuler"
+  },
+  "actions": {
+    "remove": "Supprimer"
+  },
+  "modal": {
+    "title": "Ajouter un item à la facture",
+    "next": "Suivant",
+    "prev": "Précédent",
+    "add": "Ajouter",
+    "step1": {
+      "typeLabel": "Type de produit",
+      "placeholder": "Choisissez ou ajoutez un type…"
+    },
+    "step2": {
+      "itemBrand": "Marque du produit",
+      "quantity": "Quantité",
+      "unitPrice": "Prix unitaire",
+      "weight": "Poids",
+      "unit": "Unité",
+      "onSale": "En solde ?"
+    }
+  },
+  "alerts": {
+    "offlineSaved": "Modifications enregistrées hors ligne. Elles seront synchronisées automatiquement."
+  },
+  "error": {
+    "loadInvoiceOffline": "Impossible de charger la facture (hors ligne et non en cache).",
+    "saveFailed": "Erreur lors de l’enregistrement."
+  }
+}

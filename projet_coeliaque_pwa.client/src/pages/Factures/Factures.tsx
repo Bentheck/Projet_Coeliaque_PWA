@@ -1,17 +1,20 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
+
 import {
     getFacturesList,
     putFacturesList,
     putFacture,
     removeFacture,
-    type Facture as IFacture
+    type Facture as IFacture,
 } from "../../offline/db";
 
-/** Minimal invoice shape used in the listing & create form */
+const LIST_KEY = "factures/all";
+
 interface Facture extends IFacture { }
 
-/** Default values when starting a new invoice */
 const emptyFacture: Omit<Facture, "id"> = {
     annee: new Date().getFullYear(),
     factureId: "",
@@ -19,101 +22,57 @@ const emptyFacture: Omit<Facture, "id"> = {
     magasin: "",
 };
 
-const LIST_KEY = "factures/all";
-
 const Factures: React.FC = () => {
+    const { t } = useTranslation("pages/Factures/factures");
     const navigate = useNavigate();
-    const [factures, setFactures] = useState<Facture[]>([]);
-    const [loading, setLoading] = useState(true);
+
+    // Live list from Dexie (generic store)
+    const factures = useLiveQuery(() => getFacturesList(LIST_KEY), []);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    /** Form state: create/edit inline form above the list */
+    // Inline form state
     const [formMode, setFormMode] = useState<"none" | "create" | "edit">("none");
-    const [current, setCurrent] = useState<Facture | null>(null); // target of edit mode
+    const [current, setCurrent] = useState<Facture | null>(null);
     const [formData, setFormData] = useState(emptyFacture);
 
-    /** Load all invoices: cache-first (IDB), then network refresh */
-    const fetchFactures = () => {
+    // Initial background refresh to populate Dexie if online
+    const fetchFactures = async () => {
         setLoading(true);
-
-        // 1) render cached immediately if present
-        getFacturesList(LIST_KEY).then((cached: Facture[] | null) => {
-            if (cached) setFactures(cached);
-        });
-
-        // 2) refresh from network
-        fetch("/api/factures", { credentials: "include" })
-            .then(async res => {
-                if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: Facture[]) => {
-                setFactures(data);
-                await putFacturesList(LIST_KEY, data);
-            })
-            .catch(err => setError(err.message))
-            .finally(() => setLoading(false));
+        setError(null);
+        try {
+            const res = await fetch("/api/factures", { credentials: "include" });
+            if (!res.ok) throw new Error(await res.text());
+            const data: Facture[] = await res.json();
+            await putFacturesList(LIST_KEY, data);
+        } catch (err: any) {
+            setError(err?.message ?? String(err));
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
-        fetchFactures();
-
-        // Listen to SW messages to update UI after cache hits / replay
-        const onSwMsg = (evt: MessageEvent) => {
-            const msg = evt.data;
-            if (msg?.type === "api-cache-hit" && msg.url?.includes("/api/factures")) {
-                setFactures(msg.data as Facture[]);
-                putFacturesList(LIST_KEY, msg.data as Facture[]);
-            }
-            if (msg?.type === "mutation-sent" && msg.url?.includes("/api/factures")) {
-                // After outbox replay, trigger a refresh
-                fetchFactures();
-            }
-        };
-        navigator.serviceWorker?.addEventListener("message", onSwMsg);
-
-        // When we come back online, ask the SW to drain the outbox
-        const onOnline = () =>
-            navigator.serviceWorker?.controller?.postMessage?.({ type: "drain-outbox" });
-        window.addEventListener("online", onOnline);
-
-        return () => {
-            navigator.serviceWorker?.removeEventListener("message", onSwMsg);
-            window.removeEventListener("online", onOnline);
-        };
+        if (navigator.onLine) void fetchFactures();
     }, []);
 
     // ----- Handlers -----
-
-    /** Keep formData in sync with inputs */
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({
-            ...prev,
-            [e.target.name]: e.target.value,
-        }));
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    /** Enter create mode with a clean form */
     const startCreate = () => {
         setFormData(emptyFacture);
         setCurrent(null);
         setFormMode("create");
     };
 
-    /** Exit form without persisting */
     const handleCancel = () => {
         setFormMode("none");
         setCurrent(null);
         setFormData(emptyFacture);
     };
 
-    /**
-     * Create or update the invoice.
-     * - POST on create (with items: [] so backend can hydrate properly)
-     * - PUT on edit
-     * - On create success, navigate to the detail/editor page.
-     * - When offline, the service worker should respond 202 (queued).
-     */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -130,30 +89,25 @@ const Factures: React.FC = () => {
                 body: JSON.stringify(payload),
             });
 
-            // Offline/queued path -> SW returns 202
             if (res.status === 202) {
+                // Offline/queued
                 if (isEdit && current) {
-                    // optimistic update in list + cache
                     const updated: Facture = { ...current, ...formData };
-                    setFactures((prev: Facture[]) =>
-                        prev.map((f: Facture) => (f.id === updated.id ? updated : f))
+                    const existing = (await getFacturesList(LIST_KEY)) ?? [];
+                    await putFacturesList(
+                        LIST_KEY,
+                        (existing as Facture[]).map(f => (f.id === updated.id ? updated : f))
                     );
                     await putFacture(updated);
-                    const cachedList = (await getFacturesList(LIST_KEY)) ?? [];
-                    await putFacturesList(LIST_KEY, cachedList as Facture[]);
-                    alert("Modification enregistrée hors ligne. Elle sera synchronisée dès que possible.");
+                    alert(t("alerts.offlineEditSaved"));
                     handleCancel();
                     return;
                 } else {
-                    // create queued: add a placeholder row (no real id yet)
-                    const phantom: Facture = {
-                        id: -Date.now(), // temporary local id
-                        ...formData
-                    } as Facture;
-                    setFactures((prev: Facture[]) => [phantom, ...prev]);
-                    const cachedList = (await getFacturesList(LIST_KEY)) ?? [];
-                    await putFacturesList(LIST_KEY, [phantom, ...(cachedList as Facture[])]);
-                    alert("Création enregistrée hors ligne. Elle sera synchronisée à la reconnexion.");
+                    // create queued: phantom row
+                    const phantom: Facture = { id: -Date.now(), ...formData } as Facture;
+                    const existing = (await getFacturesList(LIST_KEY)) ?? [];
+                    await putFacturesList(LIST_KEY, [phantom, ...(existing as Facture[])]);
+                    alert(t("alerts.offlineCreateSaved"));
                     handleCancel();
                     return;
                 }
@@ -163,64 +117,62 @@ const Factures: React.FC = () => {
 
             if (isEdit) {
                 handleCancel();
-                fetchFactures();
+                void fetchFactures();
                 return;
             }
 
-            // Create flow: expect new id to route to editor
+            // Create → navigate to editor
             const created = await res.json();
             const newId = created?.id ?? created?.Id;
-            if (!newId) throw new Error("Réponse inattendue: id manquant.");
+            if (!newId) throw new Error(t("errors.unexpectedMissingId"));
 
-            handleCancel();
             await putFacture({ id: newId, ...formData });
-            fetchFactures();
+            handleCancel();
+            void fetchFactures();
             navigate(`/factures/${newId}`);
         } catch (err: any) {
-            setError(err.message ?? "Erreur lors de l’enregistrement.");
+            setError(err.message ?? t("errors.saveFailed"));
         }
     };
 
-    /** Permanently remove an invoice (with user confirmation) */
     const handleDelete = async (facture: Facture) => {
-        if (!window.confirm("Supprimer cette facture?")) return;
+        if (!window.confirm(t("confirm.delete"))) return;
         try {
             const res = await fetch(`/api/factures/${facture.id}`, {
                 method: "DELETE",
-                credentials: "include"
+                credentials: "include",
             });
 
             if (res.status === 202) {
-                // queued delete (offline) – optimistic removal
-                setFactures((prev: Facture[]) => prev.filter((f: Facture) => f.id !== facture.id));
-                await removeFacture(facture.id);
-                const cachedList = ((await getFacturesList(LIST_KEY)) ?? []) as Facture[];
+                // optimistic removal
+                const existing = (await getFacturesList(LIST_KEY)) ?? [];
                 await putFacturesList(
                     LIST_KEY,
-                    cachedList.filter((f: Facture) => f.id !== facture.id)
+                    (existing as Facture[]).filter(f => f.id !== facture.id)
                 );
-                alert("Suppression mise en file d’attente (hors ligne).");
+                await removeFacture(facture.id);
+                alert(t("alerts.offlineDeleteQueued"));
                 return;
             }
 
             if (!res.ok) throw new Error(await res.text());
 
-            setFactures((prev: Facture[]) => prev.filter((f: Facture) => f.id !== facture.id));
-            await removeFacture(facture.id);
-            const cachedList = ((await getFacturesList(LIST_KEY)) ?? []) as Facture[];
+            const existing = (await getFacturesList(LIST_KEY)) ?? [];
             await putFacturesList(
                 LIST_KEY,
-                cachedList.filter((f: Facture) => f.id !== facture.id)
+                (existing as Facture[]).filter(f => f.id !== facture.id)
             );
+            await removeFacture(facture.id);
         } catch (err: any) {
-            setError(err.message ?? "Erreur lors de la suppression.");
+            setError(err.message ?? t("errors.deleteFailed"));
         }
     };
 
     // ----- Render -----
+    const list = (factures ?? []) as Facture[];
+
     return (
         <div className="container" style={{ maxWidth: 700 }}>
-            {/* Hide button text under 600px to keep actions compact */}
             <style>{`
         @media (max-width: 600px) {
           .only-icons-under-600 .btn-text { display: none !important; }
@@ -230,13 +182,13 @@ const Factures: React.FC = () => {
       `}</style>
 
             <div className="d-flex flex-column align-items-center mb-3">
-                <h2 className="mb-2">Mes Factures</h2>
+                <h2 className="mb-2">{t("headings.title")}</h2>
                 <button
                     className="btn btn-primary"
                     style={{ minWidth: 170 }}
                     onClick={startCreate}
                 >
-                    Nouvelle Facture
+                    {t("buttons.new")}
                 </button>
             </div>
 
@@ -245,7 +197,7 @@ const Factures: React.FC = () => {
             {formMode !== "none" && (
                 <form className="mb-4" onSubmit={handleSubmit}>
                     <div className="mb-2">
-                        <label>Année</label>
+                        <label>{t("form.labels.year")}</label>
                         <input
                             name="annee"
                             type="number"
@@ -255,7 +207,7 @@ const Factures: React.FC = () => {
                         />
                     </div>
                     <div className="mb-2">
-                        <label>Facture ID</label>
+                        <label>{t("form.labels.invoiceId")}</label>
                         <input
                             name="factureId"
                             value={formData.factureId}
@@ -264,7 +216,7 @@ const Factures: React.FC = () => {
                         />
                     </div>
                     <div className="mb-2">
-                        <label>Date</label>
+                        <label>{t("form.labels.date")}</label>
                         <input
                             name="date"
                             type="date"
@@ -274,7 +226,7 @@ const Factures: React.FC = () => {
                         />
                     </div>
                     <div className="mb-2">
-                        <label>Magasin</label>
+                        <label>{t("form.labels.store")}</label>
                         <input
                             name="magasin"
                             value={formData.magasin}
@@ -283,50 +235,49 @@ const Factures: React.FC = () => {
                         />
                     </div>
                     <button type="submit" className="btn btn-success me-2">
-                        {formMode === "edit" ? "Enregistrer" : "Créer"}
+                        {formMode === "edit" ? t("buttons.save") : t("buttons.create")}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={handleCancel}>
-                        Annuler
+                        {t("buttons.cancel")}
                     </button>
                 </form>
             )}
 
             {loading ? (
-                <div>Chargement…</div>
-            ) : factures.length === 0 ? (
-                <div className="alert alert-secondary text-center">Aucune facture trouvée.</div>
+                <div>{t("loading")}</div>
+            ) : list.length === 0 ? (
+                <div className="alert alert-secondary text-center">{t("empty.noneFound")}</div>
             ) : (
-                factures.map((facture: Facture) => (
+                list.map((facture: Facture) => (
                     <div key={facture.id} className="card mb-2 border-0 shadow-sm">
                         <div className="card-body d-flex align-items-start" style={{ columnGap: "1rem" }}>
                             <span style={{ flex: 1 }}>
-                                <div><b>ID :</b> {facture.factureId || "(en attente…)"}</div>
-                                <div><b>Date :</b> {facture.date?.slice(0, 10)}</div>
-                                <div><b>Magasin :</b> {facture.magasin}</div>
+                                <div><b>{t("list.idLabel")}</b> {facture.factureId || t("pending")}</div>
+                                <div><b>{t("list.dateLabel")}</b> {facture.date?.slice(0, 10)}</div>
+                                <div><b>{t("list.storeLabel")}</b> {facture.magasin}</div>
                             </span>
 
-                            {/* Action buttons; text hides under 600px */}
                             <div className="d-flex gap-2 only-icons-under-600">
                                 {facture.id > 0 && (
                                     <button
                                         className="btn btn-outline-primary btn-sm"
                                         onClick={() => navigate(`/factures/${facture.id}`)}
-                                        aria-label="Voir la facture"
-                                        title="Voir la facture"
+                                        aria-label={t("list.viewAria")}
+                                        title={t("list.viewTitle") as string}
                                     >
                                         <i className="bi bi-eye" aria-hidden="true"></i>{" "}
-                                        <span className="btn-text">Voir</span>
+                                        <span className="btn-text">{t("list.viewBtn")}</span>
                                     </button>
                                 )}
 
                                 <button
                                     className="btn btn-outline-danger btn-sm"
                                     onClick={() => handleDelete(facture)}
-                                    aria-label="Supprimer la facture"
-                                    title="Supprimer la facture"
+                                    aria-label={t("list.deleteAria")}
+                                    title={t("list.deleteTitle") as string}
                                 >
                                     <i className="bi bi-trash" aria-hidden="true"></i>{" "}
-                                    <span className="btn-text">Supprimer</span>
+                                    <span className="btn-text">{t("list.deleteBtn")}</span>
                                 </button>
                             </div>
                         </div>

@@ -1,5 +1,7 @@
-﻿import { Navigate, useLocation } from "react-router-dom";
+﻿// src/components/RequireSuperAdmin.tsx
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { useTranslation } from "react-i18next";
 
 /**
  * Route guard for super admin–only pages.
@@ -10,9 +12,10 @@ import { useAuth } from "./AuthContext";
 const RequireSuperAdmin: React.FC<{ children: React.ReactElement }> = ({ children }) => {
     const { user, isSuperAdmin, loading } = useAuth();
     const loc = useLocation();
+    const { t } = useTranslation("components/requireSuperAdmin");
 
     if (loading) {
-        return <div className="container py-5 text-center">Chargement…</div>;
+        return <div className="container py-5 text-center">{t("loading")}</div>;
     }
 
     if (!user) {
@@ -24,7 +27,7 @@ const RequireSuperAdmin: React.FC<{ children: React.ReactElement }> = ({ childre
         return (
             <div className="container py-5">
                 <div className="alert alert-warning mb-0">
-                    Accès refusé (403). SuperAdmin requis.
+                    {t("forbidden")}
                 </div>
             </div>
         );

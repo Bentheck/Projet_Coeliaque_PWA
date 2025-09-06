@@ -1,0 +1,66 @@
+﻿{
+  "loading": "Loading…",
+  "titles": {
+    "admin": "Forum Administration"
+  },
+  "sections": {
+    "categories": { "title": "Categories" },
+    "quickThread": { "title": "Quick tools (thread)" },
+    "moderation": { "title": "Moderation (post)" }
+  },
+  "table": {
+    "headers": {
+      "id": "ID",
+      "slug": "Slug",
+      "name": "Name",
+      "description": "Description",
+      "threads": "Threads",
+      "actions": "Actions"
+    }
+  },
+  "buttons": {
+    "delete": "Delete",
+    "force": "Force",
+    "forceTooltip": "Force (even if threads exist)",
+    "create": "Create",
+    "apply": "Apply"
+  },
+  "newCategory": {
+    "title": "New category",
+    "labels": {
+      "slug": "Slug",
+      "name": "Name",
+      "description": "Description"
+    },
+    "placeholders": {
+      "slug": "e.g.: general",
+      "name": "e.g.: General"
+    }
+  },
+  "quickThread": {
+    "labels": {
+      "threadId": "Thread ID",
+      "pinned": "Pinned",
+      "locked": "Locked"
+    }
+  },
+  "moderation": {
+    "labels": {
+      "postId": "Post ID",
+      "deleted": "Deleted"
+    }
+  },
+  "errors": {
+    "loadCategories": "Unable to load categories.",
+    "createFailed": "Creation failed.",
+    "saveFailed": "Save failed.",
+    "deleteFailed": "Deletion failed."
+  },
+  "alerts": {
+    "applied": "Applied.",
+    "failed": "Failed."
+  },
+  "confirm": {
+    "deleteCategory": "Delete this category?"
+  }
+}

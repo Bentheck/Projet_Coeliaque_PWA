@@ -1,0 +1,48 @@
+﻿{
+  "profile": {
+    "title": "Edit my profile",
+    "alt": {
+      "avatar": "Avatar"
+    },
+    "labels": {
+      "avatarLabel": "Avatar (JPEG/PNG/WebP, max {{maxMb}} MB)",
+      "displayName": "Display name",
+      "location": "Location",
+      "website": "Website",
+      "bio": "Bio"
+    },
+    "placeholders": {
+      "displayName": "e.g., Lea Celiac",
+      "location": "e.g., Montreal, QC",
+      "website": "e.g., example.com",
+      "bio": "Tell us a bit about yourself…"
+    },
+    "help": {
+      "displayName": "3–40 characters, must be unique.",
+      "website": "We’ll add “https://” if needed."
+    },
+    "buttons": {
+      "saveAvatar": "Save avatar",
+      "removeAvatar": "Remove avatar",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "messages": {
+      "avatarUpdated": "Avatar updated.",
+      "avatarRemoved": "Avatar removed.",
+      "profileUpdated": "Profile updated."
+    },
+    "confirm": {
+      "removeAvatar": "Remove current avatar?"
+    },
+    "errors": {
+      "loadProfile": "Unable to load the profile.",
+      "tooLarge": "File too large (max {{maxMb}} MB).",
+      "unsupportedType": "Unsupported image type (JPEG, PNG, WEBP).",
+      "upload": "Upload failed.",
+      "deletion": "Failed to delete.",
+      "save": "Save failed.",
+      "generic": "Error"
+    }
+  }
+}

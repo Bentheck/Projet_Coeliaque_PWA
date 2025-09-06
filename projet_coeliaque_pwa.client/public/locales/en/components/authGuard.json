@@ -1,0 +1,7 @@
+﻿{
+  "loading": "Checking your session…",
+  "offlineFirst": {
+    "title": "Offline — Connection required",
+    "body": "You’re offline and not signed in. To use this page offline, please sign in at least once while online."
+  }
+}

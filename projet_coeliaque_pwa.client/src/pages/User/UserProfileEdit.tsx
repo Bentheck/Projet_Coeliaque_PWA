@@ -1,5 +1,7 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/pages/Account/ProfileEdit.tsx
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../components/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const MAX_MB = 5;
 
@@ -11,16 +13,8 @@ type MyProfileDto = {
     avatarUrl?: string | null;
 };
 
-/**
- * ProfileEdit component
- *
- * - Loads current profile info from API and pre-fills form.
- * - Allows updating profile fields (display name, bio, location, website).
- * - Supports avatar upload, preview, and removal.
- * - Handles validation (file size/type) and API errors gracefully.
- * - Updates global auth context when avatar or profile changes.
- */
 const ProfileEdit: React.FC = () => {
+    const { t } = useTranslation("pages/User/profile");
     const { user, refresh } = useAuth() as any;
 
     // Avatar state
@@ -52,16 +46,15 @@ const ProfileEdit: React.FC = () => {
                 setBio(data.bio ?? "");
                 setLocation(data.location ?? "");
                 setWebsite(data.website ?? "");
-                // Use avatar from auth context if fresher, otherwise fallback to API value
                 setPreview(user?.avatarUrl || data.avatarUrl || null);
             } catch (e: any) {
-                if (alive) setError(e?.message || "Impossible de charger le profil.");
+                if (alive) setError(e?.message || t("errors.loadProfile"));
             }
         })();
         return () => {
             alive = false;
         };
-    }, [user?.avatarUrl]);
+    }, [user?.avatarUrl, t]);
 
     // Update avatar preview if user changes avatar externally
     useEffect(() => setPreview(user?.avatarUrl || null), [user?.avatarUrl]);
@@ -76,11 +69,11 @@ const ProfileEdit: React.FC = () => {
             return;
         }
         if (f.size > MAX_MB * 1024 * 1024) {
-            setError(`Fichier trop volumineux (max ${MAX_MB} MB).`);
+            setError(t("errors.tooLarge", { maxMb: MAX_MB }));
             return;
         }
         if (!/^image\/(jpeg|jpg|png|webp)$/i.test(f.type)) {
-            setError("Type d'image non supporté (JPEG, PNG, WEBP).");
+            setError(t("errors.unsupportedType"));
             return;
         }
         setFile(f);
@@ -102,13 +95,13 @@ const ProfileEdit: React.FC = () => {
                 credentials: "include",
             });
             if (!res.ok) {
-                throw new Error((await res.text()) || "Échec de l'upload.");
+                throw new Error((await res.text()) || t("errors.upload"));
             }
             await res.json(); // Expecting { avatarUrl }
-            setOk("Avatar mis à jour.");
-            refresh(); // Refresh global auth context (navbar, etc.)
+            setOk(t("messages.avatarUpdated"));
+            refresh();
         } catch (e: any) {
-            setError(e?.message || "Erreur");
+            setError(e?.message || t("errors.generic"));
         } finally {
             setBusy(false);
         }
@@ -116,7 +109,7 @@ const ProfileEdit: React.FC = () => {
 
     // Remove avatar
     const removeAvatar = async () => {
-        if (!confirm("Retirer l’avatar actuel ?")) return;
+        if (!confirm(t("confirm.removeAvatar"))) return;
         setBusy(true);
         setError(null);
         setOk(null);
@@ -125,13 +118,13 @@ const ProfileEdit: React.FC = () => {
                 method: "DELETE",
                 credentials: "include",
             });
-            if (!res.ok && res.status !== 204) throw new Error("Échec de la suppression.");
+            if (!res.ok && res.status !== 204) throw new Error(t("errors.deletion"));
             setFile(null);
             setPreview(null);
-            setOk("Avatar retiré.");
+            setOk(t("messages.avatarRemoved"));
             refresh();
         } catch (e: any) {
-            setError(e?.message || "Erreur");
+            setError(e?.message || t("errors.generic"));
         } finally {
             setBusy(false);
         }
@@ -151,17 +144,16 @@ const ProfileEdit: React.FC = () => {
                 body,
             });
             if (!res.ok) {
-                throw new Error((await res.text()) || "Échec de la sauvegarde.");
+                throw new Error((await res.text()) || t("errors.save"));
             }
-            setOk("Profil mis à jour.");
-            refresh(); // Update navbar with new display name
+            setOk(t("messages.profileUpdated"));
+            refresh();
         } catch (e: any) {
             try {
-                // Handle server error returning JSON
                 const obj = JSON.parse(e.message);
                 setError(obj?.error || e.message);
             } catch {
-                setError(e?.message || "Erreur");
+                setError(e?.message || t("errors.generic"));
             }
         } finally {
             setBusy(false);
@@ -170,7 +162,7 @@ const ProfileEdit: React.FC = () => {
 
     return (
         <div className="container py-3">
-            <h1 className="h4 mb-3">Éditer mon profil</h1>
+            <h1 className="h4 mb-3">{t("title")}</h1>
 
             {error && <div className="alert alert-danger">{error}</div>}
             {ok && <div className="alert alert-success">{ok}</div>}
@@ -181,7 +173,7 @@ const ProfileEdit: React.FC = () => {
                     {preview ? (
                         <img
                             src={preview}
-                            alt="Avatar"
+                            alt={t("alt.avatar")}
                             width={96}
                             height={96}
                             className="rounded-circle border"
@@ -198,7 +190,7 @@ const ProfileEdit: React.FC = () => {
                 </div>
                 <div className="col">
                     <label className="form-label">
-                        Avatar (JPEG/PNG/WebP, max {MAX_MB} MB)
+                        {t("labels.avatarLabel", { maxMb: MAX_MB })}
                     </label>
                     <input
                         className="form-control"
@@ -207,20 +199,12 @@ const ProfileEdit: React.FC = () => {
                         onChange={onPick}
                     />
                     <div className="mt-2 d-flex gap-2">
-                        <button
-                            className="btn btn-primary"
-                            onClick={upload}
-                            disabled={!file || busy}
-                        >
-                            Enregistrer l’avatar
+                        <button className="btn btn-primary" onClick={upload} disabled={!file || busy}>
+                            {t("buttons.saveAvatar")}
                         </button>
                         {preview && (
-                            <button
-                                className="btn btn-outline-danger"
-                                onClick={removeAvatar}
-                                disabled={busy}
-                            >
-                                Retirer l’avatar
+                            <button className="btn btn-outline-danger" onClick={removeAvatar} disabled={busy}>
+                                {t("buttons.removeAvatar")}
                             </button>
                         )}
                     </div>
@@ -232,68 +216,60 @@ const ProfileEdit: React.FC = () => {
                 <div className="card-body">
                     <div className="row g-3">
                         <div className="col-md-6">
-                            <label className="form-label">Nom affiché</label>
+                            <label className="form-label">{t("labels.displayName")}</label>
                             <input
                                 className="form-control"
                                 value={displayName}
                                 onChange={(e) => setDisplayName(e.target.value)}
-                                placeholder="Ex: Léa Cœliaque"
+                                placeholder={t("placeholders.displayName")}
                                 maxLength={40}
                             />
-                            <div className="form-text">
-                                3–40 caractères, doit être unique.
-                            </div>
+                            <div className="form-text">{t("help.displayName")}</div>
                         </div>
                         <div className="col-md-6">
-                            <label className="form-label">Localisation</label>
+                            <label className="form-label">{t("labels.location")}</label>
                             <input
                                 className="form-control"
                                 value={location}
                                 onChange={(e) => setLocation(e.target.value)}
-                                placeholder="Ex: Montréal, QC"
+                                placeholder={t("placeholders.location")}
                                 maxLength={80}
                             />
                         </div>
                         <div className="col-md-6">
-                            <label className="form-label">Site web</label>
+                            <label className="form-label">{t("labels.website")}</label>
                             <input
                                 className="form-control"
                                 value={website}
                                 onChange={(e) => setWebsite(e.target.value)}
-                                placeholder="Ex: exemple.com"
+                                placeholder={t("placeholders.website")}
                                 maxLength={200}
                             />
-                            <div className="form-text">
-                                On ajoutera “https://” si nécessaire.
-                            </div>
+                            <div className="form-text">{t("help.website")}</div>
                         </div>
                         <div className="col-12">
-                            <label className="form-label">Bio</label>
+                            <label className="form-label">{t("labels.bio")}</label>
                             <textarea
                                 className="form-control"
                                 rows={5}
                                 value={bio}
                                 onChange={(e) => setBio(e.target.value)}
                                 maxLength={2000}
-                                placeholder="Parlez un peu de vous…"
+                                placeholder={t("placeholders.bio")}
                             />
                         </div>
                     </div>
 
                     <div className="mt-3 d-flex gap-2">
-                        <button
-                            className="btn btn-primary"
-                            onClick={saveProfile}
-                            disabled={busy}
-                        >
-                            Enregistrer
+                        <button className="btn btn-primary" onClick={saveProfile} disabled={busy}>
+                            {t("buttons.save")}
                         </button>
                         <button
                             className="btn btn-outline-secondary"
                             onClick={() => window.history.back()}
                             disabled={busy}
                         >
-                            Annuler
+                            {t("buttons.cancel")}
                         </button>
                     </div>
                 </div>

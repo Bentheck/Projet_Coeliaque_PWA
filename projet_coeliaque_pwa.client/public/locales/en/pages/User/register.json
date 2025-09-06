@@ -1,0 +1,14 @@
+﻿{
+  "title": "Create account",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "submit": "Create account",
+  "submitting": "Creating…",
+  "defaultError": "Could not create your account. Please try again.",
+  "successTitle": "Almost there!",
+  "successMsg": "We’ve sent you a confirmation link. Please check your inbox.",
+  "errors": {
+    "missingFields": "Email and password are required.",
+    "identityValidationFailed": "Some fields are invalid. Please review your input."
+  }
+}

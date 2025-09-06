@@ -1,0 +1,14 @@
+﻿{
+  "title": "Créer un compte",
+  "emailLabel": "Courriel",
+  "passwordLabel": "Mot de passe",
+  "submit": "Créer le compte",
+  "submitting": "Création…",
+  "defaultError": "Impossible de créer votre compte. Réessayez.",
+  "successTitle": "Encore une étape !",
+  "successMsg": "Nous vous avons envoyé un lien de confirmation. Vérifiez votre boîte de réception.",
+  "errors": {
+    "missingFields": "Le courriel et le mot de passe sont requis.",
+    "identityValidationFailed": "Certains champs sont invalides. Veuillez vérifier."
+  }
+}

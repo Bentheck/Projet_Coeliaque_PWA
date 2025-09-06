@@ -1,0 +1,26 @@
+﻿{
+  "title": "Nouveau fil",
+  "errors": {
+    "loadCategories": "Impossible de charger les catégories.",
+    "createFailed": "Échec de la création."
+  },
+  "fields": {
+    "category": "Catégorie",
+    "title": "Titre",
+    "body": "Message"
+  },
+  "placeholders": {
+    "titleExample": "Ex. Astuces sans gluten chez XYZ"
+  },
+  "aria": {
+    "composeBody": "Rédiger le message du fil"
+  },
+  "messages": {
+    "loginToPost": "Connectez-vous pour créer un fil."
+  },
+  "buttons": {
+    "cancel": "Annuler",
+    "create": "Créer",
+    "creating": "Création…"
+  }
+}

@@ -1,0 +1,55 @@
+﻿{
+  "header": {
+    "title": "Annual Comparison"
+  },
+  "actions": {
+    "new": {
+      "long": "New comparison",
+      "short": "New"
+    }
+  },
+  "form": {
+    "create": "Create",
+    "cancel": "Cancel"
+  },
+  "loading": "Loading…",
+  "empty": "No years available.",
+  "year": "Year",
+  "report": {
+    "generated": "Report generated",
+    "notGenerated": "Report not generated"
+  },
+  "buttons": {
+    "generate": {
+      "titleGenerate": "Generate a report",
+      "titleRegenerate": "Regenerate the report",
+      "generateLong": "Generate a report",
+      "generateShort": "Generate",
+      "regenerateLong": "Regenerate",
+      "regenerateShort": "Regen"
+    },
+    "view": {
+      "title": "View",
+      "label": "View"
+    },
+    "delete": {
+      "title": "Delete",
+      "label": "Delete"
+    }
+  },
+  "busy": {
+    "long": "Processing…",
+    "short": "…"
+  },
+  "alerts": {
+    "yearQueued": "New year added offline — it will sync later.",
+    "generateQueued": "Generation command queued offline — it will be processed on reconnect."
+  },
+  "confirm": {
+    "deleteYear": "Delete this year and all of its lines?",
+    "regenExisting": "The {{year}} report already exists.\nRegenerate it?"
+  },
+  "errors": {
+    "generateFailed": "Error while generating the report."
+  }
+}

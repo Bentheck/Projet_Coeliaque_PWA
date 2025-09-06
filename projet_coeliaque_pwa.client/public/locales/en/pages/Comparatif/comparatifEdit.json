@@ -1,0 +1,68 @@
+﻿{
+  "loading": "Loading…",
+  "notFound": "Not found",
+  "header": {
+    "title": "Edit Comparison — {{year}}"
+  },
+  "actions": {
+    "addLine": "Add a line"
+  },
+  "table": {
+    "headers": {
+      "type": "Product type",
+      "brand": "Brand",
+      "price": "Price",
+      "weight": "Weight",
+      "unit": "Unit",
+      "store": "Store"
+    }
+  },
+  "labels": {
+    "type": "Type",
+    "brand": "Brand",
+    "price": "Price",
+    "weight": "Weight",
+    "unit": "Unit",
+    "store": "Store"
+  },
+  "placeholders": {
+    "type": "Type…",
+    "brand": "Brand",
+    "price": "Price",
+    "weight": "Weight",
+    "store": "Store"
+  },
+  "unit": {
+    "placeholder": "-- Unit --"
+  },
+  "delete": {
+    "title": "Delete",
+    "ariaLine": "Delete line"
+  },
+  "mobile": {
+    "brandFallback": "Brand",
+    "typeFallback": "Type…"
+  },
+  "btn": {
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "modal": {
+    "title": "Add a line",
+    "step1": {
+      "labelType": "Product type",
+      "placeholderType": "Choose a type…",
+      "next": "Next"
+    },
+    "step2": {
+      "back": "Back",
+      "submit": "Add"
+    }
+  },
+  "alerts": {
+    "offlineSaved": "Changes saved offline — they will sync later."
+  },
+  "confirm": {
+    "deleteLine": "Delete this line?"
+  }
+}

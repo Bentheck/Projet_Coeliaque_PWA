@@ -1,0 +1,29 @@
+﻿{
+  "title": "Sign in",
+  "banners": {
+    "emailConfirmed": "Your email has been confirmed. You can now sign in.",
+    "badUser": "User not found for email confirmation.",
+    "confirmErrorLine1": "An error occurred while confirming your email.",
+    "confirmErrorLine2": "The link may be expired or already used."
+  },
+  "unconfirmed": {
+    "text": "Your email is not confirmed.",
+    "resendBtn": "Resend confirmation link",
+    "resendSuccess": "A new confirmation link has been sent to your email address.",
+    "resendFail": "Could not send the link. Please try again later.",
+    "resendError": "An error occurred. Please try again later."
+  },
+  "fields": {
+    "email": "Email",
+    "password": "Password"
+  },
+  "buttons": {
+    "submit": "Sign in",
+    "loading": "Signing in…"
+  },
+  "errors": {
+    "failed": "Sign-in failed. Please check your information.",
+    "network": "Unable to sign in. Check your network and try again.",
+    "invalidCredentials": "Incorrect email or password."
+  }
+}

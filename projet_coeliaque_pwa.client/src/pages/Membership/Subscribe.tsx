@@ -1,4 +1,6 @@
-﻿import React from "react";
+﻿// Subscribe.tsx
+import React from "react";
+import { useTranslation } from "react-i18next";
 
 /**
  * We lazy-load Stripe only when online (so offline dev doesn't spam errors).
@@ -9,12 +11,12 @@ const getPublishableKey = () =>
     "pk_test_51RTnmkRtAySSxpaZUfWBLiftBpBYG60P0VJV1VzDSRlgbxqalkSphY59SkuaTapC5ltjNyKst1Fk9KFTprrJ6pPd00H1K8tPLK";
 
 const Subscribe: React.FC = () => {
+    const { t } = useTranslation("pages/Membership/subscribe");
     const [loading, setLoading] = React.useState(false);
     const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine);
 
     // Dev-only: show the "daily test" button on localhost
-    const isLocal =
-        typeof window !== "undefined" && window.location.hostname === "localhost";
+    const isLocal = typeof window !== "undefined" && window.location.hostname === "localhost";
 
     React.useEffect(() => {
         const on = () => setIsOnline(true);
@@ -39,7 +41,7 @@ const Subscribe: React.FC = () => {
      */
     const startCheckout = async (testDaily: boolean) => {
         if (!isOnline) {
-            alert("Vous êtes hors ligne. Connectez-vous pour continuer.");
+            alert(t("errors.offline"));
             return;
         }
         if (loading) return;
@@ -63,19 +65,17 @@ const Subscribe: React.FC = () => {
             }
 
             const data = (await response.json()) as { sessionId?: string };
-            if (!data?.sessionId) throw new Error("Session Stripe manquante.");
+            if (!data?.sessionId) throw new Error(t("errors.missingSession"));
 
             const stripe = await loadStripeSafe();
-            if (!stripe) throw new Error("Stripe n'a pas pu être initialisé.");
+            if (!stripe) throw new Error(t("errors.stripeInit"));
 
-            const { error } = await stripe.redirectToCheckout({
-                sessionId: data.sessionId,
-            });
+            const { error } = await stripe.redirectToCheckout({ sessionId: data.sessionId });
             if (error) throw error;
         } catch (err) {
             // eslint-disable-next-line no-console
             console.error("Erreur lors de la création de la session Stripe:", err);
-            alert("Impossible de démarrer le processus d'abonnement.");
+            alert(t("errors.startFailed"));
         } finally {
             setLoading(false);
         }
@@ -83,13 +83,9 @@ const Subscribe: React.FC = () => {
 
     return (
         <div className="container py-4">
-            <h1>Abonnement</h1>
+            <h1>{t("title")}</h1>
 
-            {!isOnline && (
-                <div className="alert alert-warning my-3">
-                    Vous êtes hors ligne. La page d’abonnement nécessite une connexion Internet.
-                </div>
-            )}
+            {!isOnline && <div className="alert alert-warning my-3">{t("offlineBanner")}</div>}
 
             <div className="d-flex gap-2">
                 <button
@@ -98,7 +94,7 @@ const Subscribe: React.FC = () => {
                     disabled={loading || !isOnline}
                     onClick={() => startCheckout(false)}
                 >
-                    {loading ? "Redirection..." : "S'abonner (plan normal)"}
+                    {loading ? t("buttons.loading") : t("buttons.primary")}
                 </button>
 
                 {isLocal && (
@@ -108,13 +104,13 @@ const Subscribe: React.FC = () => {
                         disabled={loading || !isOnline}
                         onClick={() => startCheckout(true)}
                     >
-                        {loading ? "Redirection..." : "S'abonner (TEST quotidien)"}
+                        {loading ? t("buttons.loading") : t("buttons.test")}
                     </button>
                 )}
             </div>
 
             <div className="text-muted mt-3" style={{ fontSize: ".9rem" }}>
-                Clé Stripe utilisée: <code>{getPublishableKey().slice(0, 16)}…</code>
+                {t("keyLabel")} <code>{getPublishableKey().slice(0, 16)}…</code>
             </div>
         </div>
     );

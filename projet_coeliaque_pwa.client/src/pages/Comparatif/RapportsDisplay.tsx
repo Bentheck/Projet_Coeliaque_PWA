@@ -1,114 +1,54 @@
-﻿import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useLiveQuery } from "dexie-react-hooks";
 
-// offline helpers
-import { getCache, setCache } from "../../offline/db";
-
-interface ProductComparisonRow {
-    typeItem: string;
-    nomSansGluten: string;
-    quantiteSansGluten: number;
-    formatSansGluten: number;
-    uniteSansGluten: string;
-    prixSansGluten: number;
-
-    marqueAvecGluten?: string | null;
-    nomAvecGluten?: string | null;
-    formatAvecGluten?: number | null;
-    uniteAvecGluten?: string | null;
-    prixAvecGluten?: number | null;
-
-    prixPar100SansGluten: number;
-    prixPar100AvecGluten: number;
-    diffPar100: number;
-    sousTotalProduit: number;
-    prixPar100Unit: string;
-}
-
-type ReportPayload = {
-    reportRows: ProductComparisonRow[];
-    totalSousTotalProduit: number;
-    userName: string;
-};
-
-// per-year cache key
-const reportKey = (annee: string | number) => `rapports:${annee}`;
+import { db, type ReportPayload, putReportBody } from "../../offline/db";
 
 const RapportsDisplay: React.FC = () => {
-    const { annee } = useParams<{ annee: string }>();
-    const [rows, setRows] = useState<ProductComparisonRow[]>([]);
-    const [total, setTotal] = useState(0);
-    const [userName, setUserName] = useState("");
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const navigate = useNavigate();
-    const printSectionRef = useRef<HTMLDivElement>(null);
+    const { t, i18n } = useTranslation("pages/Comparatif/rapportsDisplay");
+    const locale = i18n.language?.startsWith("fr") ? "fr-CA" : "en-CA";
 
-    // Prompt before print
+    const { annee } = useParams<{ annee: string }>();
+    const navigate = useNavigate();
+
+    const row = useLiveQuery(
+        () => (annee ? db.reportBodies.get(Number(annee)) : Promise.resolve(undefined)),
+        [annee]
+    ) as { year: number; payload: ReportPayload } | undefined;
+
+    const payload = row?.payload;
+    const rows = payload?.reportRows ?? [];
+    const total = payload?.totalSousTotalProduit ?? 0;
+    const userName = payload?.userName ?? "";
+
+    const [error, setError] = useState<string | null>(null);
     const [showPrompt, setShowPrompt] = useState(false);
     const [printNom, setPrintNom] = useState("");
     const [printNAS, setPrintNAS] = useState("");
     const [triggerPrint, setTriggerPrint] = useState(false);
+    const printSectionRef = useRef<HTMLDivElement>(null);
 
-    // ---------------- Cache-first load ----------------
-
+    // Fetch if not in Dexie
     useEffect(() => {
-        if (!annee) return;
-
-        setLoading(true);
-
-        // 1) Cache
-        getCache<ReportPayload>(reportKey(annee)).then((cached) => {
-            if (cached) {
-                setRows(cached.reportRows || []);
-                setTotal(cached.totalSousTotalProduit || 0);
-                setUserName(cached.userName || "");
-            }
-        });
-
-        // 2) Network
-        fetch(`/api/rapports/${annee}`, { credentials: "include" })
-            .then(async (res) => {
+        let cancelled = false;
+        (async () => {
+            if (!annee || payload || !navigator.onLine) return;
+            try {
+                const res = await fetch(`/api/rapports/${annee}`, { credentials: "include" });
                 if (!res.ok) throw new Error(await res.text());
-                return res.json();
-            })
-            .then(async (data: ReportPayload) => {
-                setRows(data.reportRows || []);
-                setTotal(data.totalSousTotalProduit || 0);
-                setUserName(data.userName || "");
-                await setCache(reportKey(annee), data);
-            })
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [annee]);
-
-    // react to SW refresh
-    useEffect(() => {
-        const onSwMsg = (evt: MessageEvent) => {
-            const msg = evt.data;
-            if (!msg || typeof msg !== "object") return;
-
-            if (
-                msg.type === "api-cache-hit" &&
-                typeof msg.url === "string" &&
-                annee &&
-                msg.url.includes(`/api/rapports/${annee}`)
-            ) {
-                const data: ReportPayload = msg.data;
-                if (data && typeof data === "object") {
-                    setRows(data.reportRows || []);
-                    setTotal(data.totalSousTotalProduit || 0);
-                    setUserName(data.userName || "");
-                    setCache(reportKey(annee), data);
+                const data: ReportPayload = await res.json();
+                if (!cancelled) {
+                    await putReportBody(Number(annee), data);
                 }
+            } catch (e: any) {
+                if (!cancelled) setError(e?.message ?? String(e));
             }
-        };
+        })();
+        return () => { cancelled = true; };
+    }, [annee, payload]);
 
-        navigator.serviceWorker?.addEventListener("message", onSwMsg);
-        return () => navigator.serviceWorker?.removeEventListener("message", onSwMsg);
-    }, [annee]);
-
-    // print scheduling to let DOM update
+    // print scheduling
     useEffect(() => {
         if (!triggerPrint) return;
         setTimeout(() => {
@@ -118,82 +58,59 @@ const RapportsDisplay: React.FC = () => {
         }, 200);
     }, [triggerPrint]);
 
-    function handlePrintClick() {
-        setShowPrompt(true);
-    }
+    function handlePrintClick() { setShowPrompt(true); }
     function handlePromptSubmit(e: React.FormEvent) {
         e.preventDefault();
         setShowPrompt(false);
         setTriggerPrint(true);
     }
 
-    if (loading) return <div>Chargement…</div>;
+    if (!payload && !error) return <div>{t("loading")}</div>;
     if (error) return <div className="alert alert-danger">{error}</div>;
+
+    const totalFormatted = total.toLocaleString(locale, { style: "currency", currency: "CAD" });
 
     return (
         <div className="container py-3" style={{ maxWidth: 1200 }}>
             <div className="alert alert-info no-print mb-3" style={{ fontSize: "1.06em" }}>
                 <i className="bi bi-info-circle me-2"></i>
-                <b>Note :</b> Lorsque vous cliquerez sur “Imprimer”, vous pourrez entrer votre{" "}
-                <b>
-                    <i>NOM</i>
-                </b>{" "}
-                et votre{" "}
-                <b>
-                    <i>NAS</i>
-                </b>{" "}
-                pour qu’ils soient inclus en haut du rapport.{" "}
-                <b>
-                    <i>Ceux-ci ne seront pas sauvegardés.</i>
-                </b>
+                <b>{t("print.noteLabel")}</b>{" "}
+                {t("print.noteMain")}{" "}
+                <b><i>{t("print.noteNotSaved")}</i></b>
             </div>
 
-            <button className="btn btn-success no-print mb-3" onClick={handlePrintClick}>
-                Télécharger/Imprimer le PDF
+            <button className="btn btn.success no-print mb-3" onClick={handlePrintClick}>
+                {t("print.printButton")}
             </button>
             <button className="btn btn-outline-secondary no-print mb-3 ms-2" onClick={() => navigate(-1)}>
-                Retour
+                {t("print.backButton")}
             </button>
 
             {/* Minimal modal */}
             {showPrompt && (
                 <div
                     style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 9999,
-                        background: "rgba(0,0,0,0.35)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+                        background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center",
                     }}
                 >
                     <form
                         onSubmit={handlePromptSubmit}
                         autoComplete="off"
-                        style={{
-                            background: "#fff",
-                            borderRadius: 12,
-                            padding: 32,
-                            minWidth: 350,
-                            boxShadow: "0 4px 30px rgba(0,0,0,0.17)",
-                        }}
+                        style={{ background: "#fff", borderRadius: 12, padding: 32, minWidth: 350, boxShadow: "0 4px 30px rgba(0,0,0,0.17)" }}
                     >
-                        <h4 className="mb-4">Informations à inclure dans le rapport</h4>
+                        <h4 className="mb-4">{t("prompt.title")}</h4>
                         <div className="alert alert-primary" style={{ fontSize: "1em" }}>
-                            Vous pouvez laisser ces champs vides si vous préférez écrire à la main sur le PDF imprimé.
+                            {t("prompt.help")}
                         </div>
                         <div className="mb-3">
-                            <label className="form-label fw-bold">Nom :</label>
+                            <label className="form-label fw-bold">{t("prompt.nameLabel")}</label>
                             <input
                                 className="form-control"
                                 type="text"
                                 value={printNom}
                                 onChange={(e) => setPrintNom(e.target.value)}
-                                placeholder="Votre nom"
+                                placeholder={t("prompt.namePlaceholder") as string}
                                 maxLength={80}
                                 autoFocus
                                 autoComplete="off"
@@ -201,13 +118,13 @@ const RapportsDisplay: React.FC = () => {
                             />
                         </div>
                         <div className="mb-4">
-                            <label className="form-label fw-bold">NAS :</label>
+                            <label className="form-label fw-bold">{t("prompt.nasLabel")}</label>
                             <input
                                 className="form-control"
                                 type="text"
                                 value={printNAS}
                                 onChange={(e) => setPrintNAS(e.target.value)}
-                                placeholder="XXX XXX XXX"
+                                placeholder={t("prompt.nasPlaceholder") as string}
                                 maxLength={20}
                                 autoComplete="off"
                                 name="no-autofill-nas"
@@ -215,10 +132,10 @@ const RapportsDisplay: React.FC = () => {
                         </div>
                         <div className="d-flex justify-content-end gap-2">
                             <button type="button" className="btn btn-secondary" onClick={() => setShowPrompt(false)}>
-                                Annuler
+                                {t("prompt.cancel")}
                             </button>
-                            <button type="submit" className="btn btn-success">
-                                Continuer et imprimer
+                            <button type="submit" className="btn btn.success">
+                                {t("prompt.continuePrint")}
                             </button>
                         </div>
                     </form>
@@ -228,51 +145,34 @@ const RapportsDisplay: React.FC = () => {
             <div id="print-section" ref={printSectionRef}>
                 <style>
                     {`
-          @media screen {
-            .print-only { display: none !important; }
-          }
-          @media print {
-            .print-only { display: flex !important; }
-            .no-print { display: none !important; }
-            /* optional: expand to full width on print */
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          }
-        `}
+            @media screen { .print-only { display: none !important; } }
+            @media print {
+              .print-only { display: flex !important; }
+              .no-print { display: none !important; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+          `}
                 </style>
 
                 {/* Print-only header fields */}
                 <div className="d-flex gap-4 align-items-end mb-4 mt-2 print-only" style={{ marginTop: 18 }}>
                     <div>
-                        <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>Nom&nbsp;:</div>
+                        <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>{t("prompt.nameLabel")}</div>
                         <div
                             style={{
-                                border: "2px solid #333",
-                                background: "#fff",
-                                width: 260,
-                                height: 36,
-                                marginBottom: 6,
-                                display: "flex",
-                                alignItems: "center",
-                                fontSize: "1.07em",
-                                paddingLeft: 10,
+                                border: "2px solid #333", background: "#fff", width: 260, height: 36, marginBottom: 6,
+                                display: "flex", alignItems: "center", fontSize: "1.07em", paddingLeft: 10,
                             }}
                         >
                             {printNom || <span style={{ color: "#fff" }}>-</span>}
                         </div>
                     </div>
                     <div>
-                        <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>NAS&nbsp;:</div>
+                        <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>{t("prompt.nasLabel")}</div>
                         <div
                             style={{
-                                border: "2px solid #333",
-                                background: "#fff",
-                                width: 180,
-                                height: 36,
-                                marginBottom: 6,
-                                display: "flex",
-                                alignItems: "center",
-                                fontSize: "1.07em",
-                                paddingLeft: 10,
+                                border: "2px solid #333", background: "#fff", width: 180, height: 36, marginBottom: 6,
+                                display: "flex", alignItems: "center", fontSize: "1.07em", paddingLeft: 10,
                             }}
                         >
                             {printNAS || <span style={{ color: "#fff" }}>-</span>}
@@ -280,36 +180,32 @@ const RapportsDisplay: React.FC = () => {
                     </div>
                 </div>
 
-                <h1>Rapport Comparatif Année {annee}</h1>
-                <p>Utilisateur: {userName}</p>
+                <h1>{t("title", { year: annee })}</h1>
+                <p>{t("user", { name: userName })}</p>
 
                 <table className="comparatif-table">
                     <thead>
                         <tr>
-                            <th colSpan={7} className="comparatif-header-sg double-divider">
-                                PRODUIT SANS GLUTEN
-                            </th>
-                            <th colSpan={6} className="comparatif-header-ag double-divider">
-                                PRODUIT COMPARATIF AVEC GLUTEN
-                            </th>
+                            <th colSpan={7} className="comparatif-header-sg double-divider">{t("table.groups.sansGluten")}</th>
+                            <th colSpan={6} className="comparatif-header-ag double-divider">{t("table.groups.avecGluten")}</th>
                             <th colSpan={3} className="comparatif-header-total"></th>
                         </tr>
                         <tr>
-                            <th className="comparatif-th-sg">Type Item</th>
-                            <th className="comparatif-th-sg">Nom Sans Gluten</th>
-                            <th className="comparatif-th-sg">Quantité</th>
-                            <th className="comparatif-th-sg">Format</th>
-                            <th className="comparatif-th-sg">Unité</th>
-                            <th className="comparatif-th-sg">Prix Sans Gluten</th>
-                            <th className="comparatif-th-sg double-divider">Prix/100g-100ml-Unité Sans Gluten</th>
-                            <th className="comparatif-th-ag">Marque Avec Gluten</th>
-                            <th className="comparatif-th-ag">Nom Avec Gluten</th>
-                            <th className="comparatif-th-ag">Format</th>
-                            <th className="comparatif-th-ag">Unité</th>
-                            <th className="comparatif-th-ag">Prix Avec Gluten</th>
-                            <th className="comparatif-th-ag double-divider">Prix/100g-100ml-Unité Avec Gluten</th>
-                            <th>Différence par 100g/100ml/unité</th>
-                            <th>Sous-total produit</th>
+                            <th className="comparatif-th-sg">{t("table.columns.typeItem")}</th>
+                            <th className="comparatif-th-sg">{t("table.columns.nomSansGluten")}</th>
+                            <th className="comparatif-th-sg">{t("table.columns.quantite")}</th>
+                            <th className="comparatif-th-sg">{t("table.columns.format")}</th>
+                            <th className="comparatif-th-sg">{t("table.columns.unite")}</th>
+                            <th className="comparatif-th-sg">{t("table.columns.prixSans")}</th>
+                            <th className="comparatif-th-sg double-divider">{t("table.columns.prixPar100Sans")}</th>
+                            <th className="comparatif-th-ag">{t("table.columns.marqueAvec")}</th>
+                            <th className="comparatif-th-ag">{t("table.columns.nomAvec")}</th>
+                            <th className="comparatif-th-ag">{t("table.columns.formatAvec")}</th>
+                            <th className="comparatif-th-ag">{t("table.columns.uniteAvec")}</th>
+                            <th className="comparatif-th-ag">{t("table.columns.prixAvec")}</th>
+                            <th className="comparatif-th-ag double-divider">{t("table.columns.prixPar100Avec")}</th>
+                            <th>{t("table.columns.diffPar100")}</th>
+                            <th>{t("table.columns.sousTotalProduit")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -321,7 +217,7 @@ const RapportsDisplay: React.FC = () => {
                                 <td className="comparatif-th-sg">{row.formatSansGluten}</td>
                                 <td className="comparatif-th-sg">{row.uniteSansGluten}</td>
                                 <td className="comparatif-th-sg">
-                                    {row.prixSansGluten.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
+                                    {row.prixSansGluten.toLocaleString(locale, { style: "currency", currency: "CAD" })}
                                 </td>
                                 <td className="comparatif-th-sg double-divider">
                                     {row.prixPar100SansGluten.toFixed(3)} {row.prixPar100Unit}
@@ -331,59 +227,49 @@ const RapportsDisplay: React.FC = () => {
                                 <td className="comparatif-th-ag">{row.formatAvecGluten ?? ""}</td>
                                 <td className="comparatif-th-ag">{row.uniteAvecGluten ?? ""}</td>
                                 <td className="comparatif-th-ag">
-                                    {(row.prixAvecGluten ?? 0).toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
+                                    {(row.prixAvecGluten ?? 0).toLocaleString(locale, { style: "currency", currency: "CAD" })}
                                 </td>
                                 <td className="comparatif-th-ag double-divider">
                                     {row.prixPar100AvecGluten.toFixed(3)} {row.prixPar100Unit}
                                 </td>
-                                <td>
-                                    {row.diffPar100.toFixed(3)} {row.prixPar100Unit}
-                                </td>
-                                <td>
-                                    {row.sousTotalProduit.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
-                                </td>
+                                <td>{row.diffPar100.toFixed(3)} {row.prixPar100Unit}</td>
+                                <td>{row.sousTotalProduit.toLocaleString(locale, { style: "currency", currency: "CAD" })}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
 
                 <div style={{ marginTop: 32, fontSize: "1.1em" }}>
-                    <b>TOTAL = {total.toFixed(2)} $</b>
+                    <b>{t("total", { total: totalFormatted })}</b>
                 </div>
 
                 <div className="mt-5 p-4 rounded-3 bg-light border" style={{ fontSize: "1em", maxWidth: 900 }}>
                     <h4 className="fw-bold mb-2">
-                        <i className="bi bi-calculator me-2"></i>Explications des calculs
+                        <i className="bi bi-calculator me-2"></i>
+                        {t("explain.title")}
                     </h4>
                     <ul>
                         <li>
-                            <b>Prix/100 (Sans Gluten ou Avec Gluten):</b>
-                            <br />
+                            <b>{t("explain.pricePer100.title")}</b><br />
                             <span>
-                                <code>Prix / Poids × 100</code> <br />
-                                Exemple : 2,99 $ pour 500 g → <b>2,99 / 500 × 100 = 0,60 $</b>
+                                <code>{t("explain.pricePer100.formula")}</code><br />
+                                {t("explain.pricePer100.example")}
                             </span>
                         </li>
                         <li className="mt-2">
-                            <b>Différence par 100 (Diff/100):</b>
-                            <br />
-                            <span>
-                                <code>Prix/100 SG – Prix/100 AG</code>
-                            </span>
+                            <b>{t("explain.diff.title")}</b><br />
+                            <span><code>{t("explain.diff.formula")}</code></span>
                         </li>
                         <li className="mt-2">
-                            <b>Sous-total produit:</b>
-                            <br />
-                            <span>
-                                <code>Diff/100 × Quantité totale (en “100” selon l’unité)</code>
-                            </span>
+                            <b>{t("explain.sousTotal.title")}</b><br />
+                            <span><code>{t("explain.sousTotal.formula")}</code></span>
                         </li>
                         <li className="mt-2">
-                            <b>TOTAL :</b> Somme de tous les sous-totaux produits.
+                            <b>{t("explain.total.title")}</b>
                         </li>
                     </ul>
                     <div className="mt-2 text-secondary" style={{ fontSize: "0.95em" }}>
-                        <i>Les conversions d’unités sont prises en compte automatiquement.</i>
+                        <i>{t("explain.note")}</i>
                     </div>
                 </div>
             </div>

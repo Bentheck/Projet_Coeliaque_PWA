@@ -1,0 +1,29 @@
+﻿{
+  "title": "Connexion",
+  "banners": {
+    "emailConfirmed": "Votre adresse courriel a été confirmée. Vous pouvez maintenant vous connecter.",
+    "badUser": "Utilisateur introuvable pour la confirmation de courriel.",
+    "confirmErrorLine1": "Une erreur est survenue lors de la confirmation de votre courriel.",
+    "confirmErrorLine2": "Le lien est peut-être expiré ou déjà utilisé."
+  },
+  "unconfirmed": {
+    "text": "Votre adresse courriel n'est pas confirmée.",
+    "resendBtn": "Renvoyer le lien de confirmation",
+    "resendSuccess": "Un nouveau lien de confirmation a été envoyé à votre adresse courriel.",
+    "resendFail": "Impossible d'envoyer le lien. Réessayez plus tard.",
+    "resendError": "Une erreur est survenue. Réessayez plus tard."
+  },
+  "fields": {
+    "email": "Courriel",
+    "password": "Mot de passe"
+  },
+  "buttons": {
+    "submit": "Se connecter",
+    "loading": "Connexion…"
+  },
+  "errors": {
+    "failed": "Échec de la connexion. Vérifiez vos informations.",
+    "network": "Impossible de se connecter. Vérifiez votre réseau et réessayez.",
+    "invalidCredentials": "Adresse courriel ou mot de passe incorrect."
+  }
+}

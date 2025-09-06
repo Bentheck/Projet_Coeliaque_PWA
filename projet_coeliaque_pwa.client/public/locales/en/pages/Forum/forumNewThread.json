@@ -1,0 +1,26 @@
+﻿{
+  "title": "New thread",
+  "errors": {
+    "loadCategories": "Unable to load categories.",
+    "createFailed": "Creation failed."
+  },
+  "fields": {
+    "category": "Category",
+    "title": "Title",
+    "body": "Message"
+  },
+  "placeholders": {
+    "titleExample": "E.g. Gluten-free tips at XYZ"
+  },
+  "aria": {
+    "composeBody": "Compose thread message"
+  },
+  "messages": {
+    "loginToPost": "Sign in to create a thread."
+  },
+  "buttons": {
+    "cancel": "Cancel",
+    "create": "Create",
+    "creating": "Creating…"
+  }
+}

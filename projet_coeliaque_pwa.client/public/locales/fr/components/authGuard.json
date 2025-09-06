@@ -1,0 +1,7 @@
+﻿{
+  "loading": "Vérification de votre session…",
+  "offlineFirst": {
+    "title": "Hors ligne — Connexion requise",
+    "body": "Vous êtes hors ligne et non connecté. Pour utiliser cette page hors ligne, veuillez vous connecter au moins une fois lorsque vous êtes en ligne."
+  }
+}

@@ -1,0 +1,26 @@
+﻿{
+  "buttons": {
+    "categories": "Catégories",
+    "newThread": "Nouveau fil"
+  },
+  "errors": {
+    "loadThreads": "Impossible de charger les fils."
+  },
+  "empty": "Aucun fil.",
+  "badges": {
+    "pinned": "Épinglé",
+    "locked": "Verrouillé"
+  },
+  "meta": {
+    "lastPrefix": "Dernier",
+    "by": "par",
+    "createdLine": "Par {{author}} • {{date}} • {{count}} {{posts}}"
+  },
+  "counts": {
+    "post_one": "message",
+    "post_other": "messages"
+  },
+  "fallback": {
+    "categoryWithId": "Catégorie #{{id}}"
+  }
+}

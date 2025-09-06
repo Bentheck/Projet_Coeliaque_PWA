@@ -1,0 +1,63 @@
+﻿{
+  "brand": "Service Coeliaque",
+  "aria": {
+    "toggle": "Basculer la navigation"
+  },
+  "offline": {
+    "unavailable": "Indisponible hors ligne",
+    "genericAlert": "Cette fonctionnalité n’est pas disponible hors ligne."
+  },
+  "menu": {
+    "calculator": {
+      "_": "Calculateur",
+      "invoices": "Mes Factures",
+      "compare": "Comparatif",
+      "report": "Rapport Comparatif"
+    },
+    "grocery": {
+      "_": "Mes listes d'épicerie",
+      "active": "Actives",
+      "completed": "Complétées",
+      "all": "Toutes",
+      "openIndex": "Ouvrir l’index",
+      "newList": "Nouvelle liste"
+    },
+    "forum": {
+      "_": "Forum",
+      "categories": "Catégories",
+      "newThread": "Nouveau fil",
+      "admin": "Admin forum",
+      "offlineTitle": "Forum indisponible hors ligne",
+      "offlineAlert": "Le forum n’est pas disponible hors ligne.",
+      "offlineLabel": "Forum (hors ligne)"
+    },
+    "help": {
+      "_": "Aide",
+      "faq": "FAQ",
+      "contact": "Contactez-nous",
+      "adminFaq": "Admin FAQ"
+    }
+  },
+  "buttons": {
+    "subscribe": {
+      "_": "S'abonner",
+      "offlineTitle": "Abonnement indisponible hors ligne",
+      "offlineAlert": "L’abonnement nécessite une connexion Internet. Veuillez réessayer lorsque vous serez en ligne."
+    },
+    "superAdmin": {
+      "_": "SuperAdmin",
+      "title": "Espace SuperAdmin"
+    }
+  },
+  "userMenu": {
+    "labelFallback": "Compte",
+    "myProfile": "Mon profil",
+    "editProfile": "Éditer mon profil",
+    "membership": "Abonnement",
+    "logout": "Se déconnecter"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register"
+  }
+}

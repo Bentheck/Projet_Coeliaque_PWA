@@ -1,5 +1,7 @@
-﻿import { Navigate, useLocation } from "react-router-dom";
+﻿// src/components/RequireForumAdmin.tsx
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { useTranslation } from "react-i18next";
 
 /**
  * Route guard for forum administration.
@@ -10,9 +12,10 @@ import { useAuth } from "./AuthContext";
 const RequireForumAdmin: React.FC<{ children: React.ReactElement }> = ({ children }) => {
     const { user, isForumAdmin, isSuperAdmin, loading } = useAuth();
     const loc = useLocation();
+    const { t } = useTranslation("components/requireForumAdmin");
 
     if (loading) {
-        return <div className="container py-5 text-center">Chargement…</div>;
+        return <div className="container py-5 text-center">{t("loading")}</div>;
     }
 
     if (!user) {
@@ -24,7 +27,7 @@ const RequireForumAdmin: React.FC<{ children: React.ReactElement }> = ({ childre
         return (
             <div className="container py-5">
                 <div className="alert alert-warning mb-0">
-                    Accès refusé (403). Forum admin requis.
+                    {t("forbidden")}
                 </div>
             </div>
         );

@@ -1,0 +1,55 @@
+﻿{
+  "title": "Grocery lists",
+  "subtitle": "Create, track and complete your grocery lists.",
+  "search": {
+    "placeholder": "Search by name or date…",
+    "aria": "Search lists"
+  },
+  "filters": {
+    "active": "Active",
+    "completed": "Completed",
+    "all": "All"
+  },
+  "sort": {
+    "aria": "Sort lists",
+    "recent": "Most recent",
+    "oldest": "Oldest",
+    "name": "Name (A–Z)"
+  },
+  "newList": "New list",
+  "empty": {
+    "title": "No lists yet",
+    "subtitle": "Create your first list to get started.",
+    "create": "Create a list"
+  },
+  "status": {
+    "completed": "Completed",
+    "active": "Active"
+  },
+  "markComplete": "Mark as completed",
+  "items_one": "{{count}} item",
+  "items_other": "{{count}} items",
+  "createdOn": "Created on {{date}}",
+  "editDisabledTitle": "This list is completed — editing is disabled.",
+  "deleteTitle": "Delete this list",
+  "deleteAria": "Delete list {{name}}",
+  "confirmDelete": "Delete the list “{{name}}”?",
+  "footer": {
+    "total": "Total: {{count}}",
+    "active": "Active: {{count}}",
+    "completed": "Completed: {{count}}"
+  },
+  "errors": {
+    "loadLists": "Failed to load the lists.",
+    "updateStatus": "Could not update the list status.",
+    "deleteFailed": "Failed to delete the list."
+  },
+  "common": {
+    "clear": "Clear",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "view": "View",
+    "edit": "Edit",
+    "deleteShort": "Delete"
+  }
+}

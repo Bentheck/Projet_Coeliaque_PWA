@@ -1,0 +1,55 @@
+﻿{
+  "header": {
+    "title": "Comparatif Annuel"
+  },
+  "actions": {
+    "new": {
+      "long": "Nouveau comparatif",
+      "short": "Nouveau"
+    }
+  },
+  "form": {
+    "create": "Créer",
+    "cancel": "Annuler"
+  },
+  "loading": "Chargement…",
+  "empty": "Aucune année disponible.",
+  "year": "Année",
+  "report": {
+    "generated": "Rapport généré",
+    "notGenerated": "Rapport non généré"
+  },
+  "buttons": {
+    "generate": {
+      "titleGenerate": "Générer un rapport",
+      "titleRegenerate": "Régénérer le rapport",
+      "generateLong": "Générer un rapport",
+      "generateShort": "Générer",
+      "regenerateLong": "Régénérer",
+      "regenerateShort": "Regen"
+    },
+    "view": {
+      "title": "Voir",
+      "label": "Voir"
+    },
+    "delete": {
+      "title": "Supprimer",
+      "label": "Supprimer"
+    }
+  },
+  "busy": {
+    "long": "Traitement…",
+    "short": "…"
+  },
+  "alerts": {
+    "yearQueued": "Nouvelle année ajoutée hors ligne — elle se synchronisera plus tard.",
+    "generateQueued": "Commande de génération enregistrée hors ligne — la création sera traitée à la reconnexion."
+  },
+  "confirm": {
+    "deleteYear": "Supprimer cette année et toutes ses lignes ?",
+    "regenExisting": "Le rapport {{year}} existe déjà.\nVoulez-vous le régénérer ?"
+  },
+  "errors": {
+    "generateFailed": "Erreur lors de la génération du rapport."
+  }
+}

@@ -1,0 +1,34 @@
+﻿{
+  "membership": {
+    "title": "Abonnement",
+    "loading": "Chargement…",
+    "alert": {
+      "lifetimePrefix": "Votre abonnement est",
+      "lifetimeLabel": "à vie",
+      "activeUntilPrefix": "Votre abonnement est actif jusqu’au",
+      "none": "Vous n’avez pas d’abonnement actif."
+    },
+    "button": {
+      "manage": "Gérer l’abonnement / Mode de paiement",
+      "opening": "Ouverture…"
+    },
+    "portal": {
+      "noUrl": "Impossible d’ouvrir le portail Stripe.",
+      "openError": "Erreur lors de l’ouverture du portail."
+    },
+    "help": {
+      "updateCard": {
+        "title": "Mettre à jour la carte",
+        "body": "Abonnement → Mode de paiement (ouvre le portail client Stripe) pour ajouter une carte et la définir par défaut."
+      },
+      "cancelRenewal": {
+        "title": "Annuler le renouvellement",
+        "body": "Abonnement → Gérer (dans le portail Stripe) puis désactiver le renouvellement. L’accès premium reste actif jusqu’à la fin de la période."
+      },
+      "invoices": {
+        "title": "Factures / Reçus",
+        "body": "Abonnement → Factures (dans le portail Stripe) pour télécharger les reçus générés par Stripe. Un courriel de confirmation Stripe est envoyé après chaque paiement."
+      }
+    }
+  }
+}

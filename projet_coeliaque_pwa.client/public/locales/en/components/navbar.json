@@ -1,0 +1,63 @@
+﻿{
+  "brand": "Service Coeliaque",
+  "aria": {
+    "toggle": "Toggle navigation"
+  },
+  "offline": {
+    "unavailable": "Unavailable offline",
+    "genericAlert": "This feature is not available offline."
+  },
+  "menu": {
+    "calculator": {
+      "_": "Calculator",
+      "invoices": "My Invoices",
+      "compare": "Comparison",
+      "report": "Comparison Report"
+    },
+    "grocery": {
+      "_": "My Grocery Lists",
+      "active": "Active",
+      "completed": "Completed",
+      "all": "All",
+      "openIndex": "Open Index",
+      "newList": "New List"
+    },
+    "forum": {
+      "_": "Forum",
+      "categories": "Categories",
+      "newThread": "New Thread",
+      "admin": "Forum Admin",
+      "offlineTitle": "Forum unavailable offline",
+      "offlineAlert": "The forum is not available offline.",
+      "offlineLabel": "Forum (offline)"
+    },
+    "help": {
+      "_": "Help",
+      "faq": "FAQ",
+      "contact": "Contact us",
+      "adminFaq": "Admin FAQ"
+    }
+  },
+  "buttons": {
+    "subscribe": {
+      "_": "Subscribe",
+      "offlineTitle": "Subscription unavailable offline",
+      "offlineAlert": "Subscription requires an Internet connection. Please try again when you're online."
+    },
+    "superAdmin": {
+      "_": "SuperAdmin",
+      "title": "SuperAdmin area"
+    }
+  },
+  "userMenu": {
+    "labelFallback": "Account",
+    "myProfile": "My Profile",
+    "editProfile": "Edit my profile",
+    "membership": "Membership",
+    "logout": "Logout"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register"
+  }
+}

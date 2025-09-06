@@ -1,0 +1,66 @@
+﻿{
+  "loading": "Loading…",
+  "print": {
+    "noteLabel": "Note:",
+    "noteMain": "When you click “Print”, you can enter your NAME and your SIN so they appear at the top of the report.",
+    "noteNotSaved": "These will not be saved.",
+    "printButton": "Download/Print PDF",
+    "backButton": "Back"
+  },
+  "prompt": {
+    "title": "Information to include in the report",
+    "help": "You can leave these fields blank if you prefer to write by hand on the printed PDF.",
+    "nameLabel": "Name:",
+    "namePlaceholder": "Your name",
+    "nasLabel": "SIN:",
+    "nasPlaceholder": "XXX XXX XXX",
+    "cancel": "Cancel",
+    "continuePrint": "Continue and print"
+  },
+  "title": "Comparison Report — Year {{year}}",
+  "user": "User: {{name}}",
+  "table": {
+    "groups": {
+      "sansGluten": "GLUTEN-FREE PRODUCT",
+      "avecGluten": "COMPARATIVE PRODUCT WITH GLUTEN"
+    },
+    "columns": {
+      "typeItem": "Product Type",
+      "nomSansGluten": "Gluten-Free Name",
+      "quantite": "Quantity",
+      "format": "Size",
+      "unite": "Unit",
+      "prixSans": "Gluten-Free Price",
+      "prixPar100Sans": "Price/100g-100ml-Unit (GF)",
+      "marqueAvec": "Brand (With Gluten)",
+      "nomAvec": "Name (With Gluten)",
+      "formatAvec": "Size (With Gluten)",
+      "uniteAvec": "Unit (With Gluten)",
+      "prixAvec": "Price (With Gluten)",
+      "prixPar100Avec": "Price/100g-100ml-Unit (With Gluten)",
+      "diffPar100": "Difference per 100g/100ml/unit",
+      "sousTotalProduit": "Product Subtotal"
+    }
+  },
+  "total": "TOTAL = {{total}}",
+  "explain": {
+    "title": "How the calculations work",
+    "pricePer100": {
+      "title": "Price/100 (GF or With Gluten):",
+      "formula": "Price ÷ Weight × 100",
+      "example": "Example: $2.99 for 500 g → 2.99 ÷ 500 × 100 = $0.60"
+    },
+    "diff": {
+      "title": "Difference per 100 (Diff/100):",
+      "formula": "Price/100 GF – Price/100 With Gluten"
+    },
+    "sousTotal": {
+      "title": "Product Subtotal:",
+      "formula": "Diff/100 × Total quantity (in “hundreds” per the unit)"
+    },
+    "total": {
+      "title": "TOTAL: Sum of all product subtotals."
+    },
+    "note": "Unit conversions are handled automatically."
+  }
+}

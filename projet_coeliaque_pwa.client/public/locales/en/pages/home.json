@@ -1,0 +1,18 @@
+﻿{
+  "welcome": {
+    "title": "Welcome",
+    "subtitle": "Welcome to Site Coeliaque PWA/SPA!"
+  },
+  "offline": {
+    "card": { "title": "Offline availability" },
+    "badge": "Offline",
+    "status": {
+      "available": "Available offline",
+      "expired": "Offline expired — please reconnect"
+    },
+    "footer": {
+      "ttl": "TTL window: {{hours}} h",
+      "cached": "Cached entries: {{count}}"
+    }
+  }
+}

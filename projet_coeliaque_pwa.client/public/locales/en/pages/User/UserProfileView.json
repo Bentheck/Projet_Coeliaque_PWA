@@ -1,0 +1,16 @@
+﻿{
+  "loading": "Loading…",
+  "errors": {
+    "load": "Unable to load the profile."
+  },
+  "avatarAlt": "{{name}} avatar",
+  "fallback": {
+    "user": "User"
+  },
+  "memberSince": "Member since {{date}}",
+  "threads_one": "{{count}} thread",
+  "threads_other": "{{count}} threads",
+  "posts_one": "{{count}} post",
+  "posts_other": "{{count}} posts",
+  "back": "Back"
+}

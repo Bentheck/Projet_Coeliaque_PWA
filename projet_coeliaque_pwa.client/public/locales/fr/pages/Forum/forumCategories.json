@@ -1,0 +1,15 @@
+﻿{
+  "title": "Forum",
+  "subtitle": "Choisissez une catégorie pour voir les discussions.",
+  "errors": {
+    "loadCategories": "Impossible de charger les catégories."
+  },
+  "empty": "Aucune catégorie.",
+  "buttons": {
+    "open": "Ouvrir"
+  },
+  "badges": {
+    "threads_one": "{{count}} fil",
+    "threads_other": "{{count}} fils"
+  }
+}

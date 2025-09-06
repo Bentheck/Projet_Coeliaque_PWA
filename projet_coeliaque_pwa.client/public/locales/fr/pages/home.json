@@ -1,0 +1,18 @@
+﻿{
+  "welcome": {
+    "title": "Bienvenue",
+    "subtitle": "Bienvenue sur le site Cœliaque (PWA/SPA) !"
+  },
+  "offline": {
+    "card": { "title": "Disponibilité hors ligne" },
+    "badge": "Hors ligne",
+    "status": {
+      "available": "Disponible hors ligne",
+      "expired": "Session hors ligne expirée — veuillez vous reconnecter"
+    },
+    "footer": {
+      "ttl": "Fenêtre TTL : {{hours}} h",
+      "cached": "Éléments mis en cache : {{count}}"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+﻿{
+  "loading": "Chargement…",
+  "titles": {
+    "admin": "Administration du forum"
+  },
+  "sections": {
+    "categories": { "title": "Catégories" },
+    "quickThread": { "title": "Outils rapides (fil)" },
+    "moderation": { "title": "Modération (message)" }
+  },
+  "table": {
+    "headers": {
+      "id": "ID",
+      "slug": "Slug",
+      "name": "Nom",
+      "description": "Description",
+      "threads": "Fils",
+      "actions": "Actions"
+    }
+  },
+  "buttons": {
+    "delete": "Supprimer",
+    "force": "Forcer",
+    "forceTooltip": "Forcer (avec fils)",
+    "create": "Créer",
+    "apply": "Appliquer"
+  },
+  "newCategory": {
+    "title": "Nouvelle catégorie",
+    "labels": {
+      "slug": "Slug",
+      "name": "Nom",
+      "description": "Description"
+    },
+    "placeholders": {
+      "slug": "ex: general",
+      "name": "ex: Général"
+    }
+  },
+  "quickThread": {
+    "labels": {
+      "threadId": "ID du fil",
+      "pinned": "Épinglé",
+      "locked": "Verrouillé"
+    }
+  },
+  "moderation": {
+    "labels": {
+      "postId": "ID du message",
+      "deleted": "Supprimé"
+    }
+  },
+  "errors": {
+    "loadCategories": "Impossible de charger les catégories.",
+    "createFailed": "Échec de la création.",
+    "saveFailed": "Échec de la sauvegarde.",
+    "deleteFailed": "Échec de la suppression."
+  },
+  "alerts": {
+    "applied": "Appliqué.",
+    "failed": "Échec."
+  },
+  "confirm": {
+    "deleteCategory": "Supprimer cette catégorie ?"
+  }
+}

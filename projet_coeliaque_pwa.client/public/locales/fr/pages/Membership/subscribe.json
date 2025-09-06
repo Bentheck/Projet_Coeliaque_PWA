@@ -1,0 +1,18 @@
+﻿{
+  "subscribe": {
+    "title": "Abonnement",
+    "offlineBanner": "Vous êtes hors ligne. La page d’abonnement nécessite une connexion Internet.",
+    "buttons": {
+      "primary": "S'abonner (plan normal)",
+      "test": "S'abonner (TEST quotidien)",
+      "loading": "Redirection..."
+    },
+    "keyLabel": "Clé Stripe utilisée :",
+    "errors": {
+      "offline": "Vous êtes hors ligne. Connectez-vous pour continuer.",
+      "missingSession": "Session Stripe manquante.",
+      "stripeInit": "Stripe n'a pas pu être initialisé.",
+      "startFailed": "Impossible de démarrer le processus d'abonnement."
+    }
+  }
+}

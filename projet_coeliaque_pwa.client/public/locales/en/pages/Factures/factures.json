@@ -1,0 +1,48 @@
+﻿{
+  "loading": "Loading…",
+  "headings": {
+    "title": "My Invoices"
+  },
+  "buttons": {
+    "new": "New Invoice",
+    "save": "Save",
+    "create": "Create",
+    "cancel": "Cancel"
+  },
+  "form": {
+    "labels": {
+      "year": "Year",
+      "invoiceId": "Invoice ID",
+      "date": "Date",
+      "store": "Store"
+    }
+  },
+  "empty": {
+    "noneFound": "No invoices found."
+  },
+  "list": {
+    "viewBtn": "View",
+    "deleteBtn": "Delete",
+    "viewAria": "View invoice",
+    "deleteAria": "Delete invoice",
+    "viewTitle": "View invoice",
+    "deleteTitle": "Delete invoice",
+    "idLabel": "ID:",
+    "dateLabel": "Date:",
+    "storeLabel": "Store:"
+  },
+  "confirm": {
+    "delete": "Delete this invoice?"
+  },
+  "alerts": {
+    "offlineEditSaved": "Change saved offline. It will sync soon.",
+    "offlineCreateSaved": "Creation saved offline. It will sync when you reconnect.",
+    "offlineDeleteQueued": "Deletion queued (offline)."
+  },
+  "errors": {
+    "unexpectedMissingId": "Unexpected response: missing id.",
+    "saveFailed": "Error while saving.",
+    "deleteFailed": "Error while deleting."
+  },
+  "pending": "(pending…)"
+}

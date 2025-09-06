@@ -1,0 +1,62 @@
+﻿{
+  "loading": "Loading…",
+  "errorGeneric": "Something went wrong.",
+  "back": "Back",
+  "titleDefault": "Grocery list",
+  "createdOn": "Created on {{date}}",
+  "detailLoading": "Loading product details…",
+  "completed": "Completed",
+  "edit": "Edit",
+  "print": "Print",
+  "printedOn": "Printed on {{date}}",
+  "empty": "This list is empty.",
+  "summary": {
+    "rows_one": "{{count}} item",
+    "rows_other": "{{count}} items",
+    "totalQty_one": "Total: {{count}} unit",
+    "totalQty_other": "Total: {{count}} units",
+    "favorites_one": "{{count}} favorite",
+    "favorites_other": "{{count}} favorites",
+    "onSale_one": "{{count}} on sale",
+    "onSale_other": "{{count}} on sale"
+  },
+  "table": {
+    "done": "Done",
+    "product": "Product",
+    "type": "Type",
+    "store": "Store",
+    "weight": "Weight",
+    "unitPrice": "Unit price",
+    "quantity": "Qty",
+    "subtotal": "Subtotal",
+    "special": "Special",
+    "total": "Total"
+  },
+  "badges": {
+    "favorite": "Favorite",
+    "onSale": "On sale",
+    "regularPrice": "Regular price"
+  },
+  "mobile": {
+    "qtyShort": "Qty",
+    "total": "Total"
+  },
+  "aria": {
+    "markAsDone": "Mark {{name}} as done"
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No"
+  },
+  "fallbacks": {
+    "invoiceItem": "Invoice item #{{id}}",
+    "freeItem": "Product #{{id}}",
+    "custom": "Custom item"
+  },
+  "errors": {
+    "loadList": "Failed to load the list.",
+    "updateListState": "Could not update the list state.",
+    "listCompletedLocked": "This list is completed and locked. Uncheck “Completed” to modify items.",
+    "updateItem": "Could not update the item."
+  }
+}

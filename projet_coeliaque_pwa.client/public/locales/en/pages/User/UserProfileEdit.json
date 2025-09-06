@@ -1,0 +1,48 @@
+﻿{
+  "profile": {
+    "title": "Éditer mon profil",
+    "alt": {
+      "avatar": "Avatar"
+    },
+    "labels": {
+      "avatarLabel": "Avatar (JPEG/PNG/WebP, max {{maxMb}} MB)",
+      "displayName": "Nom affiché",
+      "location": "Localisation",
+      "website": "Site web",
+      "bio": "Bio"
+    },
+    "placeholders": {
+      "displayName": "Ex: Léa Cœliaque",
+      "location": "Ex: Montréal, QC",
+      "website": "Ex: exemple.com",
+      "bio": "Parlez un peu de vous…"
+    },
+    "help": {
+      "displayName": "3–40 caractères, doit être unique.",
+      "website": "On ajoutera “https://” si nécessaire."
+    },
+    "buttons": {
+      "saveAvatar": "Enregistrer l’avatar",
+      "removeAvatar": "Retirer l’avatar",
+      "save": "Enregistrer",
+      "cancel": "Annuler"
+    },
+    "messages": {
+      "avatarUpdated": "Avatar mis à jour.",
+      "avatarRemoved": "Avatar retiré.",
+      "profileUpdated": "Profil mis à jour."
+    },
+    "confirm": {
+      "removeAvatar": "Retirer l’avatar actuel ?"
+    },
+    "errors": {
+      "loadProfile": "Impossible de charger le profil.",
+      "tooLarge": "Fichier trop volumineux (max {{maxMb}} MB).",
+      "unsupportedType": "Type d'image non supporté (JPEG, PNG, WEBP).",
+      "upload": "Échec de l'upload.",
+      "deletion": "Échec de la suppression.",
+      "save": "Échec de la sauvegarde.",
+      "generic": "Erreur"
+    }
+  }
+}
