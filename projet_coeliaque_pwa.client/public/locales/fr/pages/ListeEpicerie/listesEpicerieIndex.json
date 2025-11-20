@@ -51,5 +51,10 @@
     "view": "Voir",
     "edit": "Modifier",
     "deleteShort": "Suppr."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "subtitle": "Cette section utilise uniquement des données locales de démonstration (aucun appel au serveur).",
+    "loading": "Chargement de la démo…"
   }
 }

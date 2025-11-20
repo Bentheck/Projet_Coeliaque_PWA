@@ -44,5 +44,14 @@
     "saveFailed": "Erreur lors de l’enregistrement.",
     "deleteFailed": "Erreur lors de la suppression."
   },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Mode démonstration",
+    "warning": "Aucune donnée réelle n’est utilisée et aucune modification ne sera enregistrée.",
+    "localOnly": "Cette liste utilise uniquement des données locales pour la démonstration.",
+    "noCreate": "La création réelle de factures est désactivée en mode démo.",
+    "noEdit": "La modification réelle des factures est désactivée en mode démo.",
+    "noDelete": "La suppression réelle des factures est désactivée en mode démo."
+  },
   "pending": "(en attente…)"
 }

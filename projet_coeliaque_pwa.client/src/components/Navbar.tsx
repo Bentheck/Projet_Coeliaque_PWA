@@ -37,7 +37,7 @@ function OfflineAwareLink({
     disabledTitle?: string;
     onBlockedClick?: () => void;
 }) {
-    const { t } = useTranslation("navbar");
+    const { t } = useTranslation("components/navbar");
     const combined = `${className} ${!isOnline ? "disabled" : ""}`.trim();
     const computedDisabledTitle = disabledTitle ?? t("offline.unavailable");
 
@@ -49,7 +49,6 @@ function OfflineAwareLink({
         );
     }
 
-    // When offline: keep it focusable for a11y, but prevent navigation.
     return (
         <a
             href="#"
@@ -185,7 +184,6 @@ export default function Navbar() {
 
                         {/* Forum */}
                         <li className="nav-item dropdown">
-                            {/* When offline: render as disabled, no dropdown behavior */}
                             {isOnline ? (
                                 <>
                                     <a
@@ -213,9 +211,7 @@ export default function Navbar() {
                                         )}
                                         {isForumAdmin && (
                                             <>
-                                                <li>
-                                                    <hr className="dropdown-divider" />
-                                                </li>
+                                                <li><hr className="dropdown-divider" /></li>
                                                 <li>
                                                     <Link className="dropdown-item" to="/admin/forum">
                                                         <i className="bi bi-shield-check me-2"></i> {t("menu.forum.admin")}
@@ -266,9 +262,7 @@ export default function Navbar() {
                                 </li>
                                 {isSuperAdmin && (
                                     <>
-                                        <li>
-                                            <hr className="dropdown-divider" />
-                                        </li>
+                                        <li><hr className="dropdown-divider" /></li>
                                         <li>
                                             <Link className="dropdown-item" to="/super/faq">
                                                 <i className="bi bi-tools me-2"></i> {t("menu.help.adminFaq")}
@@ -282,24 +276,22 @@ export default function Navbar() {
 
                     {/* Right side */}
                     <ul className="navbar-nav ms-auto align-items-lg-center">
-                        {/* Install PWA button (only visible if eligible, auto-hides otherwise) */}
+                        {/* Install PWA button */}
                         <li className="nav-item my-2 my-lg-0">
                             <InstallPWA />
                         </li>
 
                         {user ? (
                             <>
+                                {/* Missing membership → show subscribe */}
                                 {!hasActiveMembership && (
                                     <li className="nav-item my-2 my-lg-0">
-                                        {/* Subscription button is blocked while offline */}
                                         <OfflineAwareLink
                                             to="/subscribe"
                                             isOnline={isOnline}
                                             className={`btn ms-lg-2 text-white ${isOnline ? "btn-warning" : "btn-secondary"}`}
                                             disabledTitle={t("buttons.subscribe.offlineTitle")}
-                                            onBlockedClick={() =>
-                                                alert(t("buttons.subscribe.offlineAlert"))
-                                            }
+                                            onBlockedClick={() => alert(t("buttons.subscribe.offlineAlert"))}
                                         >
                                             <i className="bi bi-exclamation-triangle me-1"></i> {t("buttons.subscribe._")}
                                         </OfflineAwareLink>
@@ -318,6 +310,7 @@ export default function Navbar() {
                                     </li>
                                 )}
 
+                                {/* User menu */}
                                 <li className="nav-item dropdown my-2 my-lg-0 ms-lg-2">
                                     <a
                                         className="nav-link dropdown-toggle"
@@ -332,39 +325,60 @@ export default function Navbar() {
                                     <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                                         {myProfileUrl && (
                                             <li>
-                                                <Link className="dropdown-item" to={myProfileUrl}>
+                                                <OfflineAwareLink
+                                                    to={myProfileUrl}
+                                                    isOnline={isOnline}
+                                                    className="dropdown-item"
+                                                    disabledTitle={t("offline.unavailable")}
+                                                >
                                                     <i className="bi bi-person-badge me-2"></i> {t("userMenu.myProfile")}
-                                                </Link>
+                                                </OfflineAwareLink>
                                             </li>
                                         )}
                                         <li>
-                                            <Link className="dropdown-item" to="/u/me/edit">
+                                            <OfflineAwareLink
+                                                to="/u/me/edit"
+                                                isOnline={isOnline}
+                                                className="dropdown-item"
+                                                disabledTitle={t("offline.unavailable")}
+                                            >
                                                 <i className="bi bi-pencil-square me-2"></i> {t("userMenu.editProfile")}
-                                            </Link>
+                                            </OfflineAwareLink>
                                         </li>
-                                        <li>
-                                            <hr className="dropdown-divider" />
-                                        </li>
+                                        <li><hr className="dropdown-divider" /></li>
                                         <li>
                                             <Link className="dropdown-item" to="/membership">
                                                 <i className="bi bi-card-checklist me-2"></i> {t("userMenu.membership")}
                                             </Link>
                                         </li>
                                         <li>
-                                            <Link className="dropdown-item" to="/logout">
+                                            <OfflineAwareLink
+                                                to="/logout"
+                                                isOnline={isOnline}
+                                                className="dropdown-item"
+                                                disabledTitle={t("offline.unavailable")}
+                                            >
                                                 <i className="bi bi-box-arrow-right me-2"></i> {t("userMenu.logout")}
-                                            </Link>
+                                            </OfflineAwareLink>
                                         </li>
                                     </ul>
                                 </li>
                             </>
                         ) : (
                             <>
+                                {/* DEMO BUTTON (visible only when NOT logged in) */}
+                                <li className="nav-item">
+                                    <Link className="nav-link text-primary fw-bold" to="/demo">
+                                        <i className="bi bi-stars"></i> {t("demo.button")}
+                                    </Link>
+                                </li>
+
                                 <li className="nav-item">
                                     <Link className="nav-link" to="/login">
                                         <i className="bi bi-door-open"></i> {t("auth.login")}
                                     </Link>
                                 </li>
+
                                 <li className="nav-item">
                                     <Link className="nav-link" to="/register">
                                         <i className="bi bi-person-plus"></i> {t("auth.register")}

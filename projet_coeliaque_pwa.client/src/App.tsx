@@ -1,4 +1,5 @@
-﻿import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+﻿// src/App.tsx
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import "./app.css";
 
 import Layout from "./components/Layout";
@@ -49,8 +50,20 @@ import RequireSuperAdmin from "./components/RequireSuperAdmin";
 import RequireForumAdmin from "./components/RequireForumAdmin";
 import GlobalOfflineGuard from "./components/GlobalOfflineGuard";
 
-// FAQ (DB-backed): named exports from your file at src/pages/FAQ/FaqModule.tsx
+// FAQ
 import { FaqPage as FaqPublic, FaqAdmin as FaqAdminPage } from "./pages/FAQ/FaqModule";
+
+// DEMO (offline-only) pages
+import DemoHome from "./demo/DemoHome";
+import DemoComparatifEdit from "./demo/DemoComparatifEdit";
+import DemoComparatifIndex from "./demo/DemoComparatifIndex";
+import DemoRapports from "./demo/DemoRapports";
+import DemoRapportsDisplay from "./demo/DemoRapportsDisplay";
+import DemoListesEpicerieIndex from "./demo/DemoListeEpicerieIndex";
+import DemoListeEpicerieEdit from "./demo/DemoListeEpicerieEdit";
+import DemoListeEpicerieView from "./demo/DemoListeEpicerieView";
+import DemoFactures from "./demo/DemoFactures";
+import DemoFactureEdit from "./demo/DemoFactureEdit";
 
 export default function App() {
     return (
@@ -61,6 +74,27 @@ export default function App() {
                     <Routes>
                         <Route path="/" element={<Home />} />
 
+                        {/* ================= DEMO (offline Dexie-only) ================= */}
+                        <Route path="/demo" element={<DemoHome />} />
+
+                        {/* Demo Factures */}
+                        <Route path="/demo/factures" element={<DemoFactures />} />
+                        <Route path="/demo/factures/:id" element={<DemoFactureEdit />} />
+
+                        {/* Demo Comparatif (index + edit) */}
+                        <Route path="/demo/comparatif" element={<DemoComparatifIndex />} />
+                        <Route path="/demo/comparatif/:id" element={<DemoComparatifEdit />} />
+
+                        {/* Demo Rapports */}
+                        <Route path="/demo/rapports" element={<DemoRapports />} />
+                        <Route path="/demo/rapports/:annee" element={<DemoRapportsDisplay />} />
+
+                        {/* Demo Liste d’épicerie */}
+                        <Route path="/demo/liste-epicerie" element={<DemoListesEpicerieIndex />} />
+                        <Route path="/demo/liste-epicerie/edit/:id?" element={<DemoListeEpicerieEdit />} />
+                        <Route path="/demo/liste-epicerie/view/:id" element={<DemoListeEpicerieView />} />
+
+                        {/* ================= REAL APP (API + membership) ================ */}
                         <Route
                             path="/factures"
                             element={

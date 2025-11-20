@@ -62,5 +62,15 @@
   "error": {
     "loadInvoiceOffline": "Impossible de charger la facture (hors ligne et non en cache).",
     "saveFailed": "Erreur lors de l’enregistrement."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Mode démonstration",
+    "warning": "Aucune donnée réelle n’est utilisée et aucune modification ne sera enregistrée.",
+    "localOnly": "Les items et informations ci-dessous sont générés localement pour la démonstration.",
+    "disabledAction": "Cette action est désactivée en mode démonstration.",
+    "cannotSave": "L’enregistrement est désactivé dans la version de démonstration.",
+    "cannotDelete": "La suppression est désactivée dans la version de démonstration.",
+    "hint": "Astuce : vous pouvez modifier ces champs sans risque, rien ne sera envoyé au serveur."
   }
 }

@@ -64,5 +64,10 @@
   },
   "confirm": {
     "deleteLine": "Supprimer cette ligne ?"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Mode démonstration — cette page modifie uniquement des données locales pour vous montrer le fonctionnement. Aucune donnée réelle n'est affectée.",
+    "saveAlert": "Modifications sauvegardées en mode démo seulement (aucune requête envoyée au serveur)."
   }
 }

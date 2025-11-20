@@ -51,5 +51,14 @@
   },
   "errors": {
     "generateFailed": "Error while generating the report."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Demonstration mode",
+    "warning": "No real data is used and no modification will be saved.",
+    "localOnly": "The years displayed below are generated locally for demonstration.",
+    "reportDisabled": "Real report generation is disabled in demo mode.",
+    "deleteDisabled": "Real deletion is disabled in demo mode.",
+    "hint": "Tip: you can explore the full flow safely."
   }
 }

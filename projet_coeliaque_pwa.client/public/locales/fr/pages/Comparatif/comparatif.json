@@ -51,5 +51,14 @@
   },
   "errors": {
     "generateFailed": "Erreur lors de la génération du rapport."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Mode démonstration",
+    "warning": "Aucune donnée réelle n’est utilisée et aucune modification ne sera enregistrée.",
+    "localOnly": "Les années ci-dessous sont générées localement pour la démonstration.",
+    "reportDisabled": "La génération réelle de rapport est désactivée en mode démo.",
+    "deleteDisabled": "La suppression réelle est désactivée en mode démo.",
+    "hint": "Astuce : vous pouvez explorer le flux complet sans risque."
   }
 }

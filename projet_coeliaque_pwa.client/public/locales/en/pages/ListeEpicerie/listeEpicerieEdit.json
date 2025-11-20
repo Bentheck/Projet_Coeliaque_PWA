@@ -88,5 +88,12 @@
   "confirms": {
     "deleteUsed": "This product is used in {{count}} item(s) of this list. Delete it anyway? It will also be removed from the list.",
     "deleteFreeProduct": "Delete this free product?"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Demo mode — this list is stored only on this device. No changes are sent to the server and your real data is never affected.",
+    "totalHint": "(Demo — total estimated only from local demo data)",
+    "saveError": "An error occurred while saving the list (demo). Please try again.",
+    "loading": "Loading demo…"
   }
 }

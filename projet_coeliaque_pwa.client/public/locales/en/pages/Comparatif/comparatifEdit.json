@@ -64,5 +64,10 @@
   },
   "confirm": {
     "deleteLine": "Delete this line?"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Demo mode — this page only changes local data to show how it works. Your real data is not affected.",
+    "saveAlert": "Changes saved in demo mode only (no request sent to the server)."
   }
 }

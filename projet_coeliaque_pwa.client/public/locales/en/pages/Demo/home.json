@@ -1,0 +1,19 @@
+﻿{
+  "title": "Demo area",
+  "badge": "DEMO",
+  "intro": "All the pages below only use local demo data (Dexie). No server calls, so you can safely walk through the flow.",
+  "warning": "Demo mode — the data shown here is fake and stored locally. Nothing you do on these screens will affect your real account.",
+  "cards_comparatif_title": "Annual comparison",
+  "cards_comparatif_text": "Edit a few gluten-free products (price, formats, units) to show how the comparison table is built.",
+  "cards_comparatif_button": "Open comparison",
+  "cards_rapports_title": "Tax report",
+  "cards_rapports_text": "Trigger a (fake) report generation, then show the printable version with calculated totals.",
+  "cards_rapports_button": "Open reports",
+  "cards_liste_title": "Grocery lists",
+  "cards_liste_text": "Create/complete a grocery list using demo products (free + invoice items) with total cost estimation.",
+  "cards_liste_button": "Open grocery lists",
+  "cards_factures_title": "Invoices",
+  "cards_factures_text": "Create and edit a few demo invoices to demonstrate how invoice and item entry works.",
+  "cards_factures_button": "Open invoices",
+  "footer_tip": "Tip: because everything is local, you can break or change these demo records without any impact on your real data."
+}

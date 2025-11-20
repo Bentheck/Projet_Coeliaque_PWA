@@ -62,5 +62,15 @@
   "error": {
     "loadInvoiceOffline": "Unable to load the invoice (offline and not cached).",
     "saveFailed": "Error while saving."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Demonstration mode",
+    "warning": "No real data is used and no modification will be saved.",
+    "localOnly": "The items and information below are generated locally for demonstration purposes.",
+    "disabledAction": "This action is disabled in demo mode.",
+    "cannotSave": "Saving is disabled in the demo version.",
+    "cannotDelete": "Deleting is disabled in the demo version.",
+    "hint": "Tip: you can edit any field safely — nothing is sent to the server."
   }
 }

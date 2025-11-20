@@ -62,5 +62,10 @@
       "title": "TOTAL: Sum of all product subtotals."
     },
     "note": "Unit conversions are handled automatically."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Demo mode — this report uses only local demo data (Dexie). No requests are sent to the server and your real reports are never changed.",
+    "loading": "Loading demo…"
   }
 }

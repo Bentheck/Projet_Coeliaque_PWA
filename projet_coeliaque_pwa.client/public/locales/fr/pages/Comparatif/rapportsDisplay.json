@@ -62,5 +62,10 @@
       "title": "TOTAL : Somme de tous les sous-totaux produits."
     },
     "note": "Les conversions d’unités sont prises en compte automatiquement."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Mode démonstration — ce rapport utilise uniquement des données locales de démonstration (Dexie). Aucune requête n’est envoyée au serveur et vos rapports réels ne sont jamais modifiés.",
+    "loading": "Chargement de la démo…"
   }
 }

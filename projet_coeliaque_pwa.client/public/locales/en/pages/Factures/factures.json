@@ -44,5 +44,14 @@
     "saveFailed": "Error while saving.",
     "deleteFailed": "Error while deleting."
   },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Demonstration mode",
+    "warning": "No real data is used and no modification will be saved.",
+    "localOnly": "This list uses local demo data only.",
+    "noCreate": "Creating real invoices is disabled in demo mode.",
+    "noEdit": "Editing real invoices is disabled in demo mode.",
+    "noDelete": "Deleting invoices is disabled in demo mode."
+  },
   "pending": "(pending…)"
 }

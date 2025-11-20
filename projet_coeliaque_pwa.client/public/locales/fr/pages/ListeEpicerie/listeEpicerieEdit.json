@@ -88,5 +88,12 @@
   "confirms": {
     "deleteUsed": "Ce produit est utilisé dans {{count}} ligne(s) de la liste. Le supprimer quand même ? Il sera aussi retiré de la liste.",
     "deleteFreeProduct": "Supprimer ce produit libre ?"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Mode démonstration — cette liste est stockée uniquement sur cet appareil. Aucune modification n’est envoyée au serveur et vos données réelles ne sont jamais touchées.",
+    "totalHint": "(Démo — total estimé uniquement à partir des données locales de démonstration)",
+    "saveError": "Erreur lors de l’enregistrement de la liste (démo). Veuillez réessayer.",
+    "loading": "Chargement de la démo…"
   }
 }

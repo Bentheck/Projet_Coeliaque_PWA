@@ -58,10 +58,17 @@ const Home: React.FC = () => {
     React.useEffect(() => {
         let mounted = true;
 
-        // First heartbeat, then first status pull
-        markLastOnlineNow().then(() => {
-            if (mounted) void refreshStatus();
-        });
+        // First: if ONLINE, send heartbeat; then pull status.
+        // When OFFLINE (e.g. offline reload), we skip the heartbeat so TTL doesn't reset.
+        const init = async () => {
+            if (navigator.onLine) {
+                await markLastOnlineNow();
+            }
+            if (mounted) {
+                await refreshStatus();
+            }
+        };
+        void init();
 
         const poll = setInterval(() => {
             if (mounted) void refreshStatus();
@@ -73,7 +80,9 @@ const Home: React.FC = () => {
 
         // Keep TTL fresh while online
         const keepAlive = setInterval(() => {
-            if (mounted && isOnline) void markLastOnlineNow().then(() => refreshStatus());
+            if (mounted && isOnline) {
+                void markLastOnlineNow().then(() => refreshStatus());
+            }
         }, 5 * 60_000);
 
         return () => {

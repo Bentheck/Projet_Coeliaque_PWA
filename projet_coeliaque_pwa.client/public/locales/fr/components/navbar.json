@@ -59,5 +59,8 @@
   "auth": {
     "login": "Login",
     "register": "Register"
+  },
+  "demo": {
+    "button": "Démo"
   }
 }
