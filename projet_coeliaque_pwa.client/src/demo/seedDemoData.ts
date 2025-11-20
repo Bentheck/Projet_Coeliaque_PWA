@@ -22,9 +22,9 @@ const FACTURES_LIST_KEY = "factures/all";
 /**
  * Seeds Dexie with a coherent demo dataset:
  * - Comparatif year (gluten-free vs regular)
- * - Rapports (tax report payload)
- * - Free items + grocery list
- * - 1 demo invoice + its items (so Factures demo page has content)
+ * - Rapports (tax report payload) based on the factures + comparatif items
+ * - Free items (with gluten) + grocery list
+ * - 2 demo invoices + their items
  *
  * Safe to call multiple times; it also self-heals if the flag was set but
  * the demo rows are missing.
@@ -57,6 +57,7 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
     }
 
     /* ----------------------- Comparatif demo data ----------------------- */
+    // All types here are also used on the factures.
 
     const demoLines: ProductComparisonDto[] = [
         {
@@ -89,6 +90,16 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
             poidsUnite: "g",
             magasin: "Super C",
         } as any,
+        {
+            id: -1004,
+            comparatifYearId: -1,
+            typeItem: "Céréales",
+            marque: "Céréales sans gluten – Marque D",
+            prix: 7.49,
+            poidsValeur: 400,
+            poidsUnite: "g",
+            magasin: "Provigo",
+        } as any,
     ];
 
     const demoComparatifYear: ComparatifYearDto = {
@@ -98,6 +109,10 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
     } as any;
 
     /* ------------------------- Rapports demo data ------------------------ */
+    // Report compares ALL gluten-free facture entries (aggregated per type)
+    // against their with-gluten counterparts.
+
+    const prixPar100Unit = "$ / 100 g";
 
     const demoReportYear: ReportYearDto = {
         year: demoYear,
@@ -107,18 +122,19 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
     const demoReportPayload: ReportPayload = {
         year: demoYear,
         userName: "Utilisateur démo",
-        prixPar100Unit: "$ / 100 g",
-        totalSousTotalProduit: 325.75,
+        prixPar100Unit,
+        // Sum of sousTotalProduit below (rounded)
+        totalSousTotalProduit: 38.17,
         reportRows: [
             {
                 typeItem: "Pain tranché",
                 nomSansGluten: "Pain sans gluten – Marque A",
-                quantiteSansGluten: 52,
+                quantiteSansGluten: 3, // 2 on facture 1 + 1 on facture 2
                 formatSansGluten: "500",
                 uniteSansGluten: "g",
                 prixSansGluten: 6.99,
                 prixPar100SansGluten: 1.398,
-                prixPar100Unit: "$ / 100 g",
+                prixPar100Unit,
                 marqueAvecGluten: "Pain régulier – Marque X",
                 nomAvecGluten: "Pain régulier – Marque X",
                 formatAvecGluten: "675",
@@ -126,17 +142,17 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
                 prixAvecGluten: 3.49,
                 prixPar100AvecGluten: 0.517,
                 diffPar100: 0.881,
-                sousTotalProduit: 229.40,
+                sousTotalProduit: 13.21,
             },
             {
                 typeItem: "Pâtes alimentaires",
                 nomSansGluten: "Pâtes sans gluten – Marque B",
-                quantiteSansGluten: 24,
+                quantiteSansGluten: 4, // 3 + 1
                 formatSansGluten: "340",
                 uniteSansGluten: "g",
                 prixSansGluten: 4.99,
                 prixPar100SansGluten: 1.468,
-                prixPar100Unit: "$ / 100 g",
+                prixPar100Unit,
                 marqueAvecGluten: "Pâtes régulières – Marque Y",
                 nomAvecGluten: "Pâtes régulières",
                 formatAvecGluten: "450",
@@ -144,21 +160,58 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
                 prixAvecGluten: 1.49,
                 prixPar100AvecGluten: 0.331,
                 diffPar100: 1.137,
-                sousTotalProduit: 96.35,
+                sousTotalProduit: 15.46,
+            },
+            {
+                typeItem: "Craquelins",
+                nomSansGluten: "Craquelins sans gluten – Marque C",
+                quantiteSansGluten: 1,
+                formatSansGluten: "200",
+                uniteSansGluten: "g",
+                prixSansGluten: 5.49,
+                prixPar100SansGluten: 2.745,
+                prixPar100Unit,
+                marqueAvecGluten: "Craquelins réguliers – Marque Z",
+                nomAvecGluten: "Craquelins réguliers – Marque Z",
+                formatAvecGluten: "200",
+                uniteAvecGluten: "g",
+                prixAvecGluten: 2.99,
+                prixPar100AvecGluten: 1.495,
+                diffPar100: 1.25,
+                sousTotalProduit: 2.5,
+            },
+            {
+                typeItem: "Céréales",
+                nomSansGluten: "Céréales sans gluten – Marque D",
+                quantiteSansGluten: 2,
+                formatSansGluten: "400",
+                uniteSansGluten: "g",
+                prixSansGluten: 7.49,
+                prixPar100SansGluten: 1.873,
+                prixPar100Unit,
+                marqueAvecGluten: "Céréales régulières – Marque Q",
+                nomAvecGluten: "Céréales régulières – Marque Q",
+                formatAvecGluten: "500",
+                uniteAvecGluten: "g",
+                prixAvecGluten: 4.99,
+                prixPar100AvecGluten: 0.998,
+                diffPar100: 0.875,
+                sousTotalProduit: 7.0,
             },
         ],
     } as any;
 
-    /* ---------------------- Free items (gratuit) ------------------------- */
+    /* ---------------------- Free items (avec gluten) --------------------- */
+    // Free items on the grocery list represent the *reference* (with gluten) products.
 
     const freePain: FreeItemDto = {
         id: -2001,
-        item: "Pain multigrain sans gluten – Marque A",
+        item: "Pain régulier – Marque X",
         typeItem: "Pain tranché",
         magasin: "IGA",
         defaultQuantite: 1,
-        defaultPrix: 6.99,
-        poidsValeur: 500,
+        defaultPrix: 3.49, // matches prixAvecGluten in report
+        poidsValeur: 675,
         poidsUnite: "g",
         wasOnSale: false,
         isFavorite: true,
@@ -166,80 +219,164 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
 
     const freePates: FreeItemDto = {
         id: -2002,
-        item: "Pâtes sans gluten – Marque B",
+        item: "Pâtes régulières – Marque Y",
         typeItem: "Pâtes alimentaires",
         magasin: "Metro",
-        defaultQuantite: 2,
-        defaultPrix: 4.79,
-        poidsValeur: 340,
+        defaultQuantite: 1,
+        defaultPrix: 1.49,
+        poidsValeur: 450,
         poidsUnite: "g",
-        wasOnSale: true,
+        wasOnSale: false,
         isFavorite: false,
     } as any;
 
     const freeCraquelins: FreeItemDto = {
         id: -2003,
-        item: "Craquelins sans gluten – Marque C",
+        item: "Craquelins réguliers – Marque Z",
         typeItem: "Craquelins",
         magasin: "Super C",
-        defaultQuantite: 3,
-        defaultPrix: 5.49,
+        defaultQuantite: 1,
+        defaultPrix: 2.99,
         poidsValeur: 200,
         poidsUnite: "g",
         wasOnSale: false,
         isFavorite: true,
     } as any;
 
+    const freeCereales: FreeItemDto = {
+        id: -2004,
+        item: "Céréales régulières – Marque Q",
+        typeItem: "Céréales",
+        magasin: "Provigo",
+        defaultQuantite: 1,
+        defaultPrix: 4.99,
+        poidsValeur: 500,
+        poidsUnite: "g",
+        wasOnSale: true,
+        isFavorite: false,
+    } as any;
+
     const freeTypes: FreeItemTypeSummary[] = [
         { type: "Pain tranché", count: 1 } as any,
         { type: "Pâtes alimentaires", count: 1 } as any,
         { type: "Craquelins", count: 1 } as any,
+        { type: "Céréales", count: 1 } as any,
     ];
 
-    /* ---------------------- Facture demo items --------------------------- */
+    /* ---------------------- Facture demo items (sans gluten) ------------- */
+    // All these are gluten-free and their typeItem all exist in demoLines.
 
-    const laitItem: FactureItem = {
+    // Facture 1 (IGA)
+    const painFactureItem1: FactureItem = {
         id: -3001,
-        item: "Lait 2% 2 L",
-        typeItem: "Lait",
-        magasin: "Metro",
-        date: new Date(demoYear, 1, 15).toISOString(), // Feb of previous year
-        quantite: 1,
-        prix: 4.89,
-        poidsValeur: 2,
-        poidsUnite: "l",
+        item: "Pain sans gluten – Marque A",
+        typeItem: "Pain tranché",
+        magasin: "IGA",
+        date: new Date(demoYear, 1, 15).toISOString(), // February
+        quantite: 2,
+        prix: 6.99,
+        poidsValeur: 500,
+        poidsUnite: "g",
         wasOnSale: false,
     } as any;
 
-    const oeufsItem: FactureItem = {
+    const patesFactureItem1: FactureItem = {
         id: -3002,
-        item: "Oeufs calibre gros 12",
-        typeItem: "Oeufs",
+        item: "Pâtes sans gluten – Marque B",
+        typeItem: "Pâtes alimentaires",
         magasin: "IGA",
-        date: new Date(demoYear, 2, 3).toISOString(), // March of previous year
-        quantite: 1,
-        prix: 3.99,
-        poidsValeur: 12,
-        poidsUnite: "un",
+        date: new Date(demoYear, 1, 15).toISOString(),
+        quantite: 3,
+        prix: 4.99,
+        poidsValeur: 340,
+        poidsUnite: "g",
         wasOnSale: true,
     } as any;
 
+    const craquelinsFactureItem1: FactureItem = {
+        id: -3003,
+        item: "Craquelins sans gluten – Marque C",
+        typeItem: "Craquelins",
+        magasin: "IGA",
+        date: new Date(demoYear, 1, 15).toISOString(),
+        quantite: 1,
+        prix: 5.49,
+        poidsValeur: 200,
+        poidsUnite: "g",
+        wasOnSale: false,
+    } as any;
+
+    // Facture 2 (Metro)
+    const painFactureItem2: FactureItem = {
+        id: -3011,
+        item: "Pain sans gluten – Marque A",
+        typeItem: "Pain tranché",
+        magasin: "Metro",
+        date: new Date(demoYear, 4, 5).toISOString(), // May
+        quantite: 1,
+        prix: 6.49, // on sale
+        poidsValeur: 500,
+        poidsUnite: "g",
+        wasOnSale: true,
+    } as any;
+
+    const patesFactureItem2: FactureItem = {
+        id: -3012,
+        item: "Pâtes sans gluten – Marque B",
+        typeItem: "Pâtes alimentaires",
+        magasin: "Metro",
+        date: new Date(demoYear, 4, 5).toISOString(),
+        quantite: 1,
+        prix: 4.59, // on sale
+        poidsValeur: 340,
+        poidsUnite: "g",
+        wasOnSale: true,
+    } as any;
+
+    const cerealesFactureItem2: FactureItem = {
+        id: -3013,
+        item: "Céréales sans gluten – Marque D",
+        typeItem: "Céréales",
+        magasin: "Metro",
+        date: new Date(demoYear, 4, 5).toISOString(),
+        quantite: 2,
+        prix: 7.49,
+        poidsValeur: 400,
+        poidsUnite: "g",
+        wasOnSale: false,
+    } as any;
+
+    // Summary of types present in factures
     const factureTypes: FactureItemTypeSummary[] = [
-        { type: "Lait", count: 1 } as any,
-        { type: "Oeufs", count: 1 } as any,
+        { type: "Pain tranché", count: 2 } as any,
+        { type: "Pâtes alimentaires", count: 2 } as any,
+        { type: "Craquelins", count: 1 } as any,
+        { type: "Céréales", count: 1 } as any,
     ];
 
-    // Full facture used by Factures / FactureEdit (header + items)
-    const demoFacture: IFacture & { items: FactureItem[] } = {
+    // Full factures used by Factures / FactureEdit (header + items)
+    const demoFacture1: IFacture & { items: FactureItem[] } = {
         id: -4001,
         annee: demoYear,
         factureId: `DEMO-${demoYear}-001`,
         date: new Date(demoYear, 1, 20).toISOString(),
         magasin: "IGA",
-        items: [laitItem, oeufsItem],
+        items: [painFactureItem1, patesFactureItem1, craquelinsFactureItem1],
+    } as any;
+
+    const demoFacture2: IFacture & { items: FactureItem[] } = {
+        id: -4002,
+        annee: demoYear,
+        factureId: `DEMO-${demoYear}-002`,
+        date: new Date(demoYear, 4, 5).toISOString(),
+        magasin: "Metro",
+        items: [painFactureItem2, patesFactureItem2, cerealesFactureItem2],
     } as any;
 
     /* ---------------------- Liste d'épicerie de démo ---------------------- */
+    // Grocery list mixes:
+    // - Reference products (with gluten, from freeItems)
+    // - Some gluten-free items coming from the factures (factureItemId)
 
     const demoListe: ListeEpicerieDto = {
         id: -1,
@@ -271,21 +408,37 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
                 wasOnSale: freeCraquelins.wasOnSale,
                 isChecked: false,
             } as any,
-            // Deux items qui viennent d'une facture (lait + oeufs)
             {
                 id: -4,
-                factureItemId: laitItem.id,
+                freeItemId: freeCereales.id,
                 quantity: 1,
                 isFavorite: false,
-                wasOnSale: laitItem.wasOnSale,
+                wasOnSale: freeCereales.wasOnSale,
+                isChecked: false,
+            } as any,
+            // Items that come from the gluten-free factures
+            {
+                id: -5,
+                factureItemId: painFactureItem1.id,
+                quantity: 1,
+                isFavorite: false,
+                wasOnSale: painFactureItem1.wasOnSale,
                 isChecked: false,
             } as any,
             {
-                id: -5,
-                factureItemId: oeufsItem.id,
+                id: -6,
+                factureItemId: patesFactureItem1.id,
                 quantity: 1,
                 isFavorite: false,
-                wasOnSale: oeufsItem.wasOnSale,
+                wasOnSale: patesFactureItem1.wasOnSale,
+                isChecked: false,
+            } as any,
+            {
+                id: -7,
+                factureItemId: cerealesFactureItem2.id,
+                quantity: 1,
+                isFavorite: false,
+                wasOnSale: cerealesFactureItem2.wasOnSale,
                 isChecked: false,
             } as any,
         ],
@@ -314,7 +467,12 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
             await db.reportYears.put(demoReportYear);
             await db.reportBodies.put({ year: demoYear, payload: demoReportPayload });
 
-            await db.freeItems.bulkPut([freePain, freePates, freeCraquelins]);
+            await db.freeItems.bulkPut([
+                freePain,
+                freePates,
+                freeCraquelins,
+                freeCereales,
+            ]);
             await db.freeItemTypes.bulkPut(freeTypes);
 
             await db.factureItemTypes.bulkPut(factureTypes);
@@ -323,14 +481,21 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
         }
     );
 
-    // 3) Seed facture header + items via helper (outside Dexie transaction)
-    //    putFacture usually handles splitting header/items into the right tables.
-    await putFacture(demoFacture);
+    // 3) Seed facture headers + items via helper (outside Dexie transaction)
+    await putFacture(demoFacture1);
+    await putFacture(demoFacture2);
 
-    // 4) Ensure the factures list (used by Factures/DemoFactures) contains our demo facture
+    // 4) Ensure the factures list (used by Factures/DemoFactures) contains our demo factures
     const existingList = ((await getFacturesList(FACTURES_LIST_KEY)) ?? []) as IFacture[];
-    const withoutDemo = existingList.filter((f) => f.id !== demoFacture.id);
-    await putFacturesList(FACTURES_LIST_KEY, [demoFacture, ...withoutDemo]);
+    const withoutDemos = existingList.filter(
+        (f) => f.id !== demoFacture1.id && f.id !== demoFacture2.id
+    );
+
+    await putFacturesList(FACTURES_LIST_KEY, [
+        demoFacture2,
+        demoFacture1,
+        ...withoutDemos,
+    ]);
 
     // 5) Mark as seeded
     try {

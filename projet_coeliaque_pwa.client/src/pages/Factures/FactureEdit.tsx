@@ -18,7 +18,9 @@ import {
 const UNIT_OPTIONS = ["g", "kg", "mg", "lb", "oz", "ml", "l", "fl oz", "un", "dozen"];
 
 interface FactureItem extends IFactureItem { }
-interface Facture extends IFacture { items: FactureItem[]; }
+interface Facture extends IFacture {
+    items: FactureItem[];
+}
 
 const emptyItem: Omit<FactureItem, "id"> = {
     item: "",
@@ -43,17 +45,17 @@ export default function FactureEdit() {
 
     // Live suggestions: gather all unique typeItem across cached list
     const allTypeItems = useLiveQuery(async () => {
-        const list = (await getFacturesList(LIST_KEY)) as (Facture[] | null);
+        const list = (await getFacturesList(LIST_KEY)) as Facture[] | null;
         const types = new Set<string>();
-        (list ?? []).forEach(f =>
-            (f.items ?? []).forEach(i => {
+        (list ?? []).forEach((f) =>
+            (f.items ?? []).forEach((i) => {
                 const v = (i.typeItem || "").trim();
                 if (v) types.add(v);
             })
         );
         return Array.from(types);
     }, []);
-    const typeOptions = (allTypeItems ?? []).map(type => ({ label: type, value: type }));
+    const typeOptions = (allTypeItems ?? []).map((type) => ({ label: type, value: type }));
 
     const [facture, setFacture] = useState<Facture | null>(null);
     const [loading, setLoading] = useState(true);
@@ -77,7 +79,9 @@ export default function FactureEdit() {
             }
             setLoading(true);
             try {
-                const res = await fetch(`/api/factures/${factureId}`, { credentials: "include" });
+                const res = await fetch(`/api/factures/${factureId}`, {
+                    credentials: "include",
+                });
                 if (!res.ok) throw new Error(await res.text());
                 const data: Facture = await res.json();
                 if (!mounted) return;
@@ -88,7 +92,9 @@ export default function FactureEdit() {
                 if (mounted) setLoading(false);
             }
         })();
-        return () => { mounted = false; };
+        return () => {
+            mounted = false;
+        };
     }, [factureId, !!cachedFacture]);
 
     // Also backfill suggestions if none yet and we're online
@@ -138,19 +144,26 @@ export default function FactureEdit() {
         setModalForm(emptyItem);
     }
     function handleNextStep() {
-        setModalForm(prev => ({ ...prev, typeItem: modalTypeItem }));
+        setModalForm((prev) => ({ ...prev, typeItem: modalTypeItem }));
         setModalStep(2);
     }
-    function handleBackStep() { setModalStep(1); }
+    function handleBackStep() {
+        setModalStep(1);
+    }
 
     function handleModalChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) {
         const { name, value, type } = e.target;
         const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
-        setModalForm(prev => ({
+        setModalForm((prev) => ({
             ...prev,
-            [name]: type === "checkbox" ? !!checked : (name === "quantite" || name === "prix" || name === "poidsValeur") ? Number(value) : value
+            [name]:
+                type === "checkbox"
+                    ? !!checked
+                    : name === "quantite" || name === "prix" || name === "poidsValeur"
+                        ? Number(value)
+                        : value,
         }));
     }
 
@@ -202,7 +215,8 @@ export default function FactureEdit() {
             <div className="card shadow-sm rounded-4 mx-auto" style={{ maxWidth: 1200 }}>
                 <div className="card-body">
                     <h2 className="mb-4">
-                        <i className="bi bi-receipt-cutoff me-2"></i>{t("title.editInvoice")}
+                        <i className="bi bi-receipt-cutoff me-2"></i>
+                        {t("title.editInvoice")}
                     </h2>
 
                     {error && <div className="alert alert-danger">{error}</div>}
@@ -211,7 +225,9 @@ export default function FactureEdit() {
                         {/* Facture fields */}
                         <Row className="mb-4">
                             <Col md={3}>
-                                <label className="form-label fw-semibold">{t("fields.factureId")}</label>
+                                <label className="form-label fw-semibold">
+                                    {t("fields.factureId")}
+                                </label>
                                 <input
                                     name="factureId"
                                     value={facture.factureId}
@@ -220,7 +236,9 @@ export default function FactureEdit() {
                                 />
                             </Col>
                             <Col md={3}>
-                                <label className="form-label fw-semibold">{t("fields.date")}</label>
+                                <label className="form-label fw-semibold">
+                                    {t("fields.date")}
+                                </label>
                                 <input
                                     name="date"
                                     type="date"
@@ -230,7 +248,9 @@ export default function FactureEdit() {
                                 />
                             </Col>
                             <Col md={3}>
-                                <label className="form-label fw-semibold">{t("fields.annee")}</label>
+                                <label className="form-label fw-semibold">
+                                    {t("fields.annee")}
+                                </label>
                                 <input
                                     name="annee"
                                     type="number"
@@ -240,7 +260,9 @@ export default function FactureEdit() {
                                 />
                             </Col>
                             <Col md={3}>
-                                <label className="form-label fw-semibold">{t("fields.magasin")}</label>
+                                <label className="form-label fw-semibold">
+                                    {t("fields.magasin")}
+                                </label>
                                 <input
                                     name="magasin"
                                     value={facture.magasin}
@@ -253,7 +275,8 @@ export default function FactureEdit() {
                         {/* Items section */}
                         <div className="mb-4">
                             <h4 className="mb-3 border-bottom pb-2">
-                                <i className="bi bi-list-columns me-2"></i>{t("items.title")}
+                                <i className="bi bi-list-columns me-2"></i>
+                                {t("items.title")}
                                 <Button
                                     variant="success"
                                     size="sm"
@@ -261,7 +284,8 @@ export default function FactureEdit() {
                                     onClick={openAddModal}
                                     type="button"
                                 >
-                                    <i className="bi bi-plus-circle"></i> {t("items.addButton")}
+                                    <i className="bi bi-plus-circle"></i>{" "}
+                                    {t("items.addButton")}
                                 </Button>
                             </h4>
 
@@ -270,14 +294,41 @@ export default function FactureEdit() {
                                 <Table bordered hover className="align-middle mb-3">
                                     <thead className="table-light text-center">
                                         <tr>
-                                            <th style={{ minWidth: 200, width: 250 }}>{t("table.typeProduit")}</th>
-                                            <th>{t("table.marque")}</th>
-                                            <th>{t("table.prix")}</th>
-                                            <th>{t("table.poids")}</th>
-                                            <th>{t("table.unite")}</th>
-                                            <th>{t("table.quantite")}</th>
-                                            <th className="text-nowrap" style={{ width: 110 }}>{t("table.enSoldeQ")}</th>
-                                            <th></th>
+                                            <th
+                                                style={{
+                                                    minWidth: 180,
+                                                    width: 220,
+                                                }}
+                                            >
+                                                {t("table.typeProduit")}
+                                            </th>
+                                            <th
+                                                style={{
+                                                    minWidth: 280,
+                                                    width: 340,
+                                                }}
+                                            >
+                                                {t("table.marque")}
+                                            </th>
+                                            <th style={{ width: 110 }}>
+                                                {t("table.prix")}
+                                            </th>
+                                            <th style={{ width: 110 }}>
+                                                {t("table.poids")}
+                                            </th>
+                                            <th style={{ width: 90 }}>
+                                                {t("table.unite")}
+                                            </th>
+                                            <th style={{ width: 110 }}>
+                                                {t("table.quantite")}
+                                            </th>
+                                            <th
+                                                className="text-nowrap"
+                                                style={{ width: 110 }}
+                                            >
+                                                {t("table.enSoldeQ")}
+                                            </th>
+                                            <th style={{ width: 70 }}></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -288,14 +339,41 @@ export default function FactureEdit() {
                                                     <CreatableSelect
                                                         isClearable
                                                         options={typeOptions}
-                                                        value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
-                                                        onChange={(option: SingleValue<{ label: string; value: string }>) =>
-                                                            handleItemChange(i, "typeItem", option?.value || "")
+                                                        value={
+                                                            item.typeItem
+                                                                ? {
+                                                                    value: item.typeItem,
+                                                                    label: item.typeItem,
+                                                                }
+                                                                : null
                                                         }
-                                                        placeholder={t("placeholders.type") as string}
+                                                        onChange={(
+                                                            option: SingleValue<{
+                                                                label: string;
+                                                                value: string;
+                                                            }>
+                                                        ) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "typeItem",
+                                                                option?.value ||
+                                                                ""
+                                                            )
+                                                        }
+                                                        placeholder={
+                                                            t(
+                                                                "placeholders.type"
+                                                            ) as string
+                                                        }
                                                         styles={{
-                                                            container: base => ({ ...base, minWidth: 0 }),
-                                                            menu: base => ({ ...base, zIndex: 9999 })
+                                                            container: (base) => ({
+                                                                ...base,
+                                                                minWidth: 0,
+                                                            }),
+                                                            menu: (base) => ({
+                                                                ...base,
+                                                                zIndex: 9999,
+                                                            }),
                                                         }}
                                                     />
                                                 </td>
@@ -305,8 +383,16 @@ export default function FactureEdit() {
                                                     <input
                                                         className="form-control border-black rounded-2"
                                                         value={item.item}
-                                                        onChange={e => handleItemChange(i, "item", e.target.value)}
-                                                        placeholder={t("placeholders.marqueProduit")}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "item",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        placeholder={t(
+                                                            "placeholders.marqueProduit"
+                                                        )}
                                                     />
                                                 </td>
 
@@ -317,8 +403,16 @@ export default function FactureEdit() {
                                                         type="number"
                                                         step="0.01"
                                                         value={item.prix}
-                                                        onChange={e => handleItemChange(i, "prix", +e.target.value)}
-                                                        placeholder={t("placeholders.prix")}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "prix",
+                                                                +e.target.value
+                                                            )
+                                                        }
+                                                        placeholder={t(
+                                                            "placeholders.prix"
+                                                        )}
                                                     />
                                                 </td>
 
@@ -329,8 +423,16 @@ export default function FactureEdit() {
                                                         type="number"
                                                         step="0.01"
                                                         value={item.poidsValeur}
-                                                        onChange={e => handleItemChange(i, "poidsValeur", +e.target.value)}
-                                                        placeholder={t("placeholders.poids")}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "poidsValeur",
+                                                                +e.target.value
+                                                            )
+                                                        }
+                                                        placeholder={t(
+                                                            "placeholders.poids"
+                                                        )}
                                                     />
                                                 </td>
 
@@ -339,11 +441,26 @@ export default function FactureEdit() {
                                                     <select
                                                         className="form-select border-black rounded-2"
                                                         value={item.poidsUnite}
-                                                        onChange={e => handleItemChange(i, "poidsUnite", e.target.value)}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "poidsUnite",
+                                                                e.target.value
+                                                            )
+                                                        }
                                                     >
-                                                        <option value="">{t("placeholders.unitFallback")}</option>
-                                                        {UNIT_OPTIONS.map(u => (
-                                                            <option key={u} value={u}>{u}</option>
+                                                        <option value="">
+                                                            {t(
+                                                                "placeholders.unitFallback"
+                                                            )}
+                                                        </option>
+                                                        {UNIT_OPTIONS.map((u) => (
+                                                            <option
+                                                                key={u}
+                                                                value={u}
+                                                            >
+                                                                {u}
+                                                            </option>
                                                         ))}
                                                     </select>
                                                 </td>
@@ -354,8 +471,16 @@ export default function FactureEdit() {
                                                         className="form-control border-black rounded-2"
                                                         type="number"
                                                         value={item.quantite}
-                                                        onChange={e => handleItemChange(i, "quantite", +e.target.value)}
-                                                        placeholder={t("placeholders.quantite")}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "quantite",
+                                                                +e.target.value
+                                                            )
+                                                        }
+                                                        placeholder={t(
+                                                            "placeholders.quantite"
+                                                        )}
                                                     />
                                                 </td>
 
@@ -365,8 +490,16 @@ export default function FactureEdit() {
                                                         className="form-check-input border-dark"
                                                         type="checkbox"
                                                         checked={item.wasOnSale}
-                                                        onChange={e => handleItemChange(i, "wasOnSale", e.target.checked)}
-                                                        aria-label={t("table.enSoldeQ")}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "wasOnSale",
+                                                                e.target.checked
+                                                            )
+                                                        }
+                                                        aria-label={t(
+                                                            "table.enSoldeQ"
+                                                        )}
                                                     />
                                                 </td>
 
@@ -375,9 +508,17 @@ export default function FactureEdit() {
                                                     <button
                                                         type="button"
                                                         className="btn btn-outline-danger btn-sm rounded-pill px-3"
-                                                        onClick={() => handleRemoveItem(i)}
-                                                        aria-label={t("actions.remove")}
-                                                        title={t("actions.remove") as string}
+                                                        onClick={() =>
+                                                            handleRemoveItem(i)
+                                                        }
+                                                        aria-label={t(
+                                                            "actions.remove"
+                                                        )}
+                                                        title={
+                                                            t(
+                                                                "actions.remove"
+                                                            ) as string
+                                                        }
                                                     >
                                                         <i className="bi bi-x-lg"></i>
                                                     </button>
@@ -397,87 +538,205 @@ export default function FactureEdit() {
                                                 <div className="card-body py-2 px-3">
                                                     {/* Type de produit */}
                                                     <div className="mb-2">
-                                                        <label className="form-label small mb-1">{t("table.typeProduit")}</label>
+                                                        <label className="form-label small mb-1">
+                                                            {t(
+                                                                "table.typeProduit"
+                                                            )}
+                                                        </label>
                                                         <CreatableSelect
                                                             isClearable
                                                             menuPlacement="top"
                                                             options={typeOptions}
-                                                            value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
-                                                            onChange={(option: SingleValue<{ label: string; value: string }>) =>
-                                                                handleItemChange(i, "typeItem", option?.value || "")
+                                                            value={
+                                                                item.typeItem
+                                                                    ? {
+                                                                        value: item.typeItem,
+                                                                        label: item.typeItem,
+                                                                    }
+                                                                    : null
                                                             }
-                                                            placeholder={t("placeholders.type") as string}
+                                                            onChange={(
+                                                                option: SingleValue<{
+                                                                    label: string;
+                                                                    value: string;
+                                                                }>
+                                                            ) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "typeItem",
+                                                                    option?.value ||
+                                                                    ""
+                                                                )
+                                                            }
+                                                            placeholder={
+                                                                t(
+                                                                    "placeholders.type"
+                                                                ) as string
+                                                            }
                                                             styles={{
-                                                                control: base => ({ ...base, minHeight: 28, fontSize: 14 }),
-                                                                valueContainer: base => ({ ...base, padding: "0 6px" }),
-                                                                input: base => ({ ...base, margin: 0, padding: 0 }),
-                                                                indicatorsContainer: base => ({ ...base, height: 22 }),
-                                                                menu: base => ({ ...base, zIndex: 9999 })
+                                                                control: (
+                                                                    base
+                                                                ) => ({
+                                                                    ...base,
+                                                                    minHeight: 28,
+                                                                    fontSize: 14,
+                                                                }),
+                                                                valueContainer:
+                                                                    (
+                                                                        base
+                                                                    ) => ({
+                                                                        ...base,
+                                                                        padding:
+                                                                            "0 6px",
+                                                                    }),
+                                                                input: (
+                                                                    base
+                                                                ) => ({
+                                                                    ...base,
+                                                                    margin: 0,
+                                                                    padding: 0,
+                                                                }),
+                                                                indicatorsContainer:
+                                                                    (
+                                                                        base
+                                                                    ) => ({
+                                                                        ...base,
+                                                                        height: 22,
+                                                                    }),
+                                                                menu: (base) => ({
+                                                                    ...base,
+                                                                    zIndex: 9999,
+                                                                }),
                                                             }}
                                                         />
                                                     </div>
 
                                                     {/* Marque */}
                                                     <div className="mb-2">
-                                                        <label className="form-label small mb-0">{t("table.marque")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.marque")}
+                                                        </label>
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
                                                             value={item.item}
-                                                            onChange={e => handleItemChange(i, "item", e.target.value)}
-                                                            placeholder={t("placeholders.marqueProduit")}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "item",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                            placeholder={t(
+                                                                "placeholders.marqueProduit"
+                                                            )}
                                                         />
                                                     </div>
 
                                                     {/* Prix */}
                                                     <div className="mb-1">
-                                                        <label className="form-label small mb-0">{t("table.prix")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.prix")}
+                                                        </label>
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
                                                             type="number"
                                                             step="0.01"
                                                             value={item.prix}
-                                                            onChange={e => handleItemChange(i, "prix", +e.target.value)}
-                                                            placeholder={t("placeholders.prix")}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "prix",
+                                                                    +e.target.value
+                                                                )
+                                                            }
+                                                            placeholder={t(
+                                                                "placeholders.prix"
+                                                            )}
                                                         />
                                                     </div>
 
                                                     {/* Poids */}
                                                     <div className="mb-1">
-                                                        <label className="form-label small mb-0">{t("table.poids")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.poids")}
+                                                        </label>
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
                                                             type="number"
                                                             step="0.01"
-                                                            value={item.poidsValeur}
-                                                            onChange={e => handleItemChange(i, "poidsValeur", +e.target.value)}
-                                                            placeholder={t("placeholders.poids")}
+                                                            value={
+                                                                item.poidsValeur
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "poidsValeur",
+                                                                    +e.target.value
+                                                                )
+                                                            }
+                                                            placeholder={t(
+                                                                "placeholders.poids"
+                                                            )}
                                                         />
                                                     </div>
 
                                                     {/* Unité */}
                                                     <div className="mb-1">
-                                                        <label className="form-label small mb-0">{t("table.unite")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.unite")}
+                                                        </label>
                                                         <select
                                                             className="form-select form-select-sm border-black rounded-2"
                                                             value={item.poidsUnite}
-                                                            onChange={e => handleItemChange(i, "poidsUnite", e.target.value)}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "poidsUnite",
+                                                                    e.target.value
+                                                                )
+                                                            }
                                                         >
-                                                            <option value="">{t("placeholders.unitFallback")}</option>
-                                                            {UNIT_OPTIONS.map(u => (
-                                                                <option key={u} value={u}>{u}</option>
-                                                            ))}
+                                                            <option value="">
+                                                                {t(
+                                                                    "placeholders.unitFallback"
+                                                                )}
+                                                            </option>
+                                                            {UNIT_OPTIONS.map(
+                                                                (u) => (
+                                                                    <option
+                                                                        key={u}
+                                                                        value={u}
+                                                                    >
+                                                                        {u}
+                                                                    </option>
+                                                                )
+                                                            )}
                                                         </select>
                                                     </div>
 
                                                     {/* Quantité */}
                                                     <div className="mb-1">
-                                                        <label className="form-label small mb-0">{t("table.quantite")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t(
+                                                                "table.quantite"
+                                                            )}
+                                                        </label>
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
                                                             type="number"
-                                                            value={item.quantite}
-                                                            onChange={e => handleItemChange(i, "quantite", +e.target.value)}
-                                                            placeholder={t("placeholders.quantite")}
+                                                            value={
+                                                                item.quantite
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "quantite",
+                                                                    +e.target.value
+                                                                )
+                                                            }
+                                                            placeholder={t(
+                                                                "placeholders.quantite"
+                                                            )}
                                                         />
                                                     </div>
 
@@ -487,15 +746,29 @@ export default function FactureEdit() {
                                                             className="form-check-input border-dark"
                                                             type="checkbox"
                                                             id={`onsale${i}`}
-                                                            checked={item.wasOnSale}
-                                                            onChange={e => handleItemChange(i, "wasOnSale", e.target.checked)}
+                                                            checked={
+                                                                item.wasOnSale
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "wasOnSale",
+                                                                    e.target
+                                                                        .checked
+                                                                )
+                                                            }
                                                         />
                                                         <label
                                                             className="form-check-label small text-nowrap"
                                                             htmlFor={`onsale${i}`}
-                                                            style={{ whiteSpace: "nowrap" }}
+                                                            style={{
+                                                                whiteSpace:
+                                                                    "nowrap",
+                                                            }}
                                                         >
-                                                            {t("table.enSoldeQ")}
+                                                            {t(
+                                                                "table.enSoldeQ"
+                                                            )}
                                                         </label>
                                                     </div>
 
@@ -505,10 +778,22 @@ export default function FactureEdit() {
                                                             size="sm"
                                                             variant="outline-danger"
                                                             className="rounded-pill px-2 py-0"
-                                                            style={{ lineHeight: 1 }}
-                                                            onClick={() => handleRemoveItem(i)}
-                                                            aria-label={t("actions.remove")}
-                                                            title={t("actions.remove") as string}
+                                                            style={{
+                                                                lineHeight: 1,
+                                                            }}
+                                                            onClick={() =>
+                                                                handleRemoveItem(
+                                                                    i
+                                                                )
+                                                            }
+                                                            aria-label={t(
+                                                                "actions.remove"
+                                                            )}
+                                                            title={
+                                                                t(
+                                                                    "actions.remove"
+                                                                ) as string
+                                                            }
                                                         >
                                                             <i className="bi bi-x-lg"></i>
                                                         </Button>
@@ -522,8 +807,12 @@ export default function FactureEdit() {
                         </div>
 
                         <div className="d-flex justify-content-end gap-2">
-                            <Button type="submit" className="btn btn-primary rounded-pill px-4">
-                                <i className="bi bi-save me-2"></i>{t("buttons.save")}
+                            <Button
+                                type="submit"
+                                className="btn btn-primary rounded-pill px-4"
+                            >
+                                <i className="bi bi-save me-2"></i>
+                                {t("buttons.save")}
                             </Button>
                             <Button
                                 variant="secondary"
@@ -531,7 +820,8 @@ export default function FactureEdit() {
                                 type="button"
                                 onClick={() => navigate("/factures")}
                             >
-                                <i className="bi bi-arrow-return-left me-2"></i>{t("buttons.cancel")}
+                                <i className="bi bi-arrow-return-left me-2"></i>
+                                {t("buttons.cancel")}
                             </Button>
                         </div>
                     </form>
@@ -539,10 +829,16 @@ export default function FactureEdit() {
             </div>
 
             {/* Add Item Modal Wizard */}
-            <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered size="lg">
+            <Modal
+                show={showAddModal}
+                onHide={() => setShowAddModal(false)}
+                centered
+                size="lg"
+            >
                 <Modal.Header closeButton>
                     <Modal.Title>
-                        <i className="bi bi-plus-circle me-2"></i>{t("modal.title")}
+                        <i className="bi bi-plus-circle me-2"></i>
+                        {t("modal.title")}
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
@@ -550,18 +846,44 @@ export default function FactureEdit() {
                         {modalStep === 1 ? (
                             <>
                                 <Form.Group className="mb-3">
-                                    <Form.Label className="fw-bold">{t("modal.step1.typeLabel")}</Form.Label>
+                                    <Form.Label className="fw-bold">
+                                        {t("modal.step1.typeLabel")}
+                                    </Form.Label>
                                     <CreatableSelect
                                         isClearable
                                         options={typeOptions}
-                                        value={modalTypeItem ? { value: modalTypeItem, label: modalTypeItem } : null}
-                                        onChange={(option: SingleValue<{ label: string; value: string }>) =>
-                                            setModalTypeItem(option?.value || "")
+                                        value={
+                                            modalTypeItem
+                                                ? {
+                                                    value: modalTypeItem,
+                                                    label: modalTypeItem,
+                                                }
+                                                : null
                                         }
-                                        placeholder={t("modal.step1.placeholder") as string}
+                                        onChange={(
+                                            option: SingleValue<{
+                                                label: string;
+                                                value: string;
+                                            }>
+                                        ) =>
+                                            setModalTypeItem(
+                                                option?.value || ""
+                                            )
+                                        }
+                                        placeholder={
+                                            t(
+                                                "modal.step1.placeholder"
+                                            ) as string
+                                        }
                                         styles={{
-                                            container: base => ({ ...base, minWidth: 0 }),
-                                            menu: base => ({ ...base, zIndex: 9999 })
+                                            container: (base) => ({
+                                                ...base,
+                                                minWidth: 0,
+                                            }),
+                                            menu: (base) => ({
+                                                ...base,
+                                                zIndex: 9999,
+                                            }),
                                         }}
                                     />
                                 </Form.Group>
@@ -572,7 +894,8 @@ export default function FactureEdit() {
                                         disabled={!modalTypeItem.trim()}
                                         onClick={handleNextStep}
                                     >
-                                        {t("modal.next")} <i className="bi bi-arrow-right ms-2"></i>
+                                        {t("modal.next")}{" "}
+                                        <i className="bi bi-arrow-right ms-2"></i>
                                     </Button>
                                 </div>
                             </>
@@ -580,7 +903,9 @@ export default function FactureEdit() {
                             <>
                                 <Row className="g-2 mb-3">
                                     <Col md={6}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.itemBrand")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.itemBrand")}
+                                        </Form.Label>
                                         <Form.Control
                                             type="text"
                                             name="item"
@@ -590,7 +915,9 @@ export default function FactureEdit() {
                                         />
                                     </Col>
                                     <Col md={3}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.quantity")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.quantity")}
+                                        </Form.Label>
                                         <Form.Control
                                             type="number"
                                             name="quantite"
@@ -600,7 +927,9 @@ export default function FactureEdit() {
                                         />
                                     </Col>
                                     <Col md={3}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.unitPrice")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.unitPrice")}
+                                        </Form.Label>
                                         <Form.Control
                                             type="number"
                                             step="0.01"
@@ -613,7 +942,9 @@ export default function FactureEdit() {
                                 </Row>
                                 <Row className="g-2 mb-3">
                                     <Col md={4}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.weight")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.weight")}
+                                        </Form.Label>
                                         <Form.Control
                                             type="number"
                                             step="0.01"
@@ -624,20 +955,31 @@ export default function FactureEdit() {
                                         />
                                     </Col>
                                     <Col md={4}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.unit")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.unit")}
+                                        </Form.Label>
                                         <Form.Select
                                             name="poidsUnite"
                                             required
                                             value={modalForm.poidsUnite}
                                             onChange={handleModalChange}
                                         >
-                                            <option value="">{t("placeholders.unitFallback")}</option>
-                                            {UNIT_OPTIONS.map(u => (
-                                                <option key={u} value={u}>{u}</option>
+                                            <option value="">
+                                                {t(
+                                                    "placeholders.unitFallback"
+                                                )}
+                                            </option>
+                                            {UNIT_OPTIONS.map((u) => (
+                                                <option key={u} value={u}>
+                                                    {u}
+                                                </option>
                                             ))}
                                         </Form.Select>
                                     </Col>
-                                    <Col md={4} className="d-flex align-items-center">
+                                    <Col
+                                        md={4}
+                                        className="d-flex align-items-center"
+                                    >
                                         <Form.Check
                                             type="checkbox"
                                             className="mt-4"
@@ -654,14 +996,19 @@ export default function FactureEdit() {
                                         className="btn btn-secondary rounded-pill px-4"
                                         onClick={handleBackStep}
                                     >
-                                        <i className="bi bi-arrow-left me-2"></i>{t("modal.prev")}
+                                        <i className="bi bi-arrow-left me-2"></i>
+                                        {t("modal.prev")}
                                     </Button>
                                     <Button
                                         type="submit"
                                         className="btn btn-success rounded-pill px-4"
-                                        disabled={!modalForm.item.trim() || !modalForm.poidsUnite.trim()}
+                                        disabled={
+                                            !modalForm.item.trim() ||
+                                            !modalForm.poidsUnite.trim()
+                                        }
                                     >
-                                        <i className="bi bi-plus-circle me-2"></i>{t("modal.add")}
+                                        <i className="bi bi-plus-circle me-2"></i>
+                                        {t("modal.add")}
                                     </Button>
                                 </div>
                             </>

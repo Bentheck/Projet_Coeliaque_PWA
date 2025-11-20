@@ -13,9 +13,10 @@ import {
     getFacturesList,
     putFacturesList,
     type Facture as IFacture,
-    type FactureItem as IFactureItem
+    type FactureItem as IFactureItem,
 } from "../offline/db";
 import { seedDemoDataIfNeeded } from "./seedDemoData";
+import { useDemoTour } from "./DemoTourContext";
 
 const UNIT_OPTIONS = ["g", "kg", "mg", "lb", "oz", "ml", "l", "fl oz", "un", "dozen"];
 const LIST_KEY = "factures/all";
@@ -32,7 +33,7 @@ const emptyItem: Omit<FactureItem, "id"> = {
     prix: 0,
     poidsValeur: 0,
     poidsUnite: "",
-    wasOnSale: false
+    wasOnSale: false,
 };
 
 export default function DemoFactureEdit() {
@@ -43,6 +44,10 @@ export default function DemoFactureEdit() {
 
     const [seedLoading, setSeedLoading] = useState(true);
     const [seedError, setSeedError] = useState<string | null>(null);
+
+    // Guided demo (calculator)
+    const { activeTour, step, nextStep } = useDemoTour();
+    const isCalculatorTour = activeTour === "calculator";
 
     useEffect(() => {
         (async () => {
@@ -64,8 +69,8 @@ export default function DemoFactureEdit() {
     const allTypeItems = useLiveQuery(async () => {
         const list = (await getFacturesList(LIST_KEY)) as Facture[] | null;
         const types = new Set<string>();
-        (list ?? []).forEach(f =>
-            (f.items ?? []).forEach(i => {
+        (list ?? []).forEach((f) =>
+            (f.items ?? []).forEach((i) => {
                 const v = (i.typeItem || "").trim();
                 if (v) types.add(v);
             })
@@ -73,7 +78,10 @@ export default function DemoFactureEdit() {
         return Array.from(types);
     }, []) as string[] | undefined;
 
-    const typeOptions = (allTypeItems ?? []).map(type => ({ label: type, value: type }));
+    const typeOptions = (allTypeItems ?? []).map((type) => ({
+        label: type,
+        value: type,
+    }));
 
     const [facture, setFacture] = useState<Facture | null>(null);
     const [loading, setLoading] = useState(true);
@@ -81,12 +89,29 @@ export default function DemoFactureEdit() {
 
     useEffect(() => {
         if (cachedFacture) {
-            setFacture({ items: [], ...cachedFacture } as Facture);
+            setFacture({
+                ...cachedFacture,
+                items: cachedFacture.items ?? [],
+            } as Facture);
             setLoading(false);
         } else if (!seedLoading) {
             setLoading(false);
         }
     }, [cachedFacture, seedLoading]);
+
+    // Coming from DemoFactures:
+    // Global mapping:
+    // 1 = Home card
+    // 2 = explanation on invoices list
+    // 3 = highlight "View" on existing invoice
+    // -> navigate here with step still 3
+    // This bumps 3 -> 4 once the facture is loaded,
+    // so the "Add item" highlight can show.
+    useEffect(() => {
+        if (isCalculatorTour && step === 3 && facture) {
+            nextStep(); // 3 -> 4
+        }
+    }, [isCalculatorTour, step, facture, nextStep]);
 
     function handleFactureChange(e: React.ChangeEvent<HTMLInputElement>) {
         if (!facture) return;
@@ -118,40 +143,66 @@ export default function DemoFactureEdit() {
         setModalStep(1);
         setModalTypeItem("");
         setModalForm(emptyItem);
+
+        // Global Step 4 (click "Add item") -> Step 5 (choose type)
+        if (isCalculatorTour && step === 4) {
+            nextStep(); // -> 5
+        }
     }
+
     function handleNextStep() {
-        setModalForm(prev => ({ ...prev, typeItem: modalTypeItem }));
+        setModalForm((prev) => ({ ...prev, typeItem: modalTypeItem }));
         setModalStep(2);
+
+        // Global Step 5 (choose type) -> Step 6 (fill details)
+        if (isCalculatorTour && step === 5) {
+            nextStep(); // -> 6
+        }
     }
+
     function handleBackStep() {
         setModalStep(1);
     }
 
     function handleModalChange(
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >
     ) {
         const { name, value, type } = e.target;
-        const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
-        setModalForm(prev => ({
+        const checked =
+            type === "checkbox"
+                ? (e.target as HTMLInputElement).checked
+                : undefined;
+        setModalForm((prev) => ({
             ...prev,
             [name]:
                 type === "checkbox"
                     ? !!checked
-                    : name === "quantite" || name === "prix" || name === "poidsValeur"
+                    : name === "quantite" ||
+                        name === "prix" ||
+                        name === "poidsValeur"
                         ? Number(value)
-                        : value
+                        : value,
         }));
     }
 
     function handleAddItemSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
-        const items = [...(facture.items ?? []), { ...modalForm, id: 0, typeItem: modalTypeItem }];
+
+        const items = [
+            ...(facture.items ?? []),
+            { ...modalForm, id: 0, typeItem: modalTypeItem },
+        ];
         setFacture({ ...facture, items });
         setShowAddModal(false);
         setModalStep(1);
         setModalTypeItem("");
         setModalForm(emptyItem);
+
+        // No tour step change here:
+        // After adding the item, the next guided action is simply clicking "Save".
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -165,11 +216,19 @@ export default function DemoFactureEdit() {
             // keep list cache in sync
             const list = (await getFacturesList(LIST_KEY)) as Facture[] | null;
             if (list) {
-                const next = list.map(f => (f.id === facture.id ? facture : f));
+                const next = list.map((f) =>
+                    f.id === facture.id ? facture : f
+                );
                 await putFacturesList(LIST_KEY, next);
             }
 
-            navigate("/demo/factures");
+            // Guided tour: on Step 6, saving brings you back to DemoHome.
+            if (isCalculatorTour && step === 6) {
+                nextStep(); // -> 7 (next: comparatif flow)
+                navigate("/demo");
+            } else {
+                navigate("/demo/factures");
+            }
         } catch (err: any) {
             setError(err.message ?? t("error.saveFailed"));
         }
@@ -198,6 +257,12 @@ export default function DemoFactureEdit() {
         );
     }
 
+    // Local flags for each guided step on this page (global step mapping)
+    const highlightAddItem = isCalculatorTour && step === 4; // click "Add item"
+    const showModalStep1Bubble = isCalculatorTour && step === 5; // choose type
+    const showModalStep2Bubble = isCalculatorTour && step === 6; // fill details (and then Save)
+    const showSaveBubble = isCalculatorTour && step === 6; // same step: prompt to Save & return home
+
     return (
         <div className="container py-3">
             <div className="alert alert-info d-flex align-items-center justify-content-between mb-3">
@@ -205,17 +270,21 @@ export default function DemoFactureEdit() {
                     <strong className="me-2">{t("demo.badge")}</strong>
                     <span>{t("demo.warning")}</span>
                 </div>
-                <span className="badge bg-info text-dark">{t("demo.badge")}</span>
             </div>
 
-            <div className="card shadow-sm rounded-4 mx-auto" style={{ maxWidth: 1200 }}>
+            <div
+                className="card shadow-sm rounded-4 mx-auto"
+                style={{ maxWidth: 1200 }}
+            >
                 <div className="card-body">
                     <h2 className="mb-4">
                         <i className="bi bi-receipt-cutoff me-2"></i>
                         {t("title.editInvoice")}
                     </h2>
 
-                    {error && <div className="alert alert-danger">{error}</div>}
+                    {error && (
+                        <div className="alert alert-danger">{error}</div>
+                    )}
 
                     <form onSubmit={handleSubmit} autoComplete="off">
                         {/* Facture fields */}
@@ -270,41 +339,134 @@ export default function DemoFactureEdit() {
 
                         {/* Items section */}
                         <div className="mb-4">
-                            <h4 className="mb-3 border-bottom pb-2">
-                                <i className="bi bi-list-columns me-2"></i>
-                                {t("items.title")}
-                                <Button
-                                    variant="success"
-                                    size="sm"
-                                    className="rounded-pill px-3 ms-2"
-                                    onClick={openAddModal}
-                                    type="button"
-                                >
-                                    <i className="bi bi-plus-circle"></i>{" "}
-                                    {t("items.addButton")}
-                                </Button>
+                            <h4 className="mb-3 border-bottom pb-2 d-flex align-items-center flex-wrap">
+                                <span>
+                                    <i className="bi bi-list-columns me-2"></i>
+                                    {t("items.title")}
+                                </span>
+
+                                {/* Wrap button + bubble so we can absolutely-position the bubble */}
+                                <span className="ms-2 position-relative">
+                                    <Button
+                                        variant="success"
+                                        size="sm"
+                                        className={
+                                            "rounded-pill px-3" +
+                                            (highlightAddItem
+                                                ? " border border-2 border-warning"
+                                                : "")
+                                        }
+                                        onClick={openAddModal}
+                                        type="button"
+                                    >
+                                        <i className="bi bi-plus-circle"></i>{" "}
+                                        {t("items.addButton")}
+                                    </Button>
+
+                                    {/* Inline bubble for Step 4 (Add item) */}
+                                    {highlightAddItem && (
+                                        <div
+                                            className="shadow-sm"
+                                            style={{
+                                                position: "absolute",
+                                                top: "110%",
+                                                left: "50%",
+                                                transform:
+                                                    "translateX(-50%)",
+                                                background: "#fff",
+                                                border: "1px solid rgba(0,0,0,.15)",
+                                                borderRadius: "0.75rem",
+                                                boxShadow:
+                                                    "0 .35rem .8rem rgba(0,0,0,.15)",
+                                                padding: "0.75rem 1rem",
+                                                zIndex: 1050,
+                                                width: 280,
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    position: "absolute",
+                                                    top: "-8px",
+                                                    left: "50%",
+                                                    transform:
+                                                        "translateX(-50%)",
+                                                    width: 0,
+                                                    height: 0,
+                                                    borderLeft:
+                                                        "8px solid transparent",
+                                                    borderRight:
+                                                        "8px solid transparent",
+                                                    borderBottom:
+                                                        "8px solid #fff",
+                                                }}
+                                            />
+                                            <strong className="d-block mb-1">
+                                                {t(
+                                                    "tour.calc_step2_title",
+                                                    "Step 4 — Add a gluten-free item"
+                                                )}
+                                            </strong>
+                                            <p className="small mb-2">
+                                                {t(
+                                                    "tour.calc_step2_body",
+                                                    "Use this button to add a gluten-free product line to your invoice. A small wizard will open to guide you."
+                                                )}
+                                            </p>
+                                            <p className="small text-muted mb-0">
+                                                {t(
+                                                    "tour.calc_step2_hint",
+                                                    "Click it now to open the item wizard."
+                                                )}
+                                            </p>
+                                        </div>
+                                    )}
+                                </span>
                             </h4>
 
                             {/* Desktop table */}
                             <div className="d-none d-xl-block">
-                                <Table bordered hover className="align-middle mb-3">
+                                <Table
+                                    bordered
+                                    hover
+                                    className="align-middle mb-3"
+                                >
                                     <thead className="table-light text-center">
                                         <tr>
-                                            <th style={{ minWidth: 200, width: 250 }}>
+                                            <th
+                                                style={{
+                                                    minWidth: 180,
+                                                    width: 220,
+                                                }}
+                                            >
                                                 {t("table.typeProduit")}
                                             </th>
-                                            <th>{t("table.marque")}</th>
-                                            <th>{t("table.prix")}</th>
-                                            <th>{t("table.poids")}</th>
-                                            <th>{t("table.unite")}</th>
-                                            <th>{t("table.quantite")}</th>
+                                            <th
+                                                style={{
+                                                    minWidth: 280,
+                                                    width: 340,
+                                                }}
+                                            >
+                                                {t("table.marque")}
+                                            </th>
+                                            <th style={{ width: 110 }}>
+                                                {t("table.prix")}
+                                            </th>
+                                            <th style={{ width: 110 }}>
+                                                {t("table.poids")}
+                                            </th>
+                                            <th style={{ width: 90 }}>
+                                                {t("table.unite")}
+                                            </th>
+                                            <th style={{ width: 110 }}>
+                                                {t("table.quantite")}
+                                            </th>
                                             <th
                                                 className="text-nowrap"
                                                 style={{ width: 110 }}
                                             >
                                                 {t("table.enSoldeQ")}
                                             </th>
-                                            <th></th>
+                                            <th style={{ width: 70 }}></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -319,7 +481,7 @@ export default function DemoFactureEdit() {
                                                             item.typeItem
                                                                 ? {
                                                                     value: item.typeItem,
-                                                                    label: item.typeItem
+                                                                    label: item.typeItem,
                                                                 }
                                                                 : null
                                                         }
@@ -332,7 +494,8 @@ export default function DemoFactureEdit() {
                                                             handleItemChange(
                                                                 i,
                                                                 "typeItem",
-                                                                option?.value || ""
+                                                                option?.value ||
+                                                                ""
                                                             )
                                                         }
                                                         placeholder={
@@ -341,14 +504,16 @@ export default function DemoFactureEdit() {
                                                             ) as string
                                                         }
                                                         styles={{
-                                                            container: base => ({
+                                                            container: (
+                                                                base
+                                                            ) => ({
                                                                 ...base,
-                                                                minWidth: 0
+                                                                minWidth: 0,
                                                             }),
-                                                            menu: base => ({
+                                                            menu: (base) => ({
                                                                 ...base,
-                                                                zIndex: 9999
-                                                            })
+                                                                zIndex: 9999,
+                                                            }),
                                                         }}
                                                     />
                                                 </td>
@@ -358,7 +523,7 @@ export default function DemoFactureEdit() {
                                                     <input
                                                         className="form-control border-black rounded-2"
                                                         value={item.item}
-                                                        onChange={e =>
+                                                        onChange={(e) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "item",
@@ -378,11 +543,12 @@ export default function DemoFactureEdit() {
                                                         type="number"
                                                         step="0.01"
                                                         value={item.prix}
-                                                        onChange={e =>
+                                                        onChange={(e) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "prix",
-                                                                +e.target.value
+                                                                +e.target
+                                                                    .value
                                                             )
                                                         }
                                                         placeholder={t(
@@ -397,12 +563,15 @@ export default function DemoFactureEdit() {
                                                         className="form-control border-black rounded-2"
                                                         type="number"
                                                         step="0.01"
-                                                        value={item.poidsValeur}
-                                                        onChange={e =>
+                                                        value={
+                                                            item.poidsValeur
+                                                        }
+                                                        onChange={(e) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "poidsValeur",
-                                                                +e.target.value
+                                                                +e.target
+                                                                    .value
                                                             )
                                                         }
                                                         placeholder={t(
@@ -416,7 +585,7 @@ export default function DemoFactureEdit() {
                                                     <select
                                                         className="form-select border-black rounded-2"
                                                         value={item.poidsUnite}
-                                                        onChange={e =>
+                                                        onChange={(e) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "poidsUnite",
@@ -429,14 +598,16 @@ export default function DemoFactureEdit() {
                                                                 "placeholders.unitFallback"
                                                             )}
                                                         </option>
-                                                        {UNIT_OPTIONS.map(u => (
-                                                            <option
-                                                                key={u}
-                                                                value={u}
-                                                            >
-                                                                {u}
-                                                            </option>
-                                                        ))}
+                                                        {UNIT_OPTIONS.map(
+                                                            (u) => (
+                                                                <option
+                                                                    key={u}
+                                                                    value={u}
+                                                                >
+                                                                    {u}
+                                                                </option>
+                                                            )
+                                                        )}
                                                     </select>
                                                 </td>
 
@@ -446,11 +617,12 @@ export default function DemoFactureEdit() {
                                                         className="form-control border-black rounded-2"
                                                         type="number"
                                                         value={item.quantite}
-                                                        onChange={e =>
+                                                        onChange={(e) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "quantite",
-                                                                +e.target.value
+                                                                +e.target
+                                                                    .value
                                                             )
                                                         }
                                                         placeholder={t(
@@ -464,12 +636,15 @@ export default function DemoFactureEdit() {
                                                     <input
                                                         className="form-check-input border-dark"
                                                         type="checkbox"
-                                                        checked={item.wasOnSale}
-                                                        onChange={e =>
+                                                        checked={
+                                                            item.wasOnSale
+                                                        }
+                                                        onChange={(e) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "wasOnSale",
-                                                                e.target.checked
+                                                                e.target
+                                                                    .checked
                                                             )
                                                         }
                                                         aria-label={t(
@@ -521,12 +696,14 @@ export default function DemoFactureEdit() {
                                                         <CreatableSelect
                                                             isClearable
                                                             menuPlacement="top"
-                                                            options={typeOptions}
+                                                            options={
+                                                                typeOptions
+                                                            }
                                                             value={
                                                                 item.typeItem
                                                                     ? {
                                                                         value: item.typeItem,
-                                                                        label: item.typeItem
+                                                                        label: item.typeItem,
                                                                     }
                                                                     : null
                                                             }
@@ -549,31 +726,39 @@ export default function DemoFactureEdit() {
                                                                 ) as string
                                                             }
                                                             styles={{
-                                                                control: base => ({
+                                                                control: (
+                                                                    base
+                                                                ) => ({
                                                                     ...base,
                                                                     minHeight: 28,
-                                                                    fontSize: 14
+                                                                    fontSize: 14,
                                                                 }),
                                                                 valueContainer:
-                                                                    base => ({
+                                                                    (
+                                                                        base
+                                                                    ) => ({
                                                                         ...base,
                                                                         padding:
-                                                                            "0 6px"
+                                                                            "0 6px",
                                                                     }),
-                                                                input: base => ({
+                                                                input: (
+                                                                    base
+                                                                ) => ({
                                                                     ...base,
                                                                     margin: 0,
-                                                                    padding: 0
+                                                                    padding: 0,
                                                                 }),
                                                                 indicatorsContainer:
-                                                                    base => ({
+                                                                    (
+                                                                        base
+                                                                    ) => ({
                                                                         ...base,
-                                                                        height: 22
+                                                                        height: 22,
                                                                     }),
-                                                                menu: base => ({
+                                                                menu: (base) => ({
                                                                     ...base,
-                                                                    zIndex: 9999
-                                                                })
+                                                                    zIndex: 9999,
+                                                                }),
                                                             }}
                                                         />
                                                     </div>
@@ -586,11 +771,12 @@ export default function DemoFactureEdit() {
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
                                                             value={item.item}
-                                                            onChange={e =>
+                                                            onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "item",
-                                                                    e.target.value
+                                                                    e.target
+                                                                        .value
                                                                 )
                                                             }
                                                             placeholder={t(
@@ -609,11 +795,12 @@ export default function DemoFactureEdit() {
                                                             type="number"
                                                             step="0.01"
                                                             value={item.prix}
-                                                            onChange={e =>
+                                                            onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "prix",
-                                                                    +e.target.value
+                                                                    +e.target
+                                                                        .value
                                                                 )
                                                             }
                                                             placeholder={t(
@@ -634,11 +821,12 @@ export default function DemoFactureEdit() {
                                                             value={
                                                                 item.poidsValeur
                                                             }
-                                                            onChange={e =>
+                                                            onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "poidsValeur",
-                                                                    +e.target.value
+                                                                    +e.target
+                                                                        .value
                                                                 )
                                                             }
                                                             placeholder={t(
@@ -654,12 +842,15 @@ export default function DemoFactureEdit() {
                                                         </label>
                                                         <select
                                                             className="form-select form-select-sm border-black rounded-2"
-                                                            value={item.poidsUnite}
-                                                            onChange={e =>
+                                                            value={
+                                                                item.poidsUnite
+                                                            }
+                                                            onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "poidsUnite",
-                                                                    e.target.value
+                                                                    e.target
+                                                                        .value
                                                                 )
                                                             }
                                                         >
@@ -669,7 +860,7 @@ export default function DemoFactureEdit() {
                                                                 )}
                                                             </option>
                                                             {UNIT_OPTIONS.map(
-                                                                u => (
+                                                                (u) => (
                                                                     <option
                                                                         key={u}
                                                                         value={u}
@@ -684,7 +875,9 @@ export default function DemoFactureEdit() {
                                                     {/* Quantité */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">
-                                                            {t("table.quantite")}
+                                                            {t(
+                                                                "table.quantite"
+                                                            )}
                                                         </label>
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
@@ -692,11 +885,12 @@ export default function DemoFactureEdit() {
                                                             value={
                                                                 item.quantite
                                                             }
-                                                            onChange={e =>
+                                                            onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "quantite",
-                                                                    +e.target.value
+                                                                    +e.target
+                                                                        .value
                                                                 )
                                                             }
                                                             placeholder={t(
@@ -714,11 +908,12 @@ export default function DemoFactureEdit() {
                                                             checked={
                                                                 item.wasOnSale
                                                             }
-                                                            onChange={e =>
+                                                            onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "wasOnSale",
-                                                                    e.target.checked
+                                                                    e.target
+                                                                        .checked
                                                                 )
                                                             }
                                                         />
@@ -727,7 +922,7 @@ export default function DemoFactureEdit() {
                                                             htmlFor={`onsale${i}`}
                                                             style={{
                                                                 whiteSpace:
-                                                                    "nowrap"
+                                                                    "nowrap",
                                                             }}
                                                         >
                                                             {t(
@@ -743,7 +938,7 @@ export default function DemoFactureEdit() {
                                                             variant="outline-danger"
                                                             className="rounded-pill px-2 py-0"
                                                             style={{
-                                                                lineHeight: 1
+                                                                lineHeight: 1,
                                                             }}
                                                             onClick={() =>
                                                                 handleRemoveItem(
@@ -770,14 +965,74 @@ export default function DemoFactureEdit() {
                             </div>
                         </div>
 
-                        <div className="d-flex justify-content-end gap-2">
-                            <Button
-                                type="submit"
-                                className="btn btn-primary rounded-pill px-4"
-                            >
-                                <i className="bi bi-save me-2"></i>
-                                {t("buttons.save")}
-                            </Button>
+                        {/* Save / Cancel row with guided bubble on Save at Step 6 */}
+                        <div className="d-flex justify-content-end gap-2 mt-3">
+                            <span className="position-relative d-inline-block">
+                                <Button
+                                    type="submit"
+                                    className="btn btn-primary rounded-pill px-4"
+                                >
+                                    <i className="bi bi-save me-2"></i>
+                                    {t("buttons.save")}
+                                </Button>
+
+                                {showSaveBubble && (
+                                    <div
+                                        className="shadow-sm"
+                                        style={{
+                                            position: "absolute",
+                                            top: "-8px",
+                                            right: "50%",
+                                            transform:
+                                                "translate(50%, -100%)",
+                                            background: "#fff",
+                                            border: "1px solid rgba(0,0,0,.15)",
+                                            borderRadius: "0.75rem",
+                                            boxShadow:
+                                                "0 .35rem .8rem rgba(0,0,0,.15)",
+                                            padding: "0.75rem 1rem",
+                                            zIndex: 1050,
+                                            width: 280,
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                bottom: "-8px",
+                                                right: "50%",
+                                                transform:
+                                                    "translateX(50%)",
+                                                width: 0,
+                                                height: 0,
+                                                borderLeft:
+                                                    "8px solid transparent",
+                                                borderRight:
+                                                    "8px solid transparent",
+                                                borderTop: "8px solid #fff",
+                                            }}
+                                        />
+                                        <strong className="d-block mb-1">
+                                            {t(
+                                                "tour.calc_save_title",
+                                                "Step 6 — Save your invoice"
+                                            )}
+                                        </strong>
+                                        <p className="small mb-2">
+                                            {t(
+                                                "tour.calc_save_body",
+                                                "Your gluten-free item is now on the invoice. Save it to go back to the demo home and continue with the comparison."
+                                            )}
+                                        </p>
+                                        <p className="small text-muted mb-0">
+                                            {t(
+                                                "tour.calc_save_hint",
+                                                "Click “Save” now; you’ll be returned to the demo home screen."
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
+                            </span>
+
                             <Button
                                 variant="secondary"
                                 className="rounded-pill px-4"
@@ -806,6 +1061,54 @@ export default function DemoFactureEdit() {
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
+                    {/* Guided text for modal step 1 (choose type) */}
+                    {modalStep === 1 && showModalStep1Bubble && (
+                        <div className="alert alert-info small mb-3">
+                            <strong className="d-block mb-1">
+                                {t(
+                                    "tour.calc_modal_step1_title",
+                                    "Step 5 — Choose the product type"
+                                )}
+                            </strong>
+                            <div>
+                                {t(
+                                    "tour.calc_modal_step1_body",
+                                    "Pick the gluten-free product type (bread, pasta, cereal, etc.). This will be used later for the comparison."
+                                )}
+                            </div>
+                            <div className="text-muted mt-1">
+                                {t(
+                                    "tour.calc_modal_step1_hint",
+                                    "Click “Next” when you’ve selected the correct type."
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Guided text for modal step 2 (fill details) */}
+                    {modalStep === 2 && showModalStep2Bubble && (
+                        <div className="alert alert-info small mb-3">
+                            <strong className="d-block mb-1">
+                                {t(
+                                    "tour.calc_modal_step2_title",
+                                    "Step 6 — Fill the item details"
+                                )}
+                            </strong>
+                            <div>
+                                {t(
+                                    "tour.calc_modal_step2_body",
+                                    "Enter the brand/product name, quantity, price and weight. This is what the calculator will use to compute the per-100g (or per-unit) cost."
+                                )}
+                            </div>
+                            <div className="text-muted mt-1">
+                                {t(
+                                    "tour.calc_modal_step2_hint",
+                                    "When everything looks good, click “Add item” to save it to the invoice."
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <Form onSubmit={handleAddItemSubmit} autoComplete="off">
                         {modalStep === 1 ? (
                             <>
@@ -820,7 +1123,7 @@ export default function DemoFactureEdit() {
                                             modalTypeItem
                                                 ? {
                                                     value: modalTypeItem,
-                                                    label: modalTypeItem
+                                                    label: modalTypeItem,
                                                 }
                                                 : null
                                         }
@@ -830,7 +1133,9 @@ export default function DemoFactureEdit() {
                                                 value: string;
                                             }>
                                         ) =>
-                                            setModalTypeItem(option?.value || "")
+                                            setModalTypeItem(
+                                                option?.value || ""
+                                            )
                                         }
                                         placeholder={
                                             t(
@@ -838,14 +1143,14 @@ export default function DemoFactureEdit() {
                                             ) as string
                                         }
                                         styles={{
-                                            container: base => ({
+                                            container: (base) => ({
                                                 ...base,
-                                                minWidth: 0
+                                                minWidth: 0,
                                             }),
-                                            menu: base => ({
+                                            menu: (base) => ({
                                                 ...base,
-                                                zIndex: 9999
-                                            })
+                                                zIndex: 9999,
+                                            }),
                                         }}
                                     />
                                 </Form.Group>
@@ -931,7 +1236,7 @@ export default function DemoFactureEdit() {
                                                     "placeholders.unitFallback"
                                                 )}
                                             </option>
-                                            {UNIT_OPTIONS.map(u => (
+                                            {UNIT_OPTIONS.map((u) => (
                                                 <option key={u} value={u}>
                                                     {u}
                                                 </option>

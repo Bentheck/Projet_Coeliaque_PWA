@@ -51,7 +51,28 @@
     "localOnly": "This list uses local demo data only.",
     "noCreate": "Creating real invoices is disabled in demo mode.",
     "noEdit": "Editing real invoices is disabled in demo mode.",
-    "noDelete": "Deleting invoices is disabled in demo mode."
+    "noDelete": "Deleting invoices is disabled in demo mode.",
+    "loading": "Loading demo data…",
+    "guide": {
+      "step1a": {
+        "title": "Step 2 · See how invoices work",
+        "body": "Normally, you would click here to create a new invoice for your grocery receipt.",
+        "body2": "For this guided demo, we’ll reuse an existing invoice instead of creating a new one.",
+        "hint": "Click “Next step” below to choose one of the existing invoices."
+      },
+      "step1b": {
+        "title": "Invoice details (demo only)",
+        "body": "This is where you would normally enter the year, invoice number, date and store.",
+        "hint": "In this guided tour, the Create button is disabled because we’ll use an existing invoice instead."
+      },
+      "step1c": {
+        "title": "Step 3 · Open an existing invoice",
+        "body": "For this demo, we’ll reuse this existing invoice instead of creating a new one.",
+        "hint": "Click the “View” button to see its items and how the calculator will use them."
+      },
+      "nextStep": "Next step",
+      "disabledInDemo": "Disabled during guided demo"
+    }
   },
   "pending": "(pending…)"
 }

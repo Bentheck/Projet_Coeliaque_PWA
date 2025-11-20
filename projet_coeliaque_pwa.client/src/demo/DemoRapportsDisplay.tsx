@@ -1,10 +1,10 @@
-﻿// src/demo/DemoRapportsDisplay.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type ReportPayload } from "../offline/db";
 import { seedDemoDataIfNeeded } from "./seedDemoData";
+import { useDemoTour } from "./DemoTourContext";
 
 const DemoRapportsDisplay: React.FC = () => {
     const { t, i18n } = useTranslation("pages/Comparatif/rapportsDisplay");
@@ -15,6 +15,10 @@ const DemoRapportsDisplay: React.FC = () => {
 
     const [seedError, setSeedError] = useState<string | null>(null);
     const [loadingSeed, setLoadingSeed] = useState(true);
+
+    const { activeTour, step } = useDemoTour();
+    const isCalculatorTour = activeTour === "calculator";
+    const isCalculatorStep16 = isCalculatorTour && step === 16;
 
     useEffect(() => {
         (async () => {
@@ -29,7 +33,10 @@ const DemoRapportsDisplay: React.FC = () => {
     }, []);
 
     const row = useLiveQuery(
-        () => (annee ? db.reportBodies.get(Number(annee)) : Promise.resolve(undefined)),
+        () =>
+            annee
+                ? db.reportBodies.get(Number(annee))
+                : Promise.resolve(undefined),
         [annee]
     ) as { year: number; payload: ReportPayload } | undefined;
 
@@ -54,8 +61,11 @@ const DemoRapportsDisplay: React.FC = () => {
     }, [triggerPrint]);
 
     function handlePrintClick() {
+        // In guided mode (calculator tour), the print button is disabled,
+        // so this will only run in normal mode.
         setShowPrompt(true);
     }
+
     function handlePromptSubmit(e: React.FormEvent) {
         e.preventDefault();
         setShowPrompt(false);
@@ -94,7 +104,10 @@ const DemoRapportsDisplay: React.FC = () => {
 
     return (
         <div className="container py-3" style={{ maxWidth: 1200 }}>
-            <div className="alert alert-info no-print mb-3" style={{ fontSize: "1.06em" }}>
+            <div
+                className="alert alert-info no-print mb-3"
+                style={{ fontSize: "1.06em" }}
+            >
                 <i className="bi bi-info-circle me-2"></i>
                 <b>{t("print.noteLabel")}</b>{" "}
                 {t("print.noteMain")}{" "}
@@ -102,22 +115,101 @@ const DemoRapportsDisplay: React.FC = () => {
                     <i>{t("print.noteNotSaved")}</i>
                 </b>{" "}
                 <span className="badge bg-info ms-2">{t("demo.badge")}</span>
-                <div className="small mt-1">
-                    {t("demo.warning")}
+                <div className="small mt-1">{t("demo.warning")}</div>
+            </div>
+
+            <div className="no-print mb-3 d-flex align-items-center">
+                {/* Wrap both buttons so the step 16 bubble can point to "Back" */}
+                <div className="position-relative d-flex align-items-center">
+                    {/* Print / download button – disabled in guided mode */}
+                    <button
+                        className="btn btn-success"
+                        onClick={isCalculatorTour ? undefined : handlePrintClick}
+                        disabled={isCalculatorTour}
+                        title={
+                            isCalculatorTour
+                                ? (t(
+                                    "demo.guide.calculator.step16.printDisabledHint",
+                                    "Printing is disabled in guided mode. Use the Back button to finish the demo."
+                                ) as string)
+                                : undefined
+                        }
+                    >
+                        {t("print.printButton")}
+                    </button>
+
+                    {/* Back button – highlighted + bubble in calculator step 16 */}
+                    <button
+                        className={
+                            "btn btn-outline-secondary ms-2" +
+                            (isCalculatorStep16
+                                ? " border border-2 border-warning"
+                                : "")
+                        }
+                        onClick={() =>
+                            isCalculatorStep16
+                                ? navigate("/demo") // let DemoHome end the tour
+                                : navigate(-1)
+                        }
+                    >
+                        {t("print.backButton")}
+                    </button>
+
+                    {/* Guided bubble for CALCULATOR STEP 16: click Back to finish */}
+                    {isCalculatorStep16 && (
+                        <div
+                            className="shadow-sm"
+                            style={{
+                                position: "absolute",
+                                top: "110%",
+                                right: 0,
+                                background: "#fff",
+                                border: "1px solid rgba(0,0,0,.15)",
+                                borderRadius: "0.75rem",
+                                boxShadow: "0 .35rem .8rem rgba(0,0,0,.15)",
+                                padding: "0.75rem 1rem",
+                                zIndex: 1050,
+                                width: 280,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    position: "absolute",
+                                    top: "-8px",
+                                    right: "24px",
+                                    width: 0,
+                                    height: 0,
+                                    borderLeft: "8px solid transparent",
+                                    borderRight: "8px solid transparent",
+                                    borderBottom: "8px solid #fff",
+                                }}
+                            />
+                            <div className="d-flex justify-content-between align-items-start mb-1">
+                                <strong className="me-2">
+                                    {t(
+                                        "demo.guide.calculator.step16.title",
+                                        "Step 16 · Finish the guided demo"
+                                    )}
+                                </strong>
+                            </div>
+                            <p className="small mb-2">
+                                {t(
+                                    "demo.guide.calculator.step16.body",
+                                    "You’ve reached the end of the guided calculator demo. Click this Back button to return to the demo home page."
+                                )}
+                            </p>
+                            <p className="small mb-0 text-muted">
+                                {t(
+                                    "demo.guide.calculator.step16.hint",
+                                    "From there, the guided mode will be turned off automatically."
+                                )}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <button className="btn btn.success btn-success no-print mb-3" onClick={handlePrintClick}>
-                {t("print.printButton")}
-            </button>
-            <button
-                className="btn btn-outline-secondary no-print mb-3 ms-2"
-                onClick={() => navigate(-1)}
-            >
-                {t("print.backButton")}
-            </button>
-
-            {/* Minimal modal */}
+            {/* Minimal modal for print details (only in normal mode) */}
             {showPrompt && (
                 <div
                     style={{
@@ -145,7 +237,10 @@ const DemoRapportsDisplay: React.FC = () => {
                         }}
                     >
                         <h4 className="mb-4">{t("prompt.title")}</h4>
-                        <div className="alert alert-primary" style={{ fontSize: "1em" }}>
+                        <div
+                            className="alert alert-primary"
+                            style={{ fontSize: "1em" }}
+                        >
                             {t("prompt.help")}
                         </div>
                         <div className="mb-3">
@@ -156,8 +251,14 @@ const DemoRapportsDisplay: React.FC = () => {
                                 className="form-control"
                                 type="text"
                                 value={printNom}
-                                onChange={(e) => setPrintNom(e.target.value)}
-                                placeholder={t("prompt.namePlaceholder") as string}
+                                onChange={(e) =>
+                                    setPrintNom(e.target.value)
+                                }
+                                placeholder={
+                                    t(
+                                        "prompt.namePlaceholder"
+                                    ) as string
+                                }
                                 maxLength={80}
                                 autoFocus
                                 autoComplete="off"
@@ -172,8 +273,14 @@ const DemoRapportsDisplay: React.FC = () => {
                                 className="form-control"
                                 type="text"
                                 value={printNAS}
-                                onChange={(e) => setPrintNAS(e.target.value)}
-                                placeholder={t("prompt.nasPlaceholder") as string}
+                                onChange={(e) =>
+                                    setPrintNAS(e.target.value)
+                                }
+                                placeholder={
+                                    t(
+                                        "prompt.nasPlaceholder"
+                                    ) as string
+                                }
                                 maxLength={20}
                                 autoComplete="off"
                                 name="no-autofill-nas"
@@ -187,7 +294,10 @@ const DemoRapportsDisplay: React.FC = () => {
                             >
                                 {t("prompt.cancel")}
                             </button>
-                            <button type="submit" className="btn btn-success">
+                            <button
+                                type="submit"
+                                className="btn btn-success"
+                            >
                                 {t("prompt.continuePrint")}
                             </button>
                         </div>
@@ -235,7 +345,9 @@ const DemoRapportsDisplay: React.FC = () => {
                                 paddingLeft: 10,
                             }}
                         >
-                            {printNom || <span style={{ color: "#fff" }}>-</span>}
+                            {printNom || (
+                                <span style={{ color: "#fff" }}>-</span>
+                            )}
                         </div>
                     </div>
                     <div>
@@ -261,7 +373,9 @@ const DemoRapportsDisplay: React.FC = () => {
                                 paddingLeft: 10,
                             }}
                         >
-                            {printNAS || <span style={{ color: "#fff" }}>-</span>}
+                            {printNAS || (
+                                <span style={{ color: "#fff" }}>-</span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -284,7 +398,10 @@ const DemoRapportsDisplay: React.FC = () => {
                             >
                                 {t("table.groups.avecGluten")}
                             </th>
-                            <th colSpan={3} className="comparatif-header-total"></th>
+                            <th
+                                colSpan={3}
+                                className="comparatif-header-total"
+                            ></th>
                         </tr>
                         <tr>
                             <th className="comparatif-th-sg">
@@ -333,7 +450,9 @@ const DemoRapportsDisplay: React.FC = () => {
                     <tbody>
                         {rows.map((row, i) => (
                             <tr key={i}>
-                                <td className="comparatif-th-sg">{row.typeItem}</td>
+                                <td className="comparatif-th-sg">
+                                    {row.typeItem}
+                                </td>
                                 <td className="comparatif-th-sg">
                                     {row.nomSansGluten}
                                 </td>
@@ -347,10 +466,13 @@ const DemoRapportsDisplay: React.FC = () => {
                                     {row.uniteSansGluten}
                                 </td>
                                 <td className="comparatif-th-sg">
-                                    {row.prixSansGluten.toLocaleString(locale, {
-                                        style: "currency",
-                                        currency: "CAD",
-                                    })}
+                                    {row.prixSansGluten.toLocaleString(
+                                        locale,
+                                        {
+                                            style: "currency",
+                                            currency: "CAD",
+                                        }
+                                    )}
                                 </td>
                                 <td className="comparatif-th-sg double-divider">
                                     {row.prixPar100SansGluten.toFixed(3)}{" "}
@@ -369,10 +491,13 @@ const DemoRapportsDisplay: React.FC = () => {
                                     {row.uniteAvecGluten ?? ""}
                                 </td>
                                 <td className="comparatif-th-ag">
-                                    {(row.prixAvecGluten ?? 0).toLocaleString(locale, {
-                                        style: "currency",
-                                        currency: "CAD",
-                                    })}
+                                    {(row.prixAvecGluten ?? 0).toLocaleString(
+                                        locale,
+                                        {
+                                            style: "currency",
+                                            currency: "CAD",
+                                        }
+                                    )}
                                 </td>
                                 <td className="comparatif-th-ag double-divider">
                                     {row.prixPar100AvecGluten.toFixed(3)}{" "}
@@ -383,10 +508,13 @@ const DemoRapportsDisplay: React.FC = () => {
                                     {row.prixPar100Unit}
                                 </td>
                                 <td>
-                                    {row.sousTotalProduit.toLocaleString(locale, {
-                                        style: "currency",
-                                        currency: "CAD",
-                                    })}
+                                    {row.sousTotalProduit.toLocaleString(
+                                        locale,
+                                        {
+                                            style: "currency",
+                                            currency: "CAD",
+                                        }
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -410,7 +538,9 @@ const DemoRapportsDisplay: React.FC = () => {
                             <b>{t("explain.pricePer100.title")}</b>
                             <br />
                             <span>
-                                <code>{t("explain.pricePer100.formula")}</code>
+                                <code>
+                                    {t("explain.pricePer100.formula")}
+                                </code>
                                 <br />
                                 {t("explain.pricePer100.example")}
                             </span>
@@ -426,7 +556,9 @@ const DemoRapportsDisplay: React.FC = () => {
                             <b>{t("explain.sousTotal.title")}</b>
                             <br />
                             <span>
-                                <code>{t("explain.sousTotal.formula")}</code>
+                                <code>
+                                    {t("explain.sousTotal.formula")}
+                                </code>
                             </span>
                         </li>
                         <li className="mt-2">

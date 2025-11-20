@@ -68,6 +68,34 @@
   "demo": {
     "badge": "DEMO",
     "warning": "Demo mode — this page only changes local data to show how it works. Your real data is not affected.",
-    "saveAlert": "Changes saved in demo mode only (no request sent to the server)."
+    "saveAlert": "Changes saved in demo mode only (no request sent to the server).",
+    "guide": {
+      "close": "Close",
+      "step4": {
+        "title": "Add a product to compare",
+        "body": "Click here to add your first gluten-free product. Then fill in the brand, price, weight and store.",
+        "hint": "You can add one line per gluten-free product you want to compare."
+      },
+      "calculator": {
+        "step12": {
+          "title": "Step 12 · Start the comparison wizard",
+          "body": "Click here to add a comparison line for a gluten-free product.",
+          "hint": "We’ll guide you through choosing the product type and filling in the details."
+        },
+        "step13": {
+          "title": "Step 13 · Choose the product type",
+          "body": "Pick which gluten-free product this line represents (bread, pasta, cereal, etc.).",
+          "hint": "When the type looks right, click “Next”."
+        },
+        "step14": {
+          "title": "Step 14 · Enter the product details",
+          "body": "Fill in the brand, price, weight, unit and store. This is what the calculator will compare with your invoice items.",
+          "hint": "When everything looks good, click “Add line” to save it to this comparison.",
+          "saveTitle": "Step 14 · Save your comparison",
+          "saveBody": "Now save your comparison so we can use it for the annual report.",
+          "saveHint": "Click “Save” to go back to the comparison year list."
+        }
+      }
+    }
   }
 }

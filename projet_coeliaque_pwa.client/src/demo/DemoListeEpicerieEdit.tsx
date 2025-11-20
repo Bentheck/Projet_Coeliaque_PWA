@@ -10,7 +10,6 @@ import {
     type FreeItemDto,
     type FreeItemTypeSummary,
     type FactureItem,
-    type FactureItemTypeSummary,
     type ListeEpicerieDto,
 } from "../offline/db";
 import { seedDemoDataIfNeeded } from "./seedDemoData";
@@ -42,16 +41,14 @@ const DemoListeEpicerieEdit: React.FC = () => {
     const navigate = useNavigate();
 
     const [seedLoading, setSeedLoading] = useState(true);
-    const [seedError, setSeedError] = useState<string | null>(null);
 
     // Seed demo data once
     useEffect(() => {
         (async () => {
             try {
                 await seedDemoDataIfNeeded();
-            } catch (e: any) {
+            } catch (e) {
                 console.error(e);
-                setSeedError(e?.message ?? String(e));
             } finally {
                 setSeedLoading(false);
             }
@@ -81,35 +78,59 @@ const DemoListeEpicerieEdit: React.FC = () => {
     const [selectedFactureType, setSelectedFactureType] = useState<string>("");
     const [selectedFreeType, setSelectedFreeType] = useState<string>("");
 
-    const factureTypes =
-        useLiveQuery<FactureItemTypeSummary[] | undefined>(
-            () => db.factureItemTypes.orderBy("type").toArray(),
-            []
-        ) || [];
-
+    // All free types (for datalist + free modal)
     const freeTypes =
         useLiveQuery<FreeItemTypeSummary[] | undefined>(
             () => db.freeItemTypes.orderBy("type").toArray(),
             []
         ) || [];
 
-    const factureItems =
+    // All invoice items (FactureItem) — **source of truth for invoice types**
+    // If factureItems is empty (demo seeding quirk), fall back to flattening facturesById.items.
+    const allFactureItems =
         useLiveQuery<FactureItem[] | undefined>(
             async () => {
-                if (!selectedFactureType) return [];
-                return db.factureItems.where("typeItem").equals(selectedFactureType).toArray();
+                // 1) Try the dedicated table
+                const direct = await db.factureItems.toArray();
+                if (direct.length > 0) return direct;
+
+                // 2) Fallback: flatten facturesById.items
+                const factures = await db.facturesById.toArray();
+                const items: FactureItem[] = [];
+
+                for (const f of factures) {
+                    if (!Array.isArray(f.items)) continue;
+                    f.items.forEach((it: any, idx: number) => {
+                        const idVal =
+                            typeof it.id === "number" && !Number.isNaN(it.id)
+                                ? it.id
+                                : f.id * 10000 + idx;
+
+                        items.push({
+                            id: idVal,
+                            item: it.item,
+                            typeItem: it.typeItem,
+                            quantite: it.quantite,
+                            prix: it.prix,
+                            poidsValeur: it.poidsValeur,
+                            poidsUnite: it.poidsUnite,
+                            wasOnSale: it.wasOnSale,
+                            factureId: it.factureId ?? f.id,
+                            magasin: it.magasin ?? f.magasin,
+                            date: it.date ?? f.date,
+                            updatedAt: it.updatedAt,
+                        } as FactureItem);
+                    });
+                }
+
+                return items;
             },
-            [selectedFactureType]
+            []
         ) || [];
 
-    const freeItems =
-        useLiveQuery<FreeItemDto[] | undefined>(
-            async () => {
-                if (!selectedFreeType) return [];
-                return db.freeItems.where("typeItem").equals(selectedFreeType).toArray();
-            },
-            [selectedFreeType]
-        ) || [];
+    // All free items
+    const allFreeItems =
+        useLiveQuery<FreeItemDto[] | undefined>(() => db.freeItems.toArray(), []) || [];
 
     /* --------------------------- Modal & local UI state --------------------------- */
     const [showFactureModal, setShowFactureModal] = useState(false);
@@ -151,7 +172,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
 
     const addFromFacture = (factureItemId: number) => {
         if (liste.items.some((i) => i.factureItemId === factureItemId)) return;
-        const src = factureItems.find((f) => f.id === factureItemId);
+        const src = allFactureItems.find((f) => f.id === factureItemId);
         setListe((prev) => ({
             ...prev,
             items: [
@@ -285,7 +306,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
 
     /* ------------------------------ Edit free item flow ------------------------------ */
     const openEditFree = (freeId: number) => {
-        const src = freeItems.find((f) => f.id === freeId) || undefined;
+        const src = allFreeItems.find((f) => f.id === freeId) || undefined;
         if (!src) return;
 
         setEditFreeId(src.id);
@@ -333,48 +354,63 @@ const DemoListeEpicerieEdit: React.FC = () => {
     /* -------------------------- Shared "store" suggestions -------------------------- */
     const knownStores = useMemo(() => {
         const set = new Set<string>();
-        factureItems.forEach((i) => i.magasin && set.add(i.magasin));
-        freeItems.forEach((f) => f.magasin && set.add(f.magasin));
+        allFactureItems.forEach((i) => i.magasin && set.add(i.magasin));
+        allFreeItems.forEach((f) => f.magasin && set.add(f.magasin));
         return Array.from(set).sort();
-    }, [factureItems, freeItems]);
+    }, [allFactureItems, allFreeItems]);
 
-    /* ------------------- Filter invoice types to “remaining items” ------------------ */
-    const availableFactureTypes = useMemo(() => {
-        const used = new Map<string, number>();
-        for (const li of liste.items) {
-            if (!li.factureItemId) continue;
-            const row = factureItems.find((f) => f.id === li.factureItemId);
-            const tpe = row?.typeItem;
-            if (!tpe) continue;
-            used.set(tpe, (used.get(tpe) || 0) + 1);
-        }
-        return (factureTypes ?? [])
-            .map((ft) => ({ ...ft, remaining: ft.count - (used.get(ft.type) || 0) } as any))
-            .filter((ft) => ft.remaining > 0);
-    }, [factureTypes, liste.items, factureItems]);
+    /* ------------------- Types computed from ALL invoices ------------------ */
 
+    // 1) Build summaries from FactureItem.typeItem
+    const factureTypeSummaries = useMemo(
+        () => {
+            const map = new Map<string, number>();
+            for (const f of allFactureItems) {
+                const key = (f.typeItem || "").trim();
+                if (!key) continue;
+                map.set(key, (map.get(key) || 0) + 1);
+            }
+            return Array.from(map.entries()).map(([type, count]) => ({ type, count }));
+        },
+        [allFactureItems]
+    );
+
+    // 2) Ensure selected type is always a valid one from invoices
     useEffect(() => {
-        if (availableFactureTypes.length === 0) {
+        if (factureTypeSummaries.length === 0) {
             if (selectedFactureType) setSelectedFactureType("");
             return;
         }
-        const stillExists = availableFactureTypes.some((tpe) => tpe.type === selectedFactureType);
-        if (!stillExists) {
-            setSelectedFactureType(availableFactureTypes[0].type);
+        const exists = factureTypeSummaries.some((t) => t.type === selectedFactureType);
+        if (!exists) {
+            setSelectedFactureType(factureTypeSummaries[0].type);
         }
-    }, [availableFactureTypes, selectedFactureType]);
+    }, [factureTypeSummaries, selectedFactureType]);
 
-    /* Filtered lists used in the modal */
+    // 3) Items for the currently selected invoice type
+    const factureItemsForSelectedType = useMemo(
+        () =>
+            selectedFactureType
+                ? allFactureItems.filter(
+                    (f) => (f.typeItem || "").trim() === selectedFactureType.trim()
+                )
+                : [],
+        [allFactureItems, selectedFactureType]
+    );
+
+    /* Filtered lists used in the modal (factures) */
     const factureListState = useMemo(() => {
-        const afterSale = factureItems.filter((i) => !(hideFactureOnSale && i.wasOnSale));
+        const afterSale = factureItemsForSelectedType.filter(
+            (i) => !(hideFactureOnSale && i.wasOnSale)
+        );
         const alreadyIds = new Set(
             liste.items
                 .filter((li) => typeof li.factureItemId === "number")
                 .map((li) => li.factureItemId as number)
         );
         const available = afterSale.filter((i) => !alreadyIds.has(i.id));
-        return { all: factureItems, afterSale, available };
-    }, [factureItems, hideFactureOnSale, liste.items]);
+        return { all: factureItemsForSelectedType, afterSale, available };
+    }, [factureItemsForSelectedType, hideFactureOnSale, liste.items]);
 
     const factureRows = useMemo(
         () => liste.items.map((it, idx) => ({ it, idx })).filter((x) => !!x.it.factureItemId),
@@ -389,21 +425,25 @@ const DemoListeEpicerieEdit: React.FC = () => {
         let sum = 0;
 
         for (const { it } of factureRows) {
-            const src = it.factureItemId ? factureItems.find((f) => f.id === it.factureItemId) : undefined;
+            const src = it.factureItemId
+                ? allFactureItems.find((f) => f.id === it.factureItemId)
+                : undefined;
             const price = typeof src?.prix === "number" ? src.prix : 0;
             const qty = Math.max(1, Number(it.quantity) || 1);
             sum += price * qty;
         }
 
         for (const { it } of freeRows) {
-            const src = it.freeItemId ? freeItems.find((f) => f.id === it.freeItemId) : undefined;
+            const src = it.freeItemId
+                ? allFreeItems.find((f) => f.id === it.freeItemId)
+                : undefined;
             const price = typeof src?.defaultPrix === "number" ? Number(src.defaultPrix) : 0;
             const qty = Math.max(1, Number(it.quantity) || 1);
             sum += price * qty;
         }
 
         return sum;
-    }, [factureRows, freeRows, factureItems, freeItems]);
+    }, [factureRows, freeRows, allFactureItems, allFreeItems]);
 
     if (seedLoading && !existing && !id) {
         return (
@@ -428,8 +468,6 @@ const DemoListeEpicerieEdit: React.FC = () => {
                 >
                     ← {t("header.back")} <span className="badge bg-info ms-2">{t("demo.badge")}</span>
                 </button>
-
-
 
                 <input
                     className="form-control"
@@ -484,12 +522,12 @@ const DemoListeEpicerieEdit: React.FC = () => {
                             value={selectedFactureType}
                             onChange={(e) => setSelectedFactureType(e.target.value)}
                         >
-                            {availableFactureTypes.length === 0 && (
+                            {factureTypeSummaries.length === 0 && (
                                 <option value="">{t("modals.facture.noType")}</option>
                             )}
-                            {availableFactureTypes.map((tpe) => (
+                            {factureTypeSummaries.map((tpe) => (
                                 <option key={tpe.type} value={tpe.type}>
-                                    {tpe.type} ({tpe.remaining})
+                                    {tpe.type} ({tpe.count})
                                 </option>
                             ))}
                         </select>
@@ -731,7 +769,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                         <div className="text-muted">{t("modals.free.pickTypeHint")}</div>
                     ) : (
                         <div style={{ maxHeight: "40vh", overflowY: "auto" }}>
-                            {freeItems.length === 0 ? (
+                            {allFreeItems.filter((fi) => fi.typeItem === selectedFreeType).length === 0 ? (
                                 <div className="text-muted">{t("modals.free.emptyType")}</div>
                             ) : (
                                 <table className="table table-hover align-middle mb-0">
@@ -750,7 +788,8 @@ const DemoListeEpicerieEdit: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {freeItems
+                                        {allFreeItems
+                                            .filter((fi) => fi.typeItem === selectedFreeType)
                                             .filter((fi) => !(hideFreeOnSale && fi.wasOnSale))
                                             .map((fi) => {
                                                 const hasQty = typeof fi.defaultQuantite === "number";
@@ -779,7 +818,9 @@ const DemoListeEpicerieEdit: React.FC = () => {
                                                         </td>
                                                         <td className="text-end">
                                                             {hasPrice
-                                                                ? `${Number(fi.defaultPrix).toFixed(2)}$`
+                                                                ? `${Number(
+                                                                    fi.defaultPrix
+                                                                ).toFixed(2)}$`
                                                                 : "—"}
                                                         </td>
                                                         <td>{poids}</td>
@@ -857,7 +898,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                         <tbody>
                             {factureRows.map(({ it, idx }) => {
                                 const src = it.factureItemId
-                                    ? factureItems.find((f) => f.id === it.factureItemId)
+                                    ? allFactureItems.find((f) => f.id === it.factureItemId)
                                     : undefined;
                                 const poids =
                                     (src?.poidsValeur != null ? `${src.poidsValeur}` : "") +
@@ -950,7 +991,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                         <tbody>
                             {freeRows.map(({ it, idx }) => {
                                 const src = it.freeItemId
-                                    ? freeItems.find((f) => f.id === it.freeItemId)
+                                    ? allFreeItems.find((f) => f.id === it.freeItemId)
                                     : undefined;
                                 const poids =
                                     (src?.poidsValeur != null ? `${src.poidsValeur}` : "") +

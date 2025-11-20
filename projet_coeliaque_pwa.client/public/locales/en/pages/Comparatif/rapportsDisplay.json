@@ -66,6 +66,16 @@
   "demo": {
     "badge": "DEMO",
     "warning": "Demo mode — this report uses only local demo data (Dexie). No requests are sent to the server and your real reports are never changed.",
-    "loading": "Loading demo…"
+    "loading": "Loading demo…",
+    "guide": {
+      "calculator": {
+        "step16": {
+          "title": "Step 16 · Finish the guided demo",
+          "body": "You’ve reached the end of the guided calculator demo. Click this Back button to return to the demo home page.",
+          "hint": "From there, the guided mode will be turned off automatically.",
+          "printDisabledHint": "Printing is disabled in guided mode. Use the Back button to finish the demo."
+        }
+      }
+    }
   }
 }

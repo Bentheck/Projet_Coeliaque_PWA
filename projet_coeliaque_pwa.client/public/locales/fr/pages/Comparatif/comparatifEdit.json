@@ -68,6 +68,34 @@
   "demo": {
     "badge": "DEMO",
     "warning": "Mode démonstration — cette page modifie uniquement des données locales pour vous montrer le fonctionnement. Aucune donnée réelle n'est affectée.",
-    "saveAlert": "Modifications sauvegardées en mode démo seulement (aucune requête envoyée au serveur)."
+    "saveAlert": "Modifications sauvegardées en mode démo seulement (aucune requête envoyée au serveur).",
+    "guide": {
+      "close": "Fermer",
+      "step4": {
+        "title": "Ajouter un produit à comparer",
+        "body": "Cliquez ici pour ajouter votre premier produit sans gluten. Puis remplissez la marque, le prix, le poids et le magasin.",
+        "hint": "Vous pouvez ajouter une ligne par produit sans gluten que vous souhaitez comparer."
+      },
+      "calculator": {
+        "step12": {
+          "title": "Étape 12 · Démarrer l’assistant de comparatif",
+          "body": "Cliquez ici pour ajouter une ligne de comparatif pour un produit sans gluten.",
+          "hint": "Nous vous guiderons pour choisir le type de produit et remplir les détails."
+        },
+        "step13": {
+          "title": "Étape 13 · Choisir le type de produit",
+          "body": "Choisissez quel produit sans gluten cette ligne représente (pain, pâtes, céréales, etc.).",
+          "hint": "Quand le type vous semble correct, cliquez sur « Suivant »."
+        },
+        "step14": {
+          "title": "Étape 14 · Saisir les détails du produit",
+          "body": "Remplissez la marque, le prix, le poids, l’unité et le magasin. C’est ce que le calculateur comparera avec les items de vos factures.",
+          "hint": "Quand tout semble bon, cliquez sur « Ajouter la ligne » pour l’enregistrer dans ce comparatif.",
+          "saveTitle": "Étape 14 · Enregistrer votre comparatif",
+          "saveBody": "Enregistrez maintenant votre comparatif afin que nous puissions l’utiliser pour le rapport annuel.",
+          "saveHint": "Cliquez sur « Enregistrer » pour revenir à la liste des années de comparatif."
+        }
+      }
+    }
   }
 }

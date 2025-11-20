@@ -1,5 +1,4 @@
-﻿// src/demo/DemoRapports.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -33,6 +32,7 @@ const DemoRapports: React.FC = () => {
     const [localError, setLocalError] = useState<string | null>(null);
     const [localLoading, setLocalLoading] = useState(false);
     const [successYear, setSuccessYear] = useState<number | null>(null);
+
 
     async function fakeGenerate(y: ReportYear) {
         setLocalLoading(true);
@@ -130,47 +130,40 @@ const DemoRapports: React.FC = () => {
                                                     {localLoading ? (
                                                         <>
                                                             <span className="spinner-border spinner-border-sm me-1" />
-                                                            {
-                                                                t(
-                                                                    "buttons.regen.loading"
-                                                                )
-                                                            }
+                                                            {t(
+                                                                "buttons.regen.loading"
+                                                            )}
                                                         </>
                                                     ) : (
                                                         <>
                                                             <i className="bi bi-arrow-clockwise me-1" />
-                                                            {
-                                                                t(
-                                                                    "buttons.regen.label"
-                                                                )
-                                                            }
+                                                            {t(
+                                                                "buttons.regen.label"
+                                                            )}
                                                         </>
                                                     )}
                                                 </button>
                                             </>
                                         ) : (
                                             <button
-                                                className="btn btn-sm btn.success btn-success"
+                                                className="btn btn-sm btn-success"
                                                 onClick={() => fakeGenerate(y)}
                                                 disabled={localLoading}
                                             >
-                                                {localLoading ? (
+                                                {localLoading &&
+                                                    successYear === null ? (
                                                     <>
                                                         <span className="spinner-border spinner-border-sm me-1" />
-                                                        {
-                                                            t(
-                                                                "buttons.generate.loading"
-                                                            )
-                                                        }
+                                                        {t(
+                                                            "buttons.generate.loading"
+                                                        )}
                                                     </>
                                                 ) : (
                                                     <>
                                                         <i className="bi bi-gear me-1" />{" "}
-                                                        {
-                                                            t(
-                                                                "buttons.generate.label"
-                                                            )
-                                                        }
+                                                        {t(
+                                                            "buttons.generate.label"
+                                                        )}
                                                     </>
                                                 )}
                                             </button>
