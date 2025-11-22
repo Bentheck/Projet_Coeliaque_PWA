@@ -112,7 +112,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         /// <summary>
-        /// Update an existing invoice and replace its items with the ones provided in the DTO.
+        /// Update an existing invoice and sync its items with the ones provided in the DTO.
         /// </summary>
         // PUT: api/factures/{id}
         [HttpPut("{id:int}")]
@@ -120,6 +120,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
             if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
+            if (id != dto.Id) return BadRequest("Mismatched id between route and payload.");
 
             var facture = await _db.Factures
                 .Include(f => f.Items)
@@ -127,22 +128,70 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (facture == null) return NotFound();
 
-            // Map top-level properties (do not overwrite UserId)
+            // ----- Top-level fields -----
             facture.Annee = dto.Annee;
             facture.FactureId = dto.FactureId;
             facture.Date = dto.Date;
             facture.Magasin = dto.Magasin;
 
-            // Replace items with the provided set (simple strategy)
-            _db.FactureItems.RemoveRange(facture.Items);
+            var dtoItems = dto.Items ?? new List<FactureItemDto>(); // adjust type name if needed
 
-            facture.Items = dto.Items?.Select(i =>
+            // Build quick lookup of DTO items by Id (only existing ones)
+            var dtoItemsById = dtoItems
+                .Where(i => i.Id != 0)
+                .ToDictionary(i => i.Id, i => i);
+
+            // =========================
+            // 1) DELETE ITEMS THAT DISAPPEARED (IF SAFE)
+            // =========================
+            foreach (var existing in facture.Items.ToList())
             {
-                var item = _mapper.Map<FactureItem>(i);
-                item.Id = 0;                // force insert
-                item.FactureId = facture.Id;
-                return item;
-            }).ToList() ?? new List<FactureItem>();
+                // if this existing item is not present in the DTO, user removed it in the UI
+                if (!dtoItemsById.ContainsKey(existing.Id))
+                {
+                    // Check if used in any grocery list item
+                    bool usedInListe = await _db.ListeEpicerieItems
+                        .AnyAsync(li => li.FactureItemId == existing.Id);
+
+                    if (usedInListe)
+                    {
+                        // You can also choose to just "skip" instead of returning Conflict.
+                        return Conflict($"Impossible de supprimer la ligne '{existing.Item}' car elle est utilisée dans une liste d'épicerie.");
+                    }
+
+                    _db.FactureItems.Remove(existing);
+                }
+            }
+
+            // =========================
+            // 2) UPDATE EXISTING + ADD NEW
+            // =========================
+            foreach (var dtoItem in dtoItems)
+            {
+                if (dtoItem.Id != 0)
+                {
+                    // Existing item → update scalar properties in-place
+                    var existing = facture.Items.FirstOrDefault(i => i.Id == dtoItem.Id);
+                    if (existing != null)
+                    {
+                        existing.Item = dtoItem.Item;
+                        existing.TypeItem = dtoItem.TypeItem;
+                        existing.Quantite = dtoItem.Quantite;
+                        existing.Prix = dtoItem.Prix;
+                        existing.PoidsValeur = dtoItem.PoidsValeur;
+                        existing.PoidsUnite = dtoItem.PoidsUnite;
+                        existing.WasOnSale = dtoItem.WasOnSale;
+                    }
+                }
+                else
+                {
+                    // New line → create a new FactureItem
+                    var newItem = _mapper.Map<FactureItem>(dtoItem);
+                    newItem.Id = 0;         // ensure insert
+                    newItem.FactureId = facture.Id;
+                    facture.Items.Add(newItem);
+                }
+            }
 
             await _db.SaveChangesAsync();
             return NoContent();

@@ -26,7 +26,17 @@
       "typeLabel": "Free product type",
       "selectType": "Select a type…",
       "pickTypeHint": "Pick a type to view products.",
-      "emptyType": "No products for this type."
+      "emptyType": "No products for this type.",
+      "quickSearchLabel": "Quick search",
+      "quickSearchGluten": "Gluten-free version",
+      "quickSearchHint": "Uses the type (or the name) as a keyword, for example “bread”, “pasta”, etc. If “Gluten-free version” is checked, “gluten-free” is automatically added to the search.",
+      "quickSearchButtons": {
+        "walmart": "Walmart",
+        "maxi": "Maxi",
+        "provigo": "Provigo",
+        "iga": "IGA",
+        "superc": "Super C"
+      }
     },
     "editFree": {
       "title": "Edit free product"

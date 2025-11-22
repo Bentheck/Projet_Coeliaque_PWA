@@ -19,9 +19,11 @@ import { syncDown } from "../../offline/sync";
 const UNIT_OPTIONS = ["mg", "g", "kg", "lb", "oz", "ml", "l", "fl oz"];
 
 const ComparatifEdit: React.FC = () => {
-    const { t } = useTranslation("pages/Comparatif/comparatifEdit");
+    const { t, i18n } = useTranslation("pages/Comparatif/comparatifEdit");
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+
+    const isFrenchUi = i18n.language?.startsWith("fr");
 
     // Live: current year with lines in comparatifYears
     const year = useLiveQuery<ComparatifYearDto | undefined>(
@@ -202,6 +204,58 @@ const ComparatifEdit: React.FC = () => {
         setModalStep(1);
         setModalTypeItem("");
     }
+
+    // --- Online search helpers (step 2 modal) ---
+    type StoreKey = "walmart" | "maxi" | "provigo" | "iga" | "superc";
+
+    const buildSearchUrl = (store: StoreKey, queryRaw: string): string | null => {
+        const q = encodeURIComponent(queryRaw.trim());
+        if (!q) return null;
+
+        if (isFrenchUi) {
+            // French URLs
+            switch (store) {
+                case "walmart":
+                    return `https://www.walmart.ca/fr/search?q=${q}&typeahead=${q}`;
+                case "maxi":
+                    return `https://www.maxi.ca/fr/search?search-bar=${q}`;
+                case "provigo":
+                    return `https://www.provigo.ca/fr/search?search-bar=${q}`;
+                case "iga":
+                    return `https://www.iga.net/fr/search?k=${q}`;
+                case "superc":
+                    return `https://www.superc.ca/recherche?filter=${q}`;
+                default:
+                    return null;
+            }
+        } else {
+            // English URLs
+            switch (store) {
+                case "walmart":
+                    return `https://www.walmart.ca/en/search?q=${q}&typeahead=${q}`;
+                case "maxi":
+                    return `https://www.maxi.ca/en/search?search-bar=${q}`;
+                case "provigo":
+                    return `https://www.provigo.ca/en/search?search-bar=${q}`;
+                case "iga":
+                    return `https://www.iga.net/en/search?k=${q}`;
+                case "superc":
+                    return `https://www.superc.ca/en/search?filter=${q}`;
+                default:
+                    return null;
+            }
+        }
+    };
+
+    const handleSearchClick = (store: StoreKey) => {
+        const term = modalTypeItem.trim();
+        if (!term) return;
+        const url = buildSearchUrl(store, term);
+        if (!url) return;
+
+        // Pure browser navigation: no fetch, no scraping, just a new tab
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
 
     async function handleAddLineSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -397,9 +451,13 @@ const ComparatifEdit: React.FC = () => {
                                                 <div className="mb-2 d-flex justify-content-between align-items-start">
                                                     <div className="me-2">
                                                         <div className="fw-bold">
-                                                            {item.marque || <span className="text-muted">{t("mobile.brandFallback")}</span>}
+                                                            {item.marque || (
+                                                                <span className="text-muted">{t("mobile.brandFallback")}</span>
+                                                            )}
                                                         </div>
-                                                        <div className="small text-muted">{item.typeItem || t("mobile.typeFallback")}</div>
+                                                        <div className="small text-muted">
+                                                            {item.typeItem || t("mobile.typeFallback")}
+                                                        </div>
                                                     </div>
                                                     <Button
                                                         size="sm"
@@ -599,6 +657,68 @@ const ComparatifEdit: React.FC = () => {
                             </>
                         ) : (
                             <>
+                                {/* Quick online search buttons */}
+                                <div className="mb-3">
+                                    <Form.Label className="fw-bold">
+                                        {t("modal.step2.quickSearchLabel")}
+                                    </Form.Label>
+                                    <div className="d-flex flex-wrap gap-2">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-primary"
+                                            className="rounded-pill px-3"
+                                            disabled={!modalTypeItem.trim()}
+                                            onClick={() => handleSearchClick("walmart")}
+                                        >
+                                            Walmart
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-primary"
+                                            className="rounded-pill px-3"
+                                            disabled={!modalTypeItem.trim()}
+                                            onClick={() => handleSearchClick("maxi")}
+                                        >
+                                            Maxi
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-primary"
+                                            className="rounded-pill px-3"
+                                            disabled={!modalTypeItem.trim()}
+                                            onClick={() => handleSearchClick("provigo")}
+                                        >
+                                            Provigo
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-primary"
+                                            className="rounded-pill px-3"
+                                            disabled={!modalTypeItem.trim()}
+                                            onClick={() => handleSearchClick("iga")}
+                                        >
+                                            IGA
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-primary"
+                                            className="rounded-pill px-3"
+                                            disabled={!modalTypeItem.trim()}
+                                            onClick={() => handleSearchClick("superc")}
+                                        >
+                                            Super C
+                                        </Button>
+                                    </div>
+                                        <div className="form-text">
+                                            {t("modal.step2.quickSearchHelp")}
+                                        </div>
+                                </div>
+
                                 <Row className="g-2 mb-3">
                                     <Col md={6}>
                                         <Form.Label className="fw-bold">{t("labels.brand")}</Form.Label>
@@ -620,7 +740,9 @@ const ComparatifEdit: React.FC = () => {
                                             name="prix"
                                             required
                                             value={modalForm.prix}
-                                            onChange={(e) => setModalForm((p) => ({ ...p, prix: Number(e.target.value) }))}
+                                            onChange={(e) =>
+                                                setModalForm((p) => ({ ...p, prix: Number(e.target.value || "0") }))
+                                            }
                                             className="border-black rounded-3"
                                         />
                                     </Col>
@@ -633,7 +755,9 @@ const ComparatifEdit: React.FC = () => {
                                             name="poidsValeur"
                                             required
                                             value={modalForm.poidsValeur}
-                                            onChange={(e) => setModalForm((p) => ({ ...p, poidsValeur: Number(e.target.value) }))}
+                                            onChange={(e) =>
+                                                setModalForm((p) => ({ ...p, poidsValeur: Number(e.target.value || "0") }))
+                                            }
                                             className="border-black rounded-3"
                                         />
                                     </Col>
@@ -669,14 +793,22 @@ const ComparatifEdit: React.FC = () => {
                                     </Col>
                                 </Row>
                                 <div className="d-flex justify-content-between">
-                                    <Button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setModalStep(1)}>
+                                    <Button
+                                        type="button"
+                                        className="btn btn-secondary rounded-pill px-4"
+                                        onClick={() => setModalStep(1)}
+                                    >
                                         <i className="bi bi-arrow-left me-2"></i>
                                         {t("modal.step2.back")}
                                     </Button>
                                     <Button
                                         type="submit"
                                         className="btn btn-success rounded-pill px-4"
-                                        disabled={!modalForm.marque.trim() || !modalForm.poidsUnite.trim() || !modalTypeItem.trim()}
+                                        disabled={
+                                            !modalForm.marque.trim() ||
+                                            !modalForm.poidsUnite.trim() ||
+                                            !modalTypeItem.trim()
+                                        }
                                     >
                                         <i className="bi bi-plus-circle me-2"></i>
                                         {t("modal.step2.submit")}

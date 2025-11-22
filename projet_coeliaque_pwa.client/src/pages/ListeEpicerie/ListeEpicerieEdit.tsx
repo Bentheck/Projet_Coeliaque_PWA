@@ -17,8 +17,11 @@ import { syncDown } from "../../offline/sync";
 /** Valid weight/volume units shown in selects. */
 const UNIT_OPTIONS = ["g", "kg", "mg", "lb", "oz", "ml", "l", "fl oz", "un", "dozen"];
 
+type StoreKey = "walmart" | "maxi" | "provigo" | "iga" | "superc";
+
 const ListeEpicerieEdit: React.FC = () => {
-    const { t } = useTranslation("pages/ListeEpicerie/listeEpicerieEdit");
+    const { t, i18n } = useTranslation("pages/ListeEpicerie/listeEpicerieEdit");
+    const isFrenchUi = i18n.language?.startsWith("fr");
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
@@ -113,6 +116,9 @@ const ListeEpicerieEdit: React.FC = () => {
     const [showFreeModal, setShowFreeModal] = useState(false);
     const [hideFreeOnSale, setHideFreeOnSale] = useState(false);
 
+    // Quick search state for free-item creation
+    const [quickSearchGlutenFree, setQuickSearchGlutenFree] = useState(true);
+
     // Create new free item form
     const [newFreeItemName, setNewFreeItemName] = useState("");
     const [newFreeItemType, setNewFreeItemType] = useState("");
@@ -141,6 +147,65 @@ const ListeEpicerieEdit: React.FC = () => {
             setNewFreeItemType(selectedFreeType);
         }
     }, [showFreeModal, selectedFreeType, newFreeItemType]);
+
+    /* -------------------------- Quick search helpers -------------------------- */
+
+    const buildQuickSearchTerm = (): string | null => {
+        const base = (newFreeItemType || newFreeItemName).trim();
+        if (!base) return null;
+
+        let term = base;
+        if (quickSearchGlutenFree) {
+            term += isFrenchUi ? " sans gluten" : " gluten-free";
+        }
+        return term.trim();
+    };
+
+    const buildQuickSearchUrl = (store: StoreKey): string | null => {
+        const term = buildQuickSearchTerm();
+        if (!term) return null;
+
+        // use + between words, close to examples provided
+        const encoded = encodeURIComponent(term).replace(/%20/g, "+");
+
+        if (isFrenchUi) {
+            switch (store) {
+                case "walmart":
+                    return `https://www.walmart.ca/fr/search?q=${encoded}`;
+                case "maxi":
+                    return `https://www.maxi.ca/fr/search?search-bar=${encoded}`;
+                case "provigo":
+                    return `https://www.provigo.ca/fr/search?search-bar=${encoded}`;
+                case "iga":
+                    return `https://www.iga.net/fr/search?k=${encoded}`;
+                case "superc":
+                    return `https://www.superc.ca/recherche?filter=${encoded}`;
+                default:
+                    return null;
+            }
+        } else {
+            switch (store) {
+                case "walmart":
+                    return `https://www.walmart.ca/en/search?q=${encoded}`;
+                case "maxi":
+                    return `https://www.maxi.ca/en/search?search-bar=${encoded}`;
+                case "provigo":
+                    return `https://www.provigo.ca/en/search?search-bar=${encoded}`;
+                case "iga":
+                    return `https://www.iga.net/en/search?k=${encoded}`;
+                case "superc":
+                    return `https://www.superc.ca/en/search?filter=${encoded}`;
+                default:
+                    return null;
+            }
+        }
+    };
+
+    const handleQuickSearchClick = (store: StoreKey) => {
+        const url = buildQuickSearchUrl(store);
+        if (!url) return;
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
 
     /* -------------------------- Add operations (local) -------------------------- */
 
@@ -658,126 +723,219 @@ const ListeEpicerieEdit: React.FC = () => {
                     <Modal.Title>{t("modals.free.title")}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    {/* Inline creation form */}
+                    {/* Quick creation block (card) */}
                     <h6 className="mb-2">{t("modals.free.createTitle")}</h6>
-                    <div className="row g-2 align-items-end mb-3">
-                        <div className="col-md-3">
-                            <label className="form-label">
-                                {t("fields.productName")}
-                            </label>
-                            <input
-                                className="form-control"
-                                value={newFreeItemName}
-                                onChange={(e) => setNewFreeItemName(e.target.value)}
-                                placeholder={t("placeholders.exampleProduct") as string}
-                            />
-                        </div>
-                        <div className="col-md-2">
-                            <label className="form-label">
-                                {t("fields.type")}
-                            </label>
-                            <input
-                                className="form-control"
-                                value={newFreeItemType}
-                                onChange={(e) => setNewFreeItemType(e.target.value)}
-                                placeholder={t("placeholders.exampleType") as string}
-                                list="type-suggestions"
-                            />
-                            <datalist id="type-suggestions">
-                                {freeTypes.map((tpe) => (
-                                    <option key={tpe.type} value={tpe.type} />
-                                ))}
-                            </datalist>
-                        </div>
-                        <div className="col-md-2">
-                            <label className="form-label">
-                                {t("fields.store")}
-                            </label>
-                            <input
-                                className="form-control"
-                                value={newFreeItemStore}
-                                onChange={(e) => setNewFreeItemStore(e.target.value)}
-                                list="stores"
-                                placeholder={t("placeholders.exampleStore") as string}
-                            />
-                        </div>
-                        <div className="col-md-1">
-                            <label className="form-label">
-                                {t("fields.quantity")}
-                            </label>
-                            <input
-                                className="form-control"
-                                inputMode="decimal"
-                                value={newFreeItemQty}
-                                onChange={(e) => setNewFreeItemQty(e.target.value)}
-                                placeholder="1"
-                            />
-                        </div>
-                        <div className="col-md-1">
-                            <label className="form-label">
-                                {t("fields.price")}
-                            </label>
-                            <input
-                                className="form-control"
-                                inputMode="decimal"
-                                value={newFreeItemPrice}
-                                onChange={(e) => setNewFreeItemPrice(e.target.value)}
-                                placeholder="0"
-                            />
-                        </div>
-                        <div className="col-md-1">
-                            <label className="form-label">
-                                {t("fields.weight")}
-                            </label>
-                            <input
-                                className="form-control"
-                                inputMode="decimal"
-                                value={newFreeItemWeight}
-                                onChange={(e) => setNewFreeItemWeight(e.target.value)}
-                                placeholder="500"
-                            />
-                        </div>
-                        <div className="col-md-1">
-                            <label className="form-label">
-                                {t("fields.unit")}
-                            </label>
-                            <select
-                                className="form-select"
-                                value={newFreeItemWeightUnit}
-                                onChange={(e) => setNewFreeItemWeightUnit(e.target.value)}
-                            >
-                                <option value="">—</option>
-                                {UNIT_OPTIONS.map((u) => (
-                                    <option key={u} value={u}>
-                                        {u}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="col-md-1 d-flex gap-2 align-items-center">
-                            <div className="form-check mt-4">
-                                <input
-                                    id="freeOnSale"
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    checked={newFreeItemOnSale}
-                                    onChange={(e) => setNewFreeItemOnSale(e.target.checked)}
-                                />
-                                <label
-                                    htmlFor="freeOnSale"
-                                    className="form-check-label"
-                                >
-                                    {t("common.onSale")}
-                                </label>
+                    <div className="card border-info mb-3">
+                        <div className="card-body">
+                            {/* Quick search header row */}
+                            <div className="d-flex flex-wrap align-items-center mb-2 gap-3">
+                                <strong>{t("modals.free.quickSearchLabel")}</strong>
+
+                                <div className="form-check form-switch m-0">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="quickSearchGlutenFree"
+                                        checked={quickSearchGlutenFree}
+                                        onChange={(e) =>
+                                            setQuickSearchGlutenFree(e.target.checked)
+                                        }
+                                    />
+                                    <label
+                                        className="form-check-label"
+                                        htmlFor="quickSearchGlutenFree"
+                                    >
+                                        {t("modals.free.quickSearchGluten")}
+                                    </label>
+                                </div>
                             </div>
-                        </div>
-                        <div className="col-md-12 mt-1">
+
+                            {/* Quick search buttons */}
                             <button
-                                className="btn btn-success"
-                                onClick={addNewFreeItem}
+                                type="button"
+                                className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                                onClick={() => handleQuickSearchClick("walmart")}
+                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
                             >
-                                {t("actions.create")}
+                                Walmart
                             </button>
+
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                                onClick={() => handleQuickSearchClick("maxi")}
+                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                            >
+                                Maxi
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                                onClick={() => handleQuickSearchClick("provigo")}
+                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                            >
+                                Provigo
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                                onClick={() => handleQuickSearchClick("iga")}
+                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                            >
+                                IGA
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                                onClick={() => handleQuickSearchClick("superc")}
+                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                            >
+                                Super C
+                            </button>
+
+                            {/* Helper text under quick search */}
+                            <div className="form-text mb-3">
+                                {t("modals.free.quickSearchHint")}
+                            </div>
+
+                            {/* Inline creation form – still inside the card */}
+                            <div className="row g-2 align-items-end">
+                                <div className="col-md-3">
+                                    <label className="form-label">
+                                        {t("fields.productName")}
+                                    </label>
+                                    <input
+                                        className="form-control"
+                                        value={newFreeItemName}
+                                        onChange={(e) => setNewFreeItemName(e.target.value)}
+                                        placeholder={
+                                            t("placeholders.exampleProduct") as string
+                                        }
+                                    />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">
+                                        {t("fields.type")}
+                                    </label>
+                                    <input
+                                        className="form-control"
+                                        value={newFreeItemType}
+                                        onChange={(e) => setNewFreeItemType(e.target.value)}
+                                        placeholder={
+                                            t("placeholders.exampleType") as string
+                                        }
+                                        list="type-suggestions"
+                                    />
+                                    <datalist id="type-suggestions">
+                                        {freeTypes.map((tpe) => (
+                                            <option key={tpe.type} value={tpe.type} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">
+                                        {t("fields.store")}
+                                    </label>
+                                    <input
+                                        className="form-control"
+                                        value={newFreeItemStore}
+                                        onChange={(e) => setNewFreeItemStore(e.target.value)}
+                                        list="stores"
+                                        placeholder={
+                                            t("placeholders.exampleStore") as string
+                                        }
+                                    />
+                                </div>
+                                <div className="col-md-1">
+                                    <label className="form-label">
+                                        {t("fields.quantity")}
+                                    </label>
+                                    <input
+                                        className="form-control"
+                                        inputMode="decimal"
+                                        value={newFreeItemQty}
+                                        onChange={(e) => setNewFreeItemQty(e.target.value)}
+                                        placeholder="1"
+                                    />
+                                </div>
+                                <div className="col-md-1">
+                                    <label className="form-label">
+                                        {t("fields.price")}
+                                    </label>
+                                    <input
+                                        className="form-control"
+                                        inputMode="decimal"
+                                        value={newFreeItemPrice}
+                                        onChange={(e) =>
+                                            setNewFreeItemPrice(e.target.value)
+                                        }
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="col-md-1">
+                                    <label className="form-label">
+                                        {t("fields.weight")}
+                                    </label>
+                                    <input
+                                        className="form-control"
+                                        inputMode="decimal"
+                                        value={newFreeItemWeight}
+                                        onChange={(e) =>
+                                            setNewFreeItemWeight(e.target.value)
+                                        }
+                                        placeholder="500"
+                                    />
+                                </div>
+                                <div className="col-md-1">
+                                    <label className="form-label">
+                                        {t("fields.unit")}
+                                    </label>
+                                    <select
+                                        className="form-select"
+                                        value={newFreeItemWeightUnit}
+                                        onChange={(e) =>
+                                            setNewFreeItemWeightUnit(e.target.value)
+                                        }
+                                    >
+                                        <option value="">—</option>
+                                        {UNIT_OPTIONS.map((u) => (
+                                            <option key={u} value={u}>
+                                                {u}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="col-md-2 d-flex gap-2 align-items-center">
+                                    <div className="form-check mt-4">
+                                        <input
+                                            id="freeOnSale"
+                                            type="checkbox"
+                                            className="form-check-input"
+                                            checked={newFreeItemOnSale}
+                                            onChange={(e) =>
+                                                setNewFreeItemOnSale(e.target.checked)
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="freeOnSale"
+                                            className="form-check-label"
+                                        >
+                                            {t("common.onSale")}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="col-md-12 mt-2">
+                                    <button
+                                        className="btn btn-success"
+                                        onClick={addNewFreeItem}
+                                    >
+                                        {t("actions.create")}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -936,11 +1094,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                                                         )
                                                                     }
                                                                 >
-                                                                    {
-                                                                        t(
-                                                                            "actions.edit"
-                                                                        )
-                                                                    }
+                                                                    {t(
+                                                                        "actions.edit"
+                                                                    )}
                                                                 </button>
                                                                 <button
                                                                     className="btn btn-sm btn-primary"
@@ -950,11 +1106,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                                                         )
                                                                     }
                                                                 >
-                                                                    {
-                                                                        t(
-                                                                            "actions.add"
-                                                                        )
-                                                                    }
+                                                                    {t(
+                                                                        "actions.add"
+                                                                    )}
                                                                 </button>
                                                                 <button
                                                                     className="btn btn-sm btn-outline-danger"
@@ -969,11 +1123,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                                                         ) as string
                                                                     }
                                                                 >
-                                                                    {
-                                                                        t(
-                                                                            "actions.delete"
-                                                                        )
-                                                                    }
+                                                                    {t(
+                                                                        "actions.delete"
+                                                                    )}
                                                                 </button>
                                                             </div>
                                                         </td>

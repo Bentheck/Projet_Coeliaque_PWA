@@ -68,18 +68,18 @@
     "guide": {
       "close": "Close",
       "step3": {
-        "title": "Step · Create the comparison",
+        "title": "Create the comparison",
         "body": "Start by creating the comparison year that matches your invoices. Use the current tax year.",
         "hint": "Once the year exists, you’ll be able to add products to compare."
       },
       "calculator": {
         "step10": {
-          "title": "Step 10 · Edit your comparison",
+          "title": "Edit your comparison",
           "body": "Use this button to add or edit the products you want to compare for this year.",
           "hint": "Click “View” now to open the comparison editor."
         },
         "step15": {
-          "title": "Step 15 · Generate your annual report",
+          "title": "Generate your annual report",
           "body": "Click here to generate (or regenerate) the detailed annual report for this comparison year.",
           "hint": "Once it’s ready, you’ll be taken to the printable report page."
         }

@@ -1,4 +1,5 @@
-﻿import React, { useEffect } from "react";
+﻿// src/demo/DemoHome.tsx
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { seedDemoDataIfNeeded } from "./seedDemoData";
@@ -61,6 +62,28 @@ import { useDemoTour } from "./DemoTourContext";
  *   Action: Highlight “Back to demo home” / print CTA.
  *   User: Clicks back → returns to DemoHome with step 16.
  *   Result: DemoHome auto-ends the calculator tour.
+ *
+ * -------------------------------------------------------------------
+ * GROCERY TOUR — STEP MAP
+ * -------------------------------------------------------------------
+ *
+ * STEP 1
+ *   Page: DemoHome
+ *   Action: Highlight “Grocery list” button.
+ *   User: Clicks the button → step 2.
+ *
+ * STEP 2
+ *   Page: DemoListesEpicerieIndex
+ *   Action: Highlight “New list” button.
+ *   User: Clicks “Nouvelle liste” → step 3 (DemoListeEpicerieEdit).
+ *
+ * STEP 3–7
+ *   Page: DemoListeEpicerieEdit
+ *   Action: Handled inside DemoListeEpicerieEdit (from invoices, free products, save).
+ *
+ * STEP 8
+ *   Page: DemoListeEpicerieView
+ *   Action: Highlight “Print” button, then end tour (handled there).
  */
 
 const DemoHome: React.FC = () => {
@@ -95,6 +118,7 @@ const DemoHome: React.FC = () => {
     const handleGrocerySwitch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const checked = e.target.checked;
         if (checked) {
+            // Start grocery tour at step 1
             startTour("grocery", 1);
         } else if (activeTour === "grocery") {
             endTour();
@@ -104,9 +128,12 @@ const DemoHome: React.FC = () => {
     const calculatorOn = activeTour === "calculator";
     const groceryOn = activeTour === "grocery";
 
+    // CALCULATOR tour steps
     const isCalculatorStep1 = activeTour === "calculator" && step === 1;
     const isCalculatorStep7 = activeTour === "calculator" && step === 7;
-    // Step 8+ are now handled on the Comparatif pages, not here.
+
+    // GROCERY tour steps
+    const isGroceryStep1 = activeTour === "grocery" && step === 1;
 
     const handleOpenInvoicesClick = () => {
         if (isCalculatorStep1) {
@@ -116,7 +143,13 @@ const DemoHome: React.FC = () => {
 
     const handleOpenComparatifClick = () => {
         if (isCalculatorStep7) {
-            nextStep(); // 7 -> 8 (Comparatif tour continues on comparatif pages)
+            nextStep(); // 7 -> 8
+        }
+    };
+
+    const handleOpenGroceryClick = () => {
+        if (isGroceryStep1) {
+            nextStep(); // grocery 1 -> 2 (DemoListesEpicerieIndex)
         }
     };
 
@@ -167,10 +200,7 @@ const DemoHome: React.FC = () => {
                                         className="form-check-label ms-2 small"
                                         htmlFor="demo-switch-calculator"
                                     >
-                                        {t(
-                                            "tour.calculator_switch",
-                                            "Guided mode"
-                                        )}
+                                        {t("tour.calculator_switch", "Guided mode")}
                                     </label>
                                 </div>
                             </div>
@@ -180,8 +210,15 @@ const DemoHome: React.FC = () => {
                             </p>
 
                             <div className="d-flex flex-column gap-2">
-                                {/* Step 1: Invoices */}
-                                <div className="card border rounded-3 position-relative">
+                                {/* Step 1: Invoices (calculator) */}
+                                <div
+                                    className={
+                                        "card border rounded-3 position-relative" +
+                                        (isCalculatorStep1
+                                            ? " border-2 border-warning shadow-lg"
+                                            : "")
+                                    }
+                                >
                                     <div className="card-body py-2 px-3">
                                         <h6 className="mb-1">
                                             {t("cards_factures_title")}
@@ -191,7 +228,12 @@ const DemoHome: React.FC = () => {
                                         </p>
                                         <Link
                                             to="/demo/factures"
-                                            className="btn btn-primary btn-sm w-100"
+                                            className={
+                                                "btn btn-primary btn-sm w-100" +
+                                                (isCalculatorStep1
+                                                    ? " border-2 border-warning shadow"
+                                                    : "")
+                                            }
                                             onClick={handleOpenInvoicesClick}
                                         >
                                             {t("cards_factures_button")}
@@ -206,43 +248,39 @@ const DemoHome: React.FC = () => {
                                                 position: "absolute",
                                                 top: "100%",
                                                 left: "50%",
-                                                transform:
-                                                    "translate(-50%, 8px)",
+                                                transform: "translate(-50%, 10px)",
                                                 background: "#fff",
-                                                border: "1px solid rgba(0,0,0,.15)",
-                                                borderRadius: "0.75rem",
+                                                border: "2px solid #f0ad4e",
+                                                borderRadius: "0.9rem",
                                                 boxShadow:
-                                                    "0 .35rem .8rem rgba(0,0,0,.15)",
+                                                    "0 0.75rem 1.5rem rgba(0,0,0,.25)",
                                                 padding:
-                                                    "0.75rem 1rem 0.75rem 1rem",
+                                                    "0.85rem 1rem 0.85rem 1rem",
                                                 zIndex: 1050,
-                                                width: 280,
+                                                width: 320,
                                             }}
                                         >
                                             <div
                                                 style={{
                                                     position: "absolute",
-                                                    top: "-8px",
+                                                    top: "-10px",
                                                     left: "50%",
-                                                    transform:
-                                                        "translateX(-50%)",
+                                                    transform: "translateX(-50%)",
                                                     width: 0,
                                                     height: 0,
                                                     borderLeft:
-                                                        "8px solid transparent",
+                                                        "10px solid transparent",
                                                     borderRight:
-                                                        "8px solid transparent",
+                                                        "10px solid transparent",
                                                     borderBottom:
-                                                        "8px solid #fff",
+                                                        "10px solid #f0ad4e",
                                                 }}
                                             />
-                                            <div className="d-flex justify-content-between align-items-start mb-1">
-                                                <strong className="me-2">
-                                                    {t(
-                                                        "demo.guide.calculator.step1.title",
-                                                        "Open your invoices"
-                                                    )}
-                                                </strong>
+                                            <div className="mb-1 fw-semibold">
+                                                {t(
+                                                    "demo.guide.calculator.step1.title",
+                                                    "Open your invoices"
+                                                )}
                                             </div>
                                             <p className="small mb-2">
                                                 {t(
@@ -272,7 +310,14 @@ const DemoHome: React.FC = () => {
                                 </div>
 
                                 {/* Step 2: Comparatif */}
-                                <div className="card border rounded-3 position-relative">
+                                <div
+                                    className={
+                                        "card border rounded-3 position-relative" +
+                                        (isCalculatorStep7
+                                            ? " border-2 border-warning shadow-lg"
+                                            : "")
+                                    }
+                                >
                                     <div className="card-body py-2 px-3">
                                         <h6 className="mb-1">
                                             {t("cards_comparatif_title")}
@@ -287,7 +332,7 @@ const DemoHome: React.FC = () => {
                                                 className={
                                                     "btn btn-primary btn-sm w-100" +
                                                     (isCalculatorStep7
-                                                        ? " border border-2 border-warning"
+                                                        ? " border-2 border-warning shadow"
                                                         : "")
                                                 }
                                                 onClick={handleOpenComparatifClick}
@@ -295,7 +340,7 @@ const DemoHome: React.FC = () => {
                                                 {t("cards_comparatif_button")}
                                             </Link>
 
-                                            {/* Guided bubble for calculator – STEP 7 (after saving invoice) */}
+                                            {/* Guided bubble for calculator – STEP 7 */}
                                             {isCalculatorStep7 && (
                                                 <div
                                                     className="shadow-sm"
@@ -304,43 +349,44 @@ const DemoHome: React.FC = () => {
                                                         top: "100%",
                                                         left: "50%",
                                                         transform:
-                                                            "translate(-50%, 8px)",
+                                                            "translate(-50%, 10px)",
                                                         background: "#fff",
                                                         border:
-                                                            "1px solid rgba(0,0,0,.15)",
+                                                            "2px solid #f0ad4e",
                                                         borderRadius:
-                                                            "0.75rem",
+                                                            "0.9rem",
                                                         boxShadow:
-                                                            "0 .35rem .8rem rgba(0,0,0,.15)",
+                                                            "0 0.75rem 1.5rem rgba(0,0,0,.25)",
                                                         padding:
-                                                            "0.75rem 1rem 0.75rem 1rem",
+                                                            "0.85rem 1rem 0.85rem 1rem",
                                                         zIndex: 1050,
-                                                        width: 280,
+                                                        width: 320,
                                                     }}
                                                 >
                                                     <div
                                                         style={{
-                                                            position: "absolute",
-                                                            top: "-8px",
+                                                            position:
+                                                                "absolute",
+                                                            top: "-10px",
                                                             left: "50%",
                                                             transform:
                                                                 "translateX(-50%)",
                                                             width: 0,
                                                             height: 0,
                                                             borderLeft:
-                                                                "8px solid transparent",
+                                                                "10px solid transparent",
                                                             borderRight:
-                                                                "8px solid transparent",
+                                                                "10px solid transparent",
                                                             borderBottom:
-                                                                "8px solid #fff",
+                                                                "10px solid #f0ad4e",
                                                         }}
                                                     />
-                                                    <strong className="d-block mb-1">
+                                                    <div className="fw-semibold mb-1">
                                                         {t(
                                                             "demo.guide.calculator.step7.title",
                                                             "Compare your gluten-free costs"
                                                         )}
-                                                    </strong>
+                                                    </div>
                                                     <p className="small mb-2">
                                                         {t(
                                                             "demo.guide.calculator.step7.body",
@@ -370,7 +416,7 @@ const DemoHome: React.FC = () => {
                                     ▼
                                 </div>
 
-                                {/* Step 3: Reports (Rapports) – no longer part of calculator tour */}
+                                {/* Step 3: Reports (Rapports) – not part of calculator tour */}
                                 <div className="card border rounded-3 position-relative">
                                     <div className="card-body py-2 px-3">
                                         <h6 className="mb-1">
@@ -418,10 +464,7 @@ const DemoHome: React.FC = () => {
                                         className="form-check-label ms-2 small"
                                         htmlFor="demo-switch-grocery"
                                     >
-                                        {t(
-                                            "tour.grocery_switch",
-                                            "Guided mode"
-                                        )}
+                                        {t("tour.grocery_switch", "Guided mode")}
                                     </label>
                                 </div>
                             </div>
@@ -429,13 +472,92 @@ const DemoHome: React.FC = () => {
                             <p className="card-text text-muted small mb-3">
                                 {t("cards_liste_text")}
                             </p>
-                            <div className="mt-auto">
+                            <div className="mt-auto position-relative d-inline-block w-100">
                                 <Link
                                     to="/demo/liste-epicerie"
-                                    className="btn btn-primary w-100"
+                                    className={
+                                        "btn btn-primary w-100" +
+                                        (isGroceryStep1
+                                            ? " border border-2 border-warning"
+                                            : "")
+                                    }
+                                    onClick={handleOpenGroceryClick}
                                 >
                                     {t("cards_liste_button")}
                                 </Link>
+
+                                {/* Grocery tour – STEP 1 bubble */}
+                                {isGroceryStep1 && (
+                                    <div
+                                        className="shadow-sm"
+                                        style={{
+                                            position: "absolute",
+                                            top: "110%",
+                                            left: "50%",
+                                            transform: "translateX(-50%)",
+                                            background: "#fffdf7",
+                                            border: "2px solid #ffc107",
+                                            borderRadius: "1rem",
+                                            boxShadow:
+                                                "0 .5rem 1.25rem rgba(0,0,0,.25)",
+                                            padding: "0.9rem 1.1rem",
+                                            zIndex: 1050,
+                                            width: 280,
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                top: "-10px",
+                                                left: "50%",
+                                                transform: "translateX(-50%)",
+                                                width: 0,
+                                                height: 0,
+                                                borderLeft:
+                                                    "10px solid transparent",
+                                                borderRight:
+                                                    "10px solid transparent",
+                                                borderBottom:
+                                                    "10px solid #ffc107",
+                                            }}
+                                        />
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                top: "-8px",
+                                                left: "50%",
+                                                transform: "translateX(-50%)",
+                                                width: 0,
+                                                height: 0,
+                                                borderLeft:
+                                                    "8px solid transparent",
+                                                borderRight:
+                                                    "8px solid transparent",
+                                                borderBottom:
+                                                    "8px solid #fffdf7",
+                                            }}
+                                        />
+
+                                        <strong className="d-block mb-1 small fw-semibold">
+                                            {t(
+                                                "demo.grocery.step1.title",
+                                                "Commencez avec une liste d’épicerie guidée"
+                                            )}
+                                        </strong>
+                                        <p className="small mb-2">
+                                            {t(
+                                                "demo.grocery.step1.body",
+                                                "Activez le mode guidé puis cliquez ici pour créer une nouvelle liste d’épicerie à partir de vos produits sans gluten."
+                                            )}
+                                        </p>
+                                        <p className="small text-muted mb-0">
+                                            {t(
+                                                "demo.grocery.step1.hint",
+                                                "Cliquez sur ce bouton pour passer à l’étape suivante."
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -26,7 +26,17 @@
       "typeLabel": "Type de produit libre",
       "selectType": "Choisir un type…",
       "pickTypeHint": "Choisissez un type pour voir les produits.",
-      "emptyType": "Aucun produit pour ce type."
+      "emptyType": "Aucun produit pour ce type.",
+      "quickSearchLabel": "Recherche rapide",
+      "quickSearchGluten": "Version sans gluten",
+      "quickSearchHint": "Utilise le type (ou le nom) comme mot-clé, par exemple « pain », « pâtes », etc. Si « Version sans gluten » est cochée, « sans gluten » est ajouté automatiquement à la recherche.",
+      "quickSearchButtons": {
+        "walmart": "Walmart",
+        "maxi": "Maxi",
+        "provigo": "Provigo",
+        "iga": "IGA",
+        "superc": "Super C"
+      }
     },
     "editFree": {
       "title": "Modifier le produit libre"

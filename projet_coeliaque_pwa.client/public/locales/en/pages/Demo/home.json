@@ -7,9 +7,9 @@
   "calculator": {
     "title": "Calculator",
     "text": "Follow the steps below to simulate the full gluten-free tax credit process using demo data.",
-    "step1": "Step 1 — Invoices",
-    "step2": "Step 2 — Annual comparison",
-    "step3": "Step 3 — Tax report"
+    "step1": "Invoices",
+    "step2": "Annual comparison",
+    "step3": "Tax report"
   },
 
   "tour": {

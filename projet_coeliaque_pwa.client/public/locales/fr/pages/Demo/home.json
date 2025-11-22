@@ -7,9 +7,9 @@
   "calculator": {
     "title": "Calculateur",
     "text": "Suivez les étapes ci-dessous pour simuler l’ensemble du processus du crédit d’impôt sans gluten avec des données de démo.",
-    "step1": "Étape 1 — Factures",
-    "step2": "Étape 2 — Comparatif annuel",
-    "step3": "Étape 3 — Rapport d’impôt"
+    "step1": "Factures",
+    "step2": "Comparatif annuel",
+    "step3": "Rapport d’impôt"
   },
 
   "tour": {

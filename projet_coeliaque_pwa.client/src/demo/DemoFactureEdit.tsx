@@ -1,5 +1,9 @@
 ﻿// src/demo/DemoFactureEdit.tsx
-import React, { useEffect, useState } from "react";
+import React, {
+    useEffect,
+    useState,
+    type CSSProperties,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import CreatableSelect from "react-select/creatable";
@@ -34,6 +38,69 @@ const emptyItem: Omit<FactureItem, "id"> = {
     poidsValeur: 0,
     poidsUnite: "",
     wasOnSale: false,
+};
+
+// Shared bubble styles for this page (same visual language as Comparatif)
+const bubbleContainerStyle: CSSProperties = {
+    position: "absolute",
+    top: "110%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "#fffdf7",
+    border: "2px solid #ffc107",
+    borderRadius: "1rem",
+    boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
+    padding: "0.9rem 1.1rem",
+    zIndex: 1050,
+    width: 280,
+};
+
+const bubbleArrowUpStyle: CSSProperties = {
+    position: "absolute",
+    top: "-10px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent",
+    borderBottom: "10px solid #ffc107",
+};
+
+const bubbleArrowUpInnerStyle: CSSProperties = {
+    position: "absolute",
+    top: "-8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "8px solid transparent",
+    borderRight: "8px solid transparent",
+    borderBottom: "8px solid #fffdf7",
+};
+
+const bubbleArrowDownStyle: CSSProperties = {
+    position: "absolute",
+    bottom: "-10px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent",
+    borderTop: "10px solid #ffc107",
+};
+
+const bubbleArrowDownInnerStyle: CSSProperties = {
+    position: "absolute",
+    bottom: "-8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "8px solid transparent",
+    borderRight: "8px solid transparent",
+    borderTop: "8px solid #fffdf7",
 };
 
 export default function DemoFactureEdit() {
@@ -201,8 +268,8 @@ export default function DemoFactureEdit() {
         setModalTypeItem("");
         setModalForm(emptyItem);
 
-        // No tour step change here:
         // After adding the item, the next guided action is simply clicking "Save".
+        // (We keep the step numbering logic as-is; the bubble text is what changes.)
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -260,8 +327,8 @@ export default function DemoFactureEdit() {
     // Local flags for each guided step on this page (global step mapping)
     const highlightAddItem = isCalculatorTour && step === 4; // click "Add item"
     const showModalStep1Bubble = isCalculatorTour && step === 5; // choose type
-    const showModalStep2Bubble = isCalculatorTour && step === 6; // fill details (and then Save)
-    const showSaveBubble = isCalculatorTour && step === 6; // same step: prompt to Save & return home
+    const showModalStep2Bubble = isCalculatorTour && step === 6; // fill details
+    const showSaveBubble = isCalculatorTour && step === 6; // same logical step, different text ("Step 7" in the bubble)
 
     return (
         <div className="container py-3">
@@ -366,56 +433,29 @@ export default function DemoFactureEdit() {
                                     {/* Inline bubble for Step 4 (Add item) */}
                                     {highlightAddItem && (
                                         <div
-                                            className="shadow-sm"
                                             style={{
-                                                position: "absolute",
-                                                top: "110%",
-                                                left: "50%",
-                                                transform:
-                                                    "translateX(-50%)",
-                                                background: "#fff",
-                                                border: "1px solid rgba(0,0,0,.15)",
-                                                borderRadius: "0.75rem",
-                                                boxShadow:
-                                                    "0 .35rem .8rem rgba(0,0,0,.15)",
-                                                padding: "0.75rem 1rem",
-                                                zIndex: 1050,
-                                                width: 280,
+                                                ...bubbleContainerStyle,
+                                                fontSize: "0.875rem", // force body-small size, not h4 size
                                             }}
                                         >
-                                            <div
-                                                style={{
-                                                    position: "absolute",
-                                                    top: "-8px",
-                                                    left: "50%",
-                                                    transform:
-                                                        "translateX(-50%)",
-                                                    width: 0,
-                                                    height: 0,
-                                                    borderLeft:
-                                                        "8px solid transparent",
-                                                    borderRight:
-                                                        "8px solid transparent",
-                                                    borderBottom:
-                                                        "8px solid #fff",
-                                                }}
-                                            />
-                                            <strong className="d-block mb-1">
+                                            <div style={bubbleArrowUpStyle} />
+                                            <div style={bubbleArrowUpInnerStyle} />
+                                            <strong className="d-block mb-1 fw-semibold">
                                                 {t(
                                                     "tour.calc_step2_title",
-                                                    "Step 4 — Add a gluten-free item"
+                                                    "Ajouter un item sans gluten"
                                                 )}
                                             </strong>
-                                            <p className="small mb-2">
+                                            <p className="mb-2">
                                                 {t(
                                                     "tour.calc_step2_body",
-                                                    "Use this button to add a gluten-free product line to your invoice. A small wizard will open to guide you."
+                                                    "Utilisez ce bouton pour ajouter une ligne de produit sans gluten à votre facture. Un petit assistant s’ouvrira pour vous guider."
                                                 )}
                                             </p>
-                                            <p className="small text-muted mb-0">
+                                            <p className="text-muted mb-0">
                                                 {t(
                                                     "tour.calc_step2_hint",
-                                                    "Click it now to open the item wizard."
+                                                    "Cliquez maintenant pour ouvrir l’assistant d’item."
                                                 )}
                                             </p>
                                         </div>
@@ -504,9 +544,7 @@ export default function DemoFactureEdit() {
                                                             ) as string
                                                         }
                                                         styles={{
-                                                            container: (
-                                                                base
-                                                            ) => ({
+                                                            container: (base) => ({
                                                                 ...base,
                                                                 minWidth: 0,
                                                             }),
@@ -970,7 +1008,12 @@ export default function DemoFactureEdit() {
                             <span className="position-relative d-inline-block">
                                 <Button
                                     type="submit"
-                                    className="btn btn-primary rounded-pill px-4"
+                                    className={
+                                        "btn btn-primary rounded-pill px-4" +
+                                        (showSaveBubble
+                                            ? " border border-2 border-warning"
+                                            : "")
+                                    }
                                 >
                                     <i className="bi bi-save me-2"></i>
                                     {t("buttons.save")}
@@ -978,43 +1021,28 @@ export default function DemoFactureEdit() {
 
                                 {showSaveBubble && (
                                     <div
-                                        className="shadow-sm"
                                         style={{
-                                            position: "absolute",
-                                            top: "-8px",
-                                            right: "50%",
+                                            ...bubbleContainerStyle,
+                                            top: "auto",
+                                            left: "50%",
                                             transform:
-                                                "translate(50%, -100%)",
-                                            background: "#fff",
-                                            border: "1px solid rgba(0,0,0,.15)",
-                                            borderRadius: "0.75rem",
-                                            boxShadow:
-                                                "0 .35rem .8rem rgba(0,0,0,.15)",
-                                            padding: "0.75rem 1rem",
-                                            zIndex: 1050,
-                                            width: 280,
+                                                "translate(-50%, -110%)",
                                         }}
                                     >
                                         <div
                                             style={{
-                                                position: "absolute",
-                                                bottom: "-8px",
-                                                right: "50%",
-                                                transform:
-                                                    "translateX(50%)",
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft:
-                                                    "8px solid transparent",
-                                                borderRight:
-                                                    "8px solid transparent",
-                                                borderTop: "8px solid #fff",
+                                                ...bubbleArrowDownStyle,
                                             }}
                                         />
-                                        <strong className="d-block mb-1">
+                                        <div
+                                            style={{
+                                                ...bubbleArrowDownInnerStyle,
+                                            }}
+                                        />
+                                        <strong className="d-block mb-1 small fw-semibold">
                                             {t(
                                                 "tour.calc_save_title",
-                                                "Step 6 — Save your invoice"
+                                                "Step 7 — Save your invoice"
                                             )}
                                         </strong>
                                         <p className="small mb-2">
@@ -1063,24 +1091,15 @@ export default function DemoFactureEdit() {
                 <Modal.Body>
                     {/* Guided text for modal step 1 (choose type) */}
                     {modalStep === 1 && showModalStep1Bubble && (
-                        <div className="alert alert-info small mb-3">
-                            <strong className="d-block mb-1">
-                                {t(
-                                    "tour.calc_modal_step1_title",
-                                    "Step 5 — Choose the product type"
-                                )}
+                        <div style={{ ...bubbleContainerStyle, position: "relative", top: 0, left: 0, transform: "none", width: "100%" }}>
+                            <strong className="d-block mb-1 small fw-semibold">
+                                {t("tour.calc_modal_step1_title")}
                             </strong>
-                            <div>
-                                {t(
-                                    "tour.calc_modal_step1_body",
-                                    "Pick the gluten-free product type (bread, pasta, cereal, etc.). This will be used later for the comparison."
-                                )}
+                            <div className="small">
+                                {t("tour.calc_modal_step1_body")}
                             </div>
-                            <div className="text-muted mt-1">
-                                {t(
-                                    "tour.calc_modal_step1_hint",
-                                    "Click “Next” when you’ve selected the correct type."
-                                )}
+                            <div className="small text-muted mt-1">
+                                {t("tour.calc_modal_step1_hint")}
                             </div>
                         </div>
                     )}
@@ -1112,7 +1131,14 @@ export default function DemoFactureEdit() {
                     <Form onSubmit={handleAddItemSubmit} autoComplete="off">
                         {modalStep === 1 ? (
                             <>
-                                <Form.Group className="mb-3">
+                                <Form.Group
+                                    className={
+                                        "mb-3" +
+                                        (showModalStep1Bubble
+                                            ? " border border-2 border-warning rounded-3 p-3"
+                                            : "")
+                                    }
+                                >
                                     <Form.Label className="fw-bold">
                                         {t("modal.step1.typeLabel")}
                                     </Form.Label>
@@ -1168,95 +1194,103 @@ export default function DemoFactureEdit() {
                             </>
                         ) : (
                             <>
-                                <Row className="g-2 mb-3">
-                                    <Col md={6}>
-                                        <Form.Label className="fw-bold">
-                                            {t("modal.step2.itemBrand")}
-                                        </Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="item"
-                                            required
-                                            value={modalForm.item}
-                                            onChange={handleModalChange}
-                                        />
-                                    </Col>
-                                    <Col md={3}>
-                                        <Form.Label className="fw-bold">
-                                            {t("modal.step2.quantity")}
-                                        </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            name="quantite"
-                                            required
-                                            value={modalForm.quantite}
-                                            onChange={handleModalChange}
-                                        />
-                                    </Col>
-                                    <Col md={3}>
-                                        <Form.Label className="fw-bold">
-                                            {t("modal.step2.unitPrice")}
-                                        </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            name="prix"
-                                            required
-                                            value={modalForm.prix}
-                                            onChange={handleModalChange}
-                                        />
-                                    </Col>
-                                </Row>
-                                <Row className="g-2 mb-3">
-                                    <Col md={4}>
-                                        <Form.Label className="fw-bold">
-                                            {t("modal.step2.weight")}
-                                        </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            name="poidsValeur"
-                                            required
-                                            value={modalForm.poidsValeur}
-                                            onChange={handleModalChange}
-                                        />
-                                    </Col>
-                                    <Col md={4}>
-                                        <Form.Label className="fw-bold">
-                                            {t("modal.step2.unit")}
-                                        </Form.Label>
-                                        <Form.Select
-                                            name="poidsUnite"
-                                            required
-                                            value={modalForm.poidsUnite}
-                                            onChange={handleModalChange}
-                                        >
-                                            <option value="">
-                                                {t(
-                                                    "placeholders.unitFallback"
-                                                )}
-                                            </option>
-                                            {UNIT_OPTIONS.map((u) => (
-                                                <option key={u} value={u}>
-                                                    {u}
+                                <div
+                                    className={
+                                        showModalStep2Bubble
+                                            ? "border border-2 border-warning rounded-3 p-3 mb-3"
+                                            : ""
+                                    }
+                                >
+                                    <Row className="g-2 mb-3">
+                                        <Col md={6}>
+                                            <Form.Label className="fw-bold">
+                                                {t("modal.step2.itemBrand")}
+                                            </Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                name="item"
+                                                required
+                                                value={modalForm.item}
+                                                onChange={handleModalChange}
+                                            />
+                                        </Col>
+                                        <Col md={3}>
+                                            <Form.Label className="fw-bold">
+                                                {t("modal.step2.quantity")}
+                                            </Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                name="quantite"
+                                                required
+                                                value={modalForm.quantite}
+                                                onChange={handleModalChange}
+                                            />
+                                        </Col>
+                                        <Col md={3}>
+                                            <Form.Label className="fw-bold">
+                                                {t("modal.step2.unitPrice")}
+                                            </Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                step="0.01"
+                                                name="prix"
+                                                required
+                                                value={modalForm.prix}
+                                                onChange={handleModalChange}
+                                            />
+                                        </Col>
+                                    </Row>
+                                    <Row className="g-2 mb-0">
+                                        <Col md={4}>
+                                            <Form.Label className="fw-bold">
+                                                {t("modal.step2.weight")}
+                                            </Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                step="0.01"
+                                                name="poidsValeur"
+                                                required
+                                                value={modalForm.poidsValeur}
+                                                onChange={handleModalChange}
+                                            />
+                                        </Col>
+                                        <Col md={4}>
+                                            <Form.Label className="fw-bold">
+                                                {t("modal.step2.unit")}
+                                            </Form.Label>
+                                            <Form.Select
+                                                name="poidsUnite"
+                                                required
+                                                value={modalForm.poidsUnite}
+                                                onChange={handleModalChange}
+                                            >
+                                                <option value="">
+                                                    {t(
+                                                        "placeholders.unitFallback"
+                                                    )}
                                                 </option>
-                                            ))}
-                                        </Form.Select>
-                                    </Col>
-                                    <Col
-                                        md={4}
-                                        className="d-flex align-items-center"
-                                    >
-                                        <Form.Check
-                                            type="checkbox"
-                                            className="mt-4"
-                                            label={t("modal.step2.onSale")}
-                                            name="wasOnSale"
-                                            checked={modalForm.wasOnSale}
-                                            onChange={handleModalChange}
-                                        />
-                                    </Col>
-                                </Row>
+                                                {UNIT_OPTIONS.map((u) => (
+                                                    <option key={u} value={u}>
+                                                        {u}
+                                                    </option>
+                                                ))}
+                                            </Form.Select>
+                                        </Col>
+                                        <Col
+                                            md={4}
+                                            className="d-flex align-items-center"
+                                        >
+                                            <Form.Check
+                                                type="checkbox"
+                                                className="mt-4"
+                                                label={t("modal.step2.onSale")}
+                                                name="wasOnSale"
+                                                checked={modalForm.wasOnSale}
+                                                onChange={handleModalChange}
+                                            />
+                                        </Col>
+                                    </Row>
+                                </div>
                                 <div className="d-flex justify-content-between">
                                     <Button
                                         type="button"

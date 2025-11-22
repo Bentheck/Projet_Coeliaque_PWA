@@ -143,7 +143,7 @@ const DemoRapportsDisplay: React.FC = () => {
                         className={
                             "btn btn-outline-secondary ms-2" +
                             (isCalculatorStep16
-                                ? " border border-2 border-warning"
+                                ? " border border-2 border-warning shadow"
                                 : "")
                         }
                         onClick={() =>
@@ -164,33 +164,36 @@ const DemoRapportsDisplay: React.FC = () => {
                                 top: "110%",
                                 right: 0,
                                 background: "#fff",
-                                border: "1px solid rgba(0,0,0,.15)",
-                                borderRadius: "0.75rem",
-                                boxShadow: "0 .35rem .8rem rgba(0,0,0,.15)",
-                                padding: "0.75rem 1rem",
+                                border: "2px solid #f0ad4e",
+                                borderRadius: "0.9rem",
+                                boxShadow:
+                                    "0 0.75rem 1.5rem rgba(0,0,0,.25)",
+                                padding:
+                                    "0.85rem 1rem 0.85rem 1rem",
                                 zIndex: 1050,
-                                width: 280,
+                                width: 320,
                             }}
                         >
                             <div
                                 style={{
                                     position: "absolute",
-                                    top: "-8px",
+                                    top: "-10px",
                                     right: "24px",
                                     width: 0,
                                     height: 0,
-                                    borderLeft: "8px solid transparent",
-                                    borderRight: "8px solid transparent",
-                                    borderBottom: "8px solid #fff",
+                                    borderLeft:
+                                        "10px solid transparent",
+                                    borderRight:
+                                        "10px solid transparent",
+                                    borderBottom:
+                                        "10px solid #f0ad4e",
                                 }}
                             />
-                            <div className="d-flex justify-content-between align-items-start mb-1">
-                                <strong className="me-2">
-                                    {t(
-                                        "demo.guide.calculator.step16.title",
-                                        "Step 16 · Finish the guided demo"
-                                    )}
-                                </strong>
+                            <div className="fw-semibold mb-1">
+                                {t(
+                                    "demo.guide.calculator.step16.title",
+                                    "Step 16 · Finish the guided demo"
+                                )}
                             </div>
                             <p className="small mb-2">
                                 {t(
@@ -296,7 +299,7 @@ const DemoRapportsDisplay: React.FC = () => {
                             </button>
                             <button
                                 type="submit"
-                                className="btn btn-success"
+                                className="btn btn.success"
                             >
                                 {t("prompt.continuePrint")}
                             </button>

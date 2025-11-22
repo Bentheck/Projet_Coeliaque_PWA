@@ -33,7 +33,6 @@ const DemoRapports: React.FC = () => {
     const [localLoading, setLocalLoading] = useState(false);
     const [successYear, setSuccessYear] = useState<number | null>(null);
 
-
     async function fakeGenerate(y: ReportYear) {
         setLocalLoading(true);
         setLocalError(null);

@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿// src/pages/ListeEpicerie/ListeEpicerieView.tsx
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -16,7 +17,9 @@ const fmtMoney = (n: number | null | undefined) =>
         ? n.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })
         : "—";
 
-const renderWeight = (obj?: { poidsValeur?: number | null; poidsUnite?: string | null } | null) => {
+const renderWeight = (
+    obj?: { poidsValeur?: number | null; poidsUnite?: string | null } | null
+) => {
     if (!obj) return "—";
     const { poidsValeur: val, poidsUnite: unit } = obj as any;
     const hasVal = val !== undefined && val !== null;
@@ -28,7 +31,13 @@ const renderWeight = (obj?: { poidsValeur?: number | null; poidsUnite?: string |
 };
 
 const fmtDate = (iso?: string) =>
-    iso ? new Date(iso).toLocaleString("fr-CA", { year: "numeric", month: "long", day: "2-digit" }) : "—";
+    iso
+        ? new Date(iso).toLocaleString("fr-CA", {
+            year: "numeric",
+            month: "long",
+            day: "2-digit",
+        })
+        : "—";
 
 /* ============================== Component ============================== */
 
@@ -41,15 +50,17 @@ const ListeEpicerieView: React.FC = () => {
         [id]
     );
 
-    // also keep local caches of item lookups for display
-    const factureCache = useLiveQuery<FactureItem[]>(
-        async () => await db.factureItems.toArray(),
-        []
-    ) || [];
-    const freeCache = useLiveQuery<FreeItemDto[]>(
-        async () => await db.freeItems.toArray(),
-        []
-    ) || [];
+    // Local caches of items
+    const factureCache =
+        useLiveQuery<FactureItem[]>(
+            async () => await db.factureItems.toArray(),
+            []
+        ) || [];
+    const freeCache =
+        useLiveQuery<FreeItemDto[]>(
+            async () => await db.freeItems.toArray(),
+            []
+        ) || [];
 
     const [detailLoading, setDetailLoading] = useState(false);
 
@@ -62,10 +73,18 @@ const ListeEpicerieView: React.FC = () => {
     useEffect(() => {
         if (!liste) return;
         const missingFacture = Array.from(
-            new Set((liste.items ?? []).filter((x) => x.factureItemId).map((x) => x.factureItemId as number))
+            new Set(
+                (liste.items ?? [])
+                    .filter((x) => x.factureItemId)
+                    .map((x) => x.factureItemId as number)
+            )
         );
         const missingFree = Array.from(
-            new Set((liste.items ?? []).filter((x) => x.freeItemId).map((x) => x.freeItemId as number))
+            new Set(
+                (liste.items ?? [])
+                    .filter((x) => x.freeItemId)
+                    .map((x) => x.freeItemId as number)
+            )
         );
 
         let cancelled = false;
@@ -78,28 +97,38 @@ const ListeEpicerieView: React.FC = () => {
                         const has = await db.factureItems.get(fid);
                         if (has) return;
                         try {
-                            const r = await fetch(`/api/factureitems/${fid}`, { credentials: "include" });
+                            const r = await fetch(`/api/factureitems/${fid}`, {
+                                credentials: "include",
+                            });
                             if (!r.ok) return;
                             const row = (await r.json()) as FactureItem;
                             await db.factureItems.put(row);
-                        } catch { /* ignore */ }
+                        } catch {
+                            /* ignore */
+                        }
                     }),
                     ...missingFree.map(async (fid) => {
                         const has = await db.freeItems.get(fid);
                         if (has) return;
                         try {
-                            const r = await fetch(`/api/freeitems/${fid}`, { credentials: "include" });
+                            const r = await fetch(`/api/freeitems/${fid}`, {
+                                credentials: "include",
+                            });
                             if (!r.ok) return;
                             const row = (await r.json()) as FreeItemDto;
                             await db.freeItems.put(row);
-                        } catch { /* ignore */ }
+                        } catch {
+                            /* ignore */
+                        }
                     }),
                 ]);
             } finally {
                 if (!cancelled) setDetailLoading(false);
             }
         })();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [liste]);
 
     /* ------------------------------ Display rows ------------------------------ */
@@ -124,53 +153,71 @@ const ListeEpicerieView: React.FC = () => {
 
         return (liste.items ?? [])
             .map((it, idx) => {
-                // resolve source data (embedded first, then Dexie cache)
-                const fac = it.factureItem ?? (it.factureItemId ? factureCache.find(f => f.id === it.factureItemId) : undefined);
-                const free = it.freeItem ?? (it.freeItemId ? freeCache.find(f => f.id === it.freeItemId) : undefined);
-                const source = it.customName ? null : (free ?? fac ?? null);
+                const fac =
+                    it.factureItem ??
+                    (it.factureItemId
+                        ? factureCache.find((f) => f.id === it.factureItemId)
+                        : undefined);
+                const free =
+                    it.freeItem ??
+                    (it.freeItemId
+                        ? freeCache.find((f) => f.id === it.freeItemId)
+                        : undefined);
+                const source = it.customName ? null : free ?? fac ?? null;
 
-                // --- FIX: avoid mixing ?? and || by splitting parts ---
-                const sourceName = source && "item" in (source as any) ? (source as any).item : "";
-                const fallbackName =
-                    it.factureItemId
-                        ? t("fallbacks.invoiceItem", { id: it.factureItemId })
-                        : it.freeItemId
-                            ? t("fallbacks.freeItem", { id: it.freeItemId })
-                            : "—";
+                const sourceName =
+                    source && "item" in (source as any)
+                        ? (source as any).item
+                        : "";
+                const fallbackName = it.factureItemId
+                    ? t("fallbacks.invoiceItem", { id: it.factureItemId })
+                    : it.freeItemId
+                        ? t("fallbacks.freeItem", { id: it.freeItemId })
+                        : "—";
                 const name = it.customName ?? (sourceName || fallbackName);
-                // ------------------------------------------------------
 
-                // type
                 const type =
-                    (source && "typeItem" in (source as any) ? (source as any).typeItem : "") ||
+                    (source && "typeItem" in (source as any)
+                        ? (source as any).typeItem
+                        : "") ||
                     (it.customName ? t("fallbacks.custom") : "—");
 
-                // store & weight
-                const store = (source && "magasin" in (source as any) ? ((source as any).magasin || "—") : "—") as string;
+                const store = (
+                    source && "magasin" in (source as any)
+                        ? (source as any).magasin || "—"
+                        : "—"
+                ) as string;
+
                 const weight = renderWeight(source as any);
 
-                // quantity
                 const qty = Math.max(1, Number(it.quantity) || 1);
 
-                // price priority: explicit unitPrice on list item -> source price
                 let fallback: number | null = null;
                 if (fac) fallback = (fac as FactureItem).prix ?? null;
-                else if (free) fallback = typeof (free as FreeItemDto).defaultPrix === "number" ? (free as FreeItemDto).defaultPrix! : null;
+                else if (free)
+                    fallback =
+                        typeof (free as FreeItemDto).defaultPrix === "number"
+                            ? (free as FreeItemDto).defaultPrix!
+                            : null;
 
                 const unitPrice =
-                    typeof it.unitPrice === "number" && isFinite(it.unitPrice) ? it.unitPrice : fallback;
+                    typeof it.unitPrice === "number" && isFinite(it.unitPrice)
+                        ? it.unitPrice
+                        : fallback;
 
                 const subtotal = unitPrice != null ? unitPrice * qty : null;
 
-                // flags
-                const special = typeof it.wasOnSale === "boolean"
-                    ? it.wasOnSale
-                    : !!(source && (source as any).wasOnSale);
+                const special =
+                    typeof it.wasOnSale === "boolean"
+                        ? it.wasOnSale
+                        : !!(source && (source as any).wasOnSale);
 
                 const favorite = !!it.isFavorite;
 
-                // key
-                const key = String(it.id ?? `${it.factureItemId ?? it.freeItemId ?? "custom"}-${idx}`);
+                const key = String(
+                    it.id ??
+                    `${it.factureItemId ?? it.freeItemId ?? "custom"}-${idx}`
+                );
 
                 return {
                     key,
@@ -187,8 +234,23 @@ const ListeEpicerieView: React.FC = () => {
                     checked: !!it.isChecked,
                 };
             })
-            .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+            .sort((a, b) =>
+                a.name.localeCompare(b.name, "fr", { sensitivity: "base" })
+            );
     }, [liste, t, factureCache, freeCache]);
+
+    const groupedByStore: [string, DisplayRow[]][] = useMemo(() => {
+        const map = new Map<string, DisplayRow[]>();
+        for (const r of rows) {
+            const storeKey =
+                r.store || t("summary.unknownStore", "Autre magasin");
+            if (!map.has(storeKey)) map.set(storeKey, []);
+            map.get(storeKey)!.push(r);
+        }
+        return Array.from(map.entries()).sort((a, b) =>
+            a[0].localeCompare(b[0], "fr", { sensitivity: "base" })
+        );
+    }, [rows, t]);
 
     /* ------------------------------ Aggregates ------------------------------ */
 
@@ -201,12 +263,11 @@ const ListeEpicerieView: React.FC = () => {
     const allChecked = rows.length > 0 && rows.every((r) => r.checked);
     const isCompleted = !!(liste?.completed ?? allChecked);
 
-    /* ------------------------------ Mutations ------------------------------ */
+    /* ------------------------------ Mutations (real app) ------------------------------ */
 
     const setCompleted = async (next: boolean) => {
         if (!liste) return;
 
-        // optimistic Dexie update
         await db.listeEpicerie.update(liste.id, { completed: next });
 
         try {
@@ -221,7 +282,6 @@ const ListeEpicerieView: React.FC = () => {
             if (res.status === 409) return;
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
         } catch {
-            // rollback
             await db.listeEpicerie.update(liste.id, { completed: !next });
             alert(t("errors.updateListState") as string);
         }
@@ -230,18 +290,27 @@ const ListeEpicerieView: React.FC = () => {
     const setItemChecked = async (itemId: number | undefined, next: boolean) => {
         if (!liste || itemId == null) return;
 
-        // optimistic local mutation (update the item inside the list)
-        const after = (liste.items ?? []).map(it => it.id === itemId ? { ...it, isChecked: next } : it);
-        const completedNow = after.length > 0 && after.every((it) => it.isChecked);
-        await db.listeEpicerie.put({ ...liste, items: after, completed: completedNow });
+        const after = (liste.items ?? []).map((it) =>
+            it.id === itemId ? { ...it, isChecked: next } : it
+        );
+        const completedNow =
+            after.length > 0 && after.every((it) => it.isChecked);
+        await db.listeEpicerie.put({
+            ...liste,
+            items: after,
+            completed: completedNow,
+        });
 
         try {
-            const res = await fetch(`/api/ListeEpicerie/${liste.id}/items/${itemId}/checked`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ checked: next }),
-            });
+            const res = await fetch(
+                `/api/ListeEpicerie/${liste.id}/items/${itemId}/checked`,
+                {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ checked: next }),
+                }
+            );
 
             if (res.status === 202) return;
             if (res.status === 409) {
@@ -251,18 +320,29 @@ const ListeEpicerieView: React.FC = () => {
             }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
         } catch {
-            // rollback toggle
-            const rolled = (liste.items ?? []).map(it => it.id === itemId ? { ...it, isChecked: !next } : it);
-            await db.listeEpicerie.put({ ...liste, items: rolled, completed: false });
+            const rolled = (liste.items ?? []).map((it) =>
+                it.id === itemId ? { ...it, isChecked: !next } : it
+            );
+            await db.listeEpicerie.put({
+                ...liste,
+                items: rolled,
+                completed: false,
+            });
             alert(t("errors.updateItem") as string);
         }
     };
+
+    /* ------------------------------ Render ------------------------------ */
 
     if (!liste) {
         return (
             <div className="container py-4">
                 <div className="d-flex align-items-center gap-2">
-                    <div className="spinner-border" role="status" aria-hidden="true"></div>
+                    <div
+                        className="spinner-border"
+                        role="status"
+                        aria-hidden="true"
+                    ></div>
                     <strong>{t("loading")}</strong>
                 </div>
             </div>
@@ -270,31 +350,59 @@ const ListeEpicerieView: React.FC = () => {
     }
 
     return (
-        <div className="container py-4">
-            {/* Header */}
-            <div className="d-flex flex-wrap justify-content-between align-items-end mb-2">
+        <div className="container py-4" id="print-section">
+            <style>
+                {`
+                @media screen {
+                    .print-only { display: none !important; }
+                }
+                @media print {
+                    .print-only { display: inline !important; }
+                    .no-print { display: none !important; }
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+            `}
+            </style>
+
+            {/* HEADER: back + title, then a row with switch + buttons, all LEFT aligned */}
+            <div className="mb-2">
+                {/* First line: Retour + title/date + spinner */}
                 <div className="d-flex align-items-center gap-2">
-                    <Link to="/liste-epicerie" className="btn btn-outline-secondary d-print-none">
+                    <Link
+                        to="/liste-epicerie"
+                        className="btn btn-outline-secondary d-print-none"
+                    >
                         ← {t("back")}
                     </Link>
+
                     <div className="d-flex align-items-center gap-2">
                         <div>
-                            <h1 className="h5 mb-0">{liste.name || t("titleDefault")}</h1>
+                            <h1 className="h5 mb-0">
+                                {liste.name || t("titleDefault")}
+                            </h1>
                             <div className="text-muted small">
-                                {t("createdOn", { date: fmtDate(liste.created) })}
+                                {t("createdOn", {
+                                    date: fmtDate(liste.created),
+                                })}
                             </div>
                         </div>
+
                         {detailLoading && (
                             <span className="ms-2 small text-muted d-flex align-items-center gap-2">
-                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span
+                                    className="spinner-border spinner-border-sm"
+                                    role="status"
+                                    aria-hidden="true"
+                                ></span>
                                 <span>{t("detailLoading")}</span>
                             </span>
                         )}
                     </div>
                 </div>
 
-                <div className="d-flex gap-2 d-print-none align-items-center">
-                    <div className="form-check form-switch">
+                {/* Second line: Terminé + Modifier + Imprimer, LEFT aligned under the header */}
+                <div className="d-flex align-items-center gap-2 mt-2 d-print-none">
+                    <div className="form-check form-switch mb-0">
                         <input
                             className="form-check-input"
                             type="checkbox"
@@ -302,34 +410,58 @@ const ListeEpicerieView: React.FC = () => {
                             checked={isCompleted}
                             onChange={(e) => setCompleted(e.target.checked)}
                         />
-                        <label className="form-check-label" htmlFor="completeSwitch">
+                        <label
+                            className="form-check-label"
+                            htmlFor="completeSwitch"
+                        >
                             {t("completed")}
                         </label>
                     </div>
-                    <Link to={`/liste-epicerie/edit/${liste.id}`} className={`btn btn-outline-primary ${isCompleted ? "disabled" : ""}`}>
+
+                    <Link
+                        to={`/liste-epicerie/edit/${liste.id}`}
+                        className={`btn btn-outline-primary ${isCompleted ? "disabled" : ""
+                            }`}
+                    >
                         {t("edit")}
                     </Link>
-                    <button className="btn btn-outline-secondary" onClick={() => window.print()}>
+
+                    <button
+                        className="btn btn-outline-secondary"
+                        onClick={() => window.print()}
+                    >
                         {t("print")}
                     </button>
                 </div>
             </div>
 
-            {/* Tiny summary bar */}
+            {/* Summary bar – comes AFTER the buttons, like demo */}
             <div className="text-muted small mb-3 d-print-none">
-                <span className="me-3">{t("summary.rows", { count: rows.length })}</span>
-                <span className="me-3">{t("summary.totalQty", { count: totalQty })}</span>
-                <span className="me-3">{t("summary.favorites", { count: favoritesCount })}</span>
+                <span className="me-3">
+                    {t("summary.rows", { count: rows.length })}
+                </span>
+                <span className="me-3">
+                    {t("summary.totalQty", { count: totalQty })}
+                </span>
+                <span className="me-3">
+                    {t("summary.favorites", { count: favoritesCount })}
+                </span>
                 <span>{t("summary.onSale", { count: specialsCount })}</span>
             </div>
 
             {/* Minimal print metadata */}
             <div className="d-none d-print-block mb-2">
-                <div className="small">{t("printedOn", { date: new Date().toLocaleString("fr-CA") })}</div>
+                <div className="small">
+                    {t("printedOn", {
+                        date: new Date().toLocaleString("fr-CA"),
+                    })}
+                </div>
             </div>
 
             {rows.length === 0 ? (
-                <div className="border rounded-3 p-4 text-center bg-light">{t("empty")}</div>
+                <div className="border rounded-3 p-4 text-center bg-light">
+                    {t("empty")}
+                </div>
             ) : (
                 <>
                     {/* Desktop / print table */}
@@ -338,64 +470,215 @@ const ListeEpicerieView: React.FC = () => {
                             <table className="table table-sm align-middle">
                                 <thead className="table-light">
                                     <tr>
-                                        <th className="text-center" style={{ width: 80 }}>
+                                        <th
+                                            className="text-center"
+                                            style={{ width: 80 }}
+                                        >
                                             {t("table.done")}
                                         </th>
-                                        <th style={{ width: "28%" }}>{t("table.product")}</th>
+                                        <th style={{ width: "28%" }}>
+                                            {t("table.product")}
+                                        </th>
                                         <th>{t("table.type")}</th>
                                         <th>{t("table.store")}</th>
                                         <th>{t("table.weight")}</th>
-                                        <th className="text-end">{t("table.unitPrice")}</th>
-                                        <th className="text-end" style={{ width: 110 }}>
+                                        <th className="text-end">
+                                            {t("table.unitPrice")}
+                                        </th>
+                                        <th
+                                            className="text-end"
+                                            style={{ width: 110 }}
+                                        >
                                             {t("table.quantity")}
                                         </th>
-                                        <th className="text-end">{t("table.subtotal")}</th>
-                                        <th className="text-center">{t("table.special")}</th>
+                                        <th className="text-end">
+                                            {t("table.subtotal")}
+                                        </th>
+                                        <th className="text-center">
+                                            {t("table.special")}
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rows.map((r) => (
-                                        <tr key={r.key}>
-                                            <td className="text-center">
-                                                <input
-                                                    className="form-check-input d-print-none"
-                                                    type="checkbox"
-                                                    checked={r.checked}
-                                                    disabled={isCompleted || r.id == null}
-                                                    onChange={(e) => setItemChecked(r.id, e.target.checked)}
-                                                    aria-label={t("aria.markAsDone", { name: r.name })}
-                                                />
-                                                <span className="d-none d-print-inline">{r.checked ? "✓" : ""}</span>
-                                            </td>
-                                            <td>
-                                                <strong className={r.checked ? "text-decoration-line-through" : ""}>{r.name}</strong>{" "}
-                                                {r.favorite && <span className="badge bg-warning text-dark align-middle">★ {t("badges.favorite")}</span>}
-                                            </td>
-                                            <td>
-                                                <small className="text-muted">{r.type || "—"}</small>
-                                            </td>
-                                            <td>{r.store || "—"}</td>
-                                            <td>{r.weight}</td>
-                                            <td className="text-end">{fmtMoney(r.unitPrice ?? undefined)}</td>
-                                            <td className="text-end">{r.qty}</td>
-                                            <td className="text-end">{fmtMoney(r.subtotal ?? undefined)}</td>
-                                            <td className="text-center">
-                                                {r.special ? (
-                                                    <span className="badge bg-success">{t("common.yes")}</span>
-                                                ) : (
-                                                    <span className="badge bg-secondary">{t("common.no")}</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {groupedByStore.map(
+                                        ([storeName, storeRows]) => (
+                                            <React.Fragment key={storeName}>
+                                                <tr className="table-group-divider bg-light">
+                                                    <td
+                                                        colSpan={9}
+                                                        className="fw-semibold"
+                                                    >
+                                                        {storeName}
+                                                    </td>
+                                                </tr>
+                                                {storeRows.map((r) => (
+                                                    <tr key={r.key}>
+                                                        <td
+                                                            className="text-center"
+                                                            style={{
+                                                                position:
+                                                                    "relative",
+                                                                height: 40,
+                                                            }}
+                                                        >
+                                                            <input
+                                                                className="form-check-input d-print-none"
+                                                                type="checkbox"
+                                                                checked={
+                                                                    r.checked
+                                                                }
+                                                                disabled={
+                                                                    isCompleted ||
+                                                                    r.id == null
+                                                                }
+                                                                onChange={(
+                                                                    e
+                                                                ) =>
+                                                                    setItemChecked(
+                                                                        r.id,
+                                                                        e.target
+                                                                            .checked
+                                                                    )
+                                                                }
+                                                                aria-label={t(
+                                                                    "aria.markAsDone",
+                                                                    {
+                                                                        name: r.name,
+                                                                    }
+                                                                )}
+                                                                style={{
+                                                                    position:
+                                                                        "absolute",
+                                                                    left: "50%",
+                                                                    top: "50%",
+                                                                    transform:
+                                                                        "translate(-50%, -50%)",
+                                                                    width:
+                                                                        "26px",
+                                                                    height:
+                                                                        "26px",
+                                                                    opacity: 0,
+                                                                    cursor:
+                                                                        "pointer",
+                                                                    zIndex: 2,
+                                                                }}
+                                                            />
+                                                            <div
+                                                                style={{
+                                                                    width:
+                                                                        "26px",
+                                                                    height:
+                                                                        "26px",
+                                                                    border:
+                                                                        "3px solid #000",
+                                                                    borderRadius:
+                                                                        "4px",
+                                                                    fontSize:
+                                                                        "1.6rem",
+                                                                    fontWeight: 900,
+                                                                    color:
+                                                                        "#000",
+                                                                    backgroundColor:
+                                                                        r.checked
+                                                                            ? "#b6f2b3"
+                                                                            : "#fff",
+                                                                    display:
+                                                                        "flex",
+                                                                    alignItems:
+                                                                        "center",
+                                                                    justifyContent:
+                                                                        "center",
+                                                                    position:
+                                                                        "absolute",
+                                                                    left: "50%",
+                                                                    top: "50%",
+                                                                    transform:
+                                                                        "translate(-50%, -50%)",
+                                                                    pointerEvents:
+                                                                        "none",
+                                                                }}
+                                                            >
+                                                                {r.checked
+                                                                    ? "✓"
+                                                                    : ""}
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <strong
+                                                                className={
+                                                                    r.checked
+                                                                        ? "text-decoration-line-through"
+                                                                        : ""
+                                                                }
+                                                            >
+                                                                {r.name}
+                                                            </strong>{" "}
+                                                            {r.favorite && (
+                                                                <span className="badge bg-warning text-dark align-middle">
+                                                                    ★{" "}
+                                                                    {t(
+                                                                        "badges.favorite"
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <small className="text-muted">
+                                                                {r.type || "—"}
+                                                            </small>
+                                                        </td>
+                                                        <td>
+                                                            {r.store || "—"}
+                                                        </td>
+                                                        <td>{r.weight}</td>
+                                                        <td className="text-end">
+                                                            {fmtMoney(
+                                                                r.unitPrice ??
+                                                                undefined
+                                                            )}
+                                                        </td>
+                                                        <td className="text-end">
+                                                            {r.qty}
+                                                        </td>
+                                                        <td className="text-end">
+                                                            {fmtMoney(
+                                                                r.subtotal ??
+                                                                undefined
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            {r.special ? (
+                                                                <span className="badge bg-success">
+                                                                    {t(
+                                                                        "common.yes"
+                                                                    )}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="badge bg-secondary">
+                                                                    {t(
+                                                                        "common.no"
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        )
+                                    )}
                                 </tbody>
                                 {anyPrice && (
                                     <tfoot>
                                         <tr>
-                                            <th colSpan={7} className="text-end">
+                                            <th
+                                                colSpan={7}
+                                                className="text-end"
+                                            >
                                                 {t("table.total")}
                                             </th>
-                                            <th className="text-end">{fmtMoney(totalCost)}</th>
+                                            <th className="text-end">
+                                                {fmtMoney(totalCost)}
+                                            </th>
                                             <th></th>
                                         </tr>
                                     </tfoot>
@@ -419,43 +702,100 @@ const ListeEpicerieView: React.FC = () => {
                                                             type="checkbox"
                                                             id={`chk-${r.key}`}
                                                             checked={r.checked}
-                                                            disabled={isCompleted || r.id == null}
-                                                            onChange={(e) => setItemChecked(r.id, e.target.checked)}
-                                                            aria-label={t("aria.markAsDone", { name: r.name })}
+                                                            disabled={
+                                                                isCompleted ||
+                                                                r.id == null
+                                                            }
+                                                            onChange={(e) =>
+                                                                setItemChecked(
+                                                                    r.id,
+                                                                    e.target
+                                                                        .checked
+                                                                )
+                                                            }
+                                                            aria-label={t(
+                                                                "aria.markAsDone",
+                                                                {
+                                                                    name: r.name,
+                                                                }
+                                                            )}
                                                         />
                                                     </div>
                                                     <div>
-                                                        <div className={`fw-semibold ${r.checked ? "text-decoration-line-through" : ""}`}>{r.name}</div>
-                                                        <div className="text-muted small">{r.type || "—"}</div>
+                                                        <div
+                                                            className={`fw-semibold ${r.checked
+                                                                    ? "text-decoration-line-through"
+                                                                    : ""
+                                                                }`}
+                                                        >
+                                                            {r.name}
+                                                        </div>
+                                                        <div className="text-muted small">
+                                                            {r.type || "—"}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="text-end">
-                                                    <div className="fw-semibold">{fmtMoney(r.unitPrice ?? undefined)}</div>
-                                                    <div className="text-muted small">{t("mobile.qtyShort")} {r.qty}</div>
+                                                    <div className="fw-semibold">
+                                                        {fmtMoney(
+                                                            r.unitPrice ??
+                                                            undefined
+                                                        )}
+                                                    </div>
+                                                    <div className="text-muted small">
+                                                        {t("mobile.qtyShort")}{" "}
+                                                        {r.qty}
+                                                    </div>
                                                 </div>
                                             </div>
 
                                             <div className="mt-2 small">
                                                 <div className="d-flex justify-content-between">
-                                                    <span className="text-muted">{t("table.store")}</span>
-                                                    <span>{r.store || "—"}</span>
+                                                    <span className="text-muted">
+                                                        {t("table.store")}
+                                                    </span>
+                                                    <span>
+                                                        {r.store || "—"}
+                                                    </span>
                                                 </div>
                                                 <div className="d-flex justify-content-between">
-                                                    <span className="text-muted">{t("table.weight")}</span>
+                                                    <span className="text-muted">
+                                                        {t("table.weight")}
+                                                    </span>
                                                     <span>{r.weight}</span>
                                                 </div>
                                                 <div className="d-flex justify-content-between">
-                                                    <span className="text-muted">{t("table.subtotal")}</span>
-                                                    <span className="fw-semibold">{fmtMoney(r.subtotal ?? undefined)}</span>
+                                                    <span className="text-muted">
+                                                        {t("table.subtotal")}
+                                                    </span>
+                                                    <span className="fw-semibold">
+                                                        {fmtMoney(
+                                                            r.subtotal ??
+                                                            undefined
+                                                        )}
+                                                    </span>
                                                 </div>
                                             </div>
 
                                             <div className="mt-2 d-flex gap-2 flex-wrap">
-                                                {r.favorite && <span className="badge bg-warning text-dark">★ {t("badges.favorite")}</span>}
+                                                {r.favorite && (
+                                                    <span className="badge bg-warning text-dark">
+                                                        ★{" "}
+                                                        {t(
+                                                            "badges.favorite"
+                                                        )}
+                                                    </span>
+                                                )}
                                                 {r.special ? (
-                                                    <span className="badge bg-success">{t("badges.onSale")}</span>
+                                                    <span className="badge bg-success">
+                                                        {t("badges.onSale")}
+                                                    </span>
                                                 ) : (
-                                                    <span className="badge bg-secondary">{t("badges.regularPrice")}</span>
+                                                    <span className="badge bg-secondary">
+                                                        {t(
+                                                            "badges.regularPrice"
+                                                        )}
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
@@ -466,7 +806,9 @@ const ListeEpicerieView: React.FC = () => {
 
                         {anyPrice && (
                             <div className="mt-3 d-flex justify-content-end">
-                                <div className="h6 mb-0">{t("mobile.total")}: {fmtMoney(totalCost)}</div>
+                                <div className="h6 mb-0">
+                                    {t("mobile.total")}: {fmtMoney(totalCost)}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -474,9 +816,7 @@ const ListeEpicerieView: React.FC = () => {
             )}
 
             <div className="mt-3">
-                <small className="text-muted">
-                    {t("tip")}
-                </small>
+                <small className="text-muted">{t("tip")}</small>
             </div>
         </div>
     );

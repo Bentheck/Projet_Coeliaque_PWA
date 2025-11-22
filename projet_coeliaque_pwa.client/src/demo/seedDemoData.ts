@@ -44,13 +44,16 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
 
     if (seededFlag) {
         // Verify that core demo entities actually exist; if they do, bail out.
-        const [comparatifDemo, listeDemo, reportDemo] = await Promise.all([
-            db.comparatifYears.get(-1),
-            db.listeEpicerie.get(-1),
-            db.reportBodies.get(demoYear),
-        ]);
+        // Also check that at least one known facture item (-3001) exists.
+        const [comparatifDemo, listeDemo, reportDemo, factureItemDemo] =
+            await Promise.all([
+                db.comparatifYears.get(-1),
+                db.listeEpicerie.get(-1),
+                db.reportBodies.get(demoYear),
+                db.factureItems.get(-3001),
+            ]);
 
-        if (comparatifDemo && listeDemo && reportDemo) {
+        if (comparatifDemo && listeDemo && reportDemo && factureItemDemo) {
             return;
         }
         // Otherwise, fall through and reseed missing parts.
@@ -455,6 +458,7 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
             db.freeItems,
             db.freeItemTypes,
             db.factureItemTypes,
+            db.factureItems,     // <-- NEW: seed flat facture items
             db.listeEpicerie,
         ],
         async () => {
@@ -476,6 +480,16 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
             await db.freeItemTypes.bulkPut(freeTypes);
 
             await db.factureItemTypes.bulkPut(factureTypes);
+
+            // NEW: actually seed the demo facture items with their negative IDs
+            await db.factureItems.bulkPut([
+                painFactureItem1,
+                patesFactureItem1,
+                craquelinsFactureItem1,
+                painFactureItem2,
+                patesFactureItem2,
+                cerealesFactureItem2,
+            ]);
 
             await db.listeEpicerie.put(demoListe);
         }

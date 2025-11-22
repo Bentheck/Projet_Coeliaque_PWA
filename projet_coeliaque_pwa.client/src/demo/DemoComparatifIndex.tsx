@@ -1,4 +1,9 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/demo/DemoComparatifIndex.tsx
+import React, {
+    useEffect,
+    useState,
+    type CSSProperties,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -9,6 +14,45 @@ import { useDemoTour } from "./DemoTourContext";
 
 const REPORT_ROUTE = (annee: number) => `/demo/rapports/${annee}`;
 const EDIT_ROUTE = (annee: number) => `/demo/comparatif/${annee}`;
+
+/** Shared bubble style for this page (same look as DemoComparatif) */
+const bubbleContainerStyle: CSSProperties = {
+    position: "absolute",
+    top: "110%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "#fffdf7",
+    border: "2px solid #ffc107",
+    borderRadius: "1rem",
+    boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
+    padding: "0.9rem 1.1rem",
+    zIndex: 1050,
+    width: 280,
+};
+
+const bubbleArrowStyle: CSSProperties = {
+    position: "absolute",
+    top: "-10px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent",
+    borderBottom: "10px solid #ffc107",
+};
+
+const bubbleArrowInnerStyle: CSSProperties = {
+    position: "absolute",
+    top: "-8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "8px solid transparent",
+    borderRight: "8px solid transparent",
+    borderBottom: "8px solid #fffdf7",
+};
 
 const DemoComparatifIndex: React.FC = () => {
     const { t } = useTranslation("pages/Comparatif/comparatif");
@@ -104,7 +148,7 @@ const DemoComparatifIndex: React.FC = () => {
         }
     }, [isCalculatorTour, isStep8, isStep9, years, guideYear, nextStep]);
 
-    // 🔧 FIX: when returning here later in the tour (e.g. at step 15),
+    // FIX: when returning here later in the tour (e.g. at step 15),
     // guideYear may be lost due to remounting. Restore it from the list.
     useEffect(() => {
         if (!isCalculatorTour) return;
@@ -244,7 +288,12 @@ const DemoComparatifIndex: React.FC = () => {
                 {/* "New comparison year" button (NOT used in calculator tour) */}
                 <div className="position-relative">
                     <button
-                        className="btn btn-primary"
+                        className={
+                            "btn btn-primary" +
+                            (showGuide && !isCalculatorTour && years.length === 0
+                                ? " border border-2 border-warning"
+                                : "")
+                        }
                         style={{ minWidth: 170 }}
                         onClick={handleOpenFormClick}
                     >
@@ -259,40 +308,11 @@ const DemoComparatifIndex: React.FC = () => {
 
                     {/* Generic non-tour guide (only when not in calculator tour) */}
                     {showGuide && !isCalculatorTour && years.length === 0 && (
-                        <div
-                            className="shadow-sm"
-                            style={{
-                                position: "absolute",
-                                top: "110%",
-                                left: "50%",
-                                transform: "translateX(-50%)",
-                                background: "#fff",
-                                border: "1px solid rgba(0,0,0,.15)",
-                                borderRadius: "0.75rem",
-                                boxShadow:
-                                    "0 .35rem .8rem rgba(0,0,0,.15)",
-                                padding: "0.75rem 1rem",
-                                zIndex: 1050,
-                                width: 260,
-                            }}
-                        >
-                            <div
-                                style={{
-                                    position: "absolute",
-                                    top: "-8px",
-                                    left: "50%",
-                                    transform: "translateX(-50%)",
-                                    width: 0,
-                                    height: 0,
-                                    borderLeft:
-                                        "8px solid transparent",
-                                    borderRight:
-                                        "8px solid transparent",
-                                    borderBottom: "8px solid #fff",
-                                }}
-                            />
+                        <div style={bubbleContainerStyle}>
+                            <div style={bubbleArrowStyle} />
+                            <div style={bubbleArrowInnerStyle} />
                             <div className="d-flex justify-content-between align-items-start mb-1">
-                                <strong className="me-2">
+                                <strong className="me-2 small fw-semibold">
                                     {t(
                                         "demo.guide.step3.title",
                                         "Step · Create the comparison"
@@ -410,9 +430,7 @@ const DemoComparatifIndex: React.FC = () => {
                                         </div>
                                         <div className="small text-muted">
                                             {t("lines", {
-                                                count:
-                                                    (y.lines ?? [])
-                                                        .length,
+                                                count: (y.lines ?? []).length,
                                             })}
                                         </div>
                                         <div className="mt-1">
@@ -517,48 +535,14 @@ const DemoComparatifIndex: React.FC = () => {
 
                                             {/* Guided bubble for STEP 15 on Generate/Regenerate */}
                                             {highlightGenerate && (
-                                                <div
-                                                    className="shadow-sm"
-                                                    style={{
-                                                        position:
-                                                            "absolute",
-                                                        top: "110%",
-                                                        left: "50%",
-                                                        transform:
-                                                            "translateX(-50%)",
-                                                        background:
-                                                            "#fff",
-                                                        border:
-                                                            "1px solid rgba(0,0,0,.15)",
-                                                        borderRadius:
-                                                            "0.75rem",
-                                                        boxShadow:
-                                                            "0 .35rem .8rem rgba(0,0,0,.15)",
-                                                        padding:
-                                                            "0.75rem 1rem",
-                                                        zIndex: 1050,
-                                                        width: 280,
-                                                    }}
-                                                >
+                                                <div style={bubbleContainerStyle}>
+                                                    <div style={bubbleArrowStyle} />
                                                     <div
-                                                        style={{
-                                                            position:
-                                                                "absolute",
-                                                            top: "-8px",
-                                                            left: "50%",
-                                                            transform:
-                                                                "translateX(-50%)",
-                                                            width: 0,
-                                                            height: 0,
-                                                            borderLeft:
-                                                                "8px solid transparent",
-                                                            borderRight:
-                                                                "8px solid transparent",
-                                                            borderBottom:
-                                                                "8px solid #fff",
-                                                        }}
+                                                        style={
+                                                            bubbleArrowInnerStyle
+                                                        }
                                                     />
-                                                    <strong className="d-block mb-1">
+                                                    <strong className="d-block mb-1 small fw-semibold">
                                                         {t(
                                                             "demo.guide.calculator.step15.title",
                                                             "Step 15 · Generate your annual report"
@@ -610,48 +594,14 @@ const DemoComparatifIndex: React.FC = () => {
 
                                             {/* Guided bubble for STEP 10 on the "View" button */}
                                             {highlightView && (
-                                                <div
-                                                    className="shadow-sm"
-                                                    style={{
-                                                        position:
-                                                            "absolute",
-                                                        top: "110%",
-                                                        left: "50%",
-                                                        transform:
-                                                            "translateX(-50%)",
-                                                        background:
-                                                            "#fff",
-                                                        border:
-                                                            "1px solid rgba(0,0,0,.15)",
-                                                        borderRadius:
-                                                            "0.75rem",
-                                                        boxShadow:
-                                                            "0 .35rem .8rem rgba(0,0,0,.15)",
-                                                        padding:
-                                                            "0.75rem 1rem",
-                                                        zIndex: 1050,
-                                                        width: 280,
-                                                    }}
-                                                >
+                                                <div style={bubbleContainerStyle}>
+                                                    <div style={bubbleArrowStyle} />
                                                     <div
-                                                        style={{
-                                                            position:
-                                                                "absolute",
-                                                            top: "-8px",
-                                                            left: "50%",
-                                                            transform:
-                                                                "translateX(-50%)",
-                                                            width: 0,
-                                                            height: 0,
-                                                            borderLeft:
-                                                                "8px solid transparent",
-                                                            borderRight:
-                                                                "8px solid transparent",
-                                                            borderBottom:
-                                                                "8px solid #fff",
-                                                        }}
+                                                        style={
+                                                            bubbleArrowInnerStyle
+                                                        }
                                                     />
-                                                    <strong className="d-block mb-1">
+                                                    <strong className="d-block mb-1 small fw-semibold">
                                                         {t(
                                                             "demo.guide.calculator.step10.title",
                                                             "Step 10 · Edit your comparison"

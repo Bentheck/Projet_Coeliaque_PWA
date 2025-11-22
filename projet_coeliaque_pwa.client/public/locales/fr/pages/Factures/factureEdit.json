@@ -75,16 +75,16 @@
     "loading": "Chargement des données de démonstration…"
   },
   "tour": {
-    "calc_step2_title": "Étape 4 — Ajouter un item sans gluten",
+    "calc_step2_title": "Ajouter un item sans gluten",
     "calc_step2_body": "Utilisez ce bouton pour ajouter une ligne de produit sans gluten à votre facture. Un petit assistant s’ouvrira pour vous guider.",
     "calc_step2_hint": "Cliquez maintenant pour ouvrir l’assistant d’item.",
-    "calc_save_title": "Étape 6 — Enregistrer votre facture",
+    "calc_save_title": "Enregistrer votre facture",
     "calc_save_body": "Votre item sans gluten est maintenant sur la facture. Enregistrez pour revenir à l’accueil de la démo et continuer avec le comparatif.",
     "calc_save_hint": "Cliquez sur « Enregistrer » maintenant; vous serez ramené à l’écran d’accueil de la démo.",
-    "calc_modal_step1_title": "Étape 5 — Choisir le type de produit",
+    "calc_modal_step1_title": "Choisir le type de produit",
     "calc_modal_step1_body": "Choisissez le type de produit sans gluten (pain, pâtes, céréales, etc.). Il sera utilisé plus tard pour le comparatif.",
     "calc_modal_step1_hint": "Cliquez sur « Suivant » lorsque vous avez sélectionné le bon type.",
-    "calc_modal_step2_title": "Étape 6 — Remplir les détails de l’item",
+    "calc_modal_step2_title": "Remplir les détails de l’item",
     "calc_modal_step2_body": "Entrez la marque/nom du produit, la quantité, le prix et le poids. C’est ce que le calculateur utilisera pour le coût par 100 g (ou par unité).",
     "calc_modal_step2_hint": "Lorsque tout est correct, cliquez sur « Ajouter » pour enregistrer l’item sur la facture."
   }

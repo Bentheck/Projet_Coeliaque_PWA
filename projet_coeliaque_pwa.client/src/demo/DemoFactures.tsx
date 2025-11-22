@@ -1,5 +1,9 @@
 ﻿// src/demo/DemoFactures.tsx
-import React, { useEffect, useState } from "react";
+import React, {
+    useEffect,
+    useState,
+    type CSSProperties,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -18,6 +22,69 @@ const LIST_KEY = "factures/all";
 
 interface Facture extends IFacture { }
 
+// Shared bubble styles
+const bubbleContainerStyle: CSSProperties = {
+    position: "absolute",
+    top: "110%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "#fffdf7",
+    border: "2px solid #ffc107",
+    borderRadius: "1rem",
+    boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
+    padding: "0.9rem 1.1rem",
+    zIndex: 1050,
+    width: 280,
+};
+
+const bubbleArrowUpStyle: CSSProperties = {
+    position: "absolute",
+    top: "-10px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent",
+    borderBottom: "10px solid #ffc107",
+};
+
+const bubbleArrowUpInnerStyle: CSSProperties = {
+    position: "absolute",
+    top: "-8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "8px solid transparent",
+    borderRight: "8px solid transparent",
+    borderBottom: "8px solid #fffdf7",
+};
+
+const bubbleArrowDownStyle: CSSProperties = {
+    position: "absolute",
+    bottom: "-10px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent",
+    borderTop: "10px solid #ffc107",
+};
+
+const bubbleArrowDownInnerStyle: CSSProperties = {
+    position: "absolute",
+    bottom: "-8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "8px solid transparent",
+    borderRight: "8px solid transparent",
+    borderTop: "8px solid #fffdf7",
+};
+
 const emptyFacture: Omit<Facture, "id"> = {
     annee: new Date().getFullYear(),
     factureId: "",
@@ -29,18 +96,11 @@ const DemoFactures: React.FC = () => {
     const { t } = useTranslation("pages/Factures/factures");
     const navigate = useNavigate();
 
-    // Demo tour context
     const { activeTour, step, nextStep } = useDemoTour();
 
-    // Global step mapping (calculator tour):
-    // 1  = Home (DemoHome) – “open invoices” card
-    // 2  = This page – explain how invoices work & that we'll reuse an existing one
-    // 3  = This page – highlight "View" on an existing invoice
-    // 4+ = Items edit page (DemoFactureEdit)
     const isStep2 = activeTour === "calculator" && step === 2;
     const isStep3 = activeTour === "calculator" && step === 3;
 
-    // During guided demo, we prevent creating/cancelling a new invoice
     const disableCreateButton =
         activeTour === "calculator" && (step === 2 || step === 3);
 
@@ -79,11 +139,10 @@ const DemoFactures: React.FC = () => {
         setFormData(emptyFacture);
         setCurrent(null);
         setFormMode("create");
-        // In guided demo we *show* the form, but creation is disabled.
     };
 
     const handleCancel = () => {
-        if (disableCreateButton) return; // locked during guided demo
+        if (disableCreateButton) return;
         setFormMode("none");
         setCurrent(null);
         setFormData(emptyFacture);
@@ -91,7 +150,7 @@ const DemoFactures: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (disableCreateButton) return; // do nothing in guided demo
+        if (disableCreateButton) return;
         setError(null);
 
         const isEdit = formMode === "edit";
@@ -110,13 +169,13 @@ const DemoFactures: React.FC = () => {
                 return;
             }
 
-            // Create: purely local in demo
             const newId = Date.now();
             const created: Facture = {
                 id: newId,
                 ...formData,
                 items: [],
             } as Facture;
+
             await putFacture(created);
             await putFacturesList(LIST_KEY, [created, ...existing]);
 
@@ -141,7 +200,6 @@ const DemoFactures: React.FC = () => {
 
     const list = (factures ?? []) as Facture[];
 
-    // Pick one invoice to highlight in step 3
     const highlightedFactureId =
         isStep3 && list.length > 0 ? list[0].id : null;
 
@@ -178,7 +236,10 @@ const DemoFactures: React.FC = () => {
                 {/* New invoice button + guided bubble for Step 2 */}
                 <div className="position-relative">
                     <button
-                        className="btn btn-primary"
+                        className={
+                            "btn btn-primary" +
+                            (isStep2 ? " border border-2 border-warning" : "")
+                        }
                         style={{ minWidth: 170 }}
                         onClick={startCreate}
                     >
@@ -186,43 +247,15 @@ const DemoFactures: React.FC = () => {
                     </button>
 
                     {isStep2 && (
-                        <div
-                            className="shadow-sm"
-                            style={{
-                                position: "absolute",
-                                top: "110%",
-                                left: "50%",
-                                transform: "translateX(-50%)",
-                                background: "#fff",
-                                border: "1px solid rgba(0,0,0,.15)",
-                                borderRadius: "0.75rem",
-                                boxShadow: "0 .35rem .8rem rgba(0,0,0,.15)",
-                                padding: "0.75rem 1rem",
-                                zIndex: 1050,
-                                width: 260,
-                            }}
-                        >
-                            <div
-                                style={{
-                                    position: "absolute",
-                                    top: "-8px",
-                                    left: "50%",
-                                    transform: "translateX(-50%)",
-                                    width: 0,
-                                    height: 0,
-                                    borderLeft: "8px solid transparent",
-                                    borderRight: "8px solid transparent",
-                                    borderBottom: "8px solid #fff",
-                                }}
-                            />
-                            <div className="d-flex justify-content-between align-items-start mb-1">
-                                <strong className="me-2">
-                                    {t(
-                                        "demo.guide.step1a.title",
-                                        "Step 2 · See how invoices work"
-                                    )}
-                                </strong>
-                            </div>
+                        <div style={bubbleContainerStyle}>
+                            <div style={bubbleArrowUpStyle} />
+                            <div style={bubbleArrowUpInnerStyle} />
+                            <strong className="d-block mb-1 small fw-semibold">
+                                {t(
+                                    "demo.guide.step1a.title",
+                                    "Step 2 · See how invoices work"
+                                )}
+                            </strong>
                             <p className="small mb-2">
                                 {t(
                                     "demo.guide.step1a.body",
@@ -247,10 +280,7 @@ const DemoFactures: React.FC = () => {
                                     className="btn btn-sm btn-outline-primary"
                                     onClick={nextStep}
                                 >
-                                    {t(
-                                        "demo.guide.nextStep",
-                                        "Next step"
-                                    )}
+                                    {t("demo.guide.nextStep")}
                                 </button>
                             </div>
                         </div>
@@ -261,56 +291,41 @@ const DemoFactures: React.FC = () => {
             {seedError && <div className="alert alert-danger">{seedError}</div>}
             {error && <div className="alert alert-danger">{error}</div>}
 
-            {/* New / edit invoice form (still available outside the guided tour) */}
             {formMode !== "none" && (
                 <div className="position-relative mb-4">
-                    {/* Optional explanation bubble when the form is visible during the demo */}
                     {isStep2 && (
                         <div
-                            className="shadow-sm"
                             style={{
-                                position: "absolute",
-                                top: "-8px",
+                                ...bubbleContainerStyle,
+                                top: "auto",
+                                left: "auto",
                                 right: 0,
-                                transform: "translateY(-100%)",
-                                background: "#fff",
-                                border: "1px solid rgba(0,0,0,.15)",
-                                borderRadius: "0.75rem",
-                                boxShadow: "0 .35rem .8rem rgba(0,0,0,.15)",
-                                padding: "0.75rem 1rem",
-                                zIndex: 1050,
+                                transform: "translateY(-110%)",
                                 width: 300,
                             }}
                         >
                             <div
                                 style={{
-                                    position: "absolute",
-                                    bottom: "-8px",
-                                    right: "24px",
-                                    width: 0,
-                                    height: 0,
-                                    borderLeft: "8px solid transparent",
-                                    borderRight: "8px solid transparent",
-                                    borderTop: "8px solid #fff",
+                                    ...bubbleArrowDownStyle,
+                                    left: "auto",
+                                    right: 24,
                                 }}
                             />
-                            <strong className="d-block mb-1">
-                                {t(
-                                    "demo.guide.step1b.title",
-                                    "Invoice details (demo only)"
-                                )}
+                            <div
+                                style={{
+                                    ...bubbleArrowDownInnerStyle,
+                                    left: "auto",
+                                    right: 26,
+                                }}
+                            />
+                            <strong className="d-block mb-1 small fw-semibold">
+                                {t("demo.guide.step1b.title")}
                             </strong>
                             <p className="small mb-2">
-                                {t(
-                                    "demo.guide.step1b.body",
-                                    "This is where you would normally enter the year, invoice number, date and store."
-                                )}
+                                {t("demo.guide.step1b.body")}
                             </p>
                             <p className="small mb-0 text-muted">
-                                {t(
-                                    "demo.guide.step1b.hint",
-                                    "In this guided tour, the Create button is disabled because we’ll use an existing invoice instead."
-                                )}
+                                {t("demo.guide.step1b.hint")}
                             </p>
                         </div>
                     )}
@@ -362,14 +377,6 @@ const DemoFactures: React.FC = () => {
                             type="submit"
                             className="btn btn-success me-2"
                             disabled={disableCreateButton}
-                            title={
-                                disableCreateButton
-                                    ? t(
-                                        "demo.guide.disabledInDemo",
-                                        "Disabled during guided demo"
-                                    )
-                                    : undefined
-                            }
                         >
                             {formMode === "edit"
                                 ? t("buttons.save")
@@ -423,106 +430,72 @@ const DemoFactures: React.FC = () => {
                                 </span>
 
                                 <div className="d-flex gap-2 only-icons-under-600">
-                                    <button
-                                        className={
-                                            "btn btn-outline-primary btn-sm" +
-                                            (isHighlighted
-                                                ? " border-2 border-warning"
-                                                : "")
-                                        }
-                                        onClick={() =>
-                                            navigate(
-                                                `/demo/factures/${facture.id}`
-                                            )
-                                        }
-                                        aria-label={t("list.viewAria")}
-                                        title={
-                                            t("list.viewTitle") as string
-                                        }
-                                    >
-                                        <i
-                                            className="bi bi-eye"
-                                            aria-hidden="true"
-                                        ></i>{" "}
-                                        <span className="btn-text">
-                                            {t("list.viewBtn")}
-                                        </span>
-                                    </button>
+                                    {/* View button wrapper with aligned bubble */}
+                                    <div className="position-relative">
+                                        <button
+                                            className={
+                                                "btn btn-outline-primary btn-sm" +
+                                                (isHighlighted
+                                                    ? " border-2 border-warning"
+                                                    : "")
+                                            }
+                                            onClick={() =>
+                                                navigate(
+                                                    `/demo/factures/${facture.id}`
+                                                )
+                                            }
+                                        >
+                                            <i className="bi bi-eye"></i>{" "}
+                                            <span className="btn-text">
+                                                {t("list.viewBtn")}
+                                            </span>
+                                        </button>
 
+                                        {isHighlighted && isStep3 && (
+                                            <div
+                                                style={{
+                                                    ...bubbleContainerStyle,
+                                                    top: "110%",
+                                                    left: "50%",
+                                                    transform: "translateX(-50%)",
+                                                }}
+                                            >
+                                                <div style={bubbleArrowUpStyle} />
+                                                <div style={bubbleArrowUpInnerStyle} />
+
+                                                <strong className="d-block mb-1 small fw-semibold">
+                                                    {t(
+                                                        "demo.guide.step1c.title",
+                                                        "Step 3 · Open an existing invoice"
+                                                    )}
+                                                </strong>
+                                                <p className="small mb-2">
+                                                    {t(
+                                                        "demo.guide.step1c.body",
+                                                        "For this demo, we’ll reuse this existing invoice instead of creating a new one."
+                                                    )}
+                                                </p>
+                                                <p className="small mb-0 text-muted">
+                                                    {t(
+                                                        "demo.guide.step1c.hint",
+                                                        "Click the “View” button to see its items."
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Delete button */}
                                     <button
                                         className="btn btn-outline-danger btn-sm"
-                                        onClick={() =>
-                                            handleDelete(facture)
-                                        }
-                                        aria-label={t("list.deleteAria")}
-                                        title={
-                                            t("list.deleteTitle") as string
-                                        }
+                                        onClick={() => handleDelete(facture)}
                                     >
-                                        <i
-                                            className="bi bi-trash"
-                                            aria-hidden="true"
-                                        ></i>{" "}
+                                        <i className="bi bi-trash"></i>{" "}
                                         <span className="btn-text">
                                             {t("list.deleteBtn")}
                                         </span>
                                     </button>
                                 </div>
-
-                                {/* Guided bubble for Step 3: use an existing invoice */}
-                                {isHighlighted && isStep3 && (
-                                    <div
-                                        className="shadow-sm"
-                                        style={{
-                                            position: "absolute",
-                                            top: "110%",
-                                            right: 0,
-                                            background: "#fff",
-                                            border:
-                                                "1px solid rgba(0,0,0,.15)",
-                                            borderRadius: "0.75rem",
-                                            boxShadow:
-                                                "0 .35rem .8rem rgba(0,0,0,.15)",
-                                            padding: "0.75rem 1rem",
-                                            zIndex: 1050,
-                                            width: 280,
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                top: "-8px",
-                                                right: "24px",
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft:
-                                                    "8px solid transparent",
-                                                borderRight:
-                                                    "8px solid transparent",
-                                                borderBottom:
-                                                    "8px solid #fff",
-                                            }}
-                                        />
-                                        <strong className="d-block mb-1">
-                                            {t(
-                                                "demo.guide.step1c.title",
-                                                "Step 3 · Open an existing invoice"
-                                            )}
-                                        </strong>
-                                        <p className="small mb-2">
-                                            {t(
-                                                "demo.guide.step1c.body",
-                                                "For this demo, we’ll reuse this existing invoice instead of creating a new one."
-                                            )}
-                                        </p>
-                                        <p className="small mb-0 text-muted">
-                                            {t(
-                                                "demo.guide.step1c.hint",
-                                                "Click the “View” button to see its items and how the calculator will use them."
-                                            )}
-                                        </p>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     );

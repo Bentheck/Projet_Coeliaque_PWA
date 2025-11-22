@@ -56,7 +56,9 @@
     },
     "step2": {
       "back": "Précédent",
-      "submit": "Ajouter"
+      "submit": "Ajouter",
+      "quickSearchLabel": "Recherche rapide (facultatif), assuré vous d'avoir été au moins une fois sur chaque page avant d'utiliser cet outil, merci!",
+      "quickSearchHelp": "Utilise le type choisi comme mot-clé (ex. : pain, pâtes, biscuits...)."
     }
   },
   "alerts": {
@@ -78,20 +80,20 @@
       },
       "calculator": {
         "step12": {
-          "title": "Étape 12 · Démarrer l’assistant de comparatif",
+          "title": "Démarrer l’assistant de comparatif",
           "body": "Cliquez ici pour ajouter une ligne de comparatif pour un produit sans gluten.",
           "hint": "Nous vous guiderons pour choisir le type de produit et remplir les détails."
         },
         "step13": {
-          "title": "Étape 13 · Choisir le type de produit",
+          "title": "Choisir le type de produit",
           "body": "Choisissez quel produit sans gluten cette ligne représente (pain, pâtes, céréales, etc.).",
           "hint": "Quand le type vous semble correct, cliquez sur « Suivant »."
         },
         "step14": {
-          "title": "Étape 14 · Saisir les détails du produit",
+          "title": "Saisir les détails du produit",
           "body": "Remplissez la marque, le prix, le poids, l’unité et le magasin. C’est ce que le calculateur comparera avec les items de vos factures.",
           "hint": "Quand tout semble bon, cliquez sur « Ajouter la ligne » pour l’enregistrer dans ce comparatif.",
-          "saveTitle": "Étape 14 · Enregistrer votre comparatif",
+          "saveTitle": "Enregistrer votre comparatif",
           "saveBody": "Enregistrez maintenant votre comparatif afin que nous puissions l’utiliser pour le rapport annuel.",
           "saveHint": "Cliquez sur « Enregistrer » pour revenir à la liste des années de comparatif."
         }

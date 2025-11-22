@@ -1,5 +1,9 @@
 ﻿// src/demo/DemoComparatif.tsx
-import React, { useEffect, useState } from "react";
+import React, {
+    useEffect,
+    useState,
+    type CSSProperties,
+} from "react";
 import Select, { type SingleValue } from "react-select";
 import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
@@ -15,6 +19,45 @@ import { seedDemoDataIfNeeded } from "./seedDemoData";
 import { useDemoTour } from "./DemoTourContext";
 
 const UNIT_OPTIONS = ["mg", "g", "kg", "lb", "oz", "ml", "l", "fl oz"];
+
+/** Shared style for all demo bubbles on this page */
+const bubbleContainerStyle: CSSProperties = {
+    position: "absolute",
+    top: "110%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "#fffdf7",
+    border: "2px solid #ffc107",
+    borderRadius: "1rem",
+    boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
+    padding: "0.9rem 1.1rem",
+    zIndex: 1050,
+    width: 280,
+};
+
+const bubbleArrowStyle: CSSProperties = {
+    position: "absolute",
+    top: "-10px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent",
+    borderBottom: "10px solid #ffc107",
+};
+
+const bubbleArrowInnerStyle: CSSProperties = {
+    position: "absolute",
+    top: "-8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "8px solid transparent",
+    borderRight: "8px solid transparent",
+    borderBottom: "8px solid #fffdf7",
+};
 
 const DemoComparatif: React.FC = () => {
     const { t } = useTranslation("pages/Comparatif/comparatifEdit");
@@ -339,9 +382,12 @@ const DemoComparatif: React.FC = () => {
                                     size="sm"
                                     className={
                                         "rounded-pill px-3" +
-                                        (isStep12
+                                        ((isStep12 || showGenericGuide) &&
+                                            !isCalculatorTour
                                             ? " border border-2 border-warning"
-                                            : "")
+                                            : isStep12
+                                                ? " border border-2 border-warning"
+                                                : "")
                                     }
                                     onClick={openAddModal}
                                     type="button"
@@ -352,42 +398,11 @@ const DemoComparatif: React.FC = () => {
 
                                 {/* Generic guide when not in tour and no lines yet */}
                                 {showGenericGuide && !isCalculatorTour && (
-                                    <div
-                                        className="shadow-sm"
-                                        style={{
-                                            position: "absolute",
-                                            top: "110%",
-                                            left: "50%",
-                                            transform: "translateX(-50%)",
-                                            background: "#fff",
-                                            border:
-                                                "1px solid rgba(0,0,0,.15)",
-                                            borderRadius: "0.75rem",
-                                            boxShadow:
-                                                "0 .35rem .8rem rgba(0,0,0,.15)",
-                                            padding: "0.75rem 1rem",
-                                            zIndex: 1050,
-                                            width: 260,
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                top: "-8px",
-                                                left: "50%",
-                                                transform: "translateX(-50%)",
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft:
-                                                    "8px solid transparent",
-                                                borderRight:
-                                                    "8px solid transparent",
-                                                borderBottom:
-                                                    "8px solid #fff",
-                                            }}
-                                        />
+                                    <div style={bubbleContainerStyle}>
+                                        <div style={bubbleArrowStyle} />
+                                        <div style={bubbleArrowInnerStyle} />
                                         <div className="d-flex justify-content-between align-items-start mb-1">
-                                            <strong className="me-2">
+                                            <strong className="me-2 small fw-semibold">
                                                 {t(
                                                     "demo.guide.step4.title",
                                                     "Add a product to compare"
@@ -424,41 +439,10 @@ const DemoComparatif: React.FC = () => {
 
                                 {/* Guided bubble for STEP 12 */}
                                 {isStep12 && (
-                                    <div
-                                        className="shadow-sm"
-                                        style={{
-                                            position: "absolute",
-                                            top: "110%",
-                                            left: "50%",
-                                            transform: "translateX(-50%)",
-                                            background: "#fff",
-                                            border:
-                                                "1px solid rgba(0,0,0,.15)",
-                                            borderRadius: "0.75rem",
-                                            boxShadow:
-                                                "0 .35rem .8rem rgba(0,0,0,.15)",
-                                            padding: "0.75rem 1rem",
-                                            zIndex: 1050,
-                                            width: 260,
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                top: "-8px",
-                                                left: "50%",
-                                                transform: "translateX(-50%)",
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft:
-                                                    "8px solid transparent",
-                                                borderRight:
-                                                    "8px solid transparent",
-                                                borderBottom:
-                                                    "8px solid #fff",
-                                            }}
-                                        />
-                                        <strong className="d-block mb-1">
+                                    <div style={bubbleContainerStyle}>
+                                        <div style={bubbleArrowStyle} />
+                                        <div style={bubbleArrowInnerStyle} />
+                                        <strong className="d-block mb-1 small fw-semibold">
                                             {t(
                                                 "demo.guide.calculator.step12.title",
                                                 "Step 12 · Start the comparison wizard"
@@ -485,7 +469,14 @@ const DemoComparatif: React.FC = () => {
                                 <Button
                                     variant="primary"
                                     size="sm"
-                                    className="rounded-pill px-3"
+                                    className={
+                                        "rounded-pill px-3" +
+                                        (isCalculatorTour &&
+                                            isStep14 &&
+                                            tourLineAdded
+                                            ? " border border-2 border-warning"
+                                            : "")
+                                    }
                                     onClick={handleSave}
                                     type="button"
                                 >
@@ -498,38 +489,30 @@ const DemoComparatif: React.FC = () => {
                                     isStep14 &&
                                     tourLineAdded && (
                                         <div
-                                            className="shadow-sm"
                                             style={{
-                                                position: "absolute",
-                                                top: "110%",
+                                                ...bubbleContainerStyle,
+                                                left: "auto",
                                                 right: 0,
-                                                background: "#fff",
-                                                border:
-                                                    "1px solid rgba(0,0,0,.15)",
-                                                borderRadius: "0.75rem",
-                                                boxShadow:
-                                                    "0 .35rem .8rem rgba(0,0,0,.15)",
-                                                padding: "0.75rem 1rem",
-                                                zIndex: 1050,
-                                                width: 260,
+                                                transform: "none",
                                             }}
                                         >
                                             <div
                                                 style={{
-                                                    position: "absolute",
-                                                    top: "-8px",
-                                                    right: "24px",
-                                                    width: 0,
-                                                    height: 0,
-                                                    borderLeft:
-                                                        "8px solid transparent",
-                                                    borderRight:
-                                                        "8px solid transparent",
-                                                    borderBottom:
-                                                        "8px solid #fff",
+                                                    ...bubbleArrowStyle,
+                                                    left: "auto",
+                                                    right: 24,
+                                                    transform: "none",
                                                 }}
                                             />
-                                            <strong className="d-block mb-1">
+                                            <div
+                                                style={{
+                                                    ...bubbleArrowInnerStyle,
+                                                    left: "auto",
+                                                    right: 26,
+                                                    transform: "none",
+                                                }}
+                                            />
+                                            <strong className="d-block mb-1 small fw-semibold">
                                                 {t(
                                                     "demo.guide.calculator.step14.saveTitle",
                                                     "Step 14 · Save your comparison"
@@ -773,24 +756,35 @@ const DemoComparatif: React.FC = () => {
                             <>
                                 {/* Guided text for STEP 13: choose type */}
                                 {isStep13 && (
-                                    <div className="alert alert-info small mb-3">
-                                        <strong className="d-block mb-1">
-                                            {t(
-                                                "demo.guide.calculator.step13.title",
-                                                "Step 13 · Choose the product type"
-                                            )}
-                                        </strong>
-                                        <div>
-                                            {t(
-                                                "demo.guide.calculator.step13.body",
-                                                "Pick which gluten-free product this line represents (bread, pasta, cereal, etc.)."
-                                            )}
-                                        </div>
-                                        <div className="text-muted mt-1">
-                                            {t(
-                                                "demo.guide.calculator.step13.hint",
-                                                "When the type looks right, click “Next”."
-                                            )}
+                                    <div className="mb-3 position-relative">
+                                        <div
+                                            style={{
+                                                ...bubbleContainerStyle,
+                                                position: "relative",
+                                                top: 0,
+                                                left: 0,
+                                                transform: "none",
+                                                width: "100%",
+                                            }}
+                                        >
+                                            <strong className="d-block mb-1 small fw-semibold">
+                                                {t(
+                                                    "demo.guide.calculator.step13.title",
+                                                    "Step 13 · Choose the product type"
+                                                )}
+                                            </strong>
+                                            <div className="small">
+                                                {t(
+                                                    "demo.guide.calculator.step13.body",
+                                                    "Pick which gluten-free product this line represents (bread, pasta, cereal, etc.)."
+                                                )}
+                                            </div>
+                                            <div className="small text-muted mt-1">
+                                                {t(
+                                                    "demo.guide.calculator.step13.hint",
+                                                    "When the type looks right, click “Next”."
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -862,27 +856,101 @@ const DemoComparatif: React.FC = () => {
                             <>
                                 {/* Guided text for STEP 14: fill details (before Save) */}
                                 {isStep14 && !tourLineAdded && (
-                                    <div className="alert alert-info small mb-3">
-                                        <strong className="d-block mb-1">
-                                            {t(
-                                                "demo.guide.calculator.step14.title",
-                                                "Step 14 · Enter the product details"
-                                            )}
-                                        </strong>
-                                        <div>
-                                            {t(
-                                                "demo.guide.calculator.step14.body",
-                                                "Fill in the brand, price, weight, unit and store. This is what the calculator will compare with your invoice items."
-                                            )}
-                                        </div>
-                                        <div className="text-muted mt-1">
-                                            {t(
-                                                "demo.guide.calculator.step14.hint",
-                                                "When everything looks good, click “Add line” to save it to this comparison."
-                                            )}
+                                    <div className="mb-3 position-relative">
+                                        <div
+                                            style={{
+                                                ...bubbleContainerStyle,
+                                                position: "relative",
+                                                top: 0,
+                                                left: 0,
+                                                transform: "none",
+                                                width: "100%",
+                                            }}
+                                        >
+                                            <strong className="d-block mb-1 small fw-semibold">
+                                                {t(
+                                                    "demo.guide.calculator.step14.title",
+                                                    "Step 14 · Enter the product details"
+                                                )}
+                                            </strong>
+                                            <div className="small">
+                                                {t(
+                                                    "demo.guide.calculator.step14.body",
+                                                    "Fill in the brand, price, weight, unit and store. This is what the calculator will compare with your invoice items."
+                                                )}
+                                            </div>
+                                            <div className="small text-muted mt-1">
+                                                {t(
+                                                    "demo.guide.calculator.step14.hint",
+                                                    "When everything looks good, click “Add line” to save it to this comparison."
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Disabled quick-search buttons (demo only) */}
+                                <div className="mb-3">
+                                    <Form.Label className="fw-bold d-block">
+                                        {t(
+                                            "modal.step2.quickSearchLabel",
+                                            "Recherche rapide (facultatif)"
+                                        )}
+                                    </Form.Label>
+                                    <div className="d-flex flex-wrap gap-2 mb-1">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            className="rounded-pill px-3"
+                                            disabled
+                                        >
+                                            Walmart
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            className="rounded-pill px-3"
+                                            disabled
+                                        >
+                                            Maxi
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            className="rounded-pill px-3"
+                                            disabled
+                                        >
+                                            Provigo
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            className="rounded-pill px-3"
+                                            disabled
+                                        >
+                                            IGA
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            className="rounded-pill px-3"
+                                            disabled
+                                        >
+                                            Super C
+                                        </Button>
+                                    </div>
+                                    <div className="form-text text-muted">
+                                        {t(
+                                            "modal.step2.quickSearchDisabled",
+                                            "Dans la démo, ces boutons sont désactivés. Vous pourrez utiliser la recherche rapide dans la vraie application."
+                                        )}
+                                    </div>
+                                </div>
 
                                 <Row className="g-2 mb-3">
                                     <Col md={6}>

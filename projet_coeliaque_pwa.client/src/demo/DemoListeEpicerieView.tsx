@@ -29,7 +29,13 @@ const renderWeight = (obj?: { poidsValeur?: number | null; poidsUnite?: string |
 };
 
 const fmtDate = (iso?: string) =>
-    iso ? new Date(iso).toLocaleString("fr-CA", { year: "numeric", month: "long", day: "2-digit" }) : "—";
+    iso
+        ? new Date(iso).toLocaleString("fr-CA", {
+            year: "numeric",
+            month: "long",
+            day: "2-digit",
+        })
+        : "—";
 
 /* ============================== Component ============================== */
 
@@ -60,28 +66,10 @@ const DemoListeEpicerieView: React.FC = () => {
 
     // also keep local caches of item lookups for display
     const factureCache =
-        useLiveQuery<FactureItem[]>(async () => await db.factureItems.toArray(), []) || [];
+        useLiveQuery<FactureItem[]>(async () => await db.factureItems.toArray(), []) ||
+        [];
     const freeCache =
         useLiveQuery<FreeItemDto[]>(async () => await db.freeItems.toArray(), []) || [];
-
-    if (seedLoading && !liste) {
-        return (
-            <div className="container py-4">
-                <div className="d-flex align-items-center gap-2">
-                    <span className="spinner-border spinner-border-sm" />
-                    <span>{t("demo.loading")}</span>
-                </div>
-            </div>
-        );
-    }
-
-    if (seedError) {
-        return (
-            <div className="container py-4">
-                <div className="alert alert-danger">{seedError}</div>
-            </div>
-        );
-    }
 
     type DisplayRow = {
         key: string;
@@ -98,6 +86,7 @@ const DemoListeEpicerieView: React.FC = () => {
         checked: boolean;
     };
 
+    // Build flat rows first
     const rows: DisplayRow[] = useMemo(() => {
         if (!liste) return [];
 
@@ -136,6 +125,7 @@ const DemoListeEpicerieView: React.FC = () => {
                         ? (source as any).magasin || "—"
                         : "—"
                 ) as string;
+
                 const weight = renderWeight(source as any);
 
                 const qty = Math.max(1, Number(it.quantity) || 1);
@@ -186,6 +176,19 @@ const DemoListeEpicerieView: React.FC = () => {
             );
     }, [liste, t, factureCache, freeCache]);
 
+    // Group rows by store (for desktop table)
+    const groupedByStore: [string, DisplayRow[]][] = useMemo(() => {
+        const map = new Map<string, DisplayRow[]>();
+        for (const r of rows) {
+            const storeKey = r.store || t("summary.unknownStore", "Autre magasin");
+            if (!map.has(storeKey)) map.set(storeKey, []);
+            map.get(storeKey)!.push(r);
+        }
+        return Array.from(map.entries()).sort((a, b) =>
+            a[0].localeCompare(b[0], "fr", { sensitivity: "base" })
+        );
+    }, [rows, t]);
+
     const totalQty = rows.reduce((acc, r) => acc + r.qty, 0);
     const favoritesCount = rows.filter((r) => r.favorite).length;
     const specialsCount = rows.filter((r) => r.special).length;
@@ -210,8 +213,7 @@ const DemoListeEpicerieView: React.FC = () => {
         const after = (liste.items ?? []).map((it) =>
             it.id === itemId ? { ...it, isChecked: next } : it
         );
-        const completedNow =
-            after.length > 0 && after.every((it) => it.isChecked);
+        const completedNow = after.length > 0 && after.every((it) => it.isChecked);
         try {
             await db.listeEpicerie.put({
                 ...liste,
@@ -222,6 +224,25 @@ const DemoListeEpicerieView: React.FC = () => {
             alert(t("errors.updateItem") as string);
         }
     };
+
+    if (seedLoading && !liste) {
+        return (
+            <div className="container py-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="spinner-border spinner-border-sm" />
+                    <span>{t("demo.loading")}</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (seedError) {
+        return (
+            <div className="container py-4">
+                <div className="alert alert-danger">{seedError}</div>
+            </div>
+        );
+    }
 
     if (!liste) {
         return (
@@ -239,7 +260,21 @@ const DemoListeEpicerieView: React.FC = () => {
     }
 
     return (
-        <div className="container py-4">
+        <div className="container py-4" id="print-section">
+            {/* Screen/print visibility helpers */}
+            <style>
+                {`
+                @media screen {
+                    .print-only { display: none !important; }
+                }
+                @media print {
+                    .print-only { display: inline !important; }
+                    .no-print { display: none !important; }
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+            `}
+            </style>
+
             {/* Header */}
             <div className="d-flex flex-wrap justify-content-between align-items-end mb-2">
                 <div className="d-flex flex-column gap-1">
@@ -259,7 +294,9 @@ const DemoListeEpicerieView: React.FC = () => {
                                     {liste.name || t("titleDefault")}
                                 </h1>
                                 <div className="text-muted small">
-                                    {t("createdOn", { date: fmtDate(liste.created) })}
+                                    {t("createdOn", {
+                                        date: fmtDate(liste.created),
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -312,7 +349,9 @@ const DemoListeEpicerieView: React.FC = () => {
                 <span className="me-3">
                     {t("summary.favorites", { count: favoritesCount })}
                 </span>
-                <span>{t("summary.onSale", { count: specialsCount })}</span>
+                <span>
+                    {t("summary.onSale", { count: specialsCount })}
+                </span>
             </div>
 
             {/* Minimal print metadata */}
@@ -366,94 +405,142 @@ const DemoListeEpicerieView: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rows.map((r) => (
-                                        <tr key={r.key}>
-                                            <td className="text-center">
-                                                <input
-                                                    className="form-check-input d-print-none"
-                                                    type="checkbox"
-                                                    checked={r.checked}
-                                                    disabled={
-                                                        isCompleted ||
-                                                        r.id == null
-                                                    }
-                                                    onChange={(e) =>
-                                                        setItemChecked(
-                                                            r.id,
-                                                            e.target.checked
-                                                        )
-                                                    }
-                                                    aria-label={t(
-                                                        "aria.markAsDone",
-                                                        { name: r.name }
-                                                    )}
-                                                />
-                                                <span className="d-none d-print-inline">
-                                                    {r.checked ? "✓" : ""}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <strong
-                                                    className={
-                                                        r.checked
-                                                            ? "text-decoration-line-through"
-                                                            : ""
-                                                    }
-                                                >
-                                                    {r.name}
-                                                </strong>{" "}
-                                                {r.favorite && (
-                                                    <span className="badge bg-warning text-dark align-middle">
-                                                        ★{" "}
-                                                        {
-                                                            t(
-                                                                "badges.favorite"
-                                                            )
-                                                        }
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <small className="text-muted">
-                                                    {r.type || "—"}
-                                                </small>
-                                            </td>
-                                            <td>{r.store || "—"}</td>
-                                            <td>{r.weight}</td>
-                                            <td className="text-end">
-                                                {fmtMoney(
-                                                    r.unitPrice ?? undefined
-                                                )}
-                                            </td>
-                                            <td className="text-end">
-                                                {r.qty}
-                                            </td>
-                                            <td className="text-end">
-                                                {fmtMoney(
-                                                    r.subtotal ?? undefined
-                                                )}
-                                            </td>
-                                            <td className="text-center">
-                                                {r.special ? (
-                                                    <span className="badge bg-success">
-                                                        {t("common.yes")}
-                                                    </span>
-                                                ) : (
-                                                    <span className="badge bg-secondary">
-                                                        {t("common.no")}
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
+                                    {groupedByStore.map(([storeName, storeRows]) => (
+                                        <React.Fragment key={storeName}>
+                                            {/* Group header row by store */}
+                                            <tr className="table-group-divider bg-light">
+                                                <td colSpan={9} className="fw-semibold">
+                                                    {storeName}
+                                                </td>
+                                            </tr>
+                                            {storeRows.map((r) => (
+                                                <tr key={r.key}>
+                                                    <td
+                                                        className="text-center"
+                                                        style={{
+                                                            position: "relative",
+                                                            height: 40,
+                                                        }}
+                                                    >
+                                                        {/* Native checkbox – invisible but clickable */}
+                                                        <input
+                                                            className="form-check-input d-print-none"
+                                                            type="checkbox"
+                                                            checked={r.checked}
+                                                            disabled={
+                                                                isCompleted ||
+                                                                r.id == null
+                                                            }
+                                                            onChange={(e) =>
+                                                                setItemChecked(
+                                                                    r.id,
+                                                                    e.target.checked
+                                                                )
+                                                            }
+                                                            aria-label={t(
+                                                                "aria.markAsDone",
+                                                                { name: r.name }
+                                                            )}
+                                                            style={{
+                                                                position: "absolute",
+                                                                left: "50%",
+                                                                top: "50%",
+                                                                transform:
+                                                                    "translate(-50%, -50%)",
+                                                                width: "26px",
+                                                                height: "26px",
+                                                                opacity: 0,
+                                                                cursor: "pointer",
+                                                                zIndex: 2,
+                                                            }}
+                                                        />
+
+                                                        {/* Ultra-visible custom box (screen + print) */}
+                                                        <div
+                                                            style={{
+                                                                width: "26px",
+                                                                height: "26px",
+                                                                border: "3px solid #000",
+                                                                borderRadius: "4px",
+                                                                fontSize: "1.6rem",
+                                                                fontWeight: 900,
+                                                                color: "#000",
+                                                                backgroundColor: r.checked
+                                                                    ? "#b6f2b3"
+                                                                    : "#fff",
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                justifyContent: "center",
+                                                                position: "absolute",
+                                                                left: "50%",
+                                                                top: "50%",
+                                                                transform:
+                                                                    "translate(-50%, -50%)",
+                                                                pointerEvents: "none",
+                                                            }}
+                                                        >
+                                                            {r.checked ? "✓" : ""}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <strong
+                                                            className={
+                                                                r.checked
+                                                                    ? "text-decoration-line-through"
+                                                                    : ""
+                                                            }
+                                                        >
+                                                            {r.name}
+                                                        </strong>{" "}
+                                                        {r.favorite && (
+                                                            <span className="badge bg-warning text-dark align-middle">
+                                                                ★{" "}
+                                                                {t(
+                                                                    "badges.favorite"
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <small className="text-muted">
+                                                            {r.type || "—"}
+                                                        </small>
+                                                    </td>
+                                                    <td>{r.store || "—"}</td>
+                                                    <td>{r.weight}</td>
+                                                    <td className="text-end">
+                                                        {fmtMoney(
+                                                            r.unitPrice ?? undefined
+                                                        )}
+                                                    </td>
+                                                    <td className="text-end">
+                                                        {r.qty}
+                                                    </td>
+                                                    <td className="text-end">
+                                                        {fmtMoney(
+                                                            r.subtotal ?? undefined
+                                                        )}
+                                                    </td>
+                                                    <td className="text-center">
+                                                        {r.special ? (
+                                                            <span className="badge bg-success">
+                                                                {t("common.yes")}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="badge bg-secondary">
+                                                                {t("common.no")}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                                 {anyPrice && (
                                     <tfoot>
                                         <tr>
-                                            <th
-                                                colSpan={7}
-                                                className="text-end"
-                                            >
+                                            <th colSpan={7} className="text-end">
                                                 {t("table.total")}
                                             </th>
                                             <th className="text-end">
@@ -489,8 +576,7 @@ const DemoListeEpicerieView: React.FC = () => {
                                                             onChange={(e) =>
                                                                 setItemChecked(
                                                                     r.id,
-                                                                    e.target
-                                                                        .checked
+                                                                    e.target.checked
                                                                 )
                                                             }
                                                             aria-label={t(
@@ -561,11 +647,9 @@ const DemoListeEpicerieView: React.FC = () => {
                                                 {r.favorite && (
                                                     <span className="badge bg-warning text-dark">
                                                         ★{" "}
-                                                        {
-                                                            t(
-                                                                "badges.favorite"
-                                                            )
-                                                        }
+                                                        {t(
+                                                            "badges.favorite"
+                                                        )}
                                                     </span>
                                                 )}
                                                 {r.special ? (
@@ -574,11 +658,9 @@ const DemoListeEpicerieView: React.FC = () => {
                                                     </span>
                                                 ) : (
                                                     <span className="badge bg-secondary">
-                                                        {
-                                                            t(
-                                                                "badges.regularPrice"
-                                                            )
-                                                        }
+                                                        {t(
+                                                            "badges.regularPrice"
+                                                        )}
                                                     </span>
                                                 )}
                                             </div>
