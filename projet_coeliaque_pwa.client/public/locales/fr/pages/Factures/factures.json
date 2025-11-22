@@ -44,5 +44,35 @@
     "saveFailed": "Erreur lors de l’enregistrement.",
     "deleteFailed": "Erreur lors de la suppression."
   },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Mode démonstration",
+    "warning": "Aucune donnée réelle n’est utilisée et aucune modification ne sera enregistrée.",
+    "localOnly": "Cette liste utilise uniquement des données locales pour la démonstration.",
+    "noCreate": "La création réelle de factures est désactivée en mode démo.",
+    "noEdit": "La modification réelle des factures est désactivée en mode démo.",
+    "noDelete": "La suppression réelle des factures est désactivée en mode démo.",
+    "loading": "Chargement des données de démonstration…",
+    "guide": {
+      "step1a": {
+        "title": "Voir le fonctionnement des factures",
+        "body": "Normalement, vous cliqueriez ici pour créer une nouvelle facture à partir de votre reçu d’épicerie.",
+        "body2": "Pour cette visite guidée, nous allons plutôt réutiliser une facture existante au lieu d’en créer une nouvelle.",
+        "hint": "Cliquez sur « Étape suivante » ci-dessous pour choisir l’une des factures existantes."
+      },
+      "step1b": {
+        "title": "Détails de la facture (démo uniquement)",
+        "body": "C’est ici que vous saisiriez normalement l’année, le numéro de facture, la date et le magasin.",
+        "hint": "Dans cette visite guidée, le bouton Créer est désactivé car nous allons utiliser une facture existante à la place."
+      },
+      "step1c": {
+        "title": "Ouvrir une facture existante",
+        "body": "Pour cette démo, nous allons réutiliser cette facture existante plutôt que d’en créer une nouvelle.",
+        "hint": "Cliquez sur le bouton « Voir » pour consulter ses items et voir comment le calculateur les utilisera."
+      },
+      "nextStep": "Étape suivante",
+      "disabledInDemo": "Désactivé pendant la visite guidée"
+    }
+  },
   "pending": "(en attente…)"
 }

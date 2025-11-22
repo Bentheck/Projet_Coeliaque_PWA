@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../components/AuthContext";
 import { useTranslation } from "react-i18next";
+import { clearOfflineData } from "../../offline/clearOfflineData";
 
 type ApiError = { errorCode?: string; error?: string; message?: string };
 
@@ -45,7 +46,18 @@ export default function Login() {
             });
 
             if (res.ok) {
+                // 1) Clear ALL offline data (including previous user + demo data)
+                try {
+                    await clearOfflineData();
+                } catch (err) {
+                    console.error("Failed to clear offline data on login:", err);
+                    // Don't block login if this fails
+                }
+
+                // 2) Refresh auth state (loads current user)
                 await refresh();
+
+                // 3) Go to home
                 navigate("/");
                 return;
             }
@@ -93,7 +105,12 @@ export default function Login() {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="card p-4 mx-auto my-5" style={{ maxWidth: 400 }} noValidate>
+        <form
+            onSubmit={handleSubmit}
+            className="card p-4 mx-auto my-5"
+            style={{ maxWidth: 400 }}
+            noValidate
+        >
             <h2 className="mb-3">{t("title")}</h2>
 
             {isConfirmed && (
@@ -118,7 +135,12 @@ export default function Login() {
                 <div className="alert alert-warning" role="status" aria-live="polite">
                     {t("unconfirmed.text")}
                     <br />
-                    <button type="button" className="btn btn-link px-0" onClick={handleResend} disabled={!email}>
+                    <button
+                        type="button"
+                        className="btn btn-link px-0"
+                        onClick={handleResend}
+                        disabled={!email}
+                    >
                         {t("unconfirmed.resendBtn")}
                     </button>
                     {resendMsg && <div className="mt-2">{resendMsg}</div>}

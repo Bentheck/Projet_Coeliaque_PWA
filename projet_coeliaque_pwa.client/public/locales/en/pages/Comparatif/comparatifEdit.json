@@ -56,7 +56,9 @@
     },
     "step2": {
       "back": "Back",
-      "submit": "Add"
+      "submit": "Add",
+      "quickSearchLabel": "Quick search (optional). Please make sure you’ve visited each site at least once before using this tool. Thank you!",
+      "quickSearchHelp": "Uses the chosen type as the search keyword (e.g. bread, pasta, cookies...)."
     }
   },
   "alerts": {
@@ -64,5 +66,38 @@
   },
   "confirm": {
     "deleteLine": "Delete this line?"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Demo mode — this page only changes local data to show how it works. Your real data is not affected.",
+    "saveAlert": "Changes saved in demo mode only (no request sent to the server).",
+    "guide": {
+      "close": "Close",
+      "step4": {
+        "title": "Add a product to compare",
+        "body": "Click here to add your first gluten-free product. Then fill in the brand, price, weight and store.",
+        "hint": "You can add one line per gluten-free product you want to compare."
+      },
+      "calculator": {
+        "step12": {
+          "title": "Start the comparison wizard",
+          "body": "Click here to add a comparison line for a gluten-free product.",
+          "hint": "We’ll guide you through choosing the product type and filling in the details."
+        },
+        "step13": {
+          "title": "Choose the product type",
+          "body": "Pick which gluten-free product this line represents (bread, pasta, cereal, etc.).",
+          "hint": "When the type looks right, click “Next”."
+        },
+        "step14": {
+          "title": "Enter the product details",
+          "body": "Fill in the brand, price, weight, unit and store. This is what the calculator will compare with your invoice items.",
+          "hint": "When everything looks good, click “Add line” to save it to this comparison.",
+          "saveTitle": "Save your comparison",
+          "saveBody": "Now save your comparison so we can use it for the annual report.",
+          "saveHint": "Click “Save” to go back to the comparison year list."
+        }
+      }
+    }
   }
 }

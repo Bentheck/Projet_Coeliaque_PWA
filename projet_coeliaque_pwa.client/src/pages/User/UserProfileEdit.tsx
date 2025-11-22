@@ -14,7 +14,7 @@ type MyProfileDto = {
 };
 
 const ProfileEdit: React.FC = () => {
-    const { t } = useTranslation("pages/User/profile");
+    const { t } = useTranslation("pages/User/UserProfileEdit");
     const { user, refresh } = useAuth() as any;
 
     // Avatar state
@@ -32,7 +32,7 @@ const ProfileEdit: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
 
-    // Load profile from API on mount
+    // Load profile
     useEffect(() => {
         let alive = true;
         (async () => {
@@ -56,10 +56,10 @@ const ProfileEdit: React.FC = () => {
         };
     }, [user?.avatarUrl, t]);
 
-    // Update avatar preview if user changes avatar externally
+    // Update avatar preview
     useEffect(() => setPreview(user?.avatarUrl || null), [user?.avatarUrl]);
 
-    // Handle avatar file selection
+    // Handle file selection
     const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0] || null;
         setError(null);
@@ -80,7 +80,7 @@ const ProfileEdit: React.FC = () => {
         setPreview(URL.createObjectURL(f));
     };
 
-    // Upload avatar to server
+    // Upload avatar
     const upload = async () => {
         if (!file) return;
         setBusy(true);
@@ -97,7 +97,7 @@ const ProfileEdit: React.FC = () => {
             if (!res.ok) {
                 throw new Error((await res.text()) || t("errors.upload"));
             }
-            await res.json(); // Expecting { avatarUrl }
+            await res.json();
             setOk(t("messages.avatarUpdated"));
             refresh();
         } catch (e: any) {
@@ -130,7 +130,7 @@ const ProfileEdit: React.FC = () => {
         }
     };
 
-    // Save profile fields
+    // Save profile
     const saveProfile = async () => {
         setBusy(true);
         setError(null);
@@ -188,16 +188,35 @@ const ProfileEdit: React.FC = () => {
                         </div>
                     )}
                 </div>
+
                 <div className="col">
                     <label className="form-label">
                         {t("labels.avatarLabel", { maxMb: MAX_MB })}
                     </label>
+
+                    {/* Hidden real input */}
                     <input
-                        className="form-control"
+                        id="avatar-input"
                         type="file"
+                        className="d-none"
                         accept="image/jpeg,image/png,image/webp"
                         onChange={onPick}
                     />
+
+                    {/* Custom file picker */}
+                    <div className="d-flex align-items-center gap-2">
+                        <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() => document.getElementById("avatar-input")?.click()}
+                        >
+                            {t("buttons.chooseFile")}
+                        </button>
+
+                        {/* Show selected filename */}
+                        {file && <span className="text-muted">{file.name}</span>}
+                    </div>
+
                     <div className="mt-2 d-flex gap-2">
                         <button className="btn btn-primary" onClick={upload} disabled={!file || busy}>
                             {t("buttons.saveAvatar")}
@@ -211,7 +230,7 @@ const ProfileEdit: React.FC = () => {
                 </div>
             </div>
 
-            {/* Profile fields section */}
+            {/* Profile fields */}
             <div className="card">
                 <div className="card-body">
                     <div className="row g-3">
@@ -226,6 +245,7 @@ const ProfileEdit: React.FC = () => {
                             />
                             <div className="form-text">{t("help.displayName")}</div>
                         </div>
+
                         <div className="col-md-6">
                             <label className="form-label">{t("labels.location")}</label>
                             <input
@@ -236,6 +256,7 @@ const ProfileEdit: React.FC = () => {
                                 maxLength={80}
                             />
                         </div>
+
                         <div className="col-md-6">
                             <label className="form-label">{t("labels.website")}</label>
                             <input
@@ -247,6 +268,7 @@ const ProfileEdit: React.FC = () => {
                             />
                             <div className="form-text">{t("help.website")}</div>
                         </div>
+
                         <div className="col-12">
                             <label className="form-label">{t("labels.bio")}</label>
                             <textarea

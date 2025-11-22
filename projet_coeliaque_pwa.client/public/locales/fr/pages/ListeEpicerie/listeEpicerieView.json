@@ -58,5 +58,10 @@
     "updateListState": "Impossible de mettre à jour l’état de la liste.",
     "listCompletedLocked": "Cette liste est terminée et verrouillée. Décochez « Terminée » pour la modifier.",
     "updateItem": "Impossible de mettre à jour l’article."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Mode démonstration — cette liste est construite uniquement à partir des données locales de démo. Aucune modification n’est envoyée au serveur et vos données réelles ne sont jamais touchées.",
+    "loading": "Chargement de la démo…"
   }
 }

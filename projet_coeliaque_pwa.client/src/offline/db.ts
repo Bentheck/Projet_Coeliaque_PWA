@@ -85,6 +85,12 @@ export type PendingMutation = {
     body: any;
 };
 
+/* ---------- Membership status DTO (matches /api/membership/status) ---------- */
+export type MembershipStatusDto = {
+    endDate: string | null;
+    isActive: boolean;
+};
+
 /* ---------- NEW: Free Items & Grocery Lists DTOs ---------- */
 export type FreeItemDto = {
     id: number;
@@ -344,4 +350,12 @@ export async function putReportYearsMany(rows: ReportYearDto[]) {
 }
 export async function putReportBody(year: number, payload: ReportPayload) {
     await db.reportBodies.put({ year, payload });
+}
+
+/* ---------- Membership status helpers ---------- */
+export async function setMembershipStatus(status: MembershipStatusDto | null) {
+    await db.meta.put({ key: "membership:status", value: status });
+}
+export async function getMembershipStatus(): Promise<MembershipStatusDto | null> {
+    return (await db.meta.get("membership:status"))?.value ?? null;
 }

@@ -15,9 +15,13 @@
   "loading": "Loading…",
   "empty": "No years available.",
   "year": "Year",
+  "lines": "{{count}} line(s)",
   "report": {
     "generated": "Report generated",
     "notGenerated": "Report not generated"
+  },
+  "status": {
+    "ok": "Saved!"
   },
   "buttons": {
     "generate": {
@@ -51,5 +55,35 @@
   },
   "errors": {
     "generateFailed": "Error while generating the report."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Demonstration mode",
+    "warning": "No real data is used and no modification will be saved.",
+    "localOnly": "The years displayed below are generated locally for demonstration.",
+    "reportDisabled": "Real report generation is disabled in demo mode.",
+    "deleteDisabled": "Real deletion is disabled in demo mode.",
+    "hint": "Tip: you can explore the full flow safely.",
+    "loading": "Loading demo data…",
+    "guide": {
+      "close": "Close",
+      "step3": {
+        "title": "Create the comparison",
+        "body": "Start by creating the comparison year that matches your invoices. Use the current tax year.",
+        "hint": "Once the year exists, you’ll be able to add products to compare."
+      },
+      "calculator": {
+        "step10": {
+          "title": "Edit your comparison",
+          "body": "Use this button to add or edit the products you want to compare for this year.",
+          "hint": "Click “View” now to open the comparison editor."
+        },
+        "step15": {
+          "title": "Generate your annual report",
+          "body": "Click here to generate (or regenerate) the detailed annual report for this comparison year.",
+          "hint": "Once it’s ready, you’ll be taken to the printable report page."
+        }
+      }
+    }
   }
 }

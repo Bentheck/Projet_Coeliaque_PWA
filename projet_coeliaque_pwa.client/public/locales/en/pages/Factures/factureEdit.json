@@ -62,5 +62,30 @@
   "error": {
     "loadInvoiceOffline": "Unable to load the invoice (offline and not cached).",
     "saveFailed": "Error while saving."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Demonstration mode",
+    "warning": "No real data is used and no modification will be saved.",
+    "localOnly": "The items and information below are generated locally for demonstration purposes.",
+    "disabledAction": "This action is disabled in demo mode.",
+    "cannotSave": "Saving is disabled in the demo version.",
+    "cannotDelete": "Deleting is disabled in the demo version.",
+    "hint": "Tip: you can edit any field safely — nothing is sent to the server.",
+    "loading": "Loading demo data…"
+  },
+  "tour": {
+    "calc_step2_title": "Add a gluten-free item",
+    "calc_step2_body": "Use this button to add a gluten-free product line to your invoice. A small wizard will open to guide you.",
+    "calc_step2_hint": "Click it now to open the item wizard.",
+    "calc_save_title": "Save your invoice",
+    "calc_save_body": "Your gluten-free item is now on the invoice. Save it to go back to the demo home and continue with the comparison.",
+    "calc_save_hint": "Click “Save” now; you’ll be returned to the demo home screen.",
+    "calc_modal_step1_title": "Choose the product type",
+    "calc_modal_step1_body": "Pick the gluten-free product type (bread, pasta, cereal, etc.). This will be used later for the comparison.",
+    "calc_modal_step1_hint": "Click “Next” when you’ve selected the correct type.",
+    "calc_modal_step2_title": "Fill the item details",
+    "calc_modal_step2_body": "Enter the brand/product name, quantity, price and weight. This is what the calculator will use to compute the per-100g (or per-unit) cost.",
+    "calc_modal_step2_hint": "When everything looks good, click “Add item” to save it to the invoice."
   }
 }

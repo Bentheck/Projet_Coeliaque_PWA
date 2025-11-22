@@ -58,5 +58,10 @@
     "updateListState": "Could not update the list state.",
     "listCompletedLocked": "This list is completed and locked. Uncheck “Completed” to modify items.",
     "updateItem": "Could not update the item."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Demo mode — this list is built only from local demo data. No changes are sent to the server and your real data is never affected.",
+    "loading": "Loading demo…"
   }
 }

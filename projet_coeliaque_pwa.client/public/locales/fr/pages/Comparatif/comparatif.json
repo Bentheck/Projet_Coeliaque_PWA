@@ -15,9 +15,13 @@
   "loading": "Chargement…",
   "empty": "Aucune année disponible.",
   "year": "Année",
+  "lines": "{{count}} ligne(s)",
   "report": {
     "generated": "Rapport généré",
     "notGenerated": "Rapport non généré"
+  },
+  "status": {
+    "ok": "Enregistré !"
   },
   "buttons": {
     "generate": {
@@ -51,5 +55,35 @@
   },
   "errors": {
     "generateFailed": "Erreur lors de la génération du rapport."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warningTitle": "Mode démonstration",
+    "warning": "Aucune donnée réelle n’est utilisée et aucune modification ne sera enregistrée.",
+    "localOnly": "Les années ci-dessous sont générées localement pour la démonstration.",
+    "reportDisabled": "La génération réelle de rapport est désactivée en mode démo.",
+    "deleteDisabled": "La suppression réelle est désactivée en mode démo.",
+    "hint": "Astuce : vous pouvez explorer le flux complet sans risque.",
+    "loading": "Chargement des données de démonstration…",
+    "guide": {
+      "close": "Fermer",
+      "step3": {
+        "title": "Créer le comparatif",
+        "body": "Commencez par créer l’année de comparatif qui correspond à vos factures. Utilisez l’année d’imposition en cours.",
+        "hint": "Une fois l’année créée, vous pourrez ajouter des produits à comparer."
+      },
+      "calculator": {
+        "step10": {
+          "title": "Modifier votre comparatif",
+          "body": "Utilisez ce bouton pour ajouter ou modifier les produits que vous souhaitez comparer pour cette année.",
+          "hint": "Cliquez sur « Voir » pour ouvrir l’éditeur de comparatif."
+        },
+        "step15": {
+          "title": "Générer votre rapport annuel",
+          "body": "Cliquez ici pour générer (ou régénérer) le rapport annuel détaillé pour cette année de comparatif.",
+          "hint": "Une fois prêt, vous serez redirigé vers la page du rapport imprimable."
+        }
+      }
+    }
   }
 }

@@ -51,5 +51,10 @@
     "view": "View",
     "edit": "Edit",
     "deleteShort": "Delete"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "subtitle": "This section uses local demo data only (no requests are sent to the server).",
+    "loading": "Loading demo…"
   }
 }

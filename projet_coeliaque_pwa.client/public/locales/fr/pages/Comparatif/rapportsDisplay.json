@@ -62,5 +62,20 @@
       "title": "TOTAL : Somme de tous les sous-totaux produits."
     },
     "note": "Les conversions d’unités sont prises en compte automatiquement."
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Mode démonstration — ce rapport utilise uniquement des données locales de démonstration (Dexie). Aucune requête n’est envoyée au serveur et vos rapports réels ne sont jamais modifiés.",
+    "loading": "Chargement de la démo…",
+    "guide": {
+      "calculator": {
+        "step16": {
+          "title": "Terminer la démo guidée",
+          "body": "Vous êtes arrivé à la fin de la démo guidée du calculateur. Cliquez sur ce bouton « Retour » pour revenir à l’écran d’accueil de la démo.",
+          "hint": "À partir de là, le mode guidé sera automatiquement désactivé.",
+          "printDisabledHint": "L’impression est désactivée en mode guidé. Utilisez le bouton Retour pour terminer la démonstration."
+        }
+      }
+    }
   }
 }

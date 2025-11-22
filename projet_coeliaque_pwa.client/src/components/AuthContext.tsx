@@ -1,5 +1,6 @@
-﻿import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { warmAfterLogin } from "../swUser"; // deep warm + SET_USER + ACK inside
+﻿// src/components/AuthContext.tsx
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { warmAfterLogin } from "../swUser";
 import { onUpdateReady, hasUpdate, applyUpdate } from "../swUpdates";
 
 type AuthUser = {
@@ -43,7 +44,9 @@ function primeSWUserKeyFromSnapshot() {
     try {
         const id = localStorage.getItem(LS_LAST_USERID) || "anon";
         postToSW({ type: "SET_USER", id });
-    } catch { /* ignore */ }
+    } catch {
+        /* ignore */
+    }
 }
 
 function readSnapshot(): any | null {
@@ -62,8 +65,15 @@ function persistSnapshot(data: any | null) {
             const uid = data?.user?.id ? String(data.user.id) : "anon";
             localStorage.setItem(LS_LAST_USERID, uid);
             postToSW({ type: "SET_USER", id: uid });
+        } else {
+            // Clear snapshot completely when there is no auth
+            localStorage.removeItem(LS_LAST_STATUS);
+            localStorage.setItem(LS_LAST_USERID, "anon");
+            postToSW({ type: "SET_USER", id: "anon" });
         }
-    } catch { /* ignore */ }
+    } catch {
+        /* ignore */
+    }
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -78,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // bump this to refetch /api/account/status
     const [key, setKey] = useState(0);
-    const refresh = () => setKey(k => k + 1);
+    const refresh = () => setKey((k) => k + 1);
 
     const applyStatus = (data: any | null, { persist }: { persist: boolean }) => {
         const u: AuthUser = data?.user ?? null;
@@ -102,10 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If we're offline, don't even try—just stop "loading" and keep snapshot
         if (!navigator.onLine) {
             setLoading(false);
-            return () => { /* noop */ };
+            return () => { };
         }
 
-        setLoading(prev => prev || !boot);
+        setLoading((prev) => prev || !boot);
 
         (async () => {
             try {
@@ -120,8 +130,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const data = await res.json();
                     applyStatus(data, { persist: true });
                 } else {
-                    // Keep existing snapshot on non-OK (e.g. 5xx). If you *want* to clear on 401:
-                    // if (res.status === 401) applyStatus(null, { persist: true });
+                    // On 401: real logout / no session → clear snapshot
+                    if (res.status === 401) {
+                        applyStatus(null, { persist: true });
+                    }
+                    // For 5xx etc, we keep snapshot
                 }
             } catch {
                 // Network error -> keep snapshot
@@ -143,7 +156,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         warmAfterLogin(userId, true).catch(() => { });
         try {
             localStorage.setItem(LS_LAST_USERID, userId ? String(userId) : "anon");
-        } catch { /* ignore */ }
+        } catch {
+            /* ignore */
+        }
     }, [userId]);
 
     // Optional: show update prompt once logged in

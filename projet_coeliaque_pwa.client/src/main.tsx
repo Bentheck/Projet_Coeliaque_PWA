@@ -9,20 +9,23 @@ import { initOutboxDrainer } from "./swOutboxHooks";
 import { initSWUpdates } from "./swUpdates";
 import { initSWHeartbeat } from "./swOfflineStatus";
 import "./i18n";
+import { DemoTourProvider } from "./demo/DemoTourContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
         <Suspense fallback={null}>
-            <App />
+            <DemoTourProvider>
+                <App />
+            </DemoTourProvider>
         </Suspense>
     </React.StrictMode>
 );
 
 // Service Worker registration + heartbeat + outbox drainer (PROD only)
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    window.addEventListener('load', () => {
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+    window.addEventListener("load", () => {
         navigator.serviceWorker
-            .register('/sw.js', { scope: '/' }) // classic worker, no { type: 'module' }
+            .register("/sw.js", { scope: "/" }) // classic worker, no { type: 'module' }
             .then((reg) => {
                 // Track updates
                 initSWUpdates(reg);
@@ -31,7 +34,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
                 void initSWHeartbeat();
 
                 // Reload when the new SW takes control
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                navigator.serviceWorker.addEventListener("controllerchange", () => {
                     window.location.reload();
                 });
 
@@ -40,7 +43,9 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
                     .then(() => {
                         initOutboxDrainer();
                     })
-                    .catch(() => { /* ignore */ });
+                    .catch(() => {
+                        /* ignore */
+                    });
             })
             .catch(() => {
                 /* ignore in dev / registration errors */

@@ -1,5 +1,5 @@
 ﻿{
-  "title": "Rapports Comparatifs Disponibles",
+  "title": "Rapports comparatifs disponibles",
   "loading": "Chargement…",
   "empty": "Aucun rapport disponible.",
   "item": {
@@ -19,5 +19,10 @@
   },
   "status": {
     "ok": "OK"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "warning": "Mode démonstration — la génération de rapports se fait uniquement sur les données locales (Dexie). Aucune requête n’est envoyée au serveur et vos rapports réels ne sont jamais modifiés.",
+    "loading": "Chargement de la démo…"
   }
 }
