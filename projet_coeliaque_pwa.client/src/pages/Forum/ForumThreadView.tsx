@@ -1,6 +1,5 @@
-﻿// src/pages/Forum/ForumThreadView.tsx
-import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+﻿import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
+import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
 import type { ForumThreadDto, PagedResult, ForumPostTreeDto } from "../../lib/types";
 import Pagination from "../../components/Pagination";
@@ -241,6 +240,9 @@ type PostCardProps = {
     setEditText: React.Dispatch<React.SetStateAction<Record<number, string>>>;
     saving: Record<number, boolean>;
 
+    // moderator powers
+    canModerate: boolean;
+
     // extra UI placed right after the body/actions (e.g., sort & collapse controls under OP)
     extraUnderBody?: React.ReactNode;
 };
@@ -269,6 +271,7 @@ const PostCard: React.FC<PostCardProps> = memo(
         editText,
         setEditText,
         saving,
+        canModerate,
     }) => {
         const { t, i18n } = useTranslation("pages/Forum/forumThreadView");
         const giphyLang = i18n.language?.startsWith("fr") ? "fr" : "en";
@@ -279,7 +282,7 @@ const PostCard: React.FC<PostCardProps> = memo(
 
         const score = (p as any).score ?? 0;
         const myVote = (p as any).myVote ?? 0;
-        const canEdit = (p as any).canEdit === true;
+        const canEdit = (p as any).canEdit === true || canModerate;
 
         const bodyHtml: string = (p as any).body ?? "";
         const isEditing = editing[p.id] === true;
@@ -419,6 +422,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                             editText={editText}
                                                             setEditText={setEditText}
                                                             saving={saving}
+                                                            canModerate={canModerate}
                                                         />
                                                     ))}
                                                 </div>
@@ -466,12 +470,28 @@ PostCard.displayName = "PostCard";
 /* ---------- Page ---------- */
 
 const ForumThreadView: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+    const { lang, id } = useParams<{ id: string; lang?: string }>();
+    const safeLang: "fr" | "en" = lang === "en" ? "en" : "fr";
+
+    const navigate = useNavigate();
+
     const threadId = Number(id);
     const [searchParams, setSearchParams] = useSearchParams();
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
+
     const { user } = useAuth();
     const { t } = useTranslation("pages/Forum/forumThreadView");
+
+    const roles = (user as any)?.roles as string[] | undefined;
+
+    const isAdmin =
+        !!user &&
+        ((user as any).isForumAdmin === true ||
+            (Array.isArray(roles) && roles.includes("ForumAdmin")));
+
+    const isModerator =
+        isAdmin ||
+        (!!user && Array.isArray(roles) && roles.includes("ForumModerator"));
 
     const [thread, setThread] = useState<ForumThreadDto | null>(null);
     const [posts, setPosts] = useState<PagedResult<ForumPostTreeDto> | null>(null);
@@ -494,14 +514,6 @@ const ForumThreadView: React.FC = () => {
     // thread title edit
     const [titleEditing, setTitleEditing] = useState(false);
     const [titleDraft, setTitleDraft] = useState("");
-
-    // Global moderators: ForumAdmin OR ForumModerator roles, everywhere
-    const isModerator =
-        !!user &&
-        ((user as any).isForumAdmin === true ||
-            (Array.isArray((user as any).roles) &&
-                ((user as any).roles.includes("ForumAdmin") ||
-                    (user as any).roles.includes("ForumModerator"))));
 
     /** Fetch thread and the current page of posts. */
     const load = useCallback(async () => {
@@ -832,6 +844,22 @@ const ForumThreadView: React.FC = () => {
         [thread, isModerator, t]
     );
 
+    const deleteThread = useCallback(async () => {
+        if (!thread || !isModerator) return;
+        if (!confirm(t("modThread.confirm.deleteThread"))) return;
+        try {
+            await fetchJSON(`/api/forum/admin/threads/${thread.id}`, {
+                method: "DELETE",
+            });
+            navigate(`/forum/${safeLang}/c/${thread.categoryId}`);
+        } catch (e) {
+            console.error(e);
+            alert(t("modThread.errors.deleteFailed"));
+        }
+    }, [thread, isModerator, navigate, safeLang, t]);
+
+    const canEditTitle = !!thread && (thread.canEditTitle || isModerator);
+
     /** Controls displayed under the OP (or first when OP not on page). */
     const Controls = (
         <div className="my-3 d-flex flex-wrap gap-2 align-items-center">
@@ -899,7 +927,7 @@ const ForumThreadView: React.FC = () => {
                                             <h1 className="h4 mb-1 mb-0">
                                                 {thread?.title ?? t("threadHeader.defaultTitle")}
                                             </h1>
-                                            {thread?.canEditTitle && (
+                                            {canEditTitle && (
                                                 <button
                                                     className="btn btn-sm btn-outline-secondary"
                                                     onClick={() => setTitleEditing(true)}
@@ -949,7 +977,7 @@ const ForumThreadView: React.FC = () => {
 
                         <div className="d-flex flex-column align-items-end gap-2 ms-auto">
                             <Link
-                                to={`/forum/c/${thread?.categoryId ?? ""}`}
+                                to={`/forum/${safeLang}/c/${thread?.categoryId ?? ""}`}
                                 className="btn btn-outline-secondary btn-sm"
                             >
                                 <i className="bi bi-arrow-left me-2" />
@@ -957,32 +985,43 @@ const ForumThreadView: React.FC = () => {
                             </Link>
 
                             {isModerator && thread && (
-                                <div className="mt-1 small text-muted">
-                                    <div className="form-check form-switch mb-1">
-                                        <input
-                                            id="mod-pin"
-                                            className="form-check-input"
-                                            type="checkbox"
-                                            checked={thread.isPinned}
-                                            onChange={(e) => togglePinned(e.target.checked)}
-                                        />
-                                        <label htmlFor="mod-pin" className="form-check-label">
-                                            {t("modThread.labels.pinned")}
-                                        </label>
+                                <>
+                                    <div className="mt-1 small text-muted">
+                                        <div className="form-check form-switch mb-1">
+                                            <input
+                                                id="mod-pin"
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={thread.isPinned}
+                                                onChange={(e) => togglePinned(e.target.checked)}
+                                            />
+                                            <label htmlFor="mod-pin" className="form-check-label">
+                                                {t("modThread.labels.pinned")}
+                                            </label>
+                                        </div>
+                                        <div className="form-check form-switch">
+                                            <input
+                                                id="mod-lock"
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={thread.isLocked}
+                                                onChange={(e) => toggleLocked(e.target.checked)}
+                                            />
+                                            <label htmlFor="mod-lock" className="form-check-label">
+                                                {t("modThread.labels.locked")}
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div className="form-check form-switch">
-                                        <input
-                                            id="mod-lock"
-                                            className="form-check-input"
-                                            type="checkbox"
-                                            checked={thread.isLocked}
-                                            onChange={(e) => toggleLocked(e.target.checked)}
-                                        />
-                                        <label htmlFor="mod-lock" className="form-check-label">
-                                            {t("modThread.labels.locked")}
-                                        </label>
-                                    </div>
-                                </div>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-danger btn-sm"
+                                        onClick={deleteThread}
+                                    >
+                                        <i className="bi bi-trash me-1" />
+                                        {t("modThread.buttons.deleteThread")}
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>
@@ -1044,6 +1083,7 @@ const ForumThreadView: React.FC = () => {
                                             editText={editText}
                                             setEditText={setEditText}
                                             saving={saving}
+                                            canModerate={isModerator}
                                         />
 
                                         {/* Other top-level comments */}
@@ -1073,6 +1113,7 @@ const ForumThreadView: React.FC = () => {
                                                     editText={editText}
                                                     setEditText={setEditText}
                                                     saving={saving}
+                                                    canModerate={isModerator}
                                                 />
                                             ))}
                                     </>
@@ -1107,6 +1148,7 @@ const ForumThreadView: React.FC = () => {
                                             editText={editText}
                                             setEditText={setEditText}
                                             saving={saving}
+                                            canModerate={isModerator}
                                         />
                                     ))}
                                 </>

@@ -13,15 +13,8 @@ const ForumThreads: React.FC = () => {
     const cid = Number(categoryId);
     const safeLang: "fr" | "en" = lang === "en" ? "en" : "fr";
 
-    const { user } = useAuth();
-
-    // Global moderator: ForumAdmin or ForumModerator (or explicit isForumAdmin flag)
-    const isModerator =
-        !!user &&
-        ((user as any).isForumAdmin === true ||
-            (Array.isArray((user as any).roles) &&
-                (((user as any).roles.includes("ForumAdmin") ||
-                    (user as any).roles.includes("ForumModerator")))));
+    const { user, isForumAdmin, isForumModerator } = useAuth();
+    const isModerator = !!user && (isForumAdmin || isForumModerator);
 
     const [searchParams, setSearchParams] = useSearchParams();
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
@@ -66,7 +59,7 @@ const ForumThreads: React.FC = () => {
         return new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
     };
 
-    // --- Moderator helpers: pin / lock from list ---
+    // --- Moderator helpers: pin / lock / delete from list ---
 
     const setThreadFlagLocal = (
         threadId: number,
@@ -98,7 +91,6 @@ const ForumThreads: React.FC = () => {
             });
         } catch (e) {
             console.error(e);
-            // rollback
             setThreadFlagLocal(threadId, { isPinned: prev });
             alert(t("modThread.errors.pinFailed"));
         } finally {
@@ -126,9 +118,36 @@ const ForumThreads: React.FC = () => {
             });
         } catch (e) {
             console.error(e);
-            // rollback
             setThreadFlagLocal(threadId, { isLocked: prev });
             alert(t("modThread.errors.lockFailed"));
+        } finally {
+            setThreadBusy((b) => {
+                const n = { ...b };
+                delete n[threadId];
+                return n;
+            });
+        }
+    };
+
+    const deleteThread = async (threadId: number) => {
+        if (!isModerator) return;
+        if (!confirm(t("modThread.confirm.deleteThread"))) return;
+        setThreadBusy((b) => ({ ...b, [threadId]: true }));
+        try {
+            await fetchJSON(`/api/forum/admin/threads/${threadId}`, {
+                method: "DELETE",
+            });
+            setData((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        items: prev.items.filter((it) => it.id !== threadId),
+                    }
+                    : prev
+            );
+        } catch (e) {
+            console.error(e);
+            alert(t("modThread.errors.deleteFailed"));
         } finally {
             setThreadBusy((b) => {
                 const n = { ...b };
@@ -252,7 +271,7 @@ const ForumThreads: React.FC = () => {
                                                                     {t("badges.pinned")}
                                                                 </label>
                                                             </div>
-                                                            <div className="form-check form-switch form-check-reverse">
+                                                            <div className="form-check form-switch form-check-reverse mb-1">
                                                                 <input
                                                                     id={`lock-${tItem.id}`}
                                                                     className="form-check-input"
@@ -273,6 +292,16 @@ const ForumThreads: React.FC = () => {
                                                                     {t("badges.locked")}
                                                                 </label>
                                                             </div>
+
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-outline-danger btn-sm w-100"
+                                                                disabled={busy}
+                                                                onClick={() => deleteThread(tItem.id)}
+                                                            >
+                                                                <i className="bi bi-trash me-1" />
+                                                                {t("modThread.buttons.deleteThread")}
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>

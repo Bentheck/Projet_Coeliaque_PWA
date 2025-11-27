@@ -26,7 +26,14 @@
   "modThread": {
     "errors": {
       "pinFailed": "Failed to update pinned state.",
-      "lockFailed": "Failed to update locked state."
+      "lockFailed": "Failed to update locked state.",
+      "deleteFailed": "Failed to delete thread."
+    },
+    "confirm": {
+      "deleteThread": "Are you sure you want to delete this thread? This action cannot be undone."
+    },
+    "buttons": {
+      "deleteThread": "Delete thread"
     }
   }
 }
