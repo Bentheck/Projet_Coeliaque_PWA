@@ -1,4 +1,5 @@
-﻿using System;
+﻿// DTOs/ForumDtos.cs
+using System;
 using System.Collections.Generic;
 
 namespace Projet_Coeliaque_PWA.Server.DTOs
@@ -10,6 +11,9 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         public string Name { get; init; } = "";
         public string? Description { get; init; }
         public int ThreadCount { get; init; }
+
+        // NEW: category language ("fr" or "en")
+        public string Language { get; init; } = "fr";
     }
 
     public record class ForumThreadListItemDto
@@ -97,4 +101,18 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
 
     public record CreateThreadInput(int CategoryId, string Title, string Body);
     public record CreatePostInput(string Body, int? ParentPostId);
+
+    // NEW: admin inputs for categories (with language)
+    public record CreateCategoryInput(string Slug, string Name, string? Description, string Language);
+    public record UpdateCategoryInput(string Slug, string Name, string? Description, string Language);
+
+    // These already exist somewhere in your project – included here only for completeness.
+    // If you already have them elsewhere, keep only one definition.
+    public record SetPinInput(bool Pinned);
+    public record SetLockInput(bool Locked);
+
+    public record ModeratorDto(string UserId, string UserName, DateTime AssignedUtc);
+    public record SetModeratorsInput(List<string> UserIds);
+
+    public record SetDeletedInput(bool Deleted);
 }

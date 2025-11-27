@@ -6,7 +6,8 @@
   },
   "empty": "No categories.",
   "buttons": {
-    "open": "Open"
+    "open": "Open",
+    "backToLanguage": "Back to language selection"
   },
   "badges": {
     "threads_one": "{{count}} thread",

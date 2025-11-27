@@ -70,7 +70,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     identityErrors = result.Errors.Select(e => e.Code).ToArray()
                 });
 
-            // (Email body/subject can stay in FR if you want; UI strings won't depend on them)
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var encodedToken = HttpUtility.UrlEncode(token);
             var confirmationUrl =
@@ -158,7 +157,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { ok = true });
         }
 
-        /// <summary>Returns the current auth/user profile snapshot (used by the navbar / AuthContext).</summary>
+        /// <summary>
+        /// Returns the current auth/user profile snapshot (used by the navbar / AuthContext).
+        /// Now distinguishes:
+        /// - isSuperAdmin  (Identity role)
+        /// - isForumAdmin  (DB ForumAdmins)
+        /// - isForumModerator (any moderator in ForumThreadModerators)
+        /// </summary>
         // GET: api/account/status
         [HttpGet("status")]
         public async Task<IActionResult> Status()
@@ -171,7 +176,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     user = (object?)null,
                     membershipStatus = (string?)null,
                     isSuperAdmin = false,
-                    isForumAdmin = false
+                    isForumAdmin = false,
+                    isForumModerator = false
                 });
             }
 
@@ -183,7 +189,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     user = (object?)null,
                     membershipStatus = (string?)null,
                     isSuperAdmin = false,
-                    isForumAdmin = false
+                    isForumAdmin = false,
+                    isForumModerator = false
                 });
             }
 
@@ -195,7 +202,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     user = (object?)null,
                     membershipStatus = (string?)null,
                     isSuperAdmin = false,
-                    isForumAdmin = false
+                    isForumAdmin = false,
+                    isForumModerator = false
                 });
             }
 
@@ -206,9 +214,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.UserId == uid);
 
+            // DB-backed forum admins
             var isForumAdmin = await _db.Set<ForumAdmin>()
                 .AsNoTracking()
                 .AnyAsync(a => a.UserId == uid);
+
+            // "Moderator" = user appears as a moderator on at least one thread.
+            var isForumModerator = await _db.ForumThreadModerators
+                .AsNoTracking()
+                .AnyAsync(m => m.UserId == uid);
 
             // Identity role/claims.
             var isSuperAdmin = await _userManager.IsInRoleAsync(user, "SuperAdmin");
@@ -245,7 +259,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 },
                 membershipStatus,
                 isSuperAdmin,
-                isForumAdmin
+                isForumAdmin,
+                isForumModerator
             });
         }
 

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿// Models/Forum.cs
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 
@@ -12,6 +13,9 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public string? Description { get; set; }
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
         public string? CreatedByUserId { get; set; }
+
+        // NEW: forum language ("fr" or "en")
+        public string Language { get; set; } = "fr";
 
         public ICollection<ForumThread> Threads { get; set; } = new List<ForumThread>();
     }

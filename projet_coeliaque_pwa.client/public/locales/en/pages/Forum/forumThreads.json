@@ -22,5 +22,11 @@
   },
   "fallback": {
     "categoryWithId": "Category #{{id}}"
+  },
+  "modThread": {
+    "errors": {
+      "pinFailed": "Failed to update pinned state.",
+      "lockFailed": "Failed to update locked state."
+    }
   }
 }

@@ -11,7 +11,9 @@
   },
   "buttons": {
     "expand": "Expand",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "loading": "Loading…",
+    "saving": "Saving…"
   },
   "post": {
     "editedByOn": "Edited by {{by}} on {{date}}",
@@ -60,5 +62,50 @@
   },
   "commentsCount_one": "{{count}} comment",
   "commentsCount_other": "{{count}} comments",
-  "noPosts": "No posts yet."
+  "noPosts": "No posts yet.",
+  "modThread": {
+    "labels": {
+      "pinned": "Pin this thread",
+      "locked": "Lock this thread"
+    },
+    "errors": {
+      "pinFailed": "Failed to update pinned state.",
+      "lockFailed": "Failed to update locked state."
+    }
+  },
+  "modPanel": {
+    "title": "Thread Moderators",
+    "description": "Manage moderators for this thread (forum admins only).",
+    "labels": {
+      "userIds": "User IDs (one per line)"
+    },
+    "placeholders": {
+      "userIds": "e.g.\n7f92ab1c...\n82cc94d2..."
+    },
+    "help": {
+      "userIds": "Enter user IDs (not emails). This list will replace the existing moderators for the thread."
+    },
+    "buttons": {
+      "load": "Load moderators",
+      "save": "Save"
+    },
+    "messages": {
+      "saved": "Moderators saved successfully."
+    },
+    "errors": {
+      "load": "Failed to load moderators.",
+      "save": "Failed to save moderators."
+    },
+    "confirm": {
+      "clear": "The list is empty. Do you really want to remove all moderators for this thread?"
+    },
+    "current": {
+      "title": "Current moderators",
+      "headers": {
+        "userId": "User ID",
+        "displayName": "Display name",
+        "assigned": "Assigned on"
+      }
+    }
+  }
 }

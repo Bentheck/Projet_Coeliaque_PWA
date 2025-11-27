@@ -1,4 +1,4 @@
-﻿// ForumThreadView.tsx
+﻿// src/pages/Forum/ForumThreadView.tsx
 import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
@@ -12,8 +12,7 @@ import { useTranslation } from "react-i18next";
 /** One of the two vote UIs will be active:
  *  - "thread": vote on the whole thread via header bar (all comments, incl. OP, show no vote bar)
  *  - "op": vote on the OP post (other comments show their own vote bars)
- *  NOTE: Current implementation disables OP voting when in "thread" mode
- *  but still allows voting on non-OP comments. */
+ */
 const VOTE_MODE_DEFAULT: "thread" | "op" = "thread";
 
 /* ---------- Small helpers/components ---------- */
@@ -142,7 +141,9 @@ type ReplyBoxProps = {
 };
 
 const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending, disabled }) => {
-    const { t } = useTranslation("pages/Forum/forumThreadView");
+    const { t, i18n } = useTranslation("pages/Forum/forumThreadView");
+    const giphyLang = i18n.language?.startsWith("fr") ? "fr" : "en";
+
     return (
         <div className="mt-2">
             <PostEditor
@@ -150,7 +151,7 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending,
                 onChange={onChange}
                 ariaLabel={t("replyBox.ariaLabel")}
                 giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
-                giphyLang="fr"
+                giphyLang={giphyLang}
                 giphyRating="g"
             />
             <div className="d-flex justify-content-end gap-2 mt-2">
@@ -269,7 +270,8 @@ const PostCard: React.FC<PostCardProps> = memo(
         setEditText,
         saving,
     }) => {
-        const { t } = useTranslation("pages/Forum/forumThreadView");
+        const { t, i18n } = useTranslation("pages/Forum/forumThreadView");
+        const giphyLang = i18n.language?.startsWith("fr") ? "fr" : "en";
 
         const indentPx = Math.min(depth, 8) * 8;
         const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false; // top-level comments stay open
@@ -326,7 +328,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                         <>
                                             <SafeHtml html={bodyHtml} className="mt-2 post-body" />
 
-                                            {(editedUtc || editedBy) ? (
+                                            {editedUtc || editedBy ? (
                                                 <div className="text-muted small mt-2">
                                                     {editedBy && editedUtc
                                                         ? t("post.editedByOn", { by: editedBy, date: fmt(editedUtc!) })
@@ -367,7 +369,10 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                         >
                                                             {t("actions.edit")}
                                                         </button>
-                                                        <button className="btn btn-outline-danger" onClick={() => onDeletePost(p.id)}>
+                                                        <button
+                                                            className="btn btn-outline-danger"
+                                                            onClick={() => onDeletePost(p.id)}
+                                                        >
                                                             {t("actions.delete")}
                                                         </button>
                                                     </div>
@@ -423,14 +428,18 @@ const PostCard: React.FC<PostCardProps> = memo(
                                         <div className="mt-2">
                                             <PostEditor
                                                 initialHTML={editText[p.id] ?? bodyHtml}
-                                                onChange={(v) => setEditText((t) => ({ ...t, [p.id]: v }))}
+                                                onChange={(v) => setEditText((tState) => ({ ...tState, [p.id]: v }))}
                                                 ariaLabel={t("actions.edit")}
                                                 giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
-                                                giphyLang="fr"
+                                                giphyLang={giphyLang}
                                                 giphyRating="g"
                                             />
                                             <div className="d-flex gap-2 justify-content-end mt-2">
-                                                <button className="btn btn-secondary btn-sm" onClick={() => onCancelEdit(p.id)} disabled={saving[p.id]}>
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => onCancelEdit(p.id)}
+                                                    disabled={saving[p.id]}
+                                                >
                                                     {t("threadHeader.cancel")}
                                                 </button>
                                                 <button
@@ -485,6 +494,14 @@ const ForumThreadView: React.FC = () => {
     // thread title edit
     const [titleEditing, setTitleEditing] = useState(false);
     const [titleDraft, setTitleDraft] = useState("");
+
+    // Global moderators: ForumAdmin OR ForumModerator roles, everywhere
+    const isModerator =
+        !!user &&
+        ((user as any).isForumAdmin === true ||
+            (Array.isArray((user as any).roles) &&
+                ((user as any).roles.includes("ForumAdmin") ||
+                    (user as any).roles.includes("ForumModerator"))));
 
     /** Fetch thread and the current page of posts. */
     const load = useCallback(async () => {
@@ -551,7 +568,7 @@ const ForumThreadView: React.FC = () => {
         setReplyOpen((o) => ({ ...o, [postId]: !o[postId] }));
     }, []);
     const onChangeReply = useCallback((postId: number, v: string) => {
-        setReplyText((t) => ({ ...t, [postId]: v }));
+        setReplyText((tState) => ({ ...tState, [postId]: v }));
     }, []);
 
     /** Send a reply (parentPostId null for top-level reply). */
@@ -570,7 +587,7 @@ const ForumThreadView: React.FC = () => {
                     body: JSON.stringify({ body: bodyHtml, parentPostId: parentPostId ?? null }),
                 });
 
-                setReplyText((t) => ({ ...t, [key]: "" }));
+                setReplyText((tState) => ({ ...tState, [key]: "" }));
                 setReplyOpen((o) => ({ ...o, [key]: false }));
                 await load();
             } catch (e) {
@@ -597,7 +614,9 @@ const ForumThreadView: React.FC = () => {
             const delta = next - prevVote;
 
             // optimistic
-            setThread((tState) => (tState ? ({ ...(tState as any), score: prevScore + delta, myVote: next } as any) : tState));
+            setThread((tState) =>
+                tState ? ({ ...(tState as any), score: prevScore + delta, myVote: next } as any) : tState
+            );
             setVoting(true);
             try {
                 const res = await fetchJSON<{ score: number; myVote: number }>(`/api/forum/threads/${threadId}/vote`, {
@@ -606,11 +625,15 @@ const ForumThreadView: React.FC = () => {
                     body: JSON.stringify({ value: next }),
                 });
                 setThread((tState) =>
-                    tState ? ({ ...(tState as any), score: res.score ?? 0, myVote: res.myVote ?? 0 } as any) : tState
+                    tState
+                        ? ({ ...(tState as any), score: res.score ?? 0, myVote: res.myVote ?? 0 } as any)
+                        : tState
                 );
             } catch (e) {
                 console.error(e);
-                setThread((tState) => (tState ? ({ ...(tState as any), score: prevScore, myVote: prevVote } as any) : tState));
+                setThread((tState) =>
+                    tState ? ({ ...(tState as any), score: prevScore, myVote: prevVote } as any) : tState
+                );
                 alert(t("alerts.voteFailed"));
             } finally {
                 setVoting(false);
@@ -637,26 +660,51 @@ const ForumThreadView: React.FC = () => {
             const delta = next - prevVote;
 
             // optimistic
-            setPosts((p) =>
-                p ? { ...p, items: updateNodeInTree(p.items, postId, { score: prevScore + delta, myVote: next } as any) } : p
+            setPosts((pState) =>
+                pState
+                    ? {
+                        ...pState,
+                        items: updateNodeInTree(pState.items, postId, {
+                            score: prevScore + delta,
+                            myVote: next,
+                        } as any),
+                    }
+                    : pState
             );
 
             try {
-                const res = await fetchJSON<{ score: number; myVote: number }>(`/api/forum/posts/${postId}/vote`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ value: next }),
-                });
-                setPosts((p) =>
-                    p
-                        ? { ...p, items: updateNodeInTree(p.items, postId, { score: res.score ?? 0, myVote: res.myVote ?? 0 } as any) }
-                        : p
+                const res = await fetchJSON<{ score: number; myVote: number }>(
+                    `/api/forum/posts/${postId}/vote`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ value: next }),
+                    }
+                );
+                setPosts((pState) =>
+                    pState
+                        ? {
+                            ...pState,
+                            items: updateNodeInTree(pState.items, postId, {
+                                score: res.score ?? 0,
+                                myVote: res.myVote ?? 0,
+                            } as any),
+                        }
+                        : pState
                 );
             } catch (e) {
                 console.error(e);
                 // rollback
-                setPosts((p) =>
-                    p ? { ...p, items: updateNodeInTree(p.items, postId, { score: prevScore, myVote: prevVote } as any) } : p
+                setPosts((pState) =>
+                    pState
+                        ? {
+                            ...pState,
+                            items: updateNodeInTree(pState.items, postId, {
+                                score: prevScore,
+                                myVote: prevVote,
+                            } as any),
+                        }
+                        : pState
                 );
                 alert(t("alerts.voteFailed"));
             }
@@ -666,13 +714,13 @@ const ForumThreadView: React.FC = () => {
 
     // post edit/delete
     const onStartEdit = useCallback((postId: number, currentHtml: string) => {
-        setEditing((e) => ({ ...e, [postId]: true }));
+        setEditing((eState) => ({ ...eState, [postId]: true }));
         setEditText((tState) => ({ ...tState, [postId]: currentHtml }));
     }, []);
 
     const onCancelEdit = useCallback((postId: number) => {
-        setEditing((e) => {
-            const n = { ...e };
+        setEditing((eState) => {
+            const n = { ...eState };
             delete n[postId];
             return n;
         });
@@ -743,6 +791,47 @@ const ForumThreadView: React.FC = () => {
         }
     }, [thread, titleDraft, load, t]);
 
+    // Global mod toggles for pin/lock from header
+    const togglePinned = useCallback(
+        async (nextPinned: boolean) => {
+            if (!thread || !isModerator) return;
+            const prev = thread.isPinned;
+            setThread((tState) => (tState ? { ...tState, isPinned: nextPinned } : tState));
+            try {
+                await fetchJSON(`/api/forum/admin/threads/${thread.id}/pin`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ pinned: nextPinned }),
+                });
+            } catch (e) {
+                console.error(e);
+                setThread((tState) => (tState ? { ...tState, isPinned: prev } : tState));
+                alert(t("modThread.errors.pinFailed"));
+            }
+        },
+        [thread, isModerator, t]
+    );
+
+    const toggleLocked = useCallback(
+        async (nextLocked: boolean) => {
+            if (!thread || !isModerator) return;
+            const prev = thread.isLocked;
+            setThread((tState) => (tState ? { ...tState, isLocked: nextLocked } : tState));
+            try {
+                await fetchJSON(`/api/forum/admin/threads/${thread.id}/lock`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ locked: nextLocked }),
+                });
+            } catch (e) {
+                console.error(e);
+                setThread((tState) => (tState ? { ...tState, isLocked: prev } : tState));
+                alert(t("modThread.errors.lockFailed"));
+            }
+        },
+        [thread, isModerator, t]
+    );
+
     /** Controls displayed under the OP (or first when OP not on page). */
     const Controls = (
         <div className="my-3 d-flex flex-wrap gap-2 align-items-center">
@@ -775,7 +864,7 @@ const ForumThreadView: React.FC = () => {
     /* ---------- Render ---------- */
     return (
         <div className="container py-3">
-            {/* Thread header card (title, meta, and thread-level voting) */}
+            {/* Thread header card (title, meta, voting, and global mod toggles) */}
             <div className="card shadow-sm border-0 mb-3">
                 <div className="card-body">
                     <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -792,14 +881,24 @@ const ForumThreadView: React.FC = () => {
 
                             <div>
                                 <div className="mb-1">
-                                    {thread?.isPinned && <span className="badge bg-warning text-dark me-2">{t("threadHeader.pinned")}</span>}
-                                    {thread?.isLocked && <span className="badge bg-secondary me-2">{t("threadHeader.locked")}</span>}
+                                    {thread?.isPinned && (
+                                        <span className="badge bg-warning text-dark me-2">
+                                            {t("threadHeader.pinned")}
+                                        </span>
+                                    )}
+                                    {thread?.isLocked && (
+                                        <span className="badge bg-secondary me-2">
+                                            {t("threadHeader.locked")}
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
                                     {!titleEditing ? (
                                         <>
-                                            <h1 className="h4 mb-1 mb-0">{thread?.title ?? t("threadHeader.defaultTitle")}</h1>
+                                            <h1 className="h4 mb-1 mb-0">
+                                                {thread?.title ?? t("threadHeader.defaultTitle")}
+                                            </h1>
                                             {thread?.canEditTitle && (
                                                 <button
                                                     className="btn btn-sm btn-outline-secondary"
@@ -827,7 +926,11 @@ const ForumThreadView: React.FC = () => {
                                             >
                                                 {t("threadHeader.cancel")}
                                             </button>
-                                            <button className="btn btn-sm btn-primary" onClick={saveTitle} disabled={!titleDraft.trim()}>
+                                            <button
+                                                className="btn btn-sm btn-primary"
+                                                onClick={saveTitle}
+                                                disabled={!titleDraft.trim()}
+                                            >
                                                 {t("threadHeader.save")}
                                             </button>
                                         </>
@@ -836,17 +939,51 @@ const ForumThreadView: React.FC = () => {
 
                                 {thread && (
                                     <div className="text-muted small">
-                                        {t("threadHeader.by", { name: thread.createdBy })} • {fmt(thread.createdUtc)} • {t("commentsCount", { count: thread.postCount })}
+                                        {t("threadHeader.by", { name: thread.createdBy })} •{" "}
+                                        {fmt(thread.createdUtc)} •{" "}
+                                        {t("commentsCount", { count: thread.postCount })}
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        <div className="ms-auto d-flex align-items-center gap-3">
-                            <Link to={`/forum/c/${thread?.categoryId ?? ""}`} className="btn btn-outline-secondary btn-sm">
+                        <div className="d-flex flex-column align-items-end gap-2 ms-auto">
+                            <Link
+                                to={`/forum/c/${thread?.categoryId ?? ""}`}
+                                className="btn btn-outline-secondary btn-sm"
+                            >
                                 <i className="bi bi-arrow-left me-2" />
                                 {t("threadHeader.back")}
                             </Link>
+
+                            {isModerator && thread && (
+                                <div className="mt-1 small text-muted">
+                                    <div className="form-check form-switch mb-1">
+                                        <input
+                                            id="mod-pin"
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            checked={thread.isPinned}
+                                            onChange={(e) => togglePinned(e.target.checked)}
+                                        />
+                                        <label htmlFor="mod-pin" className="form-check-label">
+                                            {t("modThread.labels.pinned")}
+                                        </label>
+                                    </div>
+                                    <div className="form-check form-switch">
+                                        <input
+                                            id="mod-lock"
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            checked={thread.isLocked}
+                                            onChange={(e) => toggleLocked(e.target.checked)}
+                                        />
+                                        <label htmlFor="mod-lock" className="form-check-label">
+                                            {t("modThread.labels.locked")}
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -893,7 +1030,7 @@ const ForumThreadView: React.FC = () => {
                                             sending={sending}
                                             onToggleReply={onToggleReply}
                                             onChangeReply={onChangeReply}
-                                            onSubmitReply={(id) => doReply(id)}
+                                            onSubmitReply={(idVal) => doReply(idVal)}
                                             collapsed={collapsed}
                                             onToggleCollapsed={toggleCollapsed}
                                             showVoteOnThisCard={isOpVotable}
@@ -923,7 +1060,7 @@ const ForumThreadView: React.FC = () => {
                                                     sending={sending}
                                                     onToggleReply={onToggleReply}
                                                     onChangeReply={onChangeReply}
-                                                    onSubmitReply={(id) => doReply(id)}
+                                                    onSubmitReply={(idVal) => doReply(idVal)}
                                                     collapsed={collapsed}
                                                     onToggleCollapsed={toggleCollapsed}
                                                     showVoteOnThisCard={true}
@@ -957,7 +1094,7 @@ const ForumThreadView: React.FC = () => {
                                             sending={sending}
                                             onToggleReply={onToggleReply}
                                             onChangeReply={onChangeReply}
-                                            onSubmitReply={(id) => doReply(id)}
+                                            onSubmitReply={(idVal) => doReply(idVal)}
                                             collapsed={collapsed}
                                             onToggleCollapsed={toggleCollapsed}
                                             showVoteOnThisCard={true}
@@ -977,7 +1114,7 @@ const ForumThreadView: React.FC = () => {
                         })()}
                     </div>
 
-                    <Pagination page={posts.page} totalPages={posts.totalPages} onPage={(p) => setPage(p)} />
+                    <Pagination page={posts.page} totalPages={posts.totalPages} onPage={(pVal) => setPage(pVal)} />
                 </>
             )}
         </div>

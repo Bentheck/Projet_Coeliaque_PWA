@@ -22,5 +22,11 @@
   },
   "fallback": {
     "categoryWithId": "Catégorie #{{id}}"
+  },
+  "modThread": {
+    "errors": {
+      "pinFailed": "Échec de la mise à jour de l'état épinglé.",
+      "lockFailed": "Échec de la mise à jour de l'état verrouillé."
+    }
   }
 }

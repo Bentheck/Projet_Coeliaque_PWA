@@ -19,6 +19,9 @@ export type ForumCategoryDto = {
     name: string;
     description?: string | null;
     threadCount: number;     // Number of threads in this category
+
+    // NEW: language code from backend ("fr" or "en")
+    language: string;
 };
 
 // Lightweight thread listing (for category pages)

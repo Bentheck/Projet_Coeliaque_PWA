@@ -1,13 +1,46 @@
 ﻿{
-  "loading": "Loading…",
   "titles": {
-    "admin": "Forum Administration"
+    "admin": "Forum Administration Panel"
   },
+
+  "loading": "Loading...",
+
+  "errors": {
+    "loadCategories": "Failed to load categories.",
+    "createFailed": "Creation failed.",
+    "saveFailed": "Saving failed.",
+    "deleteFailed": "Delete operation failed.",
+    "loadModerators": "Failed to load thread moderators.",
+    "saveModerators": "Failed to save moderators."
+  },
+
+  "alerts": {
+    "applied": "Changes applied.",
+    "failed": "An error occurred.",
+    "moderatorsSaved": "Moderators saved successfully."
+  },
+
+  "confirm": {
+    "deleteCategory": "Are you sure you want to delete this category?",
+    "clearModerators": "The list is empty. Do you really want to remove all moderators for this thread?"
+  },
+
   "sections": {
-    "categories": { "title": "Categories" },
-    "quickThread": { "title": "Quick tools (thread)" },
-    "moderation": { "title": "Moderation (post)" }
+    "categories": {
+      "title": "Forum Categories"
+    },
+    "quickThread": {
+      "title": "Quick Thread Tools"
+    },
+    "moderation": {
+      "title": "Post Moderation"
+    },
+    "globalModerators": {
+      "title": "Forum moderators",
+      "description": "Moderators have access to management tools (pin/lock threads, moderate posts, etc.)."
+    }
   },
+
   "table": {
     "headers": {
       "id": "ID",
@@ -18,25 +51,30 @@
       "actions": "Actions"
     }
   },
+
   "buttons": {
     "delete": "Delete",
     "force": "Force",
-    "forceTooltip": "Force (even if threads exist)",
+    "forceTooltip": "Force delete even if threads exist",
     "create": "Create",
-    "apply": "Apply"
+    "apply": "Apply",
+    "loading": "Loading...",
+    "saving": "Saving..."
   },
+
   "newCategory": {
-    "title": "New category",
+    "title": "Create New Category",
     "labels": {
       "slug": "Slug",
       "name": "Name",
       "description": "Description"
     },
     "placeholders": {
-      "slug": "e.g.: general",
-      "name": "e.g.: General"
+      "slug": "e.g. general",
+      "name": "e.g. General Discussion"
     }
   },
+
   "quickThread": {
     "labels": {
       "threadId": "Thread ID",
@@ -44,23 +82,44 @@
       "locked": "Locked"
     }
   },
+
   "moderation": {
     "labels": {
       "postId": "Post ID",
       "deleted": "Deleted"
     }
   },
-  "errors": {
-    "loadCategories": "Unable to load categories.",
-    "createFailed": "Creation failed.",
-    "saveFailed": "Save failed.",
-    "deleteFailed": "Deletion failed."
-  },
-  "alerts": {
-    "applied": "Applied.",
-    "failed": "Failed."
-  },
-  "confirm": {
-    "deleteCategory": "Delete this category?"
+
+  "globalModerators": {
+    "labels": {
+      "selectUser": "Select a user",
+      "current": "Current moderators"
+    },
+    "placeholders": {
+      "selectUser": "Choose a user…"
+    },
+    "buttons": {
+      "add": "Add as moderator",
+      "remove": "Remove",
+      "reload": "Reload list"
+    },
+    "headers": {
+      "userId": "User ID",
+      "displayName": "Display name",
+      "actions": "Actions"
+    },
+    "empty": "There are no moderators yet.",
+    "errors": {
+      "load": "Failed to load moderators.",
+      "save": "Failed to save moderators.",
+      "loadUsers": "Failed to load user list."
+    },
+    "alerts": {
+      "added": "Moderator added.",
+      "removed": "Moderator removed."
+    },
+    "confirm": {
+      "remove": "Remove this moderator?"
+    }
   }
 }

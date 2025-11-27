@@ -16,7 +16,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 {
     /// <summary>
     /// Forum admin endpoints for managing categories, thread state (pin/lock), moderators,
-    /// and post soft-deletion. All routes require the <c>IsForumAdmin</c> policy.
+    /// post soft-deletion, and global moderators list. All routes require the <c>IsForumAdmin</c> policy.
     /// </summary>
     [ApiController]
     [Route("api/forum/admin")]
@@ -37,7 +37,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         /// <summary>
         /// Create a forum category with a unique slug.
         /// </summary>
-        /// <param name="input">Category payload (slug, name, description).</param>
+        /// <param name="input">Category payload (slug, name, description, language).</param>
         [HttpPost("categories")]
         [ProducesResponseType(typeof(object), 201)]
         [ProducesResponseType(400)]
@@ -51,13 +51,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (await _db.ForumCategories.AnyAsync(c => c.Slug == slug))
                 return Conflict("Slug déjà utilisé.");
 
+            var language = string.IsNullOrWhiteSpace(input.Language)
+                ? "fr"
+                : input.Language.Trim().ToLowerInvariant() == "en" ? "en" : "fr";
+
             var cat = new ForumCategory
             {
                 Slug = slug,
                 Name = input.Name.Trim(),
                 Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim(),
                 CreatedUtc = DateTime.UtcNow,
-                CreatedByUserId = _um.GetUserId(User)
+                CreatedByUserId = _um.GetUserId(User),
+                Language = language
             };
 
             _db.ForumCategories.Add(cat);
@@ -81,11 +86,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             return c == null
                 ? NotFound()
-                : Ok(new { c.Id, c.Slug, c.Name, c.Description });
+                : Ok(new { c.Id, c.Slug, c.Name, c.Description, c.Language });
         }
 
         /// <summary>
-        /// Update slug, name, and description of an existing category.
+        /// Update slug, name, description and language of an existing category.
         /// </summary>
         [HttpPut("categories/{id:int}")]
         [ProducesResponseType(204)]
@@ -99,6 +104,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var nextSlug = (input?.Slug ?? "").Trim().ToLowerInvariant();
             var nextName = (input?.Name ?? "").Trim();
             var nextDesc = string.IsNullOrWhiteSpace(input?.Description) ? null : input!.Description!.Trim();
+            var nextLangRaw = string.IsNullOrWhiteSpace(input?.Language) ? cat.Language : input!.Language!.Trim().ToLowerInvariant();
+            var nextLang = nextLangRaw == "en" ? "en" : "fr";
 
             if (string.IsNullOrWhiteSpace(nextSlug) || string.IsNullOrWhiteSpace(nextName))
                 return BadRequest("Slug et nom requis.");
@@ -109,6 +116,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             cat.Slug = nextSlug;
             cat.Name = nextName;
             cat.Description = nextDesc;
+            cat.Language = nextLang;
 
             await _db.SaveChangesAsync();
             return NoContent();
@@ -172,7 +180,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return NoContent();
         }
 
-        // -------- Moderators --------
+        // -------- Moderators (per thread) --------
 
         /// <summary>
         /// List moderators for a thread.
@@ -291,6 +299,106 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             await _db.SaveChangesAsync();
+        }
+
+        // -------- Global moderators (backed by ForumAdmins) --------
+
+        /// <summary>
+        /// Returns all users (for selection as global moderators).
+        /// </summary>
+        [HttpGet("users")]
+        [ProducesResponseType(typeof(IEnumerable<UserSummaryDto>), 200)]
+        public async Task<ActionResult> GetAllUsers()
+        {
+            var users = await _um.Users
+                .OrderBy(u => u.UserName)
+                .Select(u => new UserSummaryDto(
+                    u.Id,
+                    u.UserName ?? u.Email ?? u.Id
+                ))
+                .ToListAsync();
+
+            return Ok(users);
+        }
+
+        /// <summary>
+        /// Returns the list of global moderators (ForumAdmins table).
+        /// </summary>
+        [HttpGet("moderators")]
+        [ProducesResponseType(typeof(IEnumerable<UserSummaryDto>), 200)]
+        public async Task<ActionResult> GetGlobalModerators()
+        {
+            var mods = await _db.ForumAdmins
+                .Include(a => a.User)
+                .OrderBy(a => a.User.UserName)
+                .Select(a => new UserSummaryDto(
+                    a.UserId,
+                    a.User.UserName ?? a.User.Email ?? a.UserId
+                ))
+                .ToListAsync();
+
+            return Ok(mods);
+        }
+
+        /// <summary>
+        /// Add a global moderator by userId or email (UpsertForumAdminInput).
+        /// </summary>
+        [HttpPost("moderators")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> AddGlobalModerator([FromBody] UpsertForumAdminInput input)
+        {
+            if (string.IsNullOrWhiteSpace(input.UserId) && string.IsNullOrWhiteSpace(input.Email))
+                return BadRequest("UserId ou email requis.");
+
+            IdentityUser? user = null;
+
+            if (!string.IsNullOrWhiteSpace(input.UserId))
+                user = await _um.FindByIdAsync(input.UserId!.Trim());
+
+            if (user == null && !string.IsNullOrWhiteSpace(input.Email))
+                user = await _um.FindByEmailAsync(input.Email!.Trim());
+
+            if (user == null)
+                return NotFound("Utilisateur introuvable.");
+
+            var existing = await _db.ForumAdmins.FindAsync(user.Id);
+            if (existing == null)
+            {
+                _db.ForumAdmins.Add(new ForumAdmin
+                {
+                    UserId = user.Id,
+                    User = user,
+                    AddedUtc = DateTime.UtcNow
+                });
+                await _db.SaveChangesAsync();
+            }
+
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Remove a global moderator (ForumAdmins entry).
+        /// </summary>
+        [HttpDelete("moderators/{userId}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> RemoveGlobalModerator(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return BadRequest("UserId requis.");
+
+            var admin = await _db.ForumAdmins
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.UserId == userId);
+
+            if (admin == null)
+                return NotFound();
+
+            _db.ForumAdmins.Remove(admin);
+            await _db.SaveChangesAsync();
+            return NoContent();
         }
     }
 

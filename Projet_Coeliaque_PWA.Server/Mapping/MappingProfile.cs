@@ -71,9 +71,10 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                     s.EditedBy != null ? (s.EditedBy.UserName ?? s.EditedBy.Email ?? "Utilisateur") : null));
 
             CreateMap<ForumThreadModerator, ModeratorDto>()
-                .ForMember(d => d.UserId, o => o.MapFrom(s => s.UserId))
-                .ForMember(d => d.DisplayName, o => o.MapFrom(s =>
-                    s.User != null ? (s.User.UserName ?? s.User.Email ?? "Utilisateur") : "Utilisateur"));
+                .ForMember(d => d.UserId, opt => opt.MapFrom(src => src.UserId))
+                .ForMember(d => d.UserName, opt => opt.MapFrom(src =>
+                    src.User.UserName ?? src.User.Email ?? src.UserId))
+                .ForMember(d => d.AssignedUtc, opt => opt.MapFrom(src => src.AssignedUtc));
 
             // ---------- Admin inputs → entities (forum categories) ----------
             CreateMap<CreateCategoryInput, ForumCategory>()

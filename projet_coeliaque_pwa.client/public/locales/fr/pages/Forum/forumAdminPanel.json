@@ -1,13 +1,46 @@
 ﻿{
-  "loading": "Chargement…",
   "titles": {
-    "admin": "Administration du forum"
+    "admin": "Panneau d'administration du forum"
   },
+
+  "loading": "Chargement...",
+
+  "errors": {
+    "loadCategories": "Impossible de charger les catégories.",
+    "createFailed": "La création a échoué.",
+    "saveFailed": "L’enregistrement a échoué.",
+    "deleteFailed": "La suppression a échoué.",
+    "loadModerators": "Impossible de charger les modérateurs pour ce fil.",
+    "saveModerators": "Impossible d'enregistrer les modérateurs."
+  },
+
+  "alerts": {
+    "applied": "Modifications appliquées.",
+    "failed": "Une erreur est survenue.",
+    "moderatorsSaved": "Modérateurs enregistrés avec succès."
+  },
+
+  "confirm": {
+    "deleteCategory": "Voulez-vous vraiment supprimer cette catégorie?",
+    "clearModerators": "La liste est vide. Voulez-vous vraiment retirer tous les modérateurs de ce fil?"
+  },
+
   "sections": {
-    "categories": { "title": "Catégories" },
-    "quickThread": { "title": "Outils rapides (fil)" },
-    "moderation": { "title": "Modération (message)" }
+    "categories": {
+      "title": "Catégories du forum"
+    },
+    "quickThread": {
+      "title": "Outils rapides pour un fil"
+    },
+    "moderation": {
+      "title": "Modération des publications"
+    },
+    "globalModerators": {
+      "title": "Modérateurs du forum",
+      "description": "Les modérateurs disposent des outils de gestion (épingler/fermer les fils, modérer les messages, etc.)."
+    }
   },
+
   "table": {
     "headers": {
       "id": "ID",
@@ -18,25 +51,30 @@
       "actions": "Actions"
     }
   },
+
   "buttons": {
     "delete": "Supprimer",
     "force": "Forcer",
-    "forceTooltip": "Forcer (avec fils)",
+    "forceTooltip": "Supprimer même si des fils existent",
     "create": "Créer",
-    "apply": "Appliquer"
+    "apply": "Appliquer",
+    "loading": "Chargement...",
+    "saving": "Enregistrement..."
   },
+
   "newCategory": {
-    "title": "Nouvelle catégorie",
+    "title": "Créer une nouvelle catégorie",
     "labels": {
       "slug": "Slug",
       "name": "Nom",
       "description": "Description"
     },
     "placeholders": {
-      "slug": "ex: general",
-      "name": "ex: Général"
+      "slug": "ex. general",
+      "name": "ex. Discussions générales"
     }
   },
+
   "quickThread": {
     "labels": {
       "threadId": "ID du fil",
@@ -44,23 +82,44 @@
       "locked": "Verrouillé"
     }
   },
+
   "moderation": {
     "labels": {
       "postId": "ID du message",
       "deleted": "Supprimé"
     }
   },
-  "errors": {
-    "loadCategories": "Impossible de charger les catégories.",
-    "createFailed": "Échec de la création.",
-    "saveFailed": "Échec de la sauvegarde.",
-    "deleteFailed": "Échec de la suppression."
-  },
-  "alerts": {
-    "applied": "Appliqué.",
-    "failed": "Échec."
-  },
-  "confirm": {
-    "deleteCategory": "Supprimer cette catégorie ?"
+
+  "globalModerators": {
+    "labels": {
+      "selectUser": "Sélectionner un utilisateur",
+      "current": "Modérateurs actuels"
+    },
+    "placeholders": {
+      "selectUser": "Choisir un utilisateur…"
+    },
+    "buttons": {
+      "add": "Ajouter comme modérateur",
+      "remove": "Retirer",
+      "reload": "Recharger la liste"
+    },
+    "headers": {
+      "userId": "ID utilisateur",
+      "displayName": "Nom d'affichage",
+      "actions": "Actions"
+    },
+    "empty": "Aucun modérateur pour le moment.",
+    "errors": {
+      "load": "Impossible de charger la liste des modérateurs.",
+      "save": "Impossible d’enregistrer les modérateurs.",
+      "loadUsers": "Impossible de charger la liste des utilisateurs."
+    },
+    "alerts": {
+      "added": "Modérateur ajouté.",
+      "removed": "Modérateur retiré."
+    },
+    "confirm": {
+      "remove": "Retirer ce modérateur ?"
+    }
   }
 }

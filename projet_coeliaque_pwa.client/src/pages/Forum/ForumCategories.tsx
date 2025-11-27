@@ -1,6 +1,6 @@
-﻿// src/pages/ForumCategories.tsx
+﻿// src/pages/Forum/ForumCategories.tsx
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto } from "../../lib/types";
 import { useTranslation } from "react-i18next";
@@ -17,22 +17,29 @@ const PALETTE = [
 
 const ForumCategories: React.FC = () => {
     const { t } = useTranslation("pages/Forum/forumCategories");
+    const { lang } = useParams<{ lang: string }>();
+
+    // Normalize lang to "fr" | "en" to avoid weird values
+    const safeLang: "fr" | "en" = lang === "en" ? "en" : "fr";
 
     const [cats, setCats] = useState<ForumCategoryDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
-    /**
-     * Fetch categories on mount.
-     * `alive` prevents setState after unmount if the request resolves late.
-     */
     useEffect(() => {
         let alive = true;
         (async () => {
             try {
                 setLoading(true);
+                setErr(null);
                 const data = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
-                if (alive) setCats(data);
+
+                // Filter by language from backend
+                const filtered = data.filter(
+                    (c) => (c.language || "fr").toLowerCase().startsWith(safeLang)
+                );
+
+                if (alive) setCats(filtered);
             } catch (e) {
                 console.error(e);
                 if (alive) setErr(t("errors.loadCategories"));
@@ -44,14 +51,20 @@ const ForumCategories: React.FC = () => {
             alive = false;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [safeLang]);
 
     return (
         <div className="container py-3">
             {/* Header / context */}
-            <div className="rounded-4 p-4 p-md-5 mb-4 border bg-light">
-                <h1 className="h3 mb-1">{t("title")}</h1>
-                <div className="text-muted">{t("subtitle")}</div>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <div className="rounded-4 p-4 p-md-5 border bg-light flex-grow-1 me-3">
+                    <h1 className="h3 mb-1">{t("title")}</h1>
+                    <div className="text-muted">{t("subtitle")}</div>
+                </div>
+                <Link to="/forum" className="btn btn-outline-secondary">
+                    <i className="bi bi-arrow-left me-2" />
+                    {t("buttons.backToLanguage")}
+                </Link>
             </div>
 
             {err && <div className="alert alert-danger">{err}</div>}
@@ -101,7 +114,7 @@ const ForumCategories: React.FC = () => {
                                             {t("badges.threads", { count: c.threadCount })}
                                         </span>
                                         <Link
-                                            to={`/forum/c/${c.id}`}
+                                            to={`/forum/${safeLang}/c/${c.id}`}
                                             className="stretched-link btn btn-outline-primary btn-sm"
                                         >
                                             {t("buttons.open")}
