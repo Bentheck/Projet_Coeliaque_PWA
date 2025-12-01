@@ -212,7 +212,7 @@ export default function FactureEdit() {
 
     return (
         <div className="container py-3">
-            <div className="card shadow-sm rounded-4 mx-auto" style={{ maxWidth: 1200 }}>
+            <div className="card shadow-sm rounded-4 mx-auto facture-edit-card">
                 <div className="card-body">
                     <h2 className="mb-4">
                         <i className="bi bi-receipt-cutoff me-2"></i>
@@ -291,44 +291,31 @@ export default function FactureEdit() {
 
                             {/* Desktop table */}
                             <div className="d-none d-xl-block">
-                                <Table bordered hover className="align-middle mb-3">
+                                <Table bordered hover className="align-middle mb-3 facture-items-table">
                                     <thead className="table-light text-center">
                                         <tr>
-                                            <th
-                                                style={{
-                                                    minWidth: 180,
-                                                    width: 220,
-                                                }}
-                                            >
+                                            <th className="invoice-col-type">
                                                 {t("table.typeProduit")}
                                             </th>
-                                            <th
-                                                style={{
-                                                    minWidth: 280,
-                                                    width: 340,
-                                                }}
-                                            >
+                                            <th className="invoice-col-brand">
                                                 {t("table.marque")}
                                             </th>
-                                            <th style={{ width: 110 }}>
+                                            <th className="invoice-col-price">
                                                 {t("table.prix")}
                                             </th>
-                                            <th style={{ width: 110 }}>
+                                            <th className="invoice-col-weight">
                                                 {t("table.poids")}
                                             </th>
-                                            <th style={{ width: 90 }}>
+                                            <th className="invoice-col-unit">
                                                 {t("table.unite")}
                                             </th>
-                                            <th style={{ width: 110 }}>
+                                            <th className="invoice-col-qty">
                                                 {t("table.quantite")}
                                             </th>
-                                            <th
-                                                className="text-nowrap"
-                                                style={{ width: 110 }}
-                                            >
+                                            <th className="invoice-col-onsale text-nowrap">
                                                 {t("table.enSoldeQ")}
                                             </th>
-                                            <th style={{ width: 70 }}></th>
+                                            <th className="invoice-col-actions"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -356,8 +343,7 @@ export default function FactureEdit() {
                                                             handleItemChange(
                                                                 i,
                                                                 "typeItem",
-                                                                option?.value ||
-                                                                ""
+                                                                option?.value || ""
                                                             )
                                                         }
                                                         placeholder={
@@ -365,16 +351,7 @@ export default function FactureEdit() {
                                                                 "placeholders.type"
                                                             ) as string
                                                         }
-                                                        styles={{
-                                                            container: (base) => ({
-                                                                ...base,
-                                                                minWidth: 0,
-                                                            }),
-                                                            menu: (base) => ({
-                                                                ...base,
-                                                                zIndex: 9999,
-                                                            }),
-                                                        }}
+                                                        classNamePrefix="facture-type"
                                                     />
                                                 </td>
 
@@ -507,7 +484,7 @@ export default function FactureEdit() {
                                                 <td className="text-center">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-outline-danger btn-sm rounded-pill px-3"
+                                                        className="btn btn-outline-danger btn-sm rounded-pill px-3 invoice-remove-btn"
                                                         onClick={() =>
                                                             handleRemoveItem(i)
                                                         }
@@ -573,41 +550,7 @@ export default function FactureEdit() {
                                                                     "placeholders.type"
                                                                 ) as string
                                                             }
-                                                            styles={{
-                                                                control: (
-                                                                    base
-                                                                ) => ({
-                                                                    ...base,
-                                                                    minHeight: 28,
-                                                                    fontSize: 14,
-                                                                }),
-                                                                valueContainer:
-                                                                    (
-                                                                        base
-                                                                    ) => ({
-                                                                        ...base,
-                                                                        padding:
-                                                                            "0 6px",
-                                                                    }),
-                                                                input: (
-                                                                    base
-                                                                ) => ({
-                                                                    ...base,
-                                                                    margin: 0,
-                                                                    padding: 0,
-                                                                }),
-                                                                indicatorsContainer:
-                                                                    (
-                                                                        base
-                                                                    ) => ({
-                                                                        ...base,
-                                                                        height: 22,
-                                                                    }),
-                                                                menu: (base) => ({
-                                                                    ...base,
-                                                                    zIndex: 9999,
-                                                                }),
-                                                            }}
+                                                            classNamePrefix="facture-type-mobile"
                                                         />
                                                     </div>
 
@@ -759,12 +702,8 @@ export default function FactureEdit() {
                                                             }
                                                         />
                                                         <label
-                                                            className="form-check-label small text-nowrap"
+                                                            className="form-check-label small invoice-onsale-label"
                                                             htmlFor={`onsale${i}`}
-                                                            style={{
-                                                                whiteSpace:
-                                                                    "nowrap",
-                                                            }}
                                                         >
                                                             {t(
                                                                 "table.enSoldeQ"
@@ -777,10 +716,7 @@ export default function FactureEdit() {
                                                         <Button
                                                             size="sm"
                                                             variant="outline-danger"
-                                                            className="rounded-pill px-2 py-0"
-                                                            style={{
-                                                                lineHeight: 1,
-                                                            }}
+                                                            className="rounded-pill px-2 py-0 invoice-remove-btn"
                                                             onClick={() =>
                                                                 handleRemoveItem(
                                                                     i
@@ -875,16 +811,7 @@ export default function FactureEdit() {
                                                 "modal.step1.placeholder"
                                             ) as string
                                         }
-                                        styles={{
-                                            container: (base) => ({
-                                                ...base,
-                                                minWidth: 0,
-                                            }),
-                                            menu: (base) => ({
-                                                ...base,
-                                                zIndex: 9999,
-                                            }),
-                                        }}
+                                        classNamePrefix="facture-type-modal"
                                     />
                                 </Form.Group>
                                 <div className="d-flex justify-content-end">

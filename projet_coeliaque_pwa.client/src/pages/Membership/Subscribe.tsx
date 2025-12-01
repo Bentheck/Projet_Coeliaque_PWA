@@ -109,7 +109,7 @@ const Subscribe: React.FC = () => {
                 )}
             </div>
 
-            <div className="text-muted mt-3" style={{ fontSize: ".9rem" }}>
+            <div className="text-muted mt-3 subscribe-key-hint">
                 {t("keyLabel")} <code>{getPublishableKey().slice(0, 16)}…</code>
             </div>
         </div>

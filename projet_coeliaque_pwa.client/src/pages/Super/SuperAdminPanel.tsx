@@ -258,8 +258,7 @@ const SuperAdminPanel: React.FC = () => {
                 <div className="card-header">Membership (recherche par courriel)</div>
                 <div className="card-body">
                     <div
-                        className="mb-3 position-relative"
-                        style={{ maxWidth: 480 }}
+                        className="mb-3 position-relative membership-search-box"
                         onKeyDown={(e) => {
                             if (e.key === "Enter") runManualSearch();
                         }}
@@ -291,7 +290,7 @@ const SuperAdminPanel: React.FC = () => {
                         </div>
 
                         {showSug && suggestions.length > 0 && (
-                            <div className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 10 }}>
+                            <div className="list-group position-absolute w-100 shadow-sm membership-suggestions-dropdown">
                                 {suggestions.map((s) => (
                                     <button
                                         key={s.userId}

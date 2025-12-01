@@ -1,8 +1,20 @@
 ﻿{
-  "subscribeSuccess": {
-    "loading": "Chargement…",
-    "title": "Paiement réussi !",
-    "thankYou": "Merci pour votre abonnement.",
-    "sessionIdLabel": "ID de la transaction :"
+  "loading": "Chargement…",
+  "title": "Paiement réussi!",
+  "thankYou": "Merci pour votre abonnement.",
+  "sessionIdLabel": "ID de transaction :",
+  "receipt": {
+    "title": "Reçu",
+    "subtitle": "Reçu de paiement pour votre abonnement.",
+    "status": "Statut",
+    "amount": "Montant",
+    "customer": "Client",
+    "subscription": "ID d’abonnement",
+    "paymentIntent": "ID de paiement",
+    "date": "Date",
+    "footerNote": "Conservez ce reçu pour vos dossiers fiscaux ou comptables.",
+    "badgePaid": "PAYÉ",
+    "badgePending": "EN ATTENTE",
+    "print": "Imprimer le reçu"
   }
 }

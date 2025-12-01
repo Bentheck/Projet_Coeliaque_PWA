@@ -100,7 +100,7 @@ const Membership: React.FC = () => {
     const active = membership?.isActive ?? false;
 
     return (
-        <div className="membership-page" style={{ padding: 24 }}>
+        <div className="membership-page">
             <h1>{t("title")}</h1>
 
             {/* Status block */}

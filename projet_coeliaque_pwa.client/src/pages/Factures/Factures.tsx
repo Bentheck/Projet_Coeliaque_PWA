@@ -29,7 +29,7 @@ const Factures: React.FC = () => {
     // Live list from Dexie (generic store)
     const factures = useLiveQuery(() => getFacturesList(LIST_KEY), []);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const[error, setError] = useState<string | null>(null);
 
     // Inline form state
     const [formMode, setFormMode] = useState<"none" | "create" | "edit">("none");
@@ -58,7 +58,7 @@ const Factures: React.FC = () => {
 
     // ----- Handlers -----
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
     const startCreate = () => {
@@ -96,7 +96,7 @@ const Factures: React.FC = () => {
                     const existing = (await getFacturesList(LIST_KEY)) ?? [];
                     await putFacturesList(
                         LIST_KEY,
-                        (existing as Facture[]).map(f => (f.id === updated.id ? updated : f))
+                        (existing as Facture[]).map((f) => (f.id === updated.id ? updated : f))
                     );
                     await putFacture(updated);
                     alert(t("alerts.offlineEditSaved"));
@@ -148,7 +148,7 @@ const Factures: React.FC = () => {
                 const existing = (await getFacturesList(LIST_KEY)) ?? [];
                 await putFacturesList(
                     LIST_KEY,
-                    (existing as Facture[]).filter(f => f.id !== facture.id)
+                    (existing as Facture[]).filter((f) => f.id !== facture.id)
                 );
                 await removeFacture(facture.id);
                 alert(t("alerts.offlineDeleteQueued"));
@@ -160,7 +160,7 @@ const Factures: React.FC = () => {
             const existing = (await getFacturesList(LIST_KEY)) ?? [];
             await putFacturesList(
                 LIST_KEY,
-                (existing as Facture[]).filter(f => f.id !== facture.id)
+                (existing as Facture[]).filter((f) => f.id !== facture.id)
             );
             await removeFacture(facture.id);
         } catch (err: any) {
@@ -172,20 +172,11 @@ const Factures: React.FC = () => {
     const list = (factures ?? []) as Facture[];
 
     return (
-        <div className="container" style={{ maxWidth: 700 }}>
-            <style>{`
-        @media (max-width: 600px) {
-          .only-icons-under-600 .btn-text { display: none !important; }
-          .only-icons-under-600 .btn i { margin-right: 0 !important; }
-          .only-icons-under-600 .btn.btn-sm { padding: .375rem .5rem; }
-        }
-      `}</style>
-
+        <div className="container factures-container">
             <div className="d-flex flex-column align-items-center mb-3">
                 <h2 className="mb-2">{t("headings.title")}</h2>
                 <button
-                    className="btn btn-primary"
-                    style={{ minWidth: 170 }}
+                    className="btn btn-primary factures-new-btn"
                     onClick={startCreate}
                 >
                     {t("buttons.new")}
@@ -246,15 +237,25 @@ const Factures: React.FC = () => {
             {loading ? (
                 <div>{t("loading")}</div>
             ) : list.length === 0 ? (
-                <div className="alert alert-secondary text-center">{t("empty.noneFound")}</div>
+                <div className="alert alert-secondary text-center">
+                    {t("empty.noneFound")}
+                </div>
             ) : (
                 list.map((facture: Facture) => (
                     <div key={facture.id} className="card mb-2 border-0 shadow-sm">
-                        <div className="card-body d-flex align-items-start" style={{ columnGap: "1rem" }}>
-                            <span style={{ flex: 1 }}>
-                                <div><b>{t("list.idLabel")}</b> {facture.factureId || t("pending")}</div>
-                                <div><b>{t("list.dateLabel")}</b> {facture.date?.slice(0, 10)}</div>
-                                <div><b>{t("list.storeLabel")}</b> {facture.magasin}</div>
+                        <div className="card-body d-flex align-items-start factures-card-body">
+                            <span className="factures-card-main">
+                                <div>
+                                    <b>{t("list.idLabel")}</b>{" "}
+                                    {facture.factureId || t("pending")}
+                                </div>
+                                <div>
+                                    <b>{t("list.dateLabel")}</b>{" "}
+                                    {facture.date?.slice(0, 10)}
+                                </div>
+                                <div>
+                                    <b>{t("list.storeLabel")}</b> {facture.magasin}
+                                </div>
                             </span>
 
                             <div className="d-flex gap-2 only-icons-under-600">
@@ -277,7 +278,9 @@ const Factures: React.FC = () => {
                                     title={t("list.deleteTitle") as string}
                                 >
                                     <i className="bi bi-trash" aria-hidden="true"></i>{" "}
-                                    <span className="btn-text">{t("list.deleteBtn")}</span>
+                                    <span className="btn-text">
+                                        {t("list.deleteBtn")}
+                                    </span>
                                 </button>
                             </div>
                         </div>

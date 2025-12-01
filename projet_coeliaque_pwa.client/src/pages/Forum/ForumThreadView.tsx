@@ -20,8 +20,7 @@ const Avatar: React.FC<{ name: string }> = ({ name }) => {
     const letter = (name || "?").trim().charAt(0).toUpperCase();
     return (
         <div
-            className="rounded-circle d-inline-flex align-items-center justify-content-center border"
-            style={{ width: 40, height: 40, fontWeight: 600, background: "#f8f9fa" }}
+            className="forum-avatar rounded-circle d-inline-flex align-items-center justify-content-center border"
             aria-hidden="true"
         >
             {letter}
@@ -395,8 +394,8 @@ const PostCard: React.FC<PostCardProps> = memo(
 
                                             {p.replies?.length ? (
                                                 <div
-                                                    className="mt-2 ps-2 ps-sm-3 border-start"
-                                                    style={{ marginLeft: indentPx, borderColor: "#dee2e6", borderWidth: 2 }}
+                                                    className="mt-2 ps-2 ps-sm-3 border-start forum-post-replies"
+                                                    style={{ marginLeft: indentPx }}
                                                 >
                                                     {p.replies.map((child) => (
                                                         <PostCard
@@ -432,7 +431,9 @@ const PostCard: React.FC<PostCardProps> = memo(
                                         <div className="mt-2">
                                             <PostEditor
                                                 initialHTML={editText[p.id] ?? bodyHtml}
-                                                onChange={(v) => setEditText((tState) => ({ ...tState, [p.id]: v }))}
+                                                onChange={(v) =>
+                                                    setEditText((tState) => ({ ...tState, [p.id]: v }))
+                                                }
                                                 ariaLabel={t("actions.edit")}
                                                 giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
                                                 giphyLang={giphyLang}
@@ -863,7 +864,7 @@ const ForumThreadView: React.FC = () => {
     /** Controls displayed under the OP (or first when OP not on page). */
     const Controls = (
         <div className="my-3 d-flex flex-wrap gap-2 align-items-center">
-            <div className="input-group input-group-sm" style={{ width: 240 }}>
+            <div className="input-group input-group-sm forum-controls-order-group">
                 <span className="input-group-text">{t("controls.order.label")}</span>
                 <select
                     className="form-select"
@@ -940,8 +941,7 @@ const ForumThreadView: React.FC = () => {
                                     ) : (
                                         <>
                                             <input
-                                                className="form-control form-control-sm"
-                                                style={{ maxWidth: 520 }}
+                                                className="form-control form-control-sm forum-thread-title-input"
                                                 value={titleDraft}
                                                 onChange={(e) => setTitleDraft(e.target.value)}
                                             />

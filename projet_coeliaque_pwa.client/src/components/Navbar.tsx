@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import InstallPWA from "../components/InstallPWA";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "./ThemeContext"; // 👈 Theme
 
 /** Small hook to track connectivity */
 function useOnlineStatus() {
@@ -72,6 +73,7 @@ export default function Navbar() {
     const { t, i18n } = useTranslation("components/navbar");
     const { user, membershipStatus, isForumAdmin, isSuperAdmin } = useAuth();
     const isOnline = useOnlineStatus();
+    const { resolvedTheme, toggleTheme } = useTheme();
 
     const displayLabel =
         user?.displayName ??
@@ -96,8 +98,13 @@ export default function Navbar() {
         i18n.changeLanguage(nextLang);
     };
 
+    const languageTitle =
+        currentLang === "fr"
+            ? t("language.switchToEn") // e.g. "Switch to English"
+            : t("language.switchToFr"); // e.g. "Passer au français"
+
     return (
-        <nav className="navbar navbar-expand-lg navbar-light bg-white sticky-top mb-4 shadow-sm">
+        <nav className="navbar navbar-expand-lg sticky-top mb-4">
             <div className="container">
                 <Link className="navbar-brand" to="/">
                     <i className="bi bi-bootstrap"></i> {t("brand")}
@@ -237,7 +244,7 @@ export default function Navbar() {
                                 <>
                                     <a
                                         className="nav-link dropdown-toggle"
-                                        href="#"
+                                        href="#" // eslint-disable-line
                                         id="forumDropdown"
                                         role="button"
                                         data-bs-toggle="dropdown"
@@ -266,9 +273,7 @@ export default function Navbar() {
                                                     to="/forum/new"
                                                 >
                                                     <i className="bi bi-plus-circle me-2"></i>{" "}
-                                                    {t(
-                                                        "menu.forum.newThread"
-                                                    )}
+                                                    {t("menu.forum.newThread")}
                                                 </Link>
                                             </li>
                                         )}
@@ -293,7 +298,7 @@ export default function Navbar() {
                             ) : (
                                 <a
                                     className="nav-link disabled"
-                                    href="#" // eslint-disable-line
+                                    href="#"
                                     aria-disabled="true"
                                     title={t("menu.forum.offlineTitle")}
                                     onClick={(e) => {
@@ -325,10 +330,7 @@ export default function Navbar() {
                                 aria-labelledby="helpDropdown"
                             >
                                 <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/faq"
-                                    >
+                                    <Link className="dropdown-item" to="/faq">
                                         <i className="bi bi-journal-text me-2"></i>{" "}
                                         {t("menu.help.faq")}
                                     </Link>
@@ -364,17 +366,37 @@ export default function Navbar() {
 
                     {/* Right side */}
                     <ul className="navbar-nav ms-auto align-items-lg-center">
+                        {/* Dark / Light toggle */}
+                        <li className="nav-item my-2 my-lg-0 me-lg-2">
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={toggleTheme}
+                                title={
+                                    resolvedTheme === "dark"
+                                        ? t("theme.lightTitle")
+                                        : t("theme.darkTitle")
+                                }
+                            >
+                                <i
+                                    className={`bi ${resolvedTheme === "dark"
+                                            ? "bi-sun-fill"
+                                            : "bi-moon-stars-fill"
+                                        } me-1`}
+                                />
+                                {resolvedTheme === "dark"
+                                    ? t("theme.light")
+                                    : t("theme.dark")}
+                            </button>
+                        </li>
+
                         {/* Language switcher */}
                         <li className="nav-item my-2 my-lg-0 me-lg-2">
                             <button
                                 type="button"
                                 className="btn btn-outline-secondary btn-sm"
                                 onClick={handleSwitchLanguage}
-                                title={
-                                    currentLang === "fr"
-                                        ? "Switch to English"
-                                        : "Passer au français"
-                                }
+                                title={languageTitle}
                             >
                                 <i className="bi bi-translate me-1"></i>
                                 {currentLangLabel}
@@ -479,13 +501,17 @@ export default function Navbar() {
                                             <hr className="dropdown-divider" />
                                         </li>
                                         <li>
-                                            <Link
-                                                className="dropdown-item"
+                                            <OfflineAwareLink
                                                 to="/membership"
+                                                isOnline={isOnline}
+                                                className="dropdown-item"
+                                                disabledTitle={t(
+                                                    "offline.unavailable"
+                                                )}
                                             >
                                                 <i className="bi bi-card-checklist me-2"></i>{" "}
                                                 {t("userMenu.membership")}
-                                            </Link>
+                                            </OfflineAwareLink>
                                         </li>
                                         <li>
                                             <OfflineAwareLink

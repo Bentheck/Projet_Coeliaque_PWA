@@ -237,7 +237,8 @@ const ForumAdminPanel: React.FC = () => {
     const deleteCat = async (id: number, force: boolean) => {
         if (!confirm(t("confirm.deleteCategory"))) return;
         try {
-            const url = `/api/forum/admin/categories/${id}${force ? "?force=true" : ""}`;
+            const url = `/api/forum/admin/categories/${id}${force ? "?force=true" : ""
+                }`;
             await fetchJSON(url, { method: "DELETE" });
             await loadCategories();
         } catch (e) {
@@ -319,9 +320,12 @@ const ForumAdminPanel: React.FC = () => {
         try {
             setModsLoading(true);
             setModsErr(null);
-            await fetchJSON(`/api/forum/admin/moderators/${encodeURIComponent(userId)}`, {
-                method: "DELETE",
-            });
+            await fetchJSON(
+                `/api/forum/admin/moderators/${encodeURIComponent(userId)}`,
+                {
+                    method: "DELETE",
+                }
+            );
             await loadModerators();
             alert(t("globalModerators.alerts.removed"));
         } catch (e) {
@@ -362,9 +366,12 @@ const ForumAdminPanel: React.FC = () => {
         try {
             setAdminsLoading(true);
             setAdminsErr(null);
-            await fetchJSON(`/api/super/forum/admins/${encodeURIComponent(userId)}`, {
-                method: "DELETE",
-            });
+            await fetchJSON(
+                `/api/super/forum/admins/${encodeURIComponent(userId)}`,
+                {
+                    method: "DELETE",
+                }
+            );
             await loadAdmins();
             alert(t("admins.alerts.removed"));
         } catch (e) {
@@ -375,17 +382,23 @@ const ForumAdminPanel: React.FC = () => {
         }
     };
 
-    const availableForMod = users.filter((u) => !mods.some((m) => m.id === u.id));
-    const availableForAdmin = users.filter((u) => !admins.some((a) => a.userId === u.id));
+    const availableForMod = users.filter(
+        (u) => !mods.some((m) => m.id === u.id)
+    );
+    const availableForAdmin = users.filter(
+        (u) => !admins.some((a) => a.userId === u.id)
+    );
 
     return (
-        <div className="container py-3">
+        <div className="container py-3 forum-admin-container">
             <h1 className="h4 mb-3">{t("titles.admin")}</h1>
             {err && <div className="alert alert-danger">{err}</div>}
 
             {/* Categories table + creation form */}
             <div className="card mb-4">
-                <div className="card-header">{t("sections.categories.title")}</div>
+                <div className="card-header">
+                    {t("sections.categories.title")}
+                </div>
                 <div className="card-body">
                     {loading ? (
                         <div>{t("loading")}</div>
@@ -398,9 +411,17 @@ const ForumAdminPanel: React.FC = () => {
                                             <th>{t("table.headers.id")}</th>
                                             <th>{t("table.headers.slug")}</th>
                                             <th>{t("table.headers.name")}</th>
-                                            <th>{t("table.headers.description")}</th>
-                                            <th>{t("table.headers.language")}</th>
-                                            <th>{t("table.headers.threads")}</th>
+                                            <th>
+                                                {t(
+                                                    "table.headers.description"
+                                                )}
+                                            </th>
+                                            <th>
+                                                {t("table.headers.language")}
+                                            </th>
+                                            <th>
+                                                {t("table.headers.threads")}
+                                            </th>
                                             <th className="text-end">
                                                 {t("table.headers.actions")}
                                             </th>
@@ -416,11 +437,15 @@ const ForumAdminPanel: React.FC = () => {
                                                         defaultValue={c.slug}
                                                         onBlur={(e) =>
                                                             saveCat(c.id, {
-                                                                slug: e.target.value,
+                                                                slug: e.target
+                                                                    .value,
                                                                 name: c.name,
-                                                                description: c.description || null,
+                                                                description:
+                                                                    c.description ||
+                                                                    null,
                                                                 language:
-                                                                    c.language && c.language.trim()
+                                                                    c.language &&
+                                                                        c.language.trim()
                                                                         ? c.language
                                                                         : "fr",
                                                             })
@@ -434,10 +459,14 @@ const ForumAdminPanel: React.FC = () => {
                                                         onBlur={(e) =>
                                                             saveCat(c.id, {
                                                                 slug: c.slug,
-                                                                name: e.target.value,
-                                                                description: c.description || null,
+                                                                name: e.target
+                                                                    .value,
+                                                                description:
+                                                                    c.description ||
+                                                                    null,
                                                                 language:
-                                                                    c.language && c.language.trim()
+                                                                    c.language &&
+                                                                        c.language.trim()
                                                                         ? c.language
                                                                         : "fr",
                                                             })
@@ -447,15 +476,19 @@ const ForumAdminPanel: React.FC = () => {
                                                 <td>
                                                     <input
                                                         className="form-control form-control-sm"
-                                                        defaultValue={c.description || ""}
+                                                        defaultValue={
+                                                            c.description || ""
+                                                        }
                                                         onBlur={(e) =>
                                                             saveCat(c.id, {
                                                                 slug: c.slug,
                                                                 name: c.name,
                                                                 description:
-                                                                    e.target.value.trim() || null,
+                                                                    e.target.value.trim() ||
+                                                                    null,
                                                                 language:
-                                                                    c.language && c.language.trim()
+                                                                    c.language &&
+                                                                        c.language.trim()
                                                                         ? c.language
                                                                         : "fr",
                                                             })
@@ -465,23 +498,37 @@ const ForumAdminPanel: React.FC = () => {
                                                 <td>
                                                     {/* read-only language indicator */}
                                                     <span className="badge bg-light text-dark">
-                                                        {c.language === "en" ? "EN" : "FR"}
+                                                        {c.language === "en"
+                                                            ? "EN"
+                                                            : "FR"}
                                                     </span>
                                                 </td>
                                                 <td>{c.threadCount}</td>
                                                 <td className="text-end">
                                                     <button
                                                         className="btn btn-sm btn-outline-danger"
-                                                        onClick={() => deleteCat(c.id, false)}
+                                                        onClick={() =>
+                                                            deleteCat(
+                                                                c.id,
+                                                                false
+                                                            )
+                                                        }
                                                     >
                                                         {t("buttons.delete")}
                                                     </button>
                                                     <button
                                                         className="btn btn-sm btn-outline-danger ms-2"
-                                                        onClick={() => deleteCat(c.id, true)}
-                                                        title={t(
-                                                            "buttons.forceTooltip"
-                                                        ) as string}
+                                                        onClick={() =>
+                                                            deleteCat(
+                                                                c.id,
+                                                                true
+                                                            )
+                                                        }
+                                                        title={
+                                                            t(
+                                                                "buttons.forceTooltip"
+                                                            ) as string
+                                                        }
                                                     >
                                                         {t("buttons.force")}
                                                     </button>
@@ -506,8 +553,12 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={slugFr}
-                                        onChange={(e) => setSlugFr(e.target.value)}
-                                        placeholder={t("newCategory.placeholders.slug")}
+                                        onChange={(e) =>
+                                            setSlugFr(e.target.value)
+                                        }
+                                        placeholder={t(
+                                            "newCategory.placeholders.slug"
+                                        )}
                                     />
                                 </div>
                                 <div className="col-md-3">
@@ -517,8 +568,12 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={nameFr}
-                                        onChange={(e) => setNameFr(e.target.value)}
-                                        placeholder={t("newCategory.placeholders.name")}
+                                        onChange={(e) =>
+                                            setNameFr(e.target.value)
+                                        }
+                                        placeholder={t(
+                                            "newCategory.placeholders.name"
+                                        )}
                                     />
                                 </div>
                                 <div className="col-md-6">
@@ -528,7 +583,9 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={descFr}
-                                        onChange={(e) => setDescFr(e.target.value)}
+                                        onChange={(e) =>
+                                            setDescFr(e.target.value)
+                                        }
                                     />
                                 </div>
                             </div>
@@ -544,7 +601,9 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={slugEn}
-                                        onChange={(e) => setSlugEn(e.target.value)}
+                                        onChange={(e) =>
+                                            setSlugEn(e.target.value)
+                                        }
                                         placeholder="en_general"
                                     />
                                 </div>
@@ -555,7 +614,9 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={nameEn}
-                                        onChange={(e) => setNameEn(e.target.value)}
+                                        onChange={(e) =>
+                                            setNameEn(e.target.value)
+                                        }
                                         placeholder="ex. General discussions"
                                     />
                                 </div>
@@ -566,7 +627,9 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={descEn}
-                                        onChange={(e) => setDescEn(e.target.value)}
+                                        onChange={(e) =>
+                                            setDescEn(e.target.value)
+                                        }
                                     />
                                 </div>
                                 <div className="col-md-2 mt-3 mt-md-0 d-flex align-items-end">
@@ -591,7 +654,9 @@ const ForumAdminPanel: React.FC = () => {
 
             {/* Quick thread tools (pin/lock) */}
             <div className="card mb-4">
-                <div className="card-header">{t("sections.quickThread.title")}</div>
+                <div className="card-header">
+                    {t("sections.quickThread.title")}
+                </div>
                 <div className="card-body">
                     <div className="row g-2 align-items-center">
                         <div className="col-md-2">
@@ -601,7 +666,9 @@ const ForumAdminPanel: React.FC = () => {
                             <input
                                 className="form-control"
                                 value={threadId}
-                                onChange={(e) => setThreadId(e.target.value)}
+                                onChange={(e) =>
+                                    setThreadId(e.target.value)
+                                }
                             />
                         </div>
                         <div className="col-md-2 form-check mt-4">
@@ -612,7 +679,10 @@ const ForumAdminPanel: React.FC = () => {
                                 checked={pin}
                                 onChange={(e) => setPin(e.target.checked)}
                             />
-                            <label htmlFor="pin" className="form-check-label">
+                            <label
+                                htmlFor="pin"
+                                className="form-check-label"
+                            >
                                 {t("quickThread.labels.pinned")}
                             </label>
                         </div>
@@ -624,7 +694,10 @@ const ForumAdminPanel: React.FC = () => {
                                 checked={lock}
                                 onChange={(e) => setLock(e.target.checked)}
                             />
-                            <label htmlFor="lock" className="form-check-label">
+                            <label
+                                htmlFor="lock"
+                                className="form-check-label"
+                            >
                                 {t("quickThread.labels.locked")}
                             </label>
                         </div>
@@ -643,7 +716,9 @@ const ForumAdminPanel: React.FC = () => {
 
             {/* Forum ADMINS (SuperAdmin only management) */}
             <div className="card mb-4">
-                <div className="card-header">{t("sections.admins.title")}</div>
+                <div className="card-header">
+                    {t("sections.admins.title")}
+                </div>
                 <div className="card-body">
                     {!isSuperAdmin && (
                         <p className="text-muted small mb-3">
@@ -667,10 +742,16 @@ const ForumAdminPanel: React.FC = () => {
                                     <select
                                         className="form-select"
                                         value={selectedAdminUserId}
-                                        onChange={(e) => setSelectedAdminUserId(e.target.value)}
+                                        onChange={(e) =>
+                                            setSelectedAdminUserId(
+                                                e.target.value
+                                            )
+                                        }
                                     >
                                         <option value="">
-                                            {t("admins.placeholders.selectUser")}
+                                            {t(
+                                                "admins.placeholders.selectUser"
+                                            )}
                                         </option>
                                         {availableForAdmin.map((u) => (
                                             <option key={u.id} value={u.id}>
@@ -684,7 +765,9 @@ const ForumAdminPanel: React.FC = () => {
                                         className="btn btn-primary w-100"
                                         onClick={addAdmin}
                                         disabled={
-                                            !selectedAdminUserId || adminsLoading || !isSuperAdmin
+                                            !selectedAdminUserId ||
+                                            adminsLoading ||
+                                            !isSuperAdmin
                                         }
                                     >
                                         {adminsLoading
@@ -706,7 +789,9 @@ const ForumAdminPanel: React.FC = () => {
                                 </div>
                             </div>
 
-                            <h6 className="mb-2">{t("admins.labels.current")}</h6>
+                            <h6 className="mb-2">
+                                {t("admins.labels.current")}
+                            </h6>
                             {admins.length === 0 ? (
                                 <p className="text-muted small mb-0">
                                     {t("admins.empty")}
@@ -716,11 +801,29 @@ const ForumAdminPanel: React.FC = () => {
                                     <table className="table table-sm align-middle mb-0">
                                         <thead className="table-light">
                                             <tr>
-                                                <th>{t("admins.headers.userId")}</th>
-                                                <th>{t("admins.headers.displayName")}</th>
-                                                <th>{t("admins.headers.added")}</th>
+                                                <th>
+                                                    {
+                                                        t(
+                                                            "admins.headers.userId"
+                                                        )
+                                                    }
+                                                </th>
+                                                <th>
+                                                    {
+                                                        t(
+                                                            "admins.headers.displayName"
+                                                        )
+                                                    }
+                                                </th>
+                                                <th>
+                                                    {t(
+                                                        "admins.headers.added"
+                                                    )}
+                                                </th>
                                                 <th className="text-end">
-                                                    {t("admins.headers.actions")}
+                                                    {t(
+                                                        "admins.headers.actions"
+                                                    )}
                                                 </th>
                                             </tr>
                                         </thead>
@@ -740,11 +843,19 @@ const ForumAdminPanel: React.FC = () => {
                                                         <button
                                                             className="btn btn-sm btn-outline-danger"
                                                             onClick={() =>
-                                                                removeAdmin(a.userId)
+                                                                removeAdmin(
+                                                                    a.userId
+                                                                )
                                                             }
-                                                            disabled={adminsLoading}
+                                                            disabled={
+                                                                adminsLoading
+                                                            }
                                                         >
-                                                            {t("admins.buttons.remove")}
+                                                            {
+                                                                t(
+                                                                    "admins.buttons.remove"
+                                                                )
+                                                            }
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -769,7 +880,9 @@ const ForumAdminPanel: React.FC = () => {
                     </p>
 
                     {modsErr && (
-                        <div className="alert alert-danger py-1 mb-3">{modsErr}</div>
+                        <div className="alert alert-danger py-1 mb-3">
+                            {modsErr}
+                        </div>
                     )}
 
                     <div className="row g-2 align-items-end mb-3">
@@ -780,10 +893,14 @@ const ForumAdminPanel: React.FC = () => {
                             <select
                                 className="form-select"
                                 value={selectedUserId}
-                                onChange={(e) => setSelectedUserId(e.target.value)}
+                                onChange={(e) =>
+                                    setSelectedUserId(e.target.value)
+                                }
                             >
                                 <option value="">
-                                    {t("globalModerators.placeholders.selectUser")}
+                                    {t(
+                                        "globalModerators.placeholders.selectUser"
+                                    )}
                                 </option>
                                 {availableForMod.map((u) => (
                                     <option key={u.id} value={u.id}>
@@ -817,7 +934,9 @@ const ForumAdminPanel: React.FC = () => {
                         </div>
                     </div>
 
-                    <h6 className="mb-2">{t("globalModerators.labels.current")}</h6>
+                    <h6 className="mb-2">
+                        {t("globalModerators.labels.current")}
+                    </h6>
                     {mods.length === 0 ? (
                         <p className="text-muted small mb-0">
                             {t("globalModerators.empty")}
@@ -827,25 +946,49 @@ const ForumAdminPanel: React.FC = () => {
                             <table className="table table-sm align-middle mb-0">
                                 <thead className="table-light">
                                     <tr>
-                                        <th>{t("globalModerators.headers.userId")}</th>
-                                        <th>{t("globalModerators.headers.displayName")}</th>
+                                        <th>
+                                            {
+                                                t(
+                                                    "globalModerators.headers.userId"
+                                                )
+                                            }
+                                        </th>
+                                        <th>
+                                            {
+                                                t(
+                                                    "globalModerators.headers.displayName"
+                                                )
+                                            }
+                                        </th>
                                         <th className="text-end">
-                                            {t("globalModerators.headers.actions")}
+                                            {
+                                                t(
+                                                    "globalModerators.headers.actions"
+                                                )
+                                            }
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {mods.map((m) => (
                                         <tr key={m.id}>
-                                            <td className="font-monospace">{m.id}</td>
+                                            <td className="font-monospace">
+                                                {m.id}
+                                            </td>
                                             <td>{m.displayName}</td>
                                             <td className="text-end">
                                                 <button
                                                     className="btn btn-sm btn-outline-danger"
-                                                    onClick={() => removeModerator(m.id)}
+                                                    onClick={() =>
+                                                        removeModerator(m.id)
+                                                    }
                                                     disabled={modsLoading}
                                                 >
-                                                    {t("globalModerators.buttons.remove")}
+                                                    {
+                                                        t(
+                                                            "globalModerators.buttons.remove"
+                                                        )
+                                                    }
                                                 </button>
                                             </td>
                                         </tr>
@@ -859,7 +1002,9 @@ const ForumAdminPanel: React.FC = () => {
 
             {/* Post moderation */}
             <div className="card">
-                <div className="card-header">{t("sections.moderation.title")}</div>
+                <div className="card-header">
+                    {t("sections.moderation.title")}
+                </div>
                 <div className="card-body">
                     <div className="row g-2 align-items-center">
                         <div className="col-md-3">
@@ -869,7 +1014,9 @@ const ForumAdminPanel: React.FC = () => {
                             <input
                                 className="form-control"
                                 value={postId}
-                                onChange={(e) => setPostId(e.target.value)}
+                                onChange={(e) =>
+                                    setPostId(e.target.value)
+                                }
                             />
                         </div>
                         <div className="col-md-3 form-check mt-4">
@@ -878,9 +1025,14 @@ const ForumAdminPanel: React.FC = () => {
                                 type="checkbox"
                                 className="form-check-input"
                                 checked={deleted}
-                                onChange={(e) => setDeleted(e.target.checked)}
+                                onChange={(e) =>
+                                    setDeleted(e.target.checked)
+                                }
                             />
-                            <label htmlFor="deleted" className="form-check-label">
+                            <label
+                                htmlFor="deleted"
+                                className="form-check-label"
+                            >
                                 {t("moderation.labels.deleted")}
                             </label>
                         </div>

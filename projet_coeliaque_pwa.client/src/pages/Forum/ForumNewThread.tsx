@@ -31,7 +31,9 @@ const ForumNewThread: React.FC = () => {
         (async () => {
             try {
                 setErr(null);
-                const data = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
+                const data = await fetchJSON<ForumCategoryDto[]>(
+                    "/api/forum/categories"
+                );
 
                 // Only keep categories in the selected language
                 const filtered = data.filter((c) =>
@@ -43,7 +45,10 @@ const ForumNewThread: React.FC = () => {
                 // Pick default category:
                 // 1) if query param matches a category in this language, keep it
                 // 2) else, fall back to first category of this language
-                if (initialCategoryId && filtered.some((c) => c.id === initialCategoryId)) {
+                if (
+                    initialCategoryId &&
+                    filtered.some((c) => c.id === initialCategoryId)
+                ) {
                     setCategoryId(initialCategoryId);
                 } else if (filtered.length) {
                     setCategoryId(filtered[0].id);
@@ -97,7 +102,9 @@ const ForumNewThread: React.FC = () => {
     if (!user) {
         return (
             <div className="container py-3">
-                <div className="alert alert-secondary">{t("messages.loginToPost")}</div>
+                <div className="alert alert-secondary">
+                    {t("messages.loginToPost")}
+                </div>
             </div>
         );
     }
@@ -107,7 +114,10 @@ const ForumNewThread: React.FC = () => {
             <div className="d-flex justify-content-between align-items-center mb-3">
                 <h1 className="h4 mb-0">{t("title")}</h1>
                 {/* Back to category list for this language */}
-                <Link to={`/forum/${safeLang}`} className="btn btn-outline-secondary btn-sm">
+                <Link
+                    to={`/forum/${safeLang}`}
+                    className="btn btn-outline-secondary btn-sm"
+                >
                     <i className="bi bi-arrow-left me-1" />
                     {t("buttons.backToCategories")}
                 </Link>
@@ -123,7 +133,9 @@ const ForumNewThread: React.FC = () => {
                     onChange={(e) => setCategoryId(Number(e.target.value))}
                 >
                     {cats.length === 0 && (
-                        <option value={0}>{t("placeholders.noCategories")}</option>
+                        <option value={0}>
+                            {t("placeholders.noCategories")}
+                        </option>
                     )}
                     {cats.map((c) => (
                         <option key={c.id} value={c.id}>

@@ -64,7 +64,7 @@ const ForumCategories: React.FC = () => {
 
     const deleteCategory = async (id: number) => {
         if (!isAdmin) return;
-        if (!confirm(t("mod.deleteCategoryConfirm"))) return; // add i18n key
+        if (!confirm(t("mod.deleteCategoryConfirm"))) return; // i18n key in forumCategories
         try {
             await fetchJSON(`/api/forum/admin/categories/${id}`, {
                 method: "DELETE",
@@ -72,7 +72,7 @@ const ForumCategories: React.FC = () => {
             setCats((prev) => prev.filter((c) => c.id !== id));
         } catch (e) {
             console.error(e);
-            alert(t("mod.deleteCategoryFailed")); // add i18n key
+            alert(t("mod.deleteCategoryFailed")); // i18n key in forumCategories
         }
     };
 
@@ -99,8 +99,11 @@ const ForumCategories: React.FC = () => {
                         <div className="col" key={i}>
                             <div className="card h-100 shadow-sm border-0">
                                 <div
-                                    style={{ height: 6, background: PALETTE[i % PALETTE.length] }}
-                                    className="rounded-top"
+                                    className="rounded-top forum-categories-stripe"
+                                    style={{
+                                        background:
+                                            PALETTE[i % PALETTE.length],
+                                    }}
                                 />
                                 <div className="card-body">
                                     <h5 className="card-title placeholder-glow">
@@ -124,8 +127,11 @@ const ForumCategories: React.FC = () => {
                         <div className="col" key={c.id}>
                             <div className="card h-100 shadow-sm border-0 position-relative">
                                 <div
-                                    style={{ height: 6, background: PALETTE[idx % PALETTE.length] }}
-                                    className="rounded-top"
+                                    className="rounded-top forum-categories-stripe"
+                                    style={{
+                                        background:
+                                            PALETTE[idx % PALETTE.length],
+                                    }}
                                 />
                                 <div className="card-body d-flex flex-column">
                                     <h5 className="card-title mb-1 d-flex justify-content-between align-items-start">
@@ -134,7 +140,9 @@ const ForumCategories: React.FC = () => {
                                             <button
                                                 type="button"
                                                 className="btn btn-sm btn-outline-danger ms-2"
-                                                onClick={() => deleteCategory(c.id)}
+                                                onClick={() =>
+                                                    deleteCategory(c.id)
+                                                }
                                             >
                                                 <i className="bi bi-trash" />
                                             </button>
@@ -145,7 +153,9 @@ const ForumCategories: React.FC = () => {
                                     </p>
                                     <div className="d-flex justify-content-between align-items-center">
                                         <span className="badge text-bg-secondary">
-                                            {t("badges.threads", { count: c.threadCount })}
+                                            {t("badges.threads", {
+                                                count: c.threadCount,
+                                            })}
                                         </span>
                                         <Link
                                             to={`/forum/${safeLang}/c/${c.id}`}

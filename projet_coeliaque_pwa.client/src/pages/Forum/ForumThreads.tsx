@@ -3,13 +3,20 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchJSON } from "../../lib/api";
-import type { ForumCategoryDto, ForumThreadListItemDto, PagedResult } from "../../lib/types";
+import type {
+    ForumCategoryDto,
+    ForumThreadListItemDto,
+    PagedResult,
+} from "../../lib/types";
 import Pagination from "../../components/Pagination";
 import { useAuth } from "../../components/AuthContext";
 
 const ForumThreads: React.FC = () => {
     const { t, i18n } = useTranslation("pages/Forum/forumThreads");
-    const { lang, categoryId } = useParams<{ lang: string; categoryId: string }>();
+    const { lang, categoryId } = useParams<{
+        lang: string;
+        categoryId: string;
+    }>();
     const cid = Number(categoryId);
     const safeLang: "fr" | "en" = lang === "en" ? "en" : "fr";
 
@@ -20,7 +27,8 @@ const ForumThreads: React.FC = () => {
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
 
     const [cat, setCat] = useState<ForumCategoryDto | null>(null);
-    const [data, setData] = useState<PagedResult<ForumThreadListItemDto> | null>(null);
+    const [data, setData] =
+        useState<PagedResult<ForumThreadListItemDto> | null>(null);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
@@ -32,13 +40,16 @@ const ForumThreads: React.FC = () => {
             setLoading(true);
             setErr(null);
 
-            const cats = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
+            const cats = await fetchJSON<ForumCategoryDto[]>(
+                "/api/forum/categories"
+            );
             const current = cats.find((c) => c.id === cid) || null;
             setCat(current);
 
-            const res = await fetchJSON<PagedResult<ForumThreadListItemDto>>(
-                `/api/forum/threads?categoryId=${cid}&page=${page}&pageSize=20`
-            );
+            const res =
+                await fetchJSON<PagedResult<ForumThreadListItemDto>>(
+                    `/api/forum/threads?categoryId=${cid}&page=${page}&pageSize=20`
+                );
             setData(res);
         } catch (e: any) {
             setErr(t("errors.loadThreads"));
@@ -56,20 +67,27 @@ const ForumThreads: React.FC = () => {
 
     const fmt = (iso: string) => {
         const locale = i18n.language?.startsWith("fr") ? "fr-CA" : "en-CA";
-        return new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
+        return new Date(iso).toLocaleString(locale, {
+            dateStyle: "medium",
+            timeStyle: "short",
+        });
     };
 
     // --- Moderator helpers: pin / lock / delete from list ---
 
     const setThreadFlagLocal = (
         threadId: number,
-        patch: Partial<Pick<ForumThreadListItemDto, "isPinned" | "isLocked">>
+        patch: Partial<
+            Pick<ForumThreadListItemDto, "isPinned" | "isLocked">
+        >
     ) => {
         setData((prev) =>
             prev
                 ? {
                     ...prev,
-                    items: prev.items.map((it) => (it.id === threadId ? { ...it, ...patch } : it)),
+                    items: prev.items.map((it) =>
+                        it.id === threadId ? { ...it, ...patch } : it
+                    ),
                 }
                 : prev
         );
@@ -78,7 +96,8 @@ const ForumThreads: React.FC = () => {
     const togglePinned = async (threadId: number, nextPinned: boolean) => {
         if (!isModerator) return;
         setThreadBusy((b) => ({ ...b, [threadId]: true }));
-        const prev = data?.items.find((x) => x.id === threadId)?.isPinned ?? false;
+        const prev =
+            data?.items.find((x) => x.id === threadId)?.isPinned ?? false;
 
         // optimistic
         setThreadFlagLocal(threadId, { isPinned: nextPinned });
@@ -105,7 +124,8 @@ const ForumThreads: React.FC = () => {
     const toggleLocked = async (threadId: number, nextLocked: boolean) => {
         if (!isModerator) return;
         setThreadBusy((b) => ({ ...b, [threadId]: true }));
-        const prev = data?.items.find((x) => x.id === threadId)?.isLocked ?? false;
+        const prev =
+            data?.items.find((x) => x.id === threadId)?.isLocked ?? false;
 
         // optimistic
         setThreadFlagLocal(threadId, { isLocked: nextLocked });
@@ -141,7 +161,9 @@ const ForumThreads: React.FC = () => {
                 prev
                     ? {
                         ...prev,
-                        items: prev.items.filter((it) => it.id !== threadId),
+                        items: prev.items.filter(
+                            (it) => it.id !== threadId
+                        ),
                     }
                     : prev
             );
@@ -161,18 +183,27 @@ const ForumThreads: React.FC = () => {
         <div className="container py-3">
             <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div className="d-flex align-items-start gap-2">
-                    <Link to={`/forum/${safeLang}`} className="btn btn-outline-secondary">
+                    <Link
+                        to={`/forum/${safeLang}`}
+                        className="btn btn-outline-secondary"
+                    >
                         <i className="bi bi-arrow-left me-2" />
                         {t("buttons.categories")}
                     </Link>
                     <div>
                         <h1 className="h4 mb-1">
-                            {cat?.name || t("fallback.categoryWithId", { id: cid })}
+                            {cat?.name ||
+                                t("fallback.categoryWithId", { id: cid })}
                         </h1>
-                        <div className="text-muted small">{cat?.description || "—"}</div>
+                        <div className="text-muted small">
+                            {cat?.description || "—"}
+                        </div>
                     </div>
                 </div>
-                <Link className="btn btn-primary" to={`/forum/${safeLang}/new?categoryId=${cid}`}>
+                <Link
+                    className="btn btn-primary"
+                    to={`/forum/${safeLang}/new?categoryId=${cid}`}
+                >
                     <i className="bi bi-plus-circle me-2" />
                     {t("buttons.newThread")}
                 </Link>
@@ -213,12 +244,20 @@ const ForumThreads: React.FC = () => {
                                                     <h5 className="mb-1 text-dark">
                                                         {tItem.isPinned && (
                                                             <span className="badge bg-warning text-dark me-2">
-                                                                {t("badges.pinned")}
+                                                                {
+                                                                    t(
+                                                                        "badges.pinned"
+                                                                    )
+                                                                }
                                                             </span>
                                                         )}
                                                         {tItem.isLocked && (
                                                             <span className="badge bg-secondary me-2">
-                                                                {t("badges.locked")}
+                                                                {
+                                                                    t(
+                                                                        "badges.locked"
+                                                                    )
+                                                                }
                                                             </span>
                                                         )}
                                                         <Link
@@ -229,23 +268,38 @@ const ForumThreads: React.FC = () => {
                                                         </Link>
                                                     </h5>
                                                     <div className="mt-1 text-muted small">
-                                                        {t("meta.createdLine", {
-                                                            author: tItem.createdBy,
-                                                            date: fmt(tItem.createdUtc),
-                                                            count: tItem.postCount,
-                                                            posts: t("counts.post", {
-                                                                count: tItem.postCount,
-                                                            }),
-                                                        })}
+                                                        {t(
+                                                            "meta.createdLine",
+                                                            {
+                                                                author:
+                                                                    tItem.createdBy,
+                                                                date: fmt(
+                                                                    tItem.createdUtc
+                                                                ),
+                                                                count:
+                                                                    tItem.postCount,
+                                                                posts: t(
+                                                                    "counts.post",
+                                                                    {
+                                                                        count:
+                                                                            tItem.postCount,
+                                                                    }
+                                                                ),
+                                                            }
+                                                        )}
                                                     </div>
                                                 </div>
 
                                                 <div className="d-flex flex-column align-items-end gap-1">
                                                     <small className="text-muted text-end">
-                                                        {t("meta.lastPrefix")}&nbsp;
-                                                        {fmt(tItem.lastPostUtc)}
+                                                        {t("meta.lastPrefix")}
+                                                        &nbsp;
+                                                        {fmt(
+                                                            tItem.lastPostUtc
+                                                        )}
                                                         <br />
-                                                        {t("meta.by")} {tItem.lastBy}
+                                                        {t("meta.by")}{" "}
+                                                        {tItem.lastBy}
                                                     </small>
 
                                                     {isModerator && (
@@ -255,12 +309,20 @@ const ForumThreads: React.FC = () => {
                                                                     id={`pin-${tItem.id}`}
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={tItem.isPinned}
-                                                                    disabled={busy}
-                                                                    onChange={(e) =>
+                                                                    checked={
+                                                                        tItem.isPinned
+                                                                    }
+                                                                    disabled={
+                                                                        busy
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
                                                                         togglePinned(
                                                                             tItem.id,
-                                                                            e.target.checked
+                                                                            e
+                                                                                .target
+                                                                                .checked
                                                                         )
                                                                     }
                                                                 />
@@ -268,7 +330,9 @@ const ForumThreads: React.FC = () => {
                                                                     htmlFor={`pin-${tItem.id}`}
                                                                     className="form-check-label"
                                                                 >
-                                                                    {t("badges.pinned")}
+                                                                    {t(
+                                                                        "badges.pinned"
+                                                                    )}
                                                                 </label>
                                                             </div>
                                                             <div className="form-check form-switch form-check-reverse mb-1">
@@ -276,12 +340,20 @@ const ForumThreads: React.FC = () => {
                                                                     id={`lock-${tItem.id}`}
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={tItem.isLocked}
-                                                                    disabled={busy}
-                                                                    onChange={(e) =>
+                                                                    checked={
+                                                                        tItem.isLocked
+                                                                    }
+                                                                    disabled={
+                                                                        busy
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
                                                                         toggleLocked(
                                                                             tItem.id,
-                                                                            e.target.checked
+                                                                            e
+                                                                                .target
+                                                                                .checked
                                                                         )
                                                                     }
                                                                 />
@@ -289,18 +361,28 @@ const ForumThreads: React.FC = () => {
                                                                     htmlFor={`lock-${tItem.id}`}
                                                                     className="form-check-label"
                                                                 >
-                                                                    {t("badges.locked")}
+                                                                    {t(
+                                                                        "badges.locked"
+                                                                    )}
                                                                 </label>
                                                             </div>
 
                                                             <button
                                                                 type="button"
                                                                 className="btn btn-outline-danger btn-sm w-100"
-                                                                disabled={busy}
-                                                                onClick={() => deleteThread(tItem.id)}
+                                                                disabled={
+                                                                    busy
+                                                                }
+                                                                onClick={() =>
+                                                                    deleteThread(
+                                                                        tItem.id
+                                                                    )
+                                                                }
                                                             >
                                                                 <i className="bi bi-trash me-1" />
-                                                                {t("modThread.buttons.deleteThread")}
+                                                                {t(
+                                                                    "modThread.buttons.deleteThread"
+                                                                )}
                                                             </button>
                                                         </div>
                                                     )}
@@ -314,7 +396,11 @@ const ForumThreads: React.FC = () => {
                     </div>
 
                     <div className="mt-3">
-                        <Pagination page={data.page} totalPages={data.totalPages} onPage={setPage} />
+                        <Pagination
+                            page={data.page}
+                            totalPages={data.totalPages}
+                            onPage={setPage}
+                        />
                     </div>
                 </>
             )}

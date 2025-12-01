@@ -1,5 +1,4 @@
-﻿// src/pages/ListeEpicerie/ListeEpicerieView.tsx
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -351,19 +350,6 @@ const ListeEpicerieView: React.FC = () => {
 
     return (
         <div className="container py-4" id="print-section">
-            <style>
-                {`
-                @media screen {
-                    .print-only { display: none !important; }
-                }
-                @media print {
-                    .print-only { display: inline !important; }
-                    .no-print { display: none !important; }
-                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                }
-            `}
-            </style>
-
             {/* HEADER: back + title, then a row with switch + buttons, all LEFT aligned */}
             <div className="mb-2">
                 {/* First line: Retour + title/date + spinner */}
@@ -470,13 +456,10 @@ const ListeEpicerieView: React.FC = () => {
                             <table className="table table-sm align-middle">
                                 <thead className="table-light">
                                     <tr>
-                                        <th
-                                            className="text-center"
-                                            style={{ width: 80 }}
-                                        >
+                                        <th className="text-center liste-view-col-done">
                                             {t("table.done")}
                                         </th>
-                                        <th style={{ width: "28%" }}>
+                                        <th className="liste-view-col-product">
                                             {t("table.product")}
                                         </th>
                                         <th>{t("table.type")}</th>
@@ -485,10 +468,7 @@ const ListeEpicerieView: React.FC = () => {
                                         <th className="text-end">
                                             {t("table.unitPrice")}
                                         </th>
-                                        <th
-                                            className="text-end"
-                                            style={{ width: 110 }}
-                                        >
+                                        <th className="text-end liste-view-col-qty">
                                             {t("table.quantity")}
                                         </th>
                                         <th className="text-end">
@@ -513,16 +493,9 @@ const ListeEpicerieView: React.FC = () => {
                                                 </tr>
                                                 {storeRows.map((r) => (
                                                     <tr key={r.key}>
-                                                        <td
-                                                            className="text-center"
-                                                            style={{
-                                                                position:
-                                                                    "relative",
-                                                                height: 40,
-                                                            }}
-                                                        >
+                                                        <td className="text-center liste-view-check-cell">
                                                             <input
-                                                                className="form-check-input d-print-none"
+                                                                className="form-check-input d-print-none liste-view-check-input"
                                                                 type="checkbox"
                                                                 checked={
                                                                     r.checked
@@ -546,57 +519,12 @@ const ListeEpicerieView: React.FC = () => {
                                                                         name: r.name,
                                                                     }
                                                                 )}
-                                                                style={{
-                                                                    position:
-                                                                        "absolute",
-                                                                    left: "50%",
-                                                                    top: "50%",
-                                                                    transform:
-                                                                        "translate(-50%, -50%)",
-                                                                    width:
-                                                                        "26px",
-                                                                    height:
-                                                                        "26px",
-                                                                    opacity: 0,
-                                                                    cursor:
-                                                                        "pointer",
-                                                                    zIndex: 2,
-                                                                }}
                                                             />
                                                             <div
-                                                                style={{
-                                                                    width:
-                                                                        "26px",
-                                                                    height:
-                                                                        "26px",
-                                                                    border:
-                                                                        "3px solid #000",
-                                                                    borderRadius:
-                                                                        "4px",
-                                                                    fontSize:
-                                                                        "1.6rem",
-                                                                    fontWeight: 900,
-                                                                    color:
-                                                                        "#000",
-                                                                    backgroundColor:
-                                                                        r.checked
-                                                                            ? "#b6f2b3"
-                                                                            : "#fff",
-                                                                    display:
-                                                                        "flex",
-                                                                    alignItems:
-                                                                        "center",
-                                                                    justifyContent:
-                                                                        "center",
-                                                                    position:
-                                                                        "absolute",
-                                                                    left: "50%",
-                                                                    top: "50%",
-                                                                    transform:
-                                                                        "translate(-50%, -50%)",
-                                                                    pointerEvents:
-                                                                        "none",
-                                                                }}
+                                                                className={`liste-view-check-box ${r.checked
+                                                                        ? "liste-view-check-box--checked"
+                                                                        : ""
+                                                                    }`}
                                                             >
                                                                 {r.checked
                                                                     ? "✓"
@@ -667,22 +595,19 @@ const ListeEpicerieView: React.FC = () => {
                                         )
                                     )}
                                 </tbody>
-                                {anyPrice && (
-                                    <tfoot>
-                                        <tr>
-                                            <th
-                                                colSpan={7}
-                                                className="text-end"
-                                            >
-                                                {t("table.total")}
-                                            </th>
-                                            <th className="text-end">
-                                                {fmtMoney(totalCost)}
-                                            </th>
-                                            <th></th>
-                                        </tr>
-                                    </tfoot>
-                                )}
+                                    {anyPrice && (
+                                        <tfoot>
+                                            <tr className="liste-total-row">
+                                                <th colSpan={7} className="text-end">
+                                                    {t("table.total")}
+                                                </th>
+                                                <th className="text-end">
+                                                    {fmtMoney(totalCost)}
+                                                </th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    )}
                             </table>
                         </div>
                     </div>
@@ -807,17 +732,14 @@ const ListeEpicerieView: React.FC = () => {
                         {anyPrice && (
                             <div className="mt-3 d-flex justify-content-end">
                                 <div className="h6 mb-0">
-                                    {t("mobile.total")}: {fmtMoney(totalCost)}
+                                    {t("mobile.total")}:{" "}
+                                    {fmtMoney(totalCost)}
                                 </div>
                             </div>
                         )}
                     </div>
                 </>
             )}
-
-            <div className="mt-3">
-                <small className="text-muted">{t("tip")}</small>
-            </div>
         </div>
     );
 };

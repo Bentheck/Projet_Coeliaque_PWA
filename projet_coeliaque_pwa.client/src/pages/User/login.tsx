@@ -107,8 +107,7 @@ export default function Login() {
     return (
         <form
             onSubmit={handleSubmit}
-            className="card p-4 mx-auto my-5"
-            style={{ maxWidth: 400 }}
+            className="card p-4 mx-auto my-5 auth-card"
             noValidate
         >
             <h2 className="mb-3">{t("title")}</h2>
