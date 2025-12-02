@@ -1,6 +1,10 @@
 ﻿// src/pages/Home.tsx
 import React from "react";
-import { getOfflineStatus, markLastOnlineNow, type OfflineStatus } from "../swOfflineStatus";
+import {
+    getOfflineStatus,
+    markLastOnlineNow,
+    type OfflineStatus,
+} from "../swOfflineStatus";
 import { useAuth } from "../components/AuthContext";
 import { useTranslation } from "react-i18next";
 
@@ -22,19 +26,6 @@ function useOnlineStatus() {
     return online;
 }
 
-const boxStyle: React.CSSProperties = {
-    minHeight: 110,
-    display: "grid",
-    placeItems: "center",
-};
-
-const bigDigits: React.CSSProperties = {
-    fontSize: "2.25rem",
-    fontWeight: 700,
-    letterSpacing: "0.04em",
-    fontVariantNumeric: "tabular-nums",
-};
-
 const Home: React.FC = () => {
     const { t } = useTranslation("pages/home");
     const isOnline = useOnlineStatus();
@@ -44,77 +35,89 @@ const Home: React.FC = () => {
     const [deadlineMs, setDeadlineMs] = React.useState<number | null>(null);
     const [now, setNow] = React.useState<number>(Date.now());
 
-    const refreshStatus = React.useCallback(async () => {
-        const st = await getOfflineStatus();
-        setStatus(st);
-        if (st && (st as any).ok === true) {
-            const ok = st as { ok: true; ttlMs: number; remainingMs: number; entries: number };
-            setDeadlineMs(Date.now() + Math.max(0, ok.remainingMs));
-        } else {
-            setDeadlineMs(null);
-        }
-    }, []);
-
     React.useEffect(() => {
         let mounted = true;
 
-        // First: if ONLINE, send heartbeat; then pull status.
-        // When OFFLINE (e.g. offline reload), we skip the heartbeat so TTL doesn't reset.
-        const init = async () => {
-            if (navigator.onLine) {
-                await markLastOnlineNow();
-            }
-            if (mounted) {
-                await refreshStatus();
+        const syncFromSW = async () => {
+            const st = await getOfflineStatus();
+            if (!mounted) return;
+
+            //console.log("[Home] OfflineStatus from SW:", st);
+
+            setStatus(st);
+
+            if (st && st.ok === true) {
+                const remaining = Math.max(0, st.remainingMs);
+                setDeadlineMs(Date.now() + remaining);
+            } else {
+                setDeadlineMs(null);
             }
         };
-        void init();
 
-        const poll = setInterval(() => {
-            if (mounted) void refreshStatus();
+        const doHeartbeatIfOnline = async () => {
+            if (typeof navigator !== "undefined" && navigator.onLine) {
+                //console.log("[Home] Heartbeat: markLastOnlineNow()");
+                await markLastOnlineNow();
+            } else {
+                //console.log("[Home] Skipping heartbeat (navigator.onLine = false)");
+            }
+            await syncFromSW();
+        };
+
+        // Initial run on mount / when online state changes
+        void doHeartbeatIfOnline();
+
+        // Poll SW every 30s to keep status fresh
+        const pollId = window.setInterval(() => {
+            void syncFromSW();
         }, 30_000);
 
-        const tick = setInterval(() => {
-            if (mounted) setNow(Date.now());
+        // Tick for countdown digits
+        const tickId = window.setInterval(() => {
+            setNow(Date.now());
         }, 1_000);
 
-        // Keep TTL fresh while online
-        const keepAlive = setInterval(() => {
-            if (mounted && isOnline) {
-                void markLastOnlineNow().then(() => refreshStatus());
-            }
+        // Heartbeat every 5 minutes while online
+        const keepAliveId = window.setInterval(() => {
+            if (!mounted || !isOnline) return;
+            void markLastOnlineNow().then(syncFromSW);
         }, 5 * 60_000);
 
         return () => {
             mounted = false;
-            clearInterval(poll);
-            clearInterval(tick);
-            clearInterval(keepAlive);
+            window.clearInterval(pollId);
+            window.clearInterval(tickId);
+            window.clearInterval(keepAliveId);
         };
-    }, [refreshStatus, isOnline]);
+    }, [isOnline]);
 
-    // Only show the countdown when OFFLINE & LOGGED-IN.
-    const showCountdown = !isOnline && !!user;
+    // Only show countdown when:
+    //  - offline
+    //  - logged in
+    //  - SW says "ok" (TTL still valid)
+    const showCountdown = !isOnline && !!user && !!status && status.ok === true;
 
-    // Countdown digits
     let hh = "--",
         mm = "--",
         ss = "--";
+
     if (deadlineMs != null) {
         const ms = Math.max(0, deadlineMs - now);
-        const h = Math.floor(ms / 3600000);
-        const m = Math.floor((ms % 3600000) / 60000);
-        const s = Math.floor((ms % 60000) / 1000);
+        const h = Math.floor(ms / 3_600_000);
+        const m = Math.floor((ms % 3_600_000) / 60_000);
+        const s = Math.floor((ms % 60_000) / 1_000);
         hh = String(h).padStart(2, "0");
         mm = String(m).padStart(2, "0");
         ss = String(s).padStart(2, "0");
     }
 
-    // TTL hours shown in footer (fallback to 24h if status unknown)
     const ttlHours =
-        status && (status as any).ok === true
-            ? Math.round(((status as any).ttlMs) / 3600000)
+        status && status.ok === true
+            ? Math.round(status.ttlMs / 3_600_000)
             : 24;
+
+    const cachedEntries =
+        status && status.ok === true ? status.entries : null;
 
     return (
         <div className="container mt-5">
@@ -138,10 +141,12 @@ const Home: React.FC = () => {
                                 </span>
                             </div>
 
-                            <div className="card-body text-center" style={boxStyle}>
+                            <div className="card-body text-center offline-countdown-box">
                                 <div
-                                    style={bigDigits}
-                                    className={deadlineMs && deadlineMs > now ? "text-success" : "text-danger"}
+                                    className={`offline-countdown-digits ${deadlineMs && deadlineMs > now
+                                            ? "text-success"
+                                            : "text-danger"
+                                        }`}
                                     aria-live="polite"
                                     aria-atomic
                                 >
@@ -155,9 +160,17 @@ const Home: React.FC = () => {
                             </div>
 
                             <div className="card-footer text-muted small d-flex justify-content-between">
-                                <span>{t("offline.footer.ttl", { hours: ttlHours })}</span>
-                                {status && (status as any).ok === true ? (
-                                    <span>{t("offline.footer.cached", { count: (status as any).entries })}</span>
+                                <span>
+                                    {t("offline.footer.ttl", {
+                                        hours: ttlHours,
+                                    })}
+                                </span>
+                                {cachedEntries != null ? (
+                                    <span>
+                                        {t("offline.footer.cached", {
+                                            count: cachedEntries,
+                                        })}
+                                    </span>
                                 ) : (
                                     <span>&nbsp;</span>
                                 )}
@@ -166,8 +179,6 @@ const Home: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            {/* Online or offline & not logged-in -> no local UI; GlobalOfflineGuard handles the lock */}
         </div>
     );
 };

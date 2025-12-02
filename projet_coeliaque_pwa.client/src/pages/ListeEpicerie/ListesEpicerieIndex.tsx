@@ -12,10 +12,11 @@ type StatusFilter = "all" | "active" | "completed";
 const ListesEpicerieIndex: React.FC = () => {
     const { t } = useTranslation("pages/ListeEpicerie/listesEpicerieIndex");
 
-    const listes = useLiveQuery<ListeEpicerieDto[] | undefined>(
-        () => db.listeEpicerie.toArray(),
-        []
-    ) || [];
+    const listes =
+        useLiveQuery<ListeEpicerieDto[] | undefined>(
+            () => db.listeEpicerie.toArray(),
+            []
+        ) || [];
 
     // UI state
     const [q, setQ] = useState("");
@@ -46,7 +47,7 @@ const ListesEpicerieIndex: React.FC = () => {
     /** Small counters used for the filter pills */
     const counts = useMemo(() => {
         const total = listes.length;
-        const completed = listes.filter(l => !!l.completed).length;
+        const completed = listes.filter((l) => !!l.completed).length;
         const active = total - completed;
         return { total, active, completed };
     }, [listes]);
@@ -61,14 +62,17 @@ const ListesEpicerieIndex: React.FC = () => {
         const term = q.trim().toLowerCase();
         let arr = [...listes];
 
-        if (status === "active") arr = arr.filter(l => !l.completed);
-        else if (status === "completed") arr = arr.filter(l => !!l.completed);
+        if (status === "active") arr = arr.filter((l) => !l.completed);
+        else if (status === "completed") arr = arr.filter((l) => !!l.completed);
 
         if (term) {
             arr = arr.filter(
-                l =>
+                (l) =>
                     l.name?.toLowerCase().includes(term) ||
-                    new Date(l.created).toLocaleDateString("fr-CA").toLowerCase().includes(term)
+                    new Date(l.created)
+                        .toLocaleDateString("fr-CA")
+                        .toLowerCase()
+                        .includes(term)
             );
         }
 
@@ -98,7 +102,7 @@ const ListesEpicerieIndex: React.FC = () => {
      * - rollback on error
      */
     const toggleCompleted = async (l: ListeEpicerieDto, next: boolean) => {
-        setPending(p => ({ ...p, [l.id]: true }));
+        setPending((p) => ({ ...p, [l.id]: true }));
         await db.listeEpicerie.update(l.id, { completed: next });
 
         try {
@@ -120,7 +124,7 @@ const ListesEpicerieIndex: React.FC = () => {
             await db.listeEpicerie.update(l.id, { completed: !next });
             alert(t("errors.updateStatus"));
         } finally {
-            setPending(p => {
+            setPending((p) => {
                 const n = { ...p };
                 delete n[l.id];
                 return n;
@@ -132,7 +136,10 @@ const ListesEpicerieIndex: React.FC = () => {
     const onDelete = async (l: ListeEpicerieDto) => {
         if (!confirm(t("confirmDelete", { name: l.name }))) return;
         try {
-            const res = await fetch(`/api/ListeEpicerie/${l.id}`, { method: "DELETE", credentials: "include" });
+            const res = await fetch(`/api/ListeEpicerie/${l.id}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
 
             if (res.status === 202 || res.ok) {
                 await db.listeEpicerie.delete(l.id);
@@ -146,7 +153,7 @@ const ListesEpicerieIndex: React.FC = () => {
     };
 
     return (
-        <div className="container py-3">
+        <div className="container py-3 liste-index-container">
             <div className="text-center mb-3">
                 <h1 className="h3 mb-1">{t("title")}</h1>
                 <div className="text-muted small">{t("subtitle")}</div>
@@ -158,7 +165,12 @@ const ListesEpicerieIndex: React.FC = () => {
                     <div className="row g-2 align-items-center justify-content-center">
                         <div className="col-12 col-lg-8">
                             <div className="input-group">
-                                <span className="input-group-text" id="search-addon">🔎</span>
+                                <span
+                                    className="input-group-text liste-search-addon"
+                                    id="search-addon"
+                                >
+                                    🔎
+                                </span>
                                 <input
                                     type="search"
                                     className="form-control"
@@ -166,14 +178,23 @@ const ListesEpicerieIndex: React.FC = () => {
                                     aria-label={t("search.aria")}
                                     aria-describedby="search-addon"
                                     value={q}
-                                    onChange={(e) => setQ(e.target.value)}
+                                    onChange={(e) =>
+                                        setQ(e.target.value)
+                                    }
                                 />
                                 {q && (
-                                    <button className="btn btn-outline-secondary" onClick={() => setQ("")} title={t("common.clear")}>
+                                    <button
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => setQ("")}
+                                        title={t("common.clear")}
+                                    >
                                         {t("common.clear")}
                                     </button>
                                 )}
-                                <button className="btn btn-outline-secondary" onClick={() => syncDown(false)}>
+                                <button
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => syncDown(false)}
+                                >
                                     {t("common.refresh")}
                                 </button>
                             </div>
@@ -185,26 +206,48 @@ const ListesEpicerieIndex: React.FC = () => {
                             <ul className="nav nav-pills">
                                 <li className="nav-item">
                                     <button
-                                        className={`nav-link ${status === "active" ? "active" : ""}`}
-                                        onClick={() => applyStatus("active")}
+                                        className={`nav-link ${status === "active"
+                                                ? "active"
+                                                : ""
+                                            }`}
+                                        onClick={() =>
+                                            applyStatus("active")
+                                        }
                                     >
-                                        {t("filters.active")} <span className="badge text-bg-light ms-1">{counts.active}</span>
+                                        {t("filters.active")}{" "}
+                                        <span className="badge text-bg-light ms-1">
+                                            {counts.active}
+                                        </span>
                                     </button>
                                 </li>
                                 <li className="nav-item">
                                     <button
-                                        className={`nav-link ${status === "completed" ? "active" : ""}`}
-                                        onClick={() => applyStatus("completed")}
+                                        className={`nav-link ${status === "completed"
+                                                ? "active"
+                                                : ""
+                                            }`}
+                                        onClick={() =>
+                                            applyStatus("completed")
+                                        }
                                     >
-                                        {t("filters.completed")} <span className="badge text-bg-light ms-1">{counts.completed}</span>
+                                        {t("filters.completed")}{" "}
+                                        <span className="badge text-bg-light ms-1">
+                                            {counts.completed}
+                                        </span>
                                     </button>
                                 </li>
                                 <li className="nav-item">
                                     <button
-                                        className={`nav-link ${status === "all" ? "active" : ""}`}
+                                        className={`nav-link ${status === "all"
+                                                ? "active"
+                                                : ""
+                                            }`}
                                         onClick={() => applyStatus("all")}
                                     >
-                                        {t("filters.all")} <span className="badge text-bg-light ms-1">{counts.total}</span>
+                                        {t("filters.all")}{" "}
+                                        <span className="badge text-bg-light ms-1">
+                                            {counts.total}
+                                        </span>
                                     </button>
                                 </li>
                             </ul>
@@ -214,17 +257,28 @@ const ListesEpicerieIndex: React.FC = () => {
                             <select
                                 className="form-select form-select-sm"
                                 value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value as SortKey)}
+                                onChange={(e) =>
+                                    setSortBy(e.target.value as SortKey)
+                                }
                                 aria-label={t("sort.aria")}
                             >
-                                <option value="recent">{t("sort.recent")}</option>
-                                <option value="oldest">{t("sort.oldest")}</option>
-                                <option value="name">{t("sort.name")}</option>
+                                <option value="recent">
+                                    {t("sort.recent")}
+                                </option>
+                                <option value="oldest">
+                                    {t("sort.oldest")}
+                                </option>
+                                <option value="name">
+                                    {t("sort.name")}
+                                </option>
                             </select>
                         </div>
 
                         <div className="col-auto">
-                            <Link to="/liste-epicerie/edit" className="btn btn-primary">
+                            <Link
+                                to="/liste-epicerie/edit"
+                                className="btn btn-primary"
+                            >
                                 {t("newList")}
                             </Link>
                         </div>
@@ -234,27 +288,53 @@ const ListesEpicerieIndex: React.FC = () => {
 
             {/* Content */}
             {filtered.length === 0 ? (
-                <div className="border rounded-3 p-5 text-center bg-light">
+                <div className="border rounded-3 p-5 text-center bg-light liste-index-empty-card">
                     <div className="display-6 mb-2">🛒</div>
                     <h2 className="h5">{t("empty.title")}</h2>
-                    <p className="text-muted mb-3">{t("empty.subtitle")}</p>
-                    <Link to="/liste-epicerie/edit" className="btn btn-primary">{t("empty.create")}</Link>
+                    <p className="text-muted mb-3">
+                        {t("empty.subtitle")}
+                    </p>
+                    <Link
+                        to="/liste-epicerie/edit"
+                        className="btn btn-primary"
+                    >
+                        {t("empty.create")}
+                    </Link>
                 </div>
             ) : (
                 <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
                     {filtered.map((l) => {
-                        const count = Array.isArray(l.items) ? l.items.length : 0;
+                        const count = Array.isArray(l.items)
+                            ? l.items.length
+                            : 0;
                         const isCompleted = !!l.completed;
                         const saving = !!pending[l.id];
 
                         return (
                             <div className="col" key={l.id}>
-                                <div className={`card h-100 shadow-sm ${isCompleted ? "border-success" : ""}`}>
+                                <div
+                                    className={`card h-100 shadow-sm ${isCompleted
+                                            ? "border-success"
+                                            : ""
+                                        }`}
+                                >
                                     <div className="card-body d-flex flex-column">
                                         <div className="d-flex align-items-start justify-content-between">
-                                            <h5 className="card-title text-truncate mb-0" title={l.name}>{l.name}</h5>
-                                            <span className={`badge ms-2 ${isCompleted ? "bg-success" : "bg-secondary"}`}>
-                                                {isCompleted ? t("status.completed") : t("status.active")}
+                                            <h5
+                                                className="card-title text-truncate mb-0"
+                                                title={l.name}
+                                            >
+                                                {l.name}
+                                            </h5>
+                                            <span
+                                                className={`badge ms-2 ${isCompleted
+                                                        ? "bg-success"
+                                                        : "bg-secondary"
+                                                    }`}
+                                            >
+                                                {isCompleted
+                                                    ? t("status.completed")
+                                                    : t("status.active")}
                                             </span>
                                         </div>
 
@@ -266,29 +346,69 @@ const ListesEpicerieIndex: React.FC = () => {
                                                 id={`complete-${l.id}`}
                                                 checked={isCompleted}
                                                 disabled={saving}
-                                                onChange={(e) => toggleCompleted(l, e.target.checked)}
+                                                onChange={(e) =>
+                                                    toggleCompleted(
+                                                        l,
+                                                        e.target.checked
+                                                    )
+                                                }
                                             />
-                                            <label className="form-check-label" htmlFor={`complete-${l.id}`}>
+                                            <label
+                                                className="form-check-label"
+                                                htmlFor={`complete-${l.id}`}
+                                            >
                                                 {t("markComplete")}
                                             </label>
-                                            {saving && <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>}
+                                            {saving && (
+                                                <span
+                                                    className="spinner-border spinner-border-sm"
+                                                    aria-hidden="true"
+                                                ></span>
+                                            )}
                                         </div>
 
                                         <div className="mb-2 d-flex justify-content-between flex-wrap gap-2">
                                             <span className="badge text-bg-secondary">
                                                 {t("items", { count })}
                                             </span>
-                                            <small className="text-muted">{t("createdOn", { date: formatDate(l.created) })}</small>
+                                            <small className="text-muted">
+                                                {t("createdOn", {
+                                                    date: formatDate(
+                                                        l.created
+                                                    ),
+                                                })}
+                                            </small>
                                         </div>
 
                                         {/* Actions */}
                                         <div className="mt-auto d-flex align-items-center gap-2">
-                                            <Link to={`/liste-epicerie/view/${l.id}`} className="btn btn-outline-secondary w-100">{t("common.view")}</Link>
                                             <Link
-                                                to={isCompleted ? "#" : `/liste-epicerie/edit/${l.id}`}
-                                                onClick={(e) => { if (isCompleted) e.preventDefault(); }}
-                                                className={`btn btn-primary w-100 ${isCompleted ? "disabled" : ""}`}
-                                                title={isCompleted ? t("editDisabledTitle") : t("common.edit")}
+                                                to={`/liste-epicerie/view/${l.id}`}
+                                                className="btn btn-outline-secondary w-100"
+                                            >
+                                                {t("common.view")}
+                                            </Link>
+                                            <Link
+                                                to={
+                                                    isCompleted
+                                                        ? "#"
+                                                        : `/liste-epicerie/edit/${l.id}`
+                                                }
+                                                onClick={(e) => {
+                                                    if (isCompleted)
+                                                        e.preventDefault();
+                                                }}
+                                                className={`btn btn-primary w-100 ${isCompleted
+                                                        ? "disabled"
+                                                        : ""
+                                                    }`}
+                                                title={
+                                                    isCompleted
+                                                        ? t(
+                                                            "editDisabledTitle"
+                                                        )
+                                                        : t("common.edit")
+                                                }
                                                 aria-disabled={isCompleted}
                                             >
                                                 {t("common.edit")}
@@ -297,7 +417,12 @@ const ListesEpicerieIndex: React.FC = () => {
                                                 type="button"
                                                 className="btn btn-outline-danger btn-sm"
                                                 title={t("deleteTitle")}
-                                                aria-label={t("deleteAria", { name: l.name })}
+                                                aria-label={t(
+                                                    "deleteAria",
+                                                    {
+                                                        name: l.name,
+                                                    }
+                                                )}
                                                 onClick={() => onDelete(l)}
                                             >
                                                 {t("common.deleteShort")}
@@ -312,7 +437,9 @@ const ListesEpicerieIndex: React.FC = () => {
             )}
 
             <div className="text-center text-muted small mt-4">
-                {t("footer.total", { count: counts.total })} • {t("footer.active", { count: counts.active })} • {t("footer.completed", { count: counts.completed })}
+                {t("footer.total", { count: counts.total })} •{" "}
+                {t("footer.active", { count: counts.active })} •{" "}
+                {t("footer.completed", { count: counts.completed })}
             </div>
         </div>
     );

@@ -51,7 +51,7 @@ export async function syncDown(deep = true) {
         opts
     ).then(j).catch(() => null);
     if (Array.isArray(factures)) {
-        await putFacturesList("all", factures);
+        await putFacturesList("factures/all", factures);
         await setLastSync("factures", new Date().toISOString());
     }
 
@@ -92,15 +92,36 @@ export async function syncDown(deep = true) {
         await putReportYearsMany(rapRoot as ReportYearDto[]);
 
         const now = new Date().getFullYear();
-        const candidates = new Set<number>([now, now - 1]);
-        for (const y of rapRoot) {
-            const v = safeYear(y?.year);
-            if (v) candidates.add(v);
-        }
-        const toFetch = Array.from(candidates).sort((a, b) => b - a).slice(0, deep ? 8 : 3);
-        for (const y of toFetch) {
-            const rep = await fetch(`/api/rapports/${y}`, opts).then(j).catch(() => null);
-            if (rep) await putReportBody(y, rep as ReportPayload);
+
+        // Only use years that the API explicitly returns
+        const availableYears = rapRoot
+            .map((y: any) => safeYear(y?.year))
+            .filter((v: number | null): v is number => v !== null);
+
+        if (availableYears.length) {
+            // Prefer current and previous year, but ONLY if they are in availableYears
+            const preferred = new Set<number>(
+                availableYears.filter((y) => y === now || y === now - 1)
+            );
+
+            const remaining = availableYears.filter((y) => !preferred.has(y));
+
+            // Order: preferred (desc), then remaining (desc)
+            const ordered = [
+                ...Array.from(preferred).sort((a, b) => b - a),
+                ...remaining.sort((a, b) => b - a),
+            ];
+
+            const toFetch = ordered.slice(0, deep ? 8 : 3);
+
+            for (const y of toFetch) {
+                const rep = await fetch(`/api/rapports/${y}`, opts)
+                    .then(j)
+                    .catch(() => null);
+                if (rep) {
+                    await putReportBody(y, rep as ReportPayload);
+                }
+            }
         }
     }
 

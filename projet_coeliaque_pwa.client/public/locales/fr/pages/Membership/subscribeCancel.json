@@ -1,6 +1,4 @@
 ﻿{
-  "subscribeCancel": {
     "title": "Paiement annulé",
     "message": "Votre paiement a été annulé. Vous pouvez réessayer à tout moment."
-  }
 }

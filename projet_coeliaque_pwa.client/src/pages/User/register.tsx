@@ -76,7 +76,7 @@ export default function Register() {
 
     if (registered) {
         return (
-            <div className="card p-4 mx-auto my-5" style={{ maxWidth: 400 }}>
+            <div className="card p-4 mx-auto my-5 auth-card">
                 <h2 className="mb-2">{t("successTitle")}</h2>
                 <div className="alert alert-success mb-0">{t("successMsg")}</div>
             </div>
@@ -84,7 +84,11 @@ export default function Register() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="card p-4 mx-auto my-5" style={{ maxWidth: 400 }} noValidate>
+        <form
+            onSubmit={handleSubmit}
+            className="card p-4 mx-auto my-5 auth-card"
+            noValidate
+        >
             <h2 className="mb-3">{t("title")}</h2>
 
             {error && (

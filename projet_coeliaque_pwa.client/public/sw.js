@@ -3,9 +3,9 @@
    + Heartbeat-based TTL (no API dependency)
    + Dev-safe static asset strategy (Vite / localhost = network-first)
    + i18n: manifest warmup + runtime cache for /locales/** /*.json
-    ========================= */
+   ========================= */
 
-const APP_VERSION = "v1.0.27"; // bump when you change this file
+const APP_VERSION = "v1.0.28"; // ⬅️ BUMPED VERSION
 const PRECACHE = `precache-${APP_VERSION}`;
 const RUNTIME = "runtime";
 const API_CACHE_PREFIX = "api-runtime";
@@ -59,12 +59,12 @@ const FAQ_API = /^\/api\/faq(?:\/.*)?$/i;
 const COMPARATIF_ROOT = /^\/api\/comparatifyears\/?$/i;
 const COMPARATIF_ITEM = /^\/api\/comparatifyears\/\d+$/i;
 const COMPARATIF_TYPES = /^\/api\/comparatifyears\/types$/i;
-const COMPARATIF_LINES = /^\/api\/comparatifyears\/\d+\/lines(?:\/\d+)?$/i; // create/update/delete lines
+const COMPARATIF_LINES = /^\/api\/comparatifyears\/\d+\/lines(?:\/\d+)?$/i;
 const COMPARATIF_API = /^\/api\/comparatifyears(?:\/.*)?$/i;
 
 /* Rapports */
-const RAPPORTS_ROOT = /^\/api\/rapports\/?$/i;           // GET years list  (your controller returns list here)
-const RAPPORTS_ITEM = /^\/api\/rapports\/\d{4}$/i;       // GET report for a year
+const RAPPORTS_ROOT = /^\/api\/rapports\/?$/i;
+const RAPPORTS_ITEM = /^\/api\/rapports\/\d{4}$/i;
 const RAPPORTS_GENERATE = /^\/api\/rapports\/generate\/\d{4}$/i;
 const RAPPORTS_API = /^\/api\/rapports(?:\/.*)?$/i;
 
@@ -93,7 +93,6 @@ function isApiPath(p) {
     );
 }
 
-/* endpoints where "[]" is a safe offline fallback */
 function isCollectionEndpoint(p) {
     return (
         LISTES_ROOT.test(p) ||
@@ -110,7 +109,6 @@ function isCollectionEndpoint(p) {
     );
 }
 
-/* endpoints where "{}" is a safe offline fallback */
 function isSingletonEndpoint(p) {
     return (
         LISTES_ITEM.test(p) ||
@@ -125,13 +123,11 @@ function isSingletonEndpoint(p) {
     );
 }
 
-/* endpoints where a tiny shape is safer than {} */
 function offlineShapeFor(p) {
     if (MEMBERSHIP_STATUS.test(p)) {
         return { endDate: null, isActive: false };
     }
     if (ACCOUNT_STATUS.test(p)) {
-        // minimal snapshot to keep the app "logged in" shape happy if you open offline first time
         return {
             user: null,
             membershipStatus: null,
@@ -139,7 +135,7 @@ function offlineShapeFor(p) {
             isSuperAdmin: false
         };
     }
-    return null; // let generic {} / [] fallbacks apply
+    return null;
 }
 
 /* ------- Install/activate ------- */
@@ -157,7 +153,7 @@ self.addEventListener("install", (event) => {
                     await cache.addAll(files);
                 }
             }
-        } catch { /* first install might be offline */ }
+        } catch { }
 
         self.skipWaiting();
     })());
@@ -197,6 +193,9 @@ const META_DB = "sw-meta";
 const META_STORE = "kv";
 const LAST_OK_TS_KEY = "last-ok-ts";
 
+// in-memory snapshot of last-ok to avoid IDB race
+let LAST_OK_TS_MEM = null;
+
 function openMeta() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(META_DB, 1);
@@ -223,7 +222,12 @@ async function metaGet(key) {
         req.onerror = () => reject(req.error);
     });
 }
-async function bumpLastOnline() { try { await metaSet(LAST_OK_TS_KEY, Date.now()); } catch { } }
+
+async function bumpLastOnline() {
+    const now = Date.now();
+    LAST_OK_TS_MEM = now;
+    try { await metaSet(LAST_OK_TS_KEY, now); } catch { }
+}
 
 /* =========================
    Fetch: navigations + assets + APIs
@@ -231,7 +235,6 @@ async function bumpLastOnline() { try { await metaSet(LAST_OK_TS_KEY, Date.now()
 self.addEventListener("fetch", (event) => {
     const req = event.request;
 
-    // pass-through for non-GET / CORS preflight / etc.
     if (req.method !== "GET") return;
 
     const url = new URL(req.url);
@@ -276,7 +279,7 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    /* i18n JSON (network-first; runtime fallback; then precache) */
+    /* i18n JSON */
     if (url.pathname.startsWith("/locales/") && url.pathname.endsWith(".json")) {
         event.respondWith((async () => {
             const loc = await caches.open(LOCALE_RUNTIME);
@@ -295,7 +298,7 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    /* Static assets (DEV/Vite = network-first; PROD = network-first+cache) */
+    /* Static assets */
     const isStaticAsset = (p) => /\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|woff2?)$/i.test(p);
     const looksLikeViteDev =
         self.location.hostname === "localhost" ||
@@ -307,7 +310,6 @@ self.addEventListener("fetch", (event) => {
     if (isStaticAsset(url.pathname) || looksLikeViteDev) {
         event.respondWith((async () => {
             if (looksLikeViteDev) {
-                // Dev / Vite: never cache; always try network, fallback to whatever cached copy exists.
                 try {
                     return await fetch(req);
                 } catch {
@@ -319,7 +321,6 @@ self.addEventListener("fetch", (event) => {
                 }
             }
 
-            // Production: network-first, then cache; fallback to cache if offline.
             const run = await caches.open(RUNTIME);
             try {
                 const resp = await fetch(req);
@@ -335,23 +336,21 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    /* API GETs (network-first -> per-user cache fallback + safe shapes) */
+    /* API GETs */
     if (isApiPath(url.pathname)) {
         event.respondWith((async () => {
             const apiCache = await openApiCache();
             try {
                 const fresh = await fetch(req);
                 if (fresh.ok) {
-                    await apiCache.put(req, fresh.clone()); // cache any 2xx
+                    await apiCache.put(req, fresh.clone());
                     await bumpLastOnline();
                 }
                 return fresh;
             } catch {
-                // 1) Use cached copy if exists
                 const cached = await apiCache.match(req);
                 if (cached) return cached;
 
-                // 2) Otherwise, synthesize a safe offline response (no 503s)
                 let body;
                 if (isCollectionEndpoint(url.pathname)) {
                     body = JSON.stringify([]);
@@ -367,14 +366,13 @@ self.addEventListener("fetch", (event) => {
                     return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
                 }
 
-                // Fallback if we somehow missed it
                 return new Response("", { status: 200 });
             }
         })());
         return;
     }
 
-    /* Other GETs (network-first) */
+    /* Other GETs */
     event.respondWith((async () => {
         const run = await caches.open(RUNTIME);
         try {
@@ -398,12 +396,13 @@ self.addEventListener("fetch", (event) => {
    ========================= */
 self.addEventListener("message", (event) => {
     const msg = event.data || {};
+    const replyPort = event.ports?.[0];
+
     if (msg.type === "SKIP_WAITING") self.skipWaiting();
 
     if (msg.type === "SET_USER") {
         USER_CACHE_KEY = msg.id ? String(msg.id) : "anon";
-        // IMPORTANT: do NOT purge here; we’ll purge old per-user caches AFTER the new one is warmed.
-        event.ports?.[0]?.postMessage({ ok: true, userKey: USER_CACHE_KEY, cache: getApiCacheName() });
+        replyPort?.postMessage({ ok: true, userKey: USER_CACHE_KEY, cache: getApiCacheName() });
     }
 
     if (msg.type === "PURGE_USER_CACHES") {
@@ -419,39 +418,57 @@ self.addEventListener("message", (event) => {
             const api = await openApiCache();
             const keys = await api.keys();
             const urls = keys.map(k => k.url);
-            event.ports?.[0]?.postMessage({ ok: true, cache: getApiCacheName(), urls });
+            replyPort?.postMessage({ ok: true, cache: getApiCacheName(), urls });
         })();
     }
 
-    // Override TTL in hours (optional)
     if (msg.type === "SET_OFFLINE_MAX_AGE_HOURS") {
         const hours = Number(msg.hours);
         OFFLINE_MAX_AGE_MS = (Number.isFinite(hours) && hours > 0)
             ? hours * 60 * 60 * 1000
             : OFFLINE_MAX_AGE_MS_DEFAULT;
-        event.ports?.[0]?.postMessage({ ok: true, ms: OFFLINE_MAX_AGE_MS });
+        replyPort?.postMessage({ ok: true, ms: OFFLINE_MAX_AGE_MS });
     }
 
-    // Heartbeat: set last-online timestamp NOW (no network needed)
     if (msg.type === "SET_LAST_ONLINE_NOW") {
         event.waitUntil(bumpLastOnline());
-        event.ports?.[0]?.postMessage({ ok: true });
+        replyPort?.postMessage({ ok: true });
     }
 
-    // Report remaining TTL from heartbeat; also include count of cached API entries
     if (msg.type === "GET_OFFLINE_STATUS") {
         event.waitUntil((async () => {
             const api = await openApiCache();
             const keys = await api.keys();
             const entries = keys.length;
 
-            const lastOkTs = await metaGet(LAST_OK_TS_KEY);
-            const remainingMs = (typeof lastOkTs === "number")
-                ? Math.max(0, OFFLINE_MAX_AGE_MS - (Date.now() - lastOkTs))
-                : 0;
+            let lastOkTs = LAST_OK_TS_MEM;
+            if (lastOkTs == null) {
+                const stored = await metaGet(LAST_OK_TS_KEY).catch(() => null);
+                if (typeof stored === "number") {
+                    lastOkTs = stored;
+                    LAST_OK_TS_MEM = stored;
+                }
+            }
 
-            event.ports?.[0]?.postMessage({
-                ok: true,
+            if (typeof lastOkTs !== "number") {
+                // never had heartbeat
+                replyPort?.postMessage({
+                    ok: false,
+                    error: "never-online",
+                    entries,
+                    ttlMs: OFFLINE_MAX_AGE_MS,
+                    remainingMs: 0,
+                    source: "last-online"
+                });
+                return;
+            }
+
+            const elapsed = Date.now() - lastOkTs;
+            const remainingMs = Math.max(0, OFFLINE_MAX_AGE_MS - elapsed);
+            const ok = remainingMs > 0;
+
+            replyPort?.postMessage({
+                ok,
                 ttlMs: OFFLINE_MAX_AGE_MS,
                 remainingMs,
                 entries,
@@ -503,7 +520,6 @@ async function outboxDelete(id) {
     });
 }
 
-/* Invalidation helper (ListeEpicerie only for now) */
 function extractListIdFromPath(pathname) {
     const m = pathname.match(/^\/api\/(?:liste-epicerie|ListeEpicerie)\/(\d+)(?:\/.*)?$/i);
     return m ? m[1] : null;
@@ -540,24 +556,18 @@ self.addEventListener("fetch", (event) => {
     if (!sameOrigin(url)) return;
 
     const isOurWrite =
-        // Lists
         LISTES_ITEM.test(url.pathname) || LISTES_COMPLETED.test(url.pathname) || LISTES_ITEM_CHECKED.test(url.pathname) ||
-        // Factures (create/update/delete and /{id})
         FACTURES_API.test(url.pathname) ||
-        // Free items
         FREE_ITEMS_API.test(url.pathname) ||
-        // Comparatif (create/update/delete + lines)
         COMPARATIF_API.test(url.pathname) || COMPARATIF_LINES.test(url.pathname) ||
-        // Rapports: generate
         RAPPORTS_GENERATE.test(url.pathname) ||
-        // Profile update
         (USERS_ME_PROFILE.test(url.pathname) && req.method === "PUT");
 
     if (!isOurWrite) return;
 
     event.respondWith((async () => {
         try {
-            return await fetch(req.clone()); // online
+            return await fetch(req.clone());
         } catch {
             const body = await req.clone().text().catch(() => null);
             await outboxAdd({

@@ -11,7 +11,9 @@
   },
   "buttons": {
     "expand": "Développer",
-    "collapse": "Réduire"
+    "collapse": "Réduire",
+    "loading": "Chargement…",
+    "saving": "Enregistrement…"
   },
   "post": {
     "editedByOn": "Modifié par {{by}} le {{date}}",
@@ -60,5 +62,50 @@
   },
   "commentsCount_one": "{{count}} commentaire",
   "commentsCount_other": "{{count}} commentaires",
-  "noPosts": "Aucun message pour le moment."
+  "noPosts": "Aucun message pour le moment.",
+  "modThread": {
+    "labels": {
+      "pinned": "Épingler ce fil",
+      "locked": "Verrouiller ce fil"
+    },
+    "errors": {
+      "pinFailed": "Impossible de mettre à jour l'état épinglé.",
+      "lockFailed": "Impossible de mettre à jour l'état verrouillé."
+    }
+  },
+  "modPanel": {
+    "title": "Modérateurs du fil",
+    "description": "Gérez ici les modérateurs pour ce fil (administrateurs du forum uniquement).",
+    "labels": {
+      "userIds": "IDs des utilisateurs (un par ligne)"
+    },
+    "placeholders": {
+      "userIds": "ex.\n7f92ab1c...\n82cc94d2..."
+    },
+    "help": {
+      "userIds": "Saisissez les IDs d’utilisateurs (et non les courriels). La liste remplacera les modérateurs actuels de ce fil."
+    },
+    "buttons": {
+      "load": "Charger les modérateurs",
+      "save": "Enregistrer"
+    },
+    "messages": {
+      "saved": "Modérateurs enregistrés avec succès."
+    },
+    "errors": {
+      "load": "Impossible de charger les modérateurs.",
+      "save": "Impossible d'enregistrer les modérateurs."
+    },
+    "confirm": {
+      "clear": "La liste est vide. Voulez-vous vraiment retirer tous les modérateurs de ce fil ?"
+    },
+    "current": {
+      "title": "Modérateurs actuels",
+      "headers": {
+        "userId": "ID utilisateur",
+        "displayName": "Nom d’affichage",
+        "assigned": "Assigné le"
+      }
+    }
+  }
 }

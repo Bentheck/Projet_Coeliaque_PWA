@@ -1,0 +1,93 @@
+﻿// src/components/ThemeContext.tsx
+import React, {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
+
+type Theme = "light" | "dark";
+
+interface ThemeContextValue {
+    theme: Theme;
+    resolvedTheme: Theme;
+    setTheme: (theme: Theme) => void;
+    toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+const STORAGE_KEY = "service-coeliaque.theme";
+
+function getInitialTheme(): Theme {
+    if (typeof window === "undefined") return "light";
+
+    // 1) From localStorage if present
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored === "light" || stored === "dark") {
+        return stored;
+    }
+
+    // 2) Otherwise: follow system preference
+    if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+        return "dark";
+    }
+    return "light";
+}
+
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
+    children,
+}) => {
+    const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+
+    // Write to localStorage + HTML attribute
+    const applyTheme = useCallback((next: Theme) => {
+        setThemeState(next);
+        if (typeof document !== "undefined") {
+            document.documentElement.setAttribute("data-theme", next);
+        }
+        if (typeof window !== "undefined") {
+            window.localStorage.setItem(STORAGE_KEY, next);
+        }
+    }, []);
+
+    // On mount: sync attribute in case SSR / static markup
+    useEffect(() => {
+        applyTheme(theme);
+    }, [theme, applyTheme]);
+
+    const setTheme = useCallback(
+        (next: Theme) => {
+            applyTheme(next);
+        },
+        [applyTheme]
+    );
+
+    const toggleTheme = useCallback(() => {
+        const next: Theme = theme === "dark" ? "light" : "dark";
+        setTheme(next);
+    }, [theme, setTheme]);
+
+    const value = useMemo(
+        () => ({
+            theme,
+            resolvedTheme: theme,
+            setTheme,
+            toggleTheme,
+        }),
+        [theme, setTheme, toggleTheme]
+    );
+
+    return (
+        <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    );
+};
+
+export function useTheme(): ThemeContextValue {
+    const ctx = useContext(ThemeContext);
+    if (!ctx) {
+        throw new Error("useTheme must be used within a ThemeProvider");
+    }
+    return ctx;
+}

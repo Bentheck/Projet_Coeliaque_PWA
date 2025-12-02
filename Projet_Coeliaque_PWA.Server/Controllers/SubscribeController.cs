@@ -138,5 +138,98 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             return Ok(new { url = portalSession.Url });
         }
+
+        private static string? ResolvePaymentId(Session session)
+        {
+            // 1) Try PaymentIntentId (string property)
+            var piIdProp = session.GetType().GetProperty("PaymentIntentId");
+            var piId = piIdProp?.GetValue(session) as string;
+            if (!string.IsNullOrWhiteSpace(piId)) return piId;
+
+            // 2) Try expandable PaymentIntent.Id
+            var piExpProp = session.GetType().GetProperty("PaymentIntent");
+            var piExp = piExpProp?.GetValue(session);
+            var innerPiId = piExp?.GetType().GetProperty("Id")?.GetValue(piExp) as string;
+            if (!string.IsNullOrWhiteSpace(innerPiId)) return innerPiId;
+
+            // 3) Fallback: InvoiceId (often what support cares about)
+            var invIdProp = session.GetType().GetProperty("InvoiceId");
+            var invId = invIdProp?.GetValue(session) as string;
+            if (!string.IsNullOrWhiteSpace(invId)) return invId;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns basic info about a Checkout Session so the frontend can show a "receipt"-style page.
+        /// </summary>
+        [AllowAnonymous] // optional: override [Authorize] so success page still works if user isn't logged in
+        [HttpGet("session-status")]
+        public async Task<IActionResult> GetSessionStatus([FromQuery(Name = "session_id")] string sessionId)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+            {
+                return BadRequest(new { success = false, error = "Missing session_id" });
+            }
+
+            StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
+
+            var sessionService = new SessionService();
+            Session session;
+            try
+            {
+                session = await sessionService.GetAsync(sessionId);
+            }
+            catch (StripeException ex)
+            {
+                return StatusCode(502, new { success = false, error = ex.Message });
+            }
+
+            Customer? customer = null;
+            if (!string.IsNullOrEmpty(session.CustomerId))
+            {
+                var customerService = new CustomerService();
+                customer = await customerService.GetAsync(session.CustomerId);
+            }
+
+            var isPaid =
+                string.Equals(session.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(session.Status, "complete", StringComparison.OrdinalIgnoreCase);
+
+            // 🔹 Normalize Created to Unix seconds
+            long? createdUnix = null;
+            if (session.Created != default)
+            {
+                // ensure UTC
+                var dtUtc = session.Created.Kind == DateTimeKind.Utc
+                    ? session.Created
+                    : DateTime.SpecifyKind(session.Created, DateTimeKind.Utc);
+
+                createdUnix = new DateTimeOffset(dtUtc).ToUnixTimeSeconds();
+            }
+
+            // 🔹 See below for paymentId logic
+            string? paymentId = ResolvePaymentId(session);
+
+            var dtoOut = new
+            {
+                success = isPaid,
+                status = session.PaymentStatus ?? session.Status,
+                amount_total = session.AmountTotal,
+                currency = session.Currency,
+                customer_details = new
+                {
+                    name = session.CustomerDetails?.Name ?? customer?.Name,
+                    email = session.CustomerDetails?.Email ?? customer?.Email
+                },
+                customer_name = customer?.Name,
+                customer_email = customer?.Email,
+                subscription = session.SubscriptionId,
+                payment_intent = paymentId,
+                created = createdUnix   // 👈 now a number (seconds)
+            };
+
+            return Ok(dtoOut);
+        }
     }
 }

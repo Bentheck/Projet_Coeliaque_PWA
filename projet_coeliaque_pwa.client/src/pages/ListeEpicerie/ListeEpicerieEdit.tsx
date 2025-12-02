@@ -543,11 +543,10 @@ const ListeEpicerieEdit: React.FC = () => {
                 </button>
 
                 <input
-                    className="form-control"
+                    className="form-control liste-edit-header-name-input"
                     value={liste.name}
                     onChange={(e) => setListe({ ...liste, name: e.target.value })}
                     placeholder={t("header.namePlaceholder") as string}
-                    style={{ maxWidth: 420 }}
                 />
                 <button className="btn btn-primary" onClick={save}>
                     {t("header.save")}
@@ -594,8 +593,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             {t("modals.facture.typeLabel")}
                         </label>
                         <select
-                            className="form-select"
-                            style={{ maxWidth: 320 }}
+                            className="form-select liste-edit-select-narrow"
                             value={selectedFactureType}
                             onChange={(e) => setSelectedFactureType(e.target.value)}
                         >
@@ -623,11 +621,11 @@ const ListeEpicerieEdit: React.FC = () => {
                         </div>
                     </div>
 
-                    <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+                    <div className="modal-scroll-60vh">
                         <table className="table table-hover align-middle mb-0">
                             <thead className="table-light">
                                 <tr>
-                                    <th style={{ minWidth: 180 }}>{t("table.product")}</th>
+                                    <th className="table-col-min-180">{t("table.product")}</th>
                                     <th>{t("table.type")}</th>
                                     <th>{t("table.store")}</th>
                                     <th>{t("table.date")}</th>
@@ -680,11 +678,10 @@ const ListeEpicerieEdit: React.FC = () => {
                                             </td>
                                             <td className="text-center">
                                                 <span
-                                                    className={`d-inline-block rounded-circle ${i.wasOnSale
+                                                    className={`d-inline-block rounded-circle sale-dot ${i.wasOnSale
                                                             ? "bg-success"
                                                             : "bg-danger"
                                                         }`}
-                                                    style={{ width: 10, height: 10 }}
                                                 />
                                             </td>
                                             <td className="text-end">
@@ -947,8 +944,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             {t("modals.free.typeLabel")}
                         </label>
                         <select
-                            className="form-select"
-                            style={{ maxWidth: 320 }}
+                            className="form-select liste-edit-select-narrow"
                             value={selectedFreeType}
                             onChange={(e) => setSelectedFreeType(e.target.value)}
                         >
@@ -984,7 +980,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             {t("modals.free.pickTypeHint")}
                         </div>
                     ) : (
-                        <div style={{ maxHeight: "40vh", overflowY: "auto" }}>
+                        <div className="modal-scroll-40vh">
                             {freeItemsForSelectedType.length === 0 ? (
                                 <div className="text-muted">
                                     {t("modals.free.emptyType")}
@@ -993,7 +989,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="table-light">
                                         <tr>
-                                            <th style={{ minWidth: 180 }}>
+                                            <th className="table-col-min-180">
                                                 {t("table.product")}
                                             </th>
                                             <th>{t("table.type")}</th>
@@ -1007,8 +1003,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                             <th>{t("table.weight")}</th>
                                             <th>{t("table.special")}</th>
                                             <th
-                                                className="text-end"
-                                                style={{ minWidth: 200 }}
+                                                className="text-end table-col-min-200"
                                             >
                                                 {t("table.action")}
                                             </th>
@@ -1074,14 +1069,10 @@ const ListeEpicerieEdit: React.FC = () => {
                                                         <td>{poids}</td>
                                                         <td className="text-center">
                                                             <span
-                                                                className={`d-inline-block rounded-circle ${fi.wasOnSale
+                                                                className={`d-inline-block rounded-circle sale-dot ${fi.wasOnSale
                                                                         ? "bg-success"
                                                                         : "bg-danger"
                                                                     }`}
-                                                                style={{
-                                                                    width: 10,
-                                                                    height: 10,
-                                                                }}
                                                             />
                                                         </td>
                                                         <td className="text-end">
@@ -1162,7 +1153,7 @@ const ListeEpicerieEdit: React.FC = () => {
                     <table className="table align-middle">
                         <thead className="table-light">
                             <tr>
-                                <th style={{ minWidth: 180 }}>
+                                <th className="table-col-min-180">
                                     {t("table.product")}
                                 </th>
                                 <th>{t("table.type")}</th>
@@ -1175,12 +1166,11 @@ const ListeEpicerieEdit: React.FC = () => {
                                 <th className="text-center">
                                     {t("table.special")}
                                 </th>
-                                <th style={{ width: 140 }}>
+                                <th>
                                     {t("table.quantity")}
                                 </th>
                                 <th
-                                    className="text-end"
-                                    style={{ minWidth: 120 }}
+                                    className="text-end table-col-min-120"
                                 >
                                     {t("table.action")}
                                 </th>
@@ -1231,14 +1221,13 @@ const ListeEpicerieEdit: React.FC = () => {
                                         <td>{poids}</td>
                                         <td className="text-center">
                                             <span
-                                                className={`d-inline-block rounded-circle ${src?.wasOnSale
+                                                className={`d-inline-block rounded-circle sale-dot ${src?.wasOnSale
                                                         ? "bg-success"
                                                         : "bg-danger"
                                                     }`}
-                                                style={{ width: 10, height: 10 }}
                                             />
                                         </td>
-                                        <td style={{ maxWidth: 140 }}>
+                                        <td className="table-col-max-140">
                                             <input
                                                 type="number"
                                                 min={1}
@@ -1283,7 +1272,7 @@ const ListeEpicerieEdit: React.FC = () => {
                     <table className="table align-middle">
                         <thead className="table-light">
                             <tr>
-                                <th style={{ minWidth: 180 }}>
+                                <th className="table-col-min-180">
                                     {t("table.product")}
                                 </th>
                                 <th>{t("table.type")}</th>
@@ -1295,12 +1284,11 @@ const ListeEpicerieEdit: React.FC = () => {
                                 <th className="text-center">
                                     {t("table.special")}
                                 </th>
-                                <th style={{ width: 140 }}>
+                                <th>
                                     {t("table.quantity")}
                                 </th>
                                 <th
-                                    className="text-end"
-                                    style={{ minWidth: 200 }}
+                                    className="text-end table-col-min-200"
                                 >
                                     {t("table.action")}
                                 </th>
@@ -1347,14 +1335,13 @@ const ListeEpicerieEdit: React.FC = () => {
                                         <td>{poids}</td>
                                         <td className="text-center">
                                             <span
-                                                className={`d-inline-block rounded-circle ${src?.wasOnSale
+                                                className={`d-inline-block rounded-circle sale-dot ${src?.wasOnSale
                                                         ? "bg-success"
                                                         : "bg-danger"
                                                     }`}
-                                                style={{ width: 10, height: 10 }}
                                             />
                                         </td>
-                                        <td style={{ maxWidth: 140 }}>
+                                        <td className="table-col-max-140">
                                             <input
                                                 type="number"
                                                 min={1}

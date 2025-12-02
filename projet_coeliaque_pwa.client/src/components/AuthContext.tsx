@@ -8,6 +8,7 @@ type AuthUser = {
     name?: string;
     email?: string;
     displayName?: string;
+    avatarUrl?: string;
 } | null;
 
 type AuthInfo = {
@@ -15,6 +16,7 @@ type AuthInfo = {
     membershipStatus: string | null;
     isForumAdmin: boolean;
     isSuperAdmin: boolean;
+    isForumModerator: boolean;
     loading: boolean;
     refresh: () => void;
 };
@@ -24,6 +26,7 @@ const AuthContext = createContext<AuthInfo>({
     membershipStatus: null,
     isForumAdmin: false,
     isSuperAdmin: false,
+    isForumModerator: false,
     loading: true,
     refresh: () => { },
 });
@@ -81,9 +84,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const boot = readSnapshot();
 
     const [user, setUser] = useState<AuthUser>(boot?.user ?? null);
-    const [membershipStatus, setMembershipStatus] = useState<string | null>(boot?.membershipStatus ?? null);
+    const [membershipStatus, setMembershipStatus] = useState<string | null>(
+        boot?.membershipStatus ?? null
+    );
     const [isForumAdmin, setIsForumAdmin] = useState<boolean>(!!boot?.isForumAdmin);
     const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(!!boot?.isSuperAdmin);
+    const [isForumModerator, setIsForumModerator] = useState<boolean>(!!boot?.isForumModerator);
     const [loading, setLoading] = useState<boolean>(!boot); // if snapshot exists, we can render immediately
 
     // bump this to refetch /api/account/status
@@ -96,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMembershipStatus(data?.membershipStatus ?? null);
         setIsForumAdmin(!!data?.isForumAdmin);
         setIsSuperAdmin(!!data?.isSuperAdmin);
+        setIsForumModerator(!!data?.isForumModerator);
         if (persist) persistSnapshot(data);
     };
 
@@ -174,7 +181,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return (
         <AuthContext.Provider
-            value={{ user, membershipStatus, isForumAdmin, isSuperAdmin, loading, refresh }}
+            value={{
+                user,
+                membershipStatus,
+                isForumAdmin,
+                isSuperAdmin,
+                isForumModerator,
+                loading,
+                refresh,
+            }}
         >
             {children}
         </AuthContext.Provider>

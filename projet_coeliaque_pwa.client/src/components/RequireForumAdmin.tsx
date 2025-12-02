@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
  * - Shows loading indicator until auth status is known.
  * - Redirects to /login if not authenticated.
  * - Grants access only to forum admins and super admins.
+ *   Moderators ALONE do NOT get access here.
  */
 const RequireForumAdmin: React.FC<{ children: React.ReactElement }> = ({ children }) => {
     const { user, isForumAdmin, isSuperAdmin, loading } = useAuth();
@@ -26,9 +27,7 @@ const RequireForumAdmin: React.FC<{ children: React.ReactElement }> = ({ childre
     if (!(isSuperAdmin || isForumAdmin)) {
         return (
             <div className="container py-5">
-                <div className="alert alert-warning mb-0">
-                    {t("forbidden")}
-                </div>
+                <div className="alert alert-warning mb-0">{t("forbidden")}</div>
             </div>
         );
     }

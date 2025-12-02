@@ -10,45 +10,54 @@ import { initSWUpdates } from "./swUpdates";
 import { initSWHeartbeat } from "./swOfflineStatus";
 import "./i18n";
 import { DemoTourProvider } from "./demo/DemoTourContext";
+import { ThemeProvider } from "./components/ThemeContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
         <Suspense fallback={null}>
-            <DemoTourProvider>
-                <App />
-            </DemoTourProvider>
+            <ThemeProvider>
+                <DemoTourProvider>
+                    <App />
+                </DemoTourProvider>
+            </ThemeProvider>
         </Suspense>
     </React.StrictMode>
 );
 
-// Service Worker registration + heartbeat + outbox drainer (PROD only)
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
+// Service Worker registration + heartbeat + outbox drainer
+if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
+        //console.log("[SW] trying to register; PROD =", import.meta.env.PROD);
+
         navigator.serviceWorker
-            .register("/sw.js", { scope: "/" }) // classic worker, no { type: 'module' }
+            .register("/sw.js", { scope: "/" })
             .then((reg) => {
+                //console.log("[SW] registered with scope:", reg.scope);
+
                 // Track updates
                 initSWUpdates(reg);
 
-                // Start heartbeat (writes "last online")
+                // Start heartbeat
                 void initSWHeartbeat();
 
                 // Reload when the new SW takes control
                 navigator.serviceWorker.addEventListener("controllerchange", () => {
+                    //console.log("[SW] controllerchange → reloading page");
                     window.location.reload();
                 });
 
                 // Start the outbox drainer once the SW is ready
                 navigator.serviceWorker.ready
                     .then(() => {
+                        //console.log("[SW] ready → initOutboxDrainer()");
                         initOutboxDrainer();
                     })
-                    .catch(() => {
-                        /* ignore */
+                    .catch((err) => {
+                        console.warn("[SW] ready() failed:", err);
                     });
             })
-            .catch(() => {
-                /* ignore in dev / registration errors */
+            .catch((err) => {
+                console.error("[SW] registration failed:", err);
             });
     });
 }

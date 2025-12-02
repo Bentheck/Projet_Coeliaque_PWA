@@ -67,8 +67,7 @@ const UserProfileView: React.FC = () => {
                     <img
                         src={avatarSrc}
                         alt={t("avatarAlt", { name: displayName })}
-                        className="rounded me-3"
-                        style={{ width: 96, height: 96, objectFit: "cover" }}
+                        className="rounded me-3 profile-avatar-lg"
                     />
 
                     <div className="flex-grow-1">
@@ -89,10 +88,11 @@ const UserProfileView: React.FC = () => {
                         </div>
 
                         {p.bio && (
-                            <p className="mt-2 mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                            <p className="mt-2 mb-0 profile-bio">
                                 {p.bio}
                             </p>
                         )}
+
 
                         <div className="mt-2">
                             <span className="badge bg-secondary me-2">

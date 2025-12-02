@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <>
             <Navbar />
             <main className="container">{children}</main>
-            <footer className="bg-light py-3 mt-4">
+            <footer className="py-3 mt-4">
                 <div className="container text-center">
                     {t("footer.copyright", { year })}
                 </div>

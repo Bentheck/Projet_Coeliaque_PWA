@@ -14,7 +14,9 @@ const Comparatif: React.FC = () => {
 
     // Live data from Dexie
     const years = useLiveQuery(() => db.comparatifYears.orderBy("annee").reverse().toArray(), []);
-    const reportYears = useLiveQuery(() => db.reportYears.toArray(), []) as ReportYearDto[] | undefined;
+    const reportYears = useLiveQuery(() => db.reportYears.toArray(), []) as
+        | ReportYearDto[]
+        | undefined;
 
     // UI state
     const [showForm, setShowForm] = useState(false);
@@ -117,12 +119,11 @@ const Comparatif: React.FC = () => {
     }
 
     return (
-        <div className="container" style={{ maxWidth: 700 }}>
+        <div className="container comparatif-container">
             <div className="d-flex flex-column align-items-center mb-3">
                 <h2 className="mb-2">{t("header.title")}</h2>
                 <button
-                    className="btn btn-primary"
-                    style={{ minWidth: 170 }}
+                    className="btn btn-primary comparatif-new-btn"
                     onClick={() => setShowForm((f) => !f)}
                 >
                     <i className="bi bi-plus-circle me-1" />
@@ -142,7 +143,6 @@ const Comparatif: React.FC = () => {
                             max={2100}
                             onChange={(e) => setNewYear(Number(e.target.value))}
                             required
-                            style={{ maxWidth: 130 }}
                             disabled={submitting}
                         />
                         <button className="btn btn-success" type="submit" disabled={submitting}>
@@ -175,44 +175,80 @@ const Comparatif: React.FC = () => {
 
                         return (
                             <div key={y.id} className="card mb-2 border-0 shadow-sm">
-                                <div className="card-body d-flex align-items-start flex-wrap gap-2" style={{ columnGap: "1rem" }}>
-                                    <div style={{ flex: 1, minWidth: 220 }}>
+                                <div className="card-body d-flex align-items-start flex-wrap gap-2 comparatif-card-body">
+                                    <div className="comparatif-year-main">
                                         <div className="fw-bold">
                                             {t("year")}: {y.annee}
                                         </div>
                                         <div>
                                             {generated ? (
-                                                <span className="text-success fw-bold">{t("report.generated")}</span>
+                                                <span className="text-success fw-bold">
+                                                    {t("report.generated")}
+                                                </span>
                                             ) : (
-                                                <span className="text-muted">{t("report.notGenerated")}</span>
+                                                <span className="text-muted">
+                                                    {t("report.notGenerated")}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
 
                                     <div className="d-flex gap-2 ms-auto">
                                         <button
-                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"}`}
+                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"
+                                                }`}
                                             onClick={() => handleGenerateReport(y.annee)}
                                             disabled={busy}
-                                            title={generated ? (t("buttons.generate.titleRegenerate") as string) : (t("buttons.generate.titleGenerate") as string)}
+                                            title={
+                                                generated
+                                                    ? (t(
+                                                        "buttons.generate.titleRegenerate"
+                                                    ) as string)
+                                                    : (t(
+                                                        "buttons.generate.titleGenerate"
+                                                    ) as string)
+                                            }
                                         >
                                             {busy ? (
                                                 <>
-                                                    <span className="spinner-border spinner-border-sm me-2" role="status" />
-                                                    <span className="d-none d-sm-inline">{t("busy.long")}</span>
-                                                    <span className="d-sm-none">{t("busy.short")}</span>
+                                                    <span
+                                                        className="spinner-border spinner-border-sm me-2"
+                                                        role="status"
+                                                    />
+                                                    <span className="d-none d-sm-inline">
+                                                        {t("busy.long")}
+                                                    </span>
+                                                    <span className="d-sm-none">
+                                                        {t("busy.short")}
+                                                    </span>
                                                 </>
                                             ) : generated ? (
                                                 <>
                                                     <i className="bi bi-arrow-repeat me-1" />
-                                                    <span className="d-none d-sm-inline">{t("buttons.generate.regenerateLong")}</span>
-                                                    <span className="d-sm-none">{t("buttons.generate.regenerateShort")}</span>
+                                                    <span className="d-none d-sm-inline">
+                                                        {t(
+                                                            "buttons.generate.regenerateLong"
+                                                        )}
+                                                    </span>
+                                                    <span className="d-sm-none">
+                                                        {t(
+                                                            "buttons.generate.regenerateShort"
+                                                        )}
+                                                    </span>
                                                 </>
                                             ) : (
                                                 <>
                                                     <i className="bi bi-gear me-1" />
-                                                    <span className="d-none d-sm-inline">{t("buttons.generate.generateLong")}</span>
-                                                    <span className="d-sm-none">{t("buttons.generate.generateShort")}</span>
+                                                    <span className="d-none d-sm-inline">
+                                                        {t(
+                                                            "buttons.generate.generateLong"
+                                                        )}
+                                                    </span>
+                                                    <span className="d-sm-none">
+                                                        {t(
+                                                            "buttons.generate.generateShort"
+                                                        )}
+                                                    </span>
                                                 </>
                                             )}
                                         </button>
@@ -223,7 +259,9 @@ const Comparatif: React.FC = () => {
                                             title={t("buttons.view.title") as string}
                                         >
                                             <i className="bi bi-eye" />
-                                            <span className="d-none d-sm-inline ms-1">{t("buttons.view.label")}</span>
+                                            <span className="d-none d-sm-inline ms-1">
+                                                {t("buttons.view.label")}
+                                            </span>
                                         </button>
 
                                         <button
@@ -232,7 +270,9 @@ const Comparatif: React.FC = () => {
                                             title={t("buttons.delete.title") as string}
                                         >
                                             <i className="bi bi-trash" />
-                                            <span className="d-none d-sm-inline ms-1">{t("buttons.delete.label")}</span>
+                                            <span className="d-none d-sm-inline ms-1">
+                                                {t("buttons.delete.label")}
+                                            </span>
                                         </button>
                                     </div>
                                 </div>

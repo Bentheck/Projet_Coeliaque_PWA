@@ -62,5 +62,15 @@
   },
   "demo": {
     "button": "Demo"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light",
+    "darkTitle": "Enable dark mode",
+    "lightTitle": "Switch back to light mode"
+  },
+  "language": {
+    "switchToEn": "Switch to English",
+    "switchToFr": "Passer au français"
   }
 }

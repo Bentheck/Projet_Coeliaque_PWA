@@ -65,14 +65,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         // --------------------- Categories & thread list ---------------------
 
         /// <summary>
-        /// Returns all forum categories.
+        /// Returns all forum categories, optionally filtered by language ("fr" or "en").
         /// </summary>
         [HttpGet("categories")]
         [ProducesResponseType(typeof(IEnumerable<ForumCategoryDto>), 200)]
-        public async Task<ActionResult> GetCategories()
+        public async Task<ActionResult> GetCategories([FromQuery] string? lang = null)
         {
-            var list = await _db.ForumCategories
-                .AsNoTracking()
+            var q = _db.ForumCategories.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(lang))
+            {
+                var norm = lang.Trim().ToLowerInvariant();
+                if (norm == "fr" || norm == "en")
+                {
+                    q = q.Where(c => c.Language == norm);
+                }
+            }
+
+            var list = await q
                 .ProjectTo<ForumCategoryDto>(_mapper.ConfigurationProvider)
                 .ToListAsync();
 

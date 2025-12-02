@@ -6,7 +6,8 @@
   },
   "empty": "Aucune catégorie.",
   "buttons": {
-    "open": "Ouvrir"
+    "open": "Ouvrir",
+    "backToLanguage": "Retour au choix de langue"
   },
   "badges": {
     "threads_one": "{{count}} fil",

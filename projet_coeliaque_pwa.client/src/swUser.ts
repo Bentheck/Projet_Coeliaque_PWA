@@ -51,7 +51,7 @@ export async function dumpApiCache() {
             mc.port1.onmessage = (e) => {
                 const urls = e.data?.urls || [];
                 // eslint-disable-next-line no-console
-                console.info("[SW API cache keys]", urls);
+                //console.info("[SW API cache keys]", urls);
                 resolve();
             };
             (sw as any).postMessage({ type: "LIST_API_CACHE" }, [mc.port2]);

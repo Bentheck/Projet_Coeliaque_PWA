@@ -23,6 +23,7 @@ import ForumCategories from "./pages/Forum/ForumCategories";
 import ForumThreads from "./pages/Forum/ForumThreads";
 import ForumThreadView from "./pages/Forum/ForumThreadView";
 import ForumNewThread from "./pages/Forum/ForumNewThread";
+import ForumLanguageSelector from "./pages/Forum/ForumLanguageSelector"; // ⬅️ ADD THIS
 
 // Admin (forum)
 import ForumAdminPanel from "./pages/Forum/ForumAdminPanel";
@@ -189,33 +190,51 @@ export default function App() {
                             }
                         />
 
-                        {/* Forum */}
+                        {/* ========= Forum with language selector ========= */}
+
+                        {/* 1) Language selector at /forum */}
                         <Route
                             path="/forum"
+                            element={
+                                <AuthGuard>
+                                    <ForumLanguageSelector />
+                                </AuthGuard>
+                            }
+                        />
+
+                        {/* 2) Categories per language */}
+                        <Route
+                            path="/forum/:lang"
                             element={
                                 <AuthGuard>
                                     <ForumCategories />
                                 </AuthGuard>
                             }
                         />
+
+                        {/* 3) Threads list per language + category */}
                         <Route
-                            path="/forum/c/:categoryId"
+                            path="/forum/:lang/c/:categoryId"
                             element={
                                 <AuthGuard>
                                     <ForumThreads />
                                 </AuthGuard>
                             }
                         />
+
+                        {/* 4) Thread view per language */}
                         <Route
-                            path="/forum/t/:id"
+                            path="/forum/:lang/t/:id"
                             element={
                                 <AuthGuard>
                                     <ForumThreadView />
                                 </AuthGuard>
                             }
                         />
+
+                        {/* 5) New thread per language */}
                         <Route
-                            path="/forum/new"
+                            path="/forum/:lang/new"
                             element={
                                 <AuthGuard>
                                     <ForumNewThread />

@@ -174,18 +174,14 @@ const ProfileEdit: React.FC = () => {
                         <img
                             src={preview}
                             alt={t("alt.avatar")}
-                            width={96}
-                            height={96}
-                            className="rounded-circle border"
-                            style={{ objectFit: "cover" }}
+                            className="rounded-circle border profile-avatar-lg"
                         />
                     ) : (
-                        <div
-                            className="rounded-circle bg-light border d-flex align-items-center justify-content-center"
-                            style={{ width: 96, height: 96 }}
-                        >
-                            <i className="bi bi-person" style={{ fontSize: 36 }} />
-                        </div>
+                            <div
+                                className="rounded-circle bg-light border d-flex align-items-center justify-content-center profile-avatar-placeholder"
+                            >
+                                <i className="bi bi-person profile-avatar-icon" />
+                            </div>
                     )}
                 </div>
 

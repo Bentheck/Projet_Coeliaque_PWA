@@ -79,7 +79,7 @@ const RapportsDisplay: React.FC = () => {
                 <b><i>{t("print.noteNotSaved")}</i></b>
             </div>
 
-            <button className="btn btn.success no-print mb-3" onClick={handlePrintClick}>
+            <button className="btn btn-success no-print mb-3" onClick={handlePrintClick}>
                 {t("print.printButton")}
             </button>
             <button className="btn btn-outline-secondary no-print mb-3 ms-2" onClick={() => navigate(-1)}>
@@ -89,22 +89,39 @@ const RapportsDisplay: React.FC = () => {
             {/* Minimal modal */}
             {showPrompt && (
                 <div
+                    className="rapport-print-modal-overlay"
                     style={{
-                        position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
-                        background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center",
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 9999,
+                        background: "rgba(0,0,0,0.35)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                     }}
                 >
                     <form
                         onSubmit={handlePromptSubmit}
                         autoComplete="off"
-                        style={{ background: "#fff", borderRadius: 12, padding: 32, minWidth: 350, boxShadow: "0 4px 30px rgba(0,0,0,0.17)" }}
+                        className="rapport-print-modal"
+                        style={{
+                            borderRadius: 12,
+                            padding: 32,
+                            minWidth: 350,
+                            boxShadow: "0 4px 30px rgba(0,0,0,0.17)",
+                        }}
                     >
                         <h4 className="mb-4">{t("prompt.title")}</h4>
                         <div className="alert alert-primary" style={{ fontSize: "1em" }}>
                             {t("prompt.help")}
                         </div>
                         <div className="mb-3">
-                            <label className="form-label fw-bold">{t("prompt.nameLabel")}</label>
+                            <label className="form-label fw-bold">
+                                {t("prompt.nameLabel")}
+                            </label>
                             <input
                                 className="form-control"
                                 type="text"
@@ -118,7 +135,9 @@ const RapportsDisplay: React.FC = () => {
                             />
                         </div>
                         <div className="mb-4">
-                            <label className="form-label fw-bold">{t("prompt.nasLabel")}</label>
+                            <label className="form-label fw-bold">
+                                {t("prompt.nasLabel")}
+                            </label>
                             <input
                                 className="form-control"
                                 type="text"
@@ -131,10 +150,14 @@ const RapportsDisplay: React.FC = () => {
                             />
                         </div>
                         <div className="d-flex justify-content-end gap-2">
-                            <button type="button" className="btn btn-secondary" onClick={() => setShowPrompt(false)}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => setShowPrompt(false)}
+                            >
                                 {t("prompt.cancel")}
                             </button>
-                            <button type="submit" className="btn btn.success">
+                            <button type="submit" className="btn btn-success">
                                 {t("prompt.continuePrint")}
                             </button>
                         </div>
