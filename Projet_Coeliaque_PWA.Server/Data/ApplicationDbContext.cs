@@ -31,7 +31,6 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<FaqCategory> FaqCategories => Set<FaqCategory>();
         public DbSet<FaqQuestion> FaqQuestions => Set<FaqQuestion>();
 
-
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
 
@@ -39,7 +38,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // ---------- Existing mappings ----------
+            // ---------- Facture ----------
             modelBuilder.Entity<Facture>()
                 .HasMany(f => f.Items)
                 .WithOne(i => i.Facture)
@@ -52,6 +51,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 .HasForeignKey(f => f.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ---------- Comparatif ----------
             modelBuilder.Entity<ComparatifYear>()
                 .HasMany(y => y.Lines)
                 .WithOne(pc => pc.ComparatifYear)
@@ -96,7 +96,6 @@ namespace Projet_Coeliaque_PWA.Server.Data
                     .HasForeignKey(m => m.ThreadId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // use navs:
                 b.HasOne(x => x.CreatedBy)
                     .WithMany()
                     .HasForeignKey(x => x.CreatedByUserId)
@@ -116,7 +115,6 @@ namespace Projet_Coeliaque_PWA.Server.Data
 
                 b.HasIndex(x => new { x.ThreadId, x.CreatedUtc });
 
-                // use navs:
                 b.HasOne(x => x.CreatedBy)
                     .WithMany()
                     .HasForeignKey(x => x.CreatedByUserId)
@@ -127,6 +125,13 @@ namespace Projet_Coeliaque_PWA.Server.Data
                     .HasForeignKey(x => x.EditedByUserId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
+
+            // Parent / replies relation
+            modelBuilder.Entity<ForumPost>()
+                .HasOne(p => p.Parent)
+                .WithMany(p => p.Replies)
+                .HasForeignKey(p => p.ParentPostId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // ---------- Forum: Thread Moderators ----------
             modelBuilder.Entity<ForumThreadModerator>(b =>
@@ -141,7 +146,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 b.HasIndex(x => new { x.ThreadId, x.UserId }).IsUnique();
             });
 
-            // Forum Admins
+            // ---------- Forum: Admins ----------
             modelBuilder.Entity<ForumAdmin>(b =>
             {
                 b.HasKey(x => x.UserId); // one record per user
@@ -151,12 +156,15 @@ namespace Projet_Coeliaque_PWA.Server.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            // ---------- UserProfile ----------
             modelBuilder.Entity<UserProfile>(b =>
             {
                 b.HasKey(x => x.Id);
 
+                // FIX A: remove SQL Server–specific NEWSEQUENTIALID()
+                // and rely on Guid generation côté client / EF (ValueGeneratedOnAdd).
                 b.Property(x => x.Id)
-                 .HasDefaultValueSql("NEWSEQUENTIALID()");
+                    .ValueGeneratedOnAdd();
 
                 b.Property(x => x.UserId).IsRequired();
                 b.Property(x => x.DisplayName).IsRequired().HasMaxLength(32);
@@ -171,15 +179,10 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 b.HasIndex(x => x.DisplayName).IsUnique();
             });
 
-            modelBuilder.Entity<ForumPost>()
-                .HasOne(p => p.Parent)
-                .WithMany(p => p.Replies)
-                .HasForeignKey(p => p.ParentPostId)
-                .OnDelete(DeleteBehavior.Restrict);
-
+            // ---------- Votes ----------
             modelBuilder.Entity<ForumThreadVote>()
-            .HasIndex(x => new { x.ThreadId, x.UserId })
-            .IsUnique();
+                .HasIndex(x => new { x.ThreadId, x.UserId })
+                .IsUnique();
 
             modelBuilder.Entity<ForumThreadVote>()
                 .Property(x => x.Value)
@@ -193,20 +196,19 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 .Property(x => x.Value)
                 .HasConversion<short>();
 
+            // ---------- FAQ ----------
             modelBuilder.Entity<FaqCategory>(e =>
             {
                 e.HasIndex(x => x.Slug).IsUnique();
                 e.Property(x => x.SortOrder).HasDefaultValue(0);
             });
 
-
             modelBuilder.Entity<FaqQuestion>(e =>
             {
                 e.HasOne(x => x.Category)
-                .WithMany(c => c.Questions)
-                .HasForeignKey(x => x.CategoryId)
-                .OnDelete(DeleteBehavior.Cascade);
-
+                    .WithMany(c => c.Questions)
+                    .HasForeignKey(x => x.CategoryId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 e.Property(x => x.SortOrder).HasDefaultValue(0);
             });

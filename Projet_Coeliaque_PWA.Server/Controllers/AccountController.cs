@@ -242,10 +242,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             var now = DateTime.UtcNow;
-            var membershipStatus =
-                (membership != null && now >= membership.StartDate && now <= membership.EndDate)
-                    ? "Active"
-                    : "Inactive";
+            var hasActiveMembership = await _membershipService.HasActiveMembershipAsync(uid);
+            var membershipStatus = hasActiveMembership ? "Active" : "Inactive";
 
             return Ok(new
             {

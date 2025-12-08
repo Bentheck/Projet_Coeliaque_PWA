@@ -40,12 +40,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             Event stripeEvent;
             try
             {
-                stripeEvent = EventUtility.ConstructEvent(json, signature, _config["Stripe:WebhookSecret"]);
+                stripeEvent = EventUtility.ConstructEvent(
+                    json,
+                    signature,
+                    _config["Stripe:WebhookSecret"],
+                    tolerance: 300,
+                    throwOnApiVersionMismatch: false
+                );
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($">>> [StripeWebhook] Invalid signature: {ex.Message}");
-                _logger.LogWarning(ex, "[StripeWebhook] Invalid signature");
+                Debug.WriteLine($">>> [StripeWebhook] Invalid signature or payload: {ex.Message}");
+                _logger.LogWarning(ex, "[StripeWebhook] Invalid signature or payload");
                 return BadRequest();
             }
 

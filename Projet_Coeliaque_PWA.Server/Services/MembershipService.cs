@@ -12,7 +12,7 @@ namespace Projet_Coeliaque_PWA.Server.Services
             _dbContext = dbContext;
         }
 
-        public async Task<Membership> GetCurrentMembershipAsync(string userId)
+        public async Task<Membership?> GetCurrentMembershipAsync(string userId)
         {
             return await _dbContext.Memberships
                 .Where(m => m.UserId == userId)
@@ -36,10 +36,24 @@ namespace Projet_Coeliaque_PWA.Server.Services
             var nowUtc = DateTime.UtcNow;
 
             // Small grace to absorb webhook latency / clock skew.
-            // Make this configurable; 5–10 minutes is typical.
             var grace = TimeSpan.FromMinutes(10);
 
-            return nowUtc >= startUtc && nowUtc <= endUtc.Add(grace);
+            // Compute an "effective" end date without overflowing.
+            // If adding grace would go past DateTime.MaxValue, just clamp at MaxValue.
+            DateTime effectiveEndUtc;
+
+            var maxEndThatCanTakeGrace = DateTime.MaxValue - grace;
+            if (endUtc <= maxEndThatCanTakeGrace)
+            {
+                effectiveEndUtc = endUtc.Add(grace);
+            }
+            else
+            {
+                // Lifetime / very long membership → already effectively infinite
+                effectiveEndUtc = DateTime.MaxValue;
+            }
+
+            return nowUtc >= startUtc && nowUtc <= effectiveEndUtc;
         }
     }
 }

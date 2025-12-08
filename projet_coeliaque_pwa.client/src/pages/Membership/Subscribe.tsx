@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
  */
 const getPublishableKey = () =>
     (import.meta as any).env?.VITE_STRIPE_PK ||
-    "pk_test_51RTnmkRtAySSxpaZUfWBLiftBpBYG60P0VJV1VzDSRlgbxqalkSphY59SkuaTapC5ltjNyKst1Fk9KFTprrJ6pPd00H1K8tPLK";
+    "pk_test_51SaeLyGfa6g13U0VYpkL7c6wakhz9zfDixa7ZuHkIBqb2vqzYUAyPa5riOhPGu33LJFUwGaNNqxfQR3fDM8bb15G00AyuuqNrA";
 
 const Subscribe: React.FC = () => {
     const { t } = useTranslation("pages/Membership/subscribe");
