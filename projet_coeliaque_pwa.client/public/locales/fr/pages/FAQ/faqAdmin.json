@@ -1,0 +1,65 @@
+﻿{
+  "title": "FAQ — Administration",
+  "subtitle": "Créez des catégories, ajoutez des questions/réponses en français et en anglais, gérez l’ordre et l’état.",
+  "searchPlaceholder": "Rechercher…",
+  "loading": "Chargement…",
+  "stats": "{{categories}} catégorie(s), {{questions}} question(s)",
+
+  "categoryForm": {
+    "new": "Nouvelle catégorie",
+    "edit": "Modifier la catégorie",
+    "nameFr": "Nom (FR)",
+    "nameEn": "Name (EN)",
+    "slug": "Slug",
+    "descriptionFr": "Description (FR)",
+    "descriptionEn": "Description (EN)",
+    "order": "Ordre",
+    "active": "Active",
+    "submitNew": "Ajouter",
+    "submitEdit": "Enregistrer",
+    "cancel": "Annuler",
+    "validationMissingNameSlug": "Nom (FR) et slug sont requis"
+  },
+
+  "questionForm": {
+    "new": "Nouvelle question",
+    "edit": "Modifier la question",
+    "category": "Catégorie",
+    "questionFr": "Question (FR)",
+    "questionEn": "Question (EN)",
+    "answerFr": "Réponse (FR)",
+    "answerEn": "Answer (EN)",
+    "tagsFr": "Tags FR (CSV)",
+    "tagsEn": "Tags EN (CSV)",
+    "order": "Ordre",
+    "active": "Active",
+    "submitNew": "Ajouter",
+    "submitEdit": "Enregistrer",
+    "clear": "Effacer",
+    "validationMissingRequired": "Catégorie, question FR et réponse FR sont requis."
+  },
+
+  "tree": {
+    "questionsCount": "{{count}} question(s)",
+    "noQuestions": "Aucune question.",
+    "editCategory": "Modifier",
+    "deleteCategory": "Supprimer",
+    "editQuestion": "Éditer",
+    "deleteQuestion": "Supprimer",
+    "orderLabel": "ordre {{value}}"
+  },
+
+  "confirm": {
+    "deleteCategory": "Supprimer cette catégorie ?",
+    "deleteQuestion": "Supprimer cette question ?"
+  },
+
+  "errors": {
+    "categorySave": "Erreur catégorie",
+    "categoryDelete": "Erreur suppression catégorie",
+    "questionSave": "Erreur question",
+    "questionDelete": "Erreur suppression question",
+    "loadCategory": "Erreur lors du chargement de la catégorie.",
+    "loadQuestion": "Erreur lors du chargement de la question."
+  }
+}

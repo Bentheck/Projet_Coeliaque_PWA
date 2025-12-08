@@ -1,0 +1,65 @@
+﻿{
+  "title": "FAQ — Administration",
+  "subtitle": "Create categories, add questions/answers in French and English, and manage order and status.",
+  "searchPlaceholder": "Search…",
+  "loading": "Loading…",
+  "stats": "{{categories}} category(ies), {{questions}} question(s)",
+
+  "categoryForm": {
+    "new": "New category",
+    "edit": "Edit category",
+    "nameFr": "Name (FR)",
+    "nameEn": "Name (EN)",
+    "slug": "Slug",
+    "descriptionFr": "Description (FR)",
+    "descriptionEn": "Description (EN)",
+    "order": "Order",
+    "active": "Active",
+    "submitNew": "Add",
+    "submitEdit": "Save",
+    "cancel": "Cancel",
+    "validationMissingNameSlug": "Name (FR) and slug are required."
+  },
+
+  "questionForm": {
+    "new": "New question",
+    "edit": "Edit question",
+    "category": "Category",
+    "questionFr": "Question (FR)",
+    "questionEn": "Question (EN)",
+    "answerFr": "Answer (FR)",
+    "answerEn": "Answer (EN)",
+    "tagsFr": "Tags FR (CSV)",
+    "tagsEn": "Tags EN (CSV)",
+    "order": "Order",
+    "active": "Active",
+    "submitNew": "Add",
+    "submitEdit": "Save",
+    "clear": "Clear",
+    "validationMissingRequired": "Category, FR question and FR answer are required."
+  },
+
+  "tree": {
+    "questionsCount": "{{count}} question(s)",
+    "noQuestions": "No questions.",
+    "editCategory": "Edit",
+    "deleteCategory": "Delete",
+    "editQuestion": "Edit",
+    "deleteQuestion": "Delete",
+    "orderLabel": "order {{value}}"
+  },
+
+  "confirm": {
+    "deleteCategory": "Delete this category?",
+    "deleteQuestion": "Delete this question?"
+  },
+
+  "errors": {
+    "categorySave": "Error while saving category.",
+    "categoryDelete": "Error while deleting category.",
+    "questionSave": "Error while saving question.",
+    "questionDelete": "Error while deleting question.",
+    "loadCategory": "Error while loading the category.",
+    "loadQuestion": "Error while loading the question."
+  }
+}

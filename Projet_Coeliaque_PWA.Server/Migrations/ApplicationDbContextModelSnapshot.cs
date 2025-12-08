@@ -479,14 +479,22 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Description")
+                    b.Property<string>("DescriptionEn")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("DescriptionFr")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("NameEn")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NameFr")
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
@@ -517,7 +525,10 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AnswerHtml")
+                    b.Property<string>("AnswerHtmlEn")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AnswerHtmlFr")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -530,7 +541,11 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("Question")
+                    b.Property<string>("QuestionEn")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("QuestionFr")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -540,7 +555,11 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
-                    b.Property<string>("TagsCsv")
+                    b.Property<string>("TagsCsvEn")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("TagsCsvFr")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 

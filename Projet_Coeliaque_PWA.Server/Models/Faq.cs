@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// Models/Faq.cs
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Projet_Coeliaque_PWA.Server.Models
@@ -8,13 +9,19 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public int Id { get; set; }
 
         [Required, MaxLength(120)]
-        public string Name { get; set; } = string.Empty;
+        public string NameFr { get; set; } = string.Empty;
+
+        [MaxLength(120)]
+        public string? NameEn { get; set; }
 
         [Required, MaxLength(120)]
         public string Slug { get; set; } = string.Empty; // unique
 
         [MaxLength(1000)]
-        public string? Description { get; set; }
+        public string? DescriptionFr { get; set; }
+
+        [MaxLength(1000)]
+        public string? DescriptionEn { get; set; }
 
         public int SortOrder { get; set; } = 0;
         public bool IsActive { get; set; } = true;
@@ -32,13 +39,21 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public FaqCategory Category { get; set; } = null!;
 
         [Required, MaxLength(300)]
-        public string Question { get; set; } = string.Empty;
-
-        [Required] // store HTML (or Markdown if you prefer)
-        public string AnswerHtml { get; set; } = string.Empty;
+        public string QuestionFr { get; set; } = string.Empty;
 
         [MaxLength(300)]
-        public string? TagsCsv { get; set; }
+        public string? QuestionEn { get; set; }
+
+        [Required]              // HTML FR
+        public string AnswerHtmlFr { get; set; } = string.Empty;
+
+        public string? AnswerHtmlEn { get; set; }
+
+        [MaxLength(300)]
+        public string? TagsCsvFr { get; set; }
+
+        [MaxLength(300)]
+        public string? TagsCsvEn { get; set; }
 
         public int SortOrder { get; set; } = 0;
         public bool IsActive { get; set; } = true;
@@ -46,6 +61,4 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
-
-
 }

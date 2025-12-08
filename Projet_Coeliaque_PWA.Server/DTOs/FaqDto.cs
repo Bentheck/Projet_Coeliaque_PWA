@@ -25,20 +25,28 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
     public class FaqCategorySummaryDto
     {
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+
+        public string NameFr { get; set; } = string.Empty;
+        public string? NameEn { get; set; }
+
         public string Slug { get; set; } = string.Empty;
-        public string? Description { get; set; }
+
+        public string? DescriptionFr { get; set; }
+        public string? DescriptionEn { get; set; }
+
         public int SortOrder { get; set; }
         public bool IsActive { get; set; }
+
         public int ActiveQuestions { get; set; }
     }
 
-    // Inputs for create/update
     public class UpsertCategoryInput
     {
-        [Required, MaxLength(120)] public string Name { get; set; } = string.Empty;
+        [Required, MaxLength(120)] public string NameFr { get; set; } = string.Empty;
+        [MaxLength(120)] public string? NameEn { get; set; }
         [Required, MaxLength(120)] public string Slug { get; set; } = string.Empty;
-        [MaxLength(1000)] public string? Description { get; set; }
+        [MaxLength(1000)] public string? DescriptionFr { get; set; }
+        [MaxLength(1000)] public string? DescriptionEn { get; set; }
         public int SortOrder { get; set; } = 0;
         public bool IsActive { get; set; } = true;
     }
@@ -46,9 +54,16 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
     public class UpsertQuestionInput
     {
         [Required] public int CategoryId { get; set; }
-        [Required, MaxLength(300)] public string Question { get; set; } = string.Empty;
-        [Required] public string AnswerHtml { get; set; } = string.Empty;
-        public string? TagsCsv { get; set; }
+
+        [Required, MaxLength(300)] public string QuestionFr { get; set; } = string.Empty;
+        [MaxLength(300)] public string? QuestionEn { get; set; }
+
+        [Required] public string AnswerHtmlFr { get; set; } = string.Empty;
+        public string? AnswerHtmlEn { get; set; }
+
+        public string? TagsCsvFr { get; set; }
+        public string? TagsCsvEn { get; set; }
+
         public int SortOrder { get; set; } = 0;
         public bool IsActive { get; set; } = true;
     }
