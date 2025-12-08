@@ -52,6 +52,12 @@ body,
     min-height: 100vh;
 }
 
+body {
+    margin: 0; /* important to avoid extra space */
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
 #root {
     display: flex;
     flex-direction: column;
@@ -210,6 +216,13 @@ html[data-theme="dark"] .navbar {
 /* MAIN CONTAINER + FOOTER                                                   */
 /* ========================================================================= */
 
+/* Wrapper that stretches from bottom of navbar to bottom of viewport */
+.app-shell {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
 main.container {
     background: var(--color-surface);
     border-radius: 1rem;
@@ -224,6 +237,7 @@ footer {
     border-top: 1px solid var(--color-border);
     color: var(--color-text-muted);
 }
+
 
 /* ========================================================================= */
 /* CARDS / TABLES / LIST GROUPS                                              */

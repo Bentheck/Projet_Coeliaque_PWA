@@ -7,6 +7,7 @@ import {
 } from "../swOfflineStatus";
 import { useAuth } from "../components/AuthContext";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 /** Track online/offline */
 function useOnlineStatus() {
@@ -29,7 +30,7 @@ function useOnlineStatus() {
 const Home: React.FC = () => {
     const { t } = useTranslation("pages/home");
     const isOnline = useOnlineStatus();
-    const { user } = useAuth();
+    const { user, membershipStatus } = useAuth();
 
     const [status, setStatus] = React.useState<OfflineStatus>(null);
     const [deadlineMs, setDeadlineMs] = React.useState<number | null>(null);
@@ -41,8 +42,6 @@ const Home: React.FC = () => {
         const syncFromSW = async () => {
             const st = await getOfflineStatus();
             if (!mounted) return;
-
-            //console.log("[Home] OfflineStatus from SW:", st);
 
             setStatus(st);
 
@@ -56,10 +55,7 @@ const Home: React.FC = () => {
 
         const doHeartbeatIfOnline = async () => {
             if (typeof navigator !== "undefined" && navigator.onLine) {
-                //console.log("[Home] Heartbeat: markLastOnlineNow()");
                 await markLastOnlineNow();
-            } else {
-                //console.log("[Home] Skipping heartbeat (navigator.onLine = false)");
             }
             await syncFromSW();
         };
@@ -95,7 +91,10 @@ const Home: React.FC = () => {
     //  - offline
     //  - logged in
     //  - SW says "ok" (TTL still valid)
-    const showCountdown = !isOnline && !!user && !!status && status.ok === true;
+    const isLoggedIn = !!user;
+    const hasActiveMembership = membershipStatus === "Active";
+    const showCountdown =
+        !isOnline && isLoggedIn && !!status && status.ok === true;
 
     let hh = "--",
         mm = "--",
@@ -119,66 +118,334 @@ const Home: React.FC = () => {
     const cachedEntries =
         status && status.ok === true ? status.entries : null;
 
+    const displayName =
+        (user as any)?.displayName ??
+        (user as any)?.name ??
+        (user as any)?.email ??
+        null;
+
+    // Hero title / subtitle depending on membership
+    let heroTitle: string;
+    let heroSubtitle: string;
+
+    if (!isLoggedIn) {
+        heroTitle = t("welcome.title");
+        heroSubtitle = t("welcome.subtitle");
+    } else if (hasActiveMembership) {
+        heroTitle = t("welcome.loggedInTitle", { name: displayName ?? "" });
+        heroSubtitle = t("welcome.loggedInSubtitle");
+    } else {
+        heroTitle = t("welcome.loggedInNoMembershipTitle", {
+            name: displayName ?? "",
+        });
+        heroSubtitle = t("welcome.loggedInNoMembershipSubtitle");
+    }
+
     return (
-        <div className="container mt-5">
-            <div className="text-center mb-4">
-                <h1 className="display-5">{t("welcome.title")}</h1>
-                <p className="text-muted mb-0">{t("welcome.subtitle")}</p>
-            </div>
+        <div className="container my-4 my-md-5">
+            {/* TOP CARD: HERO + FEATURE CARDS */}
+            <div className="card shadow-sm mb-4 border-0">
+                <div className="card-body py-4 py-md-5">
+                    <div className="row align-items-center">
+                        {/* Left side: hero text + buttons */}
+                        <div className="col-lg-7 mb-4 mb-lg-0 text-center text-lg-start">
+                            <h1 className="display-5 mb-3">{heroTitle}</h1>
+                            <p className="lead text-muted mb-4">
+                                {heroSubtitle}
+                            </p>
 
-            {showCountdown && (
-                <div className="row justify-content-center">
-                    <div className="col-12 col-md-7 col-lg-6">
-                        <div className="card shadow-sm">
-                            <div className="card-header d-flex align-items-center justify-content-between">
-                                <span className="d-inline-flex align-items-center gap-2">
-                                    <i className="bi bi-hdd-network" aria-hidden="true" />
-                                    <span>{t("offline.card.title")}</span>
-                                </span>
-                                <span className="badge bg-secondary d-inline-flex align-items-center gap-1">
-                                    <i className="bi bi-wifi-off" aria-hidden="true" />
-                                    {t("offline.badge")}
-                                </span>
-                            </div>
+                            {/* CTAs */}
+                            <div className="d-flex flex-wrap justify-content-center justify-content-lg-start gap-2">
+                                {/* Not logged in → Register / Demo / Login */}
+                                {!isLoggedIn && (
+                                    <>
+                                        <Link
+                                            to="/register"
+                                            className="btn btn-primary btn-lg"
+                                        >
+                                            <i className="bi bi-person-plus me-2" />
+                                            {t("hero.cta.register")}
+                                        </Link>
 
-                            <div className="card-body text-center offline-countdown-box">
-                                <div
-                                    className={`offline-countdown-digits ${deadlineMs && deadlineMs > now
-                                            ? "text-success"
-                                            : "text-danger"
-                                        }`}
-                                    aria-live="polite"
-                                    aria-atomic
-                                >
-                                    {hh}:{mm}:{ss}
-                                </div>
-                                <div className="text-muted mt-2">
-                                    {deadlineMs && deadlineMs > now
-                                        ? t("offline.status.available")
-                                        : t("offline.status.expired")}
-                                </div>
-                            </div>
+                                        <Link
+                                            to="/demo"
+                                            className="btn btn-outline-primary btn-lg"
+                                        >
+                                            <i className="bi bi-stars me-2" />
+                                            {t("hero.cta.demo")}
+                                        </Link>
 
-                            <div className="card-footer text-muted small d-flex justify-content-between">
-                                <span>
-                                    {t("offline.footer.ttl", {
-                                        hours: ttlHours,
-                                    })}
-                                </span>
-                                {cachedEntries != null ? (
-                                    <span>
-                                        {t("offline.footer.cached", {
-                                            count: cachedEntries,
-                                        })}
-                                    </span>
-                                ) : (
-                                    <span>&nbsp;</span>
+                                        <Link
+                                            to="/login"
+                                            className="btn btn-outline-secondary btn-lg"
+                                        >
+                                            <i className="bi bi-door-open me-2" />
+                                            {t("hero.cta.login")}
+                                        </Link>
+                                    </>
                                 )}
+
+                                {/* Logged in + active membership → shortcuts to features */}
+                                {isLoggedIn && hasActiveMembership && (
+                                    <>
+                                        <Link
+                                            to="/factures"
+                                            className="btn btn-primary btn-lg"
+                                        >
+                                            <i className="bi bi-receipt-cutoff me-2" />
+                                            {t("hero.cta.invoices")}
+                                        </Link>
+                                        <Link
+                                            to="/liste-epicerie?status=active"
+                                            className="btn btn-outline-primary btn-lg"
+                                        >
+                                            <i className="bi bi-cart-check me-2" />
+                                            {t("hero.cta.grocery")}
+                                        </Link>
+                                    </>
+                                )}
+
+                                {/* Logged in + NO membership → subscription CTA */}
+                                {isLoggedIn && !hasActiveMembership && (
+                                    <>
+                                        <Link
+                                            to="/subscribe"
+                                            className="btn btn-warning btn-lg text-dark"
+                                        >
+                                            <i className="bi bi-star me-2" />
+                                            {t("hero.cta.subscribe")}
+                                        </Link>
+                                        <Link
+                                            to="/faq"
+                                            className="btn btn-outline-primary btn-lg"
+                                        >
+                                            <i className="bi bi-journal-text me-2" />
+                                            {t("hero.cta.learnMore")}
+                                        </Link>
+                                    </>
+                                )}
+                            </div>
+
+                            <p className="text-muted mt-3 small d-flex align-items-center justify-content-center justify-content-lg-start">
+                                <i className="bi bi-wifi-off me-2" />
+                                {t("hero.offlineHint")}
+                            </p>
+                        </div>
+
+                        {/* Right side: feature cards */}
+                        <div className="col-lg-5">
+                            <div className="row g-3">
+                                <div className="col-12">
+                                    <div className="card h-100 shadow-sm border-0">
+                                        <div className="card-body">
+                                            <h2 className="h5 d-flex align-items-center mb-2">
+                                                <i className="bi bi-calculator me-2" />
+                                                {t(
+                                                    "features.calculator.title"
+                                                )}
+                                            </h2>
+                                            <p className="text-muted mb-0">
+                                                {t(
+                                                    "features.calculator.body"
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="col-12">
+                                    <div className="card h-100 shadow-sm border-0">
+                                        <div className="card-body">
+                                            <h2 className="h5 d-flex align-items-center mb-2">
+                                                <i className="bi bi-cart-check me-2" />
+                                                {t(
+                                                    "features.grocery.title"
+                                                )}
+                                            </h2>
+                                            <p className="text-muted mb-0">
+                                                {t("features.grocery.body")}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="col-12">
+                                    <div className="card h-100 shadow-sm border-0">
+                                        <div className="card-body">
+                                            <h2 className="h5 d-flex align-items-center mb-2">
+                                                <i className="bi bi-chat-dots me-2" />
+                                                {t(
+                                                    "features.community.title"
+                                                )}
+                                            </h2>
+                                            <p className="text-muted mb-0">
+                                                {t("features.community.body")}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            )}
+            </div>
+
+            {/* BOTTOM CARD: OFFLINE + STORY */}
+            <div className="card shadow-sm border-0">
+                <div className="card-body py-4 py-md-5">
+                    {/* OFFLINE COUNTDOWN (inside bottom card) */}
+                    {showCountdown && (
+                        <div className="row justify-content-center mb-4">
+                            <div className="col-12 col-md-7 col-lg-6">
+                                <div className="card shadow-sm">
+                                    <div className="card-header d-flex align-items-center justify-content-between">
+                                        <span className="d-inline-flex align-items-center gap-2">
+                                            <i
+                                                className="bi bi-hdd-network"
+                                                aria-hidden="true"
+                                            />
+                                            <span>
+                                                {t("offline.card.title")}
+                                            </span>
+                                        </span>
+                                        <span className="badge bg-secondary d-inline-flex align-items-center gap-1">
+                                            <i
+                                                className="bi bi-wifi-off"
+                                                aria-hidden="true"
+                                            />
+                                            {t("offline.badge")}
+                                        </span>
+                                    </div>
+
+                                    <div className="card-body text-center offline-countdown-box">
+                                        <div
+                                            className={`offline-countdown-digits ${deadlineMs && deadlineMs > now
+                                                    ? "text-success"
+                                                    : "text-danger"
+                                                }`}
+                                            aria-live="polite"
+                                            aria-atomic
+                                        >
+                                            {hh}:{mm}:{ss}
+                                        </div>
+                                        <div className="text-muted mt-2">
+                                            {deadlineMs && deadlineMs > now
+                                                ? t(
+                                                    "offline.status.available"
+                                                )
+                                                : t(
+                                                    "offline.status.expired"
+                                                )}
+                                        </div>
+                                    </div>
+
+                                    <div className="card-footer text-muted small d-flex justify-content-between">
+                                        <span>
+                                            {t("offline.footer.ttl", {
+                                                hours: ttlHours,
+                                            })}
+                                        </span>
+                                        {cachedEntries != null ? (
+                                            <span>
+                                                {t("offline.footer.cached", {
+                                                    count: cachedEntries,
+                                                })}
+                                            </span>
+                                        ) : (
+                                            <span>&nbsp;</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STORY SECTION */}
+                    <div className="row">
+                        <div className="col-lg-8 mb-4 mb-lg-0">
+                            <h2 className="h3 mb-3">{t("story.title")}</h2>
+                            <p className="text-muted">{t("story.intro")}</p>
+
+                            <ul className="list-unstyled mt-3">
+                                <li className="mb-2 d-flex">
+                                    <span className="me-2 text-primary">
+                                        <i className="bi bi-heart-fill" />
+                                    </span>
+                                    <span>{t("story.points.personal")}</span>
+                                </li>
+                                <li className="mb-2 d-flex">
+                                    <span className="me-2 text-primary">
+                                        <i className="bi bi-card-checklist" />
+                                    </span>
+                                    <span>{t("story.points.paperwork")}</span>
+                                </li>
+                                <li className="mb-2 d-flex">
+                                    <span className="me-2 text-primary">
+                                        <i className="bi bi-laptop" />
+                                    </span>
+                                    <span>{t("story.points.prototype")}</span>
+                                </li>
+                                <li className="mb-2 d-flex">
+                                    <span className="me-2 text-primary">
+                                        <i className="bi bi-people" />
+                                    </span>
+                                    <span>{t("story.points.today")}</span>
+                                </li>
+                            </ul>
+
+                            <div className="mt-3 d-flex flex-wrap gap-2">
+                                <Link
+                                    to="/faq"
+                                    className="btn btn-outline-secondary btn-sm"
+                                >
+                                    <i className="bi bi-journal-text me-1" />
+                                    {t("story.cta.learnMore")}
+                                </Link>
+                                <Link
+                                    to="/forum"
+                                    className="btn btn-outline-secondary btn-sm"
+                                >
+                                    <i className="bi bi-chat-dots me-1" />
+                                    {t("story.cta.shareStory")}
+                                </Link>
+                            </div>
+                        </div>
+
+                        <div className="col-lg-4">
+                            <div className="card h-100 shadow-sm border-0">
+                                <div className="card-body">
+                                    <h3 className="h5 mb-3">
+                                        {t("story.sideCard.title")}
+                                    </h3>
+                                    <p className="text-muted mb-3">
+                                        {t("story.sideCard.body")}
+                                    </p>
+                                    {!isLoggedIn && (
+                                        <Link
+                                            to="/register"
+                                            className="btn btn-primary btn-sm"
+                                        >
+                                            <i className="bi bi-person-plus me-1" />
+                                            {t("story.sideCard.cta")}
+                                        </Link>
+                                    )}
+                                    {isLoggedIn && (
+                                        <Link
+                                            to="/membership"
+                                            className="btn btn-outline-primary btn-sm"
+                                        >
+                                            <i className="bi bi-card-checklist me-1" />
+                                            {t(
+                                                "story.sideCard.ctaLoggedIn"
+                                            )}
+                                        </Link>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

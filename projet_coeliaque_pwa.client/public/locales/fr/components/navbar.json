@@ -1,5 +1,5 @@
 ﻿{
-  "brand": "Service Coeliaque",
+  "brand": "Services Coeliaque",
   "aria": {
     "toggle": "Basculer la navigation"
   },
@@ -57,8 +57,8 @@
     "logout": "Se déconnecter"
   },
   "auth": {
-    "login": "Login",
-    "register": "Register"
+    "login": "Connexion",
+    "register": "Créer un compte"
   },
   "demo": {
     "button": "Démo"

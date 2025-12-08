@@ -1,5 +1,6 @@
 ﻿{
   "footer": {
-    "copyright": "© {{year}} Service Coeliaque"
+    "copyright": "© {{year}} Services Coeliaque",
+    "poweredBy": "Propulsé par"
   }
 }

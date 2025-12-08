@@ -1,18 +1,70 @@
 ﻿{
   "welcome": {
-    "title": "Welcome",
-    "subtitle": "Welcome to Site Coeliaque PWA/SPA!"
+    "title": "Services Coeliaque: your gluten-free tools in one place.",
+    "subtitle": "Calculate your tax credit, manage your grocery lists and connect with the community — even when you’re offline.",
+    "loggedInTitle": "Welcome back to Services Coeliaque, {{name}}!",
+    "loggedInSubtitle": "Your receipts, grocery lists and community discussions are ready whenever you are.",
+    "loggedInNoMembershipTitle": "Welcome to Services Coeliaque, {{name}}!",
+    "loggedInNoMembershipSubtitle": "To unlock tax reports, grocery lists and all features, you’ll first need to activate your membership."
+  },
+  "hero": {
+    "cta": {
+      "demo": "Try the guided demo",
+      "register": "Create my account",
+      "login": "I already have an account",
+      "invoices": "Go to my invoices",
+      "grocery": "Open my grocery lists",
+      "subscribe": "Activate my membership",
+      "learnMore": "Learn more"
+    },
+    "offlineHint": "Works offline: keep using your invoices, price comparisons, grocery lists and more even without an internet connection."
+  },
+  "features": {
+    "calculator": {
+      "title": "Calculate your tax deduction",
+      "body": "Centralize your gluten-free invoices, mark eligible purchases and generate reports designed for your accountant."
+    },
+    "grocery": {
+      "title": "Manage your grocery lists",
+      "body": "Build and reuse grocery lists, check items off on your phone in store and avoid forgetting essentials."
+    },
+    "community": {
+      "title": "Join the community forum",
+      "body": "Ask questions, share tips and exchange ideas with others living with celiac disease."
+    }
+  },
+  "story": {
+    "title": "Why this site exists",
+    "intro": "This project began with a simple situation: someone close to me explained how time-consuming and repetitive it was to prepare the comparison sheets and reports needed for celiac tax refunds.",
+    "points": {
+      "personal": "They asked if I could build a small tool to make the process easier — something that would avoid spending hours sorting invoices and redoing the same calculations.",
+      "paperwork": "I created the first version, and it quickly saved a lot of time. That’s when I realized they were probably not the only person struggling with this task.",
+      "prototype": "So I turned the little tool into a proper website so more people could benefit from it. I improved the interface, added faster comparison workflows, and made report preparation much more straightforward.",
+      "today": "Over time, new ideas were added: a mobile-friendly version, grocery lists, offline mode to keep using your data without an internet connection, and other practical features. Today, this site exists to make life easier for anyone living with celiac disease."
+    },
+    "cta": {
+      "learnMore": "Learn more in the FAQ",
+      "shareStory": "Share your experience on the forum"
+    },
+    "sideCard": {
+      "title": "Built for real life",
+      "body": "The goal is simple: save you time, reduce paperwork, and offer a modern, accessible tool — even offline — to manage your gluten-free receipts and grocery lists.",
+      "cta": "Create a free account",
+      "ctaLoggedIn": "View my membership"
+    }
   },
   "offline": {
-    "card": { "title": "Offline availability" },
+    "card": {
+      "title": "Offline access in progress"
+    },
     "badge": "Offline",
     "status": {
-      "available": "Available offline",
-      "expired": "Offline expired — please reconnect"
+      "available": "You can continue to use your data while offline.",
+      "expired": "Offline access has expired. Reconnect to refresh your data."
     },
     "footer": {
-      "ttl": "TTL window: {{hours}} h",
-      "cached": "Cached entries: {{count}}"
+      "ttl": "Offline access is valid for about {{hours}} hours after your last connection.",
+      "cached": "{{count}} entries currently cached on this device."
     }
   }
 }

@@ -1,18 +1,71 @@
 ﻿{
   "welcome": {
-    "title": "Bienvenue",
-    "subtitle": "Bienvenue sur le site Cœliaque (PWA/SPA) !"
+    "title": "Services Coeliaque : vos outils sans gluten en ligne.",
+    "subtitle": "Calculez votre crédit d’impôt, planifiez vos listes d’épicerie et échangez avec la communauté — même sans connexion Internet.",
+    "loggedInTitle": "Re-bienvenue sur Services Coeliaque, {{name}} !",
+    "loggedInSubtitle": "Vos factures, listes d’épicerie et discussions de la communauté sont prêts pour vous.",
+    "loggedInNoMembershipTitle": "Bienvenue sur Services Coeliaque, {{name}} !",
+    "loggedInNoMembershipSubtitle": "Pour accéder aux rapports d’impôts, listes d’épicerie et à toutes les fonctionnalités, vous devez d’abord activer votre abonnement."
   },
+  "hero": {
+    "cta": {
+      "demo": "Essayer la démo guidée",
+      "register": "Créer mon compte",
+      "login": "J’ai déjà un compte",
+      "invoices": "Aller à mes factures",
+      "grocery": "Ouvrir mes listes d’épicerie",
+      "subscribe": "Activer mon abonnement",
+      "learnMore": "En savoir plus"
+    },
+    "offlineHint": "Fonctionne hors ligne : continuez d’utiliser vos factures, comparatifs, listes d’épicerie et plus encore même sans Internet."
+  },
+  "features": {
+    "calculator": {
+      "title": "Calculer votre crédit d’impôt",
+      "body": "Centralisez vos factures sans gluten, classez vos achats admissibles et générez des rapports pensés pour votre comptable."
+    },
+    "grocery": {
+      "title": "Gérer vos listes d’épicerie",
+      "body": "Créez et réutilisez vos listes, cochez les items directement en magasin et évitez les oublis."
+    },
+    "community": {
+      "title": "Participer au forum communautaire",
+      "body": "Posez vos questions, partagez vos astuces et échangez avec d’autres personnes vivant avec la maladie coeliaque."
+    }
+  },
+  "story": {
+    "title": "Pourquoi ce site existe",
+    "intro": "Ce projet est né d’une situation très simple : quelqu’un de mon entourage m’a expliqué à quel point préparer les comparatifs et rapports nécessaires pour les remboursements d’impôts liés à la maladie coeliaque pouvait être long, répétitif et frustrant.",
+    "points": {
+      "personal": "On m’a demandé si je pouvais créer un petit outil pour simplifier les choses — quelque chose qui éviterait de passer des heures à trier des factures et à refaire les mêmes calculs.",
+      "paperwork": "J’ai donc monté un premier programme, et il a rapidement fait gagner beaucoup de temps. C’est là que j’ai réalisé que cette personne n’était probablement pas la seule à trouver ce processus lourd et énergivore.",
+      "prototype": "Je me suis alors dit qu’un outil accessible en ligne pourrait aider bien plus de monde. J’ai transformé le programme en site web, puis j’ai amélioré l’interface, ajouté des comparatifs plus rapides et rendu la préparation des rapports beaucoup plus simple.",
+      "today": "Au fil du temps, de nouvelles idées se sont ajoutées : une version adaptée au mobile, des listes d’épicerie, le mode hors-ligne pour continuer à utiliser vos données même sans connexion, et d’autres fonctionnalités pratiques. Aujourd’hui, ce site existe pour rendre la vie plus simple à toutes les personnes vivant avec la maladie coeliaque."
+    },
+    "cta": {
+      "learnMore": "En savoir plus dans la FAQ",
+      "shareStory": "Partager votre expérience sur le forum"
+    },
+    "sideCard": {
+      "title": "Un outil pensé pour la vraie vie",
+      "body": "L’objectif est simple : vous faire gagner du temps, réduire la paperasse et vous offrir un espace moderne, accessible et utilisable même hors-ligne pour gérer vos factures et vos listes d’achats sans gluten.",
+      "cta": "Créer un compte gratuit",
+      "ctaLoggedIn": "Voir mon abonnement"
+    }
+  },
+
   "offline": {
-    "card": { "title": "Disponibilité hors ligne" },
+    "card": {
+      "title": "Accès hors ligne en cours"
+    },
     "badge": "Hors ligne",
     "status": {
-      "available": "Disponible hors ligne",
-      "expired": "Session hors ligne expirée — veuillez vous reconnecter"
+      "available": "Vous pouvez continuer d’utiliser vos données même hors ligne.",
+      "expired": "L’accès hors ligne est expiré. Reconnectez-vous pour rafraîchir vos données."
     },
     "footer": {
-      "ttl": "Fenêtre TTL : {{hours}} h",
-      "cached": "Éléments mis en cache : {{count}}"
+      "ttl": "L’accès hors ligne reste valide environ {{hours}} heures après votre dernière connexion.",
+      "cached": "{{count}} éléments actuellement enregistrés sur cet appareil."
     }
   }
 }

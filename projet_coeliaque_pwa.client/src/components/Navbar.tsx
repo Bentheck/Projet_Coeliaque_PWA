@@ -1,5 +1,4 @@
-﻿// src/components/Navbar.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import InstallPWA from "../components/InstallPWA";
@@ -100,14 +99,14 @@ export default function Navbar() {
 
     const languageTitle =
         currentLang === "fr"
-            ? t("language.switchToEn") // e.g. "Switch to English"
-            : t("language.switchToFr"); // e.g. "Passer au français"
+            ? t("language.switchToEn")
+            : t("language.switchToFr");
 
     return (
         <nav className="navbar navbar-expand-lg sticky-top mb-4">
             <div className="container">
                 <Link className="navbar-brand" to="/">
-                    <i className="bi bi-bootstrap"></i> {t("brand")}
+                    {t("brand")}
                 </Link>
 
                 <button
@@ -239,12 +238,13 @@ export default function Navbar() {
                         </li>
 
                         {/* Forum */}
-                        <li className="nav-item dropdown">
-                            {isOnline ? (
-                                <>
+                        {isOnline ? (
+                            isForumAdmin ? (
+                                // Admin → dropdown with ONLY admin link
+                                <li className="nav-item dropdown">
                                     <a
                                         className="nav-link dropdown-toggle"
-                                        href="#" // eslint-disable-line
+                                        href="#"
                                         id="forumDropdown"
                                         role="button"
                                         data-bs-toggle="dropdown"
@@ -253,49 +253,27 @@ export default function Navbar() {
                                         <i className="bi bi-chat-dots me-1"></i>{" "}
                                         {t("menu.forum._")}
                                     </a>
-                                    <ul
-                                        className="dropdown-menu"
-                                        aria-labelledby="forumDropdown"
-                                    >
+                                    <ul className="dropdown-menu" aria-labelledby="forumDropdown">
                                         <li>
-                                            <Link
-                                                className="dropdown-item"
-                                                to="/forum"
-                                            >
-                                                <i className="bi bi-grid-3x3-gap me-2"></i>{" "}
-                                                {t("menu.forum.categories")}
+                                            <Link className="dropdown-item" to="/admin/forum">
+                                                <i className="bi bi-shield-check me-2"></i>
+                                                {t("menu.forum.admin")}
                                             </Link>
                                         </li>
-                                        {user && (
-                                            <li>
-                                                <Link
-                                                    className="dropdown-item"
-                                                    to="/forum/new"
-                                                >
-                                                    <i className="bi bi-plus-circle me-2"></i>{" "}
-                                                    {t("menu.forum.newThread")}
-                                                </Link>
-                                            </li>
-                                        )}
-                                        {isForumAdmin && (
-                                            <>
-                                                <li>
-                                                    <hr className="dropdown-divider" />
-                                                </li>
-                                                <li>
-                                                    <Link
-                                                        className="dropdown-item"
-                                                        to="/admin/forum"
-                                                    >
-                                                        <i className="bi bi-shield-check me-2"></i>{" "}
-                                                        {t("menu.forum.admin")}
-                                                    </Link>
-                                                </li>
-                                            </>
-                                        )}
                                     </ul>
-                                </>
+                                </li>
                             ) : (
+                                // Normal user → simple link to /forum
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="/forum">
+                                        <i className="bi bi-chat-dots me-1"></i>{" "}
+                                        {t("menu.forum._")}
+                                    </Link>
+                                </li>
+                            )
+                        ) : (
+                            // Offline → disabled link
+                            <li className="nav-item">
                                 <a
                                     className="nav-link disabled"
                                     href="#"
@@ -309,8 +287,8 @@ export default function Navbar() {
                                     <i className="bi bi-chat-dots me-1"></i>{" "}
                                     {t("menu.forum.offlineLabel")}
                                 </a>
-                            )}
-                        </li>
+                            </li>
+                        )}
 
                         {/* Aide */}
                         <li className="nav-item dropdown">
@@ -531,17 +509,7 @@ export default function Navbar() {
                             </>
                         ) : (
                             <>
-                                {/* DEMO BUTTON (visible only when NOT logged in) */}
-                                <li className="nav-item">
-                                    <Link
-                                        className="nav-link text-primary fw-bold"
-                                        to="/demo"
-                                    >
-                                        <i className="bi bi-stars"></i>{" "}
-                                        {t("demo.button")}
-                                    </Link>
-                                </li>
-
+                                {/* Login / Register only (demo removed) */}
                                 <li className="nav-item">
                                     <Link className="nav-link" to="/login">
                                         <i className="bi bi-door-open"></i>{" "}
