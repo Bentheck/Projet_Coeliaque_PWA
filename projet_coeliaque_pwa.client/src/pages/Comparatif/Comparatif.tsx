@@ -13,10 +13,14 @@ const Comparatif: React.FC = () => {
     const navigate = useNavigate();
 
     // Live data from Dexie
-    const years = useLiveQuery(() => db.comparatifYears.orderBy("annee").reverse().toArray(), []);
-    const reportYears = useLiveQuery(() => db.reportYears.toArray(), []) as
-        | ReportYearDto[]
-        | undefined;
+    const years = useLiveQuery(
+        () => db.comparatifYears.orderBy("annee").reverse().toArray(),
+        []
+    );
+    const reportYears = useLiveQuery(
+        () => db.reportYears.toArray(),
+        []
+    ) as ReportYearDto[] | undefined;
 
     // UI state
     const [showForm, setShowForm] = useState(false);
@@ -28,13 +32,16 @@ const Comparatif: React.FC = () => {
 
     const loading = years === undefined;
 
-    // warm db
+    // Warm db
     useEffect(() => {
         if (navigator.onLine) void syncDown(false);
     }, []);
 
     const isReportGenerated = (annee: number) =>
         !!reportYears?.some((r) => r.year === annee && r.reportGenerated);
+
+    const totalYears = years?.length ?? 0;
+    const totalGenerated = reportYears?.filter((r) => r.reportGenerated).length ?? 0;
 
     async function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -51,7 +58,11 @@ const Comparatif: React.FC = () => {
 
             if (res.status === 202) {
                 alert(t("alerts.yearQueued"));
-                const temp: ComparatifYearDto = { id: -Date.now(), annee: newYear, lines: [] };
+                const temp: ComparatifYearDto = {
+                    id: -Date.now(),
+                    annee: newYear,
+                    lines: [],
+                };
                 await db.comparatifYears.put(temp);
             } else if (!res.ok) {
                 throw new Error(await res.text());
@@ -60,8 +71,10 @@ const Comparatif: React.FC = () => {
             setShowForm(false);
             setNewYear(new Date().getFullYear());
             if (navigator.onLine) await syncDown(false);
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : t("errors.generic") ?? String(err);
+            setError(message);
         } finally {
             setSubmitting(false);
         }
@@ -83,15 +96,19 @@ const Comparatif: React.FC = () => {
             }
             if (!res.ok) throw new Error(await res.text());
             if (navigator.onLine) await syncDown(false);
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : t("errors.generic") ?? String(err);
+            setError(message);
         }
     }
 
     async function handleGenerateReport(annee: number) {
         try {
             if (isReportGenerated(annee)) {
-                const ok = window.confirm(t("confirm.regenExisting", { year: annee }));
+                const ok = window.confirm(
+                    t("confirm.regenExisting", { year: annee }) as string
+                );
                 if (!ok) return;
             }
 
@@ -111,8 +128,10 @@ const Comparatif: React.FC = () => {
 
             if (!res.ok) throw new Error(await res.text());
             navigate(REPORT_ROUTE(annee));
-        } catch (err: any) {
-            setGenError(err?.message ?? t("errors.generateFailed"));
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : t("errors.generateFailed") ?? String(err);
+            setGenError(message);
         } finally {
             setGenLoading(null);
         }
@@ -120,15 +139,25 @@ const Comparatif: React.FC = () => {
 
     return (
         <div className="container comparatif-container">
-            <div className="d-flex flex-column align-items-center mb-3">
-                <h2 className="mb-2">{t("header.title")}</h2>
+            <div className="d-flex flex-column align-items-center mb-2">
+                <h2 className="mb-1">{t("header.title")}</h2>
+                <div className="text-muted small mb-2">
+                    {t("header.stats", {
+                        total: totalYears,
+                        generated: totalGenerated,
+                    })}
+                </div>
                 <button
                     className="btn btn-primary comparatif-new-btn"
                     onClick={() => setShowForm((f) => !f)}
                 >
                     <i className="bi bi-plus-circle me-1" />
-                    <span className="d-none d-sm-inline">{t("actions.new.long")}</span>
-                    <span className="d-sm-none">{t("actions.new.short")}</span>
+                    <span className="d-none d-sm-inline">
+                        {t("actions.new.long")}
+                    </span>
+                    <span className="d-sm-none">
+                        {t("actions.new.short")}
+                    </span>
                 </button>
             </div>
 
@@ -145,7 +174,11 @@ const Comparatif: React.FC = () => {
                             required
                             disabled={submitting}
                         />
-                        <button className="btn btn-success" type="submit" disabled={submitting}>
+                        <button
+                            className="btn btn-success"
+                            type="submit"
+                            disabled={submitting}
+                        >
                             {t("form.create")}
                         </button>
                         <button
@@ -166,7 +199,9 @@ const Comparatif: React.FC = () => {
             {loading ? (
                 <div>{t("loading")}</div>
             ) : !years || years.length === 0 ? (
-                <div className="alert alert-secondary text-center">{t("empty")}</div>
+                <div className="alert alert-secondary text-center">
+                    {t("empty")}
+                </div>
             ) : (
                 <div>
                     {years.map((y) => {
@@ -174,7 +209,10 @@ const Comparatif: React.FC = () => {
                         const busy = genLoading === y.annee;
 
                         return (
-                            <div key={y.id} className="card mb-2 border-0 shadow-sm">
+                            <div
+                                key={y.id}
+                                className="card mb-2 border-0 shadow-sm"
+                            >
                                 <div className="card-body d-flex align-items-start flex-wrap gap-2 comparatif-card-body">
                                     <div className="comparatif-year-main">
                                         <div className="fw-bold">
@@ -197,7 +235,9 @@ const Comparatif: React.FC = () => {
                                         <button
                                             className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"
                                                 }`}
-                                            onClick={() => handleGenerateReport(y.annee)}
+                                            onClick={() =>
+                                                handleGenerateReport(y.annee)
+                                            }
                                             disabled={busy}
                                             title={
                                                 generated
@@ -255,7 +295,9 @@ const Comparatif: React.FC = () => {
 
                                         <button
                                             className="btn btn-outline-primary btn-sm"
-                                            onClick={() => navigate(`/comparatif/${y.id}`)}
+                                            onClick={() =>
+                                                navigate(`/comparatif/${y.id}`)
+                                            }
                                             title={t("buttons.view.title") as string}
                                         >
                                             <i className="bi bi-eye" />
@@ -266,7 +308,9 @@ const Comparatif: React.FC = () => {
 
                                         <button
                                             className="btn btn-outline-danger btn-sm"
-                                            onClick={() => handleDelete(y.id, y.annee)}
+                                            onClick={() =>
+                                                handleDelete(y.id, y.annee)
+                                            }
                                             title={t("buttons.delete.title") as string}
                                         >
                                             <i className="bi bi-trash" />

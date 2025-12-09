@@ -1,5 +1,4 @@
-﻿// SubscribeSuccess.tsx
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../components/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -99,112 +98,119 @@ const SubscribeSuccess: React.FC = () => {
 
     return (
         <div className="container py-4">
-            {/* Everything we want to print must be inside #print-section */}
-            <div id="print-section" className="subscription-success">
-                <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-3">
-                    <div className="subscription-success-header">
-                        <h1 className="mb-1">{t("title")}</h1>
-                        <p className="mb-0 text-muted">{t("thankYou")}</p>
-                    </div>
-
-                    {/* Print button – hidden in print (@media print .btn/.no-print) */}
-                    <button
-                        type="button"
-                        className="btn btn-outline-secondary mt-3 mt-md-0 no-print"
-                        onClick={handlePrint}
-                    >
-                        {/* If you use Bootstrap Icons you can add: <i className="bi bi-printer me-2" /> */}
-                        {t("receipt.print")}
-                    </button>
-                </div>
-
-                {sessionId && (
-                    <div className="subscription-transaction mb-3">
-                        <span className="fw-semibold">{t("sessionIdLabel")}</span>{" "}
-                        <code className="subscription-transaction-id">{sessionId}</code>
-                    </div>
-                )}
-
-                <div className="subscription-receipt-card">
-                    <div className="subscription-receipt-header">
-                        <div>
-                            <div className="subscription-brand-name">
-                                Service Coeliaque
+            <div className="card card--accent shadow-sm border-0">
+                <div className="card-body">
+                    {/* Everything we want to print must be inside #print-section */}
+                    <div id="print-section" className="subscription-success">
+                        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-3">
+                            <div className="subscription-success-header">
+                                <h1 className="mb-1">{t("title")}</h1>
+                                <p className="mb-0 text-muted">{t("thankYou")}</p>
                             </div>
-                            <div className="subscription-brand-subtitle text-muted">
-                                {t("receipt.subtitle")}
-                            </div>
-                        </div>
-                        <div className="subscription-badge-paid">
-                            {statusText?.toLowerCase() === "paid"
-                                ? t("receipt.badgePaid")
-                                : t("receipt.badgePending")}
-                        </div>
-                    </div>
 
-                    <div className="subscription-receipt-body">
-                        <div className="subscription-receipt-row">
-                            <div className="subscription-receipt-label">
-                                {t("receipt.status")}
-                            </div>
-                            <div className="subscription-receipt-value">
-                                {statusText || "—"}
-                            </div>
+                            {/* Print button – hidden in print (@media print .btn/.no-print) */}
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary mt-3 mt-md-0 no-print"
+                                onClick={handlePrint}
+                            >
+                                {t("receipt.print")}
+                            </button>
                         </div>
 
-                        <div className="subscription-receipt-row">
-                            <div className="subscription-receipt-label">
-                                {t("receipt.amount")}
+                        {sessionId && (
+                            <div className="subscription-transaction mb-3">
+                                <span className="fw-semibold">
+                                    {t("sessionIdLabel")}
+                                </span>{" "}
+                                <code className="subscription-transaction-id">
+                                    {sessionId}
+                                </code>
                             </div>
-                            <div className="subscription-receipt-value">
-                                {formatAmount(data.amount_total, data.currency)}
+                        )}
+
+                        <div className="subscription-receipt-card">
+                            <div className="subscription-receipt-header">
+                                <div>
+                                    <div className="subscription-brand-name">
+                                        Service Coeliaque
+                                    </div>
+                                    <div className="subscription-brand-subtitle text-muted">
+                                        {t("receipt.subtitle")}
+                                    </div>
+                                </div>
+                                <div className="subscription-badge-paid">
+                                    {statusText?.toLowerCase() === "paid"
+                                        ? t("receipt.badgePaid")
+                                        : t("receipt.badgePending")}
+                                </div>
+                            </div>
+
+                            <div className="subscription-receipt-body">
+                                <div className="subscription-receipt-row">
+                                    <div className="subscription-receipt-label">
+                                        {t("receipt.status")}
+                                    </div>
+                                    <div className="subscription-receipt-value">
+                                        {statusText || "—"}
+                                    </div>
+                                </div>
+
+                                <div className="subscription-receipt-row">
+                                    <div className="subscription-receipt-label">
+                                        {t("receipt.amount")}
+                                    </div>
+                                    <div className="subscription-receipt-value">
+                                        {formatAmount(data.amount_total, data.currency)}
+                                    </div>
+                                </div>
+
+                                <div className="subscription-receipt-row">
+                                    <div className="subscription-receipt-label">
+                                        {t("receipt.customer")}
+                                    </div>
+                                    <div className="subscription-receipt-value">
+                                        {customerName}{" "}
+                                        {customerEmail !== "—" && (
+                                            <span className="text-muted">
+                                                ({customerEmail})
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="subscription-receipt-row">
+                                    <div className="subscription-receipt-label">
+                                        {t("receipt.subscription")}
+                                    </div>
+                                    <div className="subscription-receipt-value">
+                                        {data.subscription || "—"}
+                                    </div>
+                                </div>
+
+                                <div className="subscription-receipt-row">
+                                    <div className="subscription-receipt-label">
+                                        {t("receipt.paymentIntent")}
+                                    </div>
+                                    <div className="subscription-receipt-value">
+                                        {data.payment_intent || "—"}
+                                    </div>
+                                </div>
+
+                                <div className="subscription-receipt-row">
+                                    <div className="subscription-receipt-label">
+                                        {t("receipt.date")}
+                                    </div>
+                                    <div className="subscription-receipt-value">
+                                        {formatDateTime(data.created)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="subscription-receipt-footer text-muted">
+                                {t("receipt.footerNote")}
                             </div>
                         </div>
-
-                        <div className="subscription-receipt-row">
-                            <div className="subscription-receipt-label">
-                                {t("receipt.customer")}
-                            </div>
-                            <div className="subscription-receipt-value">
-                                {customerName}{" "}
-                                {customerEmail !== "—" && (
-                                    <span className="text-muted">
-                                        ({customerEmail})
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="subscription-receipt-row">
-                            <div className="subscription-receipt-label">
-                                {t("receipt.subscription")}
-                            </div>
-                            <div className="subscription-receipt-value">
-                                {data.subscription || "—"}
-                            </div>
-                        </div>
-
-                        <div className="subscription-receipt-row">
-                            <div className="subscription-receipt-label">
-                                {t("receipt.paymentIntent")}
-                            </div>
-                            <div className="subscription-receipt-value">
-                                {data.payment_intent || "—"}
-                            </div>
-                        </div>
-
-                        <div className="subscription-receipt-row">
-                            <div className="subscription-receipt-label">
-                                {t("receipt.date")}
-                            </div>
-                            <div className="subscription-receipt-value">
-                                {formatDateTime(data.created)}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="subscription-receipt-footer text-muted">
-                        {t("receipt.footerNote")}
                     </div>
                 </div>
             </div>

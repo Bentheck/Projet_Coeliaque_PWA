@@ -74,6 +74,20 @@ export default function Navbar() {
     const isOnline = useOnlineStatus();
     const { resolvedTheme, toggleTheme } = useTheme();
 
+    const [atTop, setAtTop] = useState(true);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setAtTop(window.scrollY < 10);
+        };
+        handleScroll(); // run once on mount
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    const navClassName = `navbar navbar-expand-lg mb-4 ${atTop ? "navbar--top" : "navbar--floating"
+        }`;
+
     const displayLabel =
         user?.displayName ??
         user?.name ??
@@ -103,8 +117,10 @@ export default function Navbar() {
             : t("language.switchToFr");
 
     return (
-        <nav className="navbar navbar-expand-lg sticky-top mb-4">
-            <div className="container">
+        <nav className={navClassName}>
+            {/* navbar-inner = actual pill that changes size/shape */}
+            <div className="navbar-inner">
+                <div className="container">
                 <Link className="navbar-brand" to="/">
                     {t("brand")}
                 </Link>
@@ -253,9 +269,15 @@ export default function Navbar() {
                                         <i className="bi bi-chat-dots me-1"></i>{" "}
                                         {t("menu.forum._")}
                                     </a>
-                                    <ul className="dropdown-menu" aria-labelledby="forumDropdown">
+                                    <ul
+                                        className="dropdown-menu"
+                                        aria-labelledby="forumDropdown"
+                                    >
                                         <li>
-                                            <Link className="dropdown-item" to="/admin/forum">
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/admin/forum"
+                                            >
                                                 <i className="bi bi-shield-check me-2"></i>
                                                 {t("menu.forum.admin")}
                                             </Link>
@@ -526,7 +548,7 @@ export default function Navbar() {
                             </>
                         )}
                     </ul>
-                </div>
+                    </div></div>
             </div>
         </nav>
     );

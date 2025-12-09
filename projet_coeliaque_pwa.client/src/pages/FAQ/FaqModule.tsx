@@ -37,8 +37,7 @@ function filterFaqTree(tree: FaqCategoryDto[], q: string): FaqCategoryDto[] {
                     .toLowerCase()
                     .includes(needle);
                 const inTags =
-                    (qq as any).tagsCsv?.toLowerCase?.().includes(needle) ??
-                    false;
+                    (qq as any).tagsCsv?.toLowerCase?.().includes(needle) ?? false;
                 const inCat = cat.name?.toLowerCase().includes(needle);
                 return inQ || inA || inTags || inCat;
             });
@@ -102,10 +101,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
         return () => {
             cancelled = true;
             window.removeEventListener("online", onOnline);
-            navigator.serviceWorker?.removeEventListener(
-                "message",
-                onSwMsg
-            );
+            navigator.serviceWorker?.removeEventListener("message", onSwMsg);
         };
     }, [uiLang]);
 
@@ -119,61 +115,68 @@ export function FaqPage({ className = "" }: { className?: string }) {
     );
 
     return (
-        <section className={`mx-auto max-w-3xl ${className}`}>
-            <header className="mb-5">
-                <h1 className="text-2xl font-bold">
-                    {t("title")}
-                </h1>
-                <p className="mt-1 text-sm text-neutral-600">
-                    {t("subtitle")}
-                </p>
+        <section className={className}>
+            {/* Header / search in an accent card */}
+            <div className="card card--accent shadow-sm mb-4">
+                <div className="card-body">
+                    <h1 className="h4 mb-1">{t("title")}</h1>
+                    <p className="mb-3 small text-muted">
+                        {t("subtitle")}
+                    </p>
 
-                <div className="mt-3 d-flex align-items-center gap-2">
-                    <input
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        placeholder={t("searchPlaceholder")}
-                        className="form-control"
-                        aria-label={t("searchAria")}
-                    />
-                    {q && (
-                        <button
-                            type="button"
-                            onClick={() => setQ("")}
-                            className="btn btn-outline-secondary btn-sm"
-                        >
-                            {t("clear")}
-                        </button>
-                    )}
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                        <input
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            placeholder={t("searchPlaceholder")}
+                            className="form-control"
+                            aria-label={t("searchAria")}
+                        />
+                        {q && (
+                            <button
+                                type="button"
+                                onClick={() => setQ("")}
+                                className="btn btn-outline-secondary btn-sm"
+                            >
+                                {t("clear")}
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="small text-muted">
+                        {isSyncing
+                            ? t("syncing")
+                            : t("resultsCount", { count: totalCount })}
+                    </div>
                 </div>
+            </div>
 
-                <div className="mt-2 text-xs text-neutral-500">
-                    {isSyncing
-                        ? t("syncing")
-                        : t("resultsCount", { count: totalCount })}
-                </div>
-            </header>
-
-            <div className="space-y-4">
+            {/* FAQ tree */}
+            <div className="vstack gap-3">
                 {filtered.map((cat) => (
                     <details
                         key={cat.id}
-                        className="group rounded-4 border bg-white p-4 shadow-sm"
+                        className="rounded-4 border bg-white p-4 shadow-sm"
                     >
-                        <summary className="cursor-pointer select-none text-base fw-semibold">
-                            {cat.name}
+                        <summary className="d-flex align-items-center justify-content-between cursor-pointer user-select-none fw-semibold">
+                            <span>{cat.name}</span>
+                            <span className="small text-muted">
+                                {t("resultsCount", {
+                                    count: cat.questions.length,
+                                })}
+                            </span>
                         </summary>
 
                         {cat.description && (
                             <div
-                                className="mt-2 text-sm text-neutral-700"
+                                className="mt-2 small text-body-secondary"
                                 dangerouslySetInnerHTML={{
                                     __html: cat.description,
                                 }}
                             />
                         )}
 
-                        <div className="mt-3 space-y-2">
+                        <div className="mt-3 vstack gap-2">
                             {cat.questions.map((qq) => (
                                 <details
                                     key={qq.id}
@@ -183,7 +186,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                                         {qq.question}
                                     </summary>
                                     <div
-                                        className="mt-2 text-sm"
+                                        className="mt-2 small"
                                         dangerouslySetInnerHTML={{
                                             __html: qq.answerHtml,
                                         }}
@@ -191,7 +194,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                                 </details>
                             ))}
                             {cat.questions.length === 0 && (
-                                <p className="text-sm text-neutral-500">
+                                <p className="small text-muted mb-0">
                                     {t("noQuestionsInCategory")}
                                 </p>
                             )}
@@ -200,13 +203,13 @@ export function FaqPage({ className = "" }: { className?: string }) {
                 ))}
 
                 {(filtered.length === 0 || !tree) && !isSyncing && (
-                    <p className="text-sm text-neutral-500">
+                    <p className="small text-muted mb-0">
                         {t("noResults")}
                     </p>
                 )}
             </div>
 
-            <aside className="mt-6 rounded-4 border-start border-4 border-warning bg-warning-subtle p-4 text-sm">
+            <aside className="mt-4 rounded-4 border-start border-4 border-warning bg-warning-subtle p-3 small">
                 <strong>{t("disclaimer.title")}</strong>{" "}
                 {t("disclaimer.body")}
             </aside>
@@ -317,8 +320,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                 }),
             }
         );
-        if (!res.ok)
-            throw new Error(t("errors.categorySave"));
+        if (!res.ok) throw new Error(t("errors.categorySave"));
         await refresh();
     };
 
@@ -328,8 +330,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             method: "DELETE",
             credentials: "include",
         });
-        if (!res.ok)
-            throw new Error(t("errors.categoryDelete"));
+        if (!res.ok) throw new Error(t("errors.categoryDelete"));
         await refresh();
     };
 
@@ -356,8 +357,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                 }),
             }
         );
-        if (!res.ok)
-            throw new Error(t("errors.questionSave"));
+        if (!res.ok) throw new Error(t("errors.questionSave"));
         await refresh();
     };
 
@@ -367,8 +367,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             method: "DELETE",
             credentials: "include",
         });
-        if (!res.ok)
-            throw new Error(t("errors.questionDelete"));
+        if (!res.ok) throw new Error(t("errors.questionDelete"));
         await refresh();
     };
 
@@ -430,16 +429,16 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
     );
 
     return (
-        <section className={`mx-auto max-w-5xl ${className}`}>
-            <header className="mb-5">
-                <h1 className="text-2xl fw-bold">
+        <section className={className}>
+            <header className="mb-4">
+                <h1 className="h4 fw-bold mb-1">
                     {t("title")}
                 </h1>
-                <p className="mt-1 text-sm text-neutral-600">
+                <p className="mb-2 small text-muted">
                     {t("subtitle")}
                 </p>
 
-                <div className="mt-3 d-flex align-items-center gap-2">
+                <div className="d-flex align-items-center gap-2 mb-1">
                     <input
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
@@ -448,7 +447,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                     />
                 </div>
 
-                <div className="mt-2 text-xs text-neutral-500">
+                <div className="small text-muted">
                     {loading
                         ? t("loading")
                         : t("stats", {
@@ -459,19 +458,19 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             </header>
 
             {/* Category form */}
-            <div className="mb-6 rounded-4 border bg-white p-4 shadow-sm">
-                <h2 className="text-lg fw-semibold">
+            <div className="mb-4 rounded-4 border bg-white p-4 shadow-sm">
+                <h2 className="h6 fw-semibold mb-3">
                     {editingCatId
                         ? t("categoryForm.edit")
                         : t("categoryForm.new")}
                 </h2>
 
-                <div className="mt-3 row g-3">
+                <div className="row g-3">
                     <div className="col-md-6">
-                        <label className="form-label text-sm">
+                        <label className="form-label small">
                             {t("categoryForm.nameFr")}
                             <input
-                                className="form-control mt-1 text-sm"
+                                className="form-control form-control-sm mt-1"
                                 value={catForm.nameFr}
                                 onChange={(e) =>
                                     setCatForm({
@@ -483,10 +482,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         </label>
                     </div>
                     <div className="col-md-6">
-                        <label className="form-label text-sm">
+                        <label className="form-label small">
                             {t("categoryForm.nameEn")}
                             <input
-                                className="form-control mt-1 text-sm"
+                                className="form-control form-control-sm mt-1"
                                 value={catForm.nameEn}
                                 onChange={(e) =>
                                     setCatForm({
@@ -500,10 +499,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                 </div>
 
                 <div className="mt-3">
-                    <label className="form-label text-sm">
+                    <label className="form-label small">
                         {t("categoryForm.slug")}
                         <input
-                            className="form-control mt-1 text-sm"
+                            className="form-control form-control-sm mt-1"
                             value={catForm.slug}
                             onChange={(e) =>
                                 setCatForm({
@@ -517,7 +516,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
                 <div className="mt-3 row g-4">
                     <div className="col-md-6">
-                        <div className="text-sm mb-2">
+                        <div className="small mb-2">
                             {t("categoryForm.descriptionFr")}
                         </div>
                         <PostEditor
@@ -533,7 +532,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         />
                     </div>
                     <div className="col-md-6">
-                        <div className="text-sm mb-2">
+                        <div className="small mb-2">
                             {t("categoryForm.descriptionEn")}
                         </div>
                         <PostEditor
@@ -552,25 +551,23 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
                 <div className="mt-3 row g-3">
                     <div className="col-md-6">
-                        <label className="form-label text-sm">
+                        <label className="form-label small">
                             {t("categoryForm.order")}
                             <input
                                 type="number"
-                                className="form-control mt-1 text-sm"
+                                className="form-control form-control-sm mt-1"
                                 value={catForm.sortOrder}
                                 onChange={(e) =>
                                     setCatForm({
                                         ...catForm,
-                                        sortOrder: Number(
-                                            e.target.value
-                                        ),
+                                        sortOrder: Number(e.target.value),
                                     })
                                 }
                             />
                         </label>
                     </div>
                     <div className="col-md-6 d-flex align-items-end">
-                        <label className="form-check text-sm">
+                        <div className="form-check small">
                             <input
                                 type="checkbox"
                                 className="form-check-input me-2"
@@ -582,8 +579,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                     })
                                 }
                             />
-                            {t("categoryForm.active")}
-                        </label>
+                            <label className="form-check-label">
+                                {t("categoryForm.active")}
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -592,12 +591,13 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         type="button"
                         className="btn btn-dark btn-sm rounded-pill"
                         onClick={async () => {
-                            if (!catForm.nameFr || !catForm.slug)
+                            if (!catForm.nameFr || !catForm.slug) {
                                 return alert(
                                     t(
                                         "categoryForm.validationMissingNameSlug"
                                     )
                                 );
+                            }
 
                             await upsertCategory({
                                 id: editingCatId ?? undefined,
@@ -624,18 +624,18 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             </div>
 
             {/* Question form */}
-            <div className="mb-6 rounded-4 border bg-white p-4 shadow-sm">
-                <h2 className="text-lg fw-semibold">
+            <div className="mb-4 rounded-4 border bg-white p-4 shadow-sm">
+                <h2 className="h6 fw-semibold mb-3">
                     {qForm.id
                         ? t("questionForm.edit")
                         : t("questionForm.new")}
                 </h2>
 
-                <div className="mt-3">
-                    <label className="form-label text-sm">
+                <div className="mb-3">
+                    <label className="form-label small">
                         {t("questionForm.category")}
                         <select
-                            className="form-select mt-1 text-sm"
+                            className="form-select form-select-sm mt-1"
                             value={qForm.categoryId}
                             onChange={(e) =>
                                 setQForm({
@@ -654,12 +654,12 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                     </label>
                 </div>
 
-                <div className="mt-3 row g-3">
+                <div className="row g-3">
                     <div className="col-md-6">
-                        <label className="form-label text-sm">
+                        <label className="form-label small">
                             {t("questionForm.questionFr")}
                             <input
-                                className="form-control mt-1 text-sm"
+                                className="form-control form-control-sm mt-1"
                                 value={qForm.questionFr}
                                 onChange={(e) =>
                                     setQForm({
@@ -671,10 +671,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         </label>
                     </div>
                     <div className="col-md-6">
-                        <label className="form-label text-sm">
+                        <label className="form-label small">
                             {t("questionForm.questionEn")}
                             <input
-                                className="form-control mt-1 text-sm"
+                                className="form-control form-control-sm mt-1"
                                 value={qForm.questionEn}
                                 onChange={(e) =>
                                     setQForm({
@@ -689,7 +689,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
                 <div className="mt-3 row g-4">
                     <div className="col-md-6">
-                        <div className="text-sm">
+                        <div className="small mb-1">
                             {t("questionForm.answerFr")}
                         </div>
                         <PostEditor
@@ -705,7 +705,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         />
                     </div>
                     <div className="col-md-6">
-                        <div className="text-sm">
+                        <div className="small mb-1">
                             {t("questionForm.answerEn")}
                         </div>
                         <PostEditor
@@ -724,10 +724,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
                 <div className="mt-3 row g-3">
                     <div className="col-md-6">
-                        <label className="form-label text-sm">
+                        <label className="form-label small">
                             {t("questionForm.tagsFr")}
                             <input
-                                className="form-control mt-1 text-sm"
+                                className="form-control form-control-sm mt-1"
                                 value={qForm.tagsCsvFr}
                                 onChange={(e) =>
                                     setQForm({
@@ -739,10 +739,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         </label>
                     </div>
                     <div className="col-md-6">
-                        <label className="form-label text-sm">
+                        <label className="form-label small">
                             {t("questionForm.tagsEn")}
                             <input
-                                className="form-control mt-1 text-sm"
+                                className="form-control form-control-sm mt-1"
                                 value={qForm.tagsCsvEn}
                                 onChange={(e) =>
                                     setQForm({
@@ -757,25 +757,23 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
                 <div className="mt-3 row g-3">
                     <div className="col-md-6">
-                        <label className="form-label text-sm">
+                        <label className="form-label small">
                             {t("questionForm.order")}
                             <input
                                 type="number"
-                                className="form-control mt-1 text-sm"
+                                className="form-control form-control-sm mt-1"
                                 value={qForm.sortOrder}
                                 onChange={(e) =>
                                     setQForm({
                                         ...qForm,
-                                        sortOrder: Number(
-                                            e.target.value
-                                        ),
+                                        sortOrder: Number(e.target.value),
                                     })
                                 }
                             />
                         </label>
                     </div>
                     <div className="col-md-6 d-flex align-items-end">
-                        <label className="form-check text-sm">
+                        <div className="form-check small">
                             <input
                                 type="checkbox"
                                 className="form-check-input me-2"
@@ -787,8 +785,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                     })
                                 }
                             />
-                            {t("questionForm.active")}
-                        </label>
+                            <label className="form-check-label">
+                                {t("questionForm.active")}
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -828,15 +828,15 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             </div>
 
             {/* Category/question tree with quick actions */}
-            <div className="space-y-4">
+            <div className="vstack gap-3">
                 {tree.map((cat) => (
                     <details
                         key={cat.id}
                         className="rounded-4 border bg-white p-4 shadow-sm"
                     >
-                        <summary className="d-flex align-items-center justify-content-between cursor-pointer select-none text-base fw-semibold">
+                        <summary className="d-flex align-items-center justify-content-between cursor-pointer user-select-none fw-semibold">
                             <span>{cat.name}</span>
-                            <span className="text-xs text-neutral-500">
+                            <span className="small text-muted">
                                 {t("tree.questionsCount", {
                                     count: cat.questions.length,
                                 })}
@@ -845,7 +845,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
                         {cat.description && (
                             <div
-                                className="mt-2 text-sm text-neutral-700"
+                                className="mt-2 small text-body-secondary"
                                 dangerouslySetInnerHTML={{
                                     __html: cat.description,
                                 }}
@@ -855,7 +855,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         <div className="mt-3 d-flex gap-2">
                             <button
                                 type="button"
-                                className="btn btn-outline-secondary btn-xs rounded-pill"
+                                className="btn btn-outline-secondary btn-sm rounded-pill"
                                 onClick={async () => {
                                     try {
                                         const res = await fetch(
@@ -864,28 +864,21 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                         );
                                         if (!res.ok) {
                                             alert(
-                                                t(
-                                                    "errors.loadCategory"
-                                                )
+                                                t("errors.loadCategory")
                                             );
                                             return;
                                         }
-                                        const full =
-                                            (await res.json()) as any;
+                                        const full = (await res.json()) as any;
 
                                         setEditingCatId(full.id);
                                         setCatForm({
-                                            nameFr:
-                                                full.nameFr ?? "",
-                                            nameEn:
-                                                full.nameEn ?? "",
+                                            nameFr: full.nameFr ?? "",
+                                            nameEn: full.nameEn ?? "",
                                             slug: full.slug ?? "",
                                             descriptionFr:
-                                                full.descriptionFr ??
-                                                "",
+                                                full.descriptionFr ?? "",
                                             descriptionEn:
-                                                full.descriptionEn ??
-                                                "",
+                                                full.descriptionEn ?? "",
                                             sortOrder:
                                                 full.sortOrder ??
                                                 cat.sortOrder,
@@ -900,9 +893,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                             behavior: "smooth",
                                         });
                                     } catch {
-                                        alert(
-                                            t("errors.loadCategory")
-                                        );
+                                        alert(t("errors.loadCategory"));
                                     }
                                 }}
                             >
@@ -910,14 +901,14 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                             </button>
                             <button
                                 type="button"
-                                className="btn btn-outline-danger btn-xs rounded-pill"
+                                className="btn btn-outline-danger btn-sm rounded-pill"
                                 onClick={() => deleteCategory(cat.id)}
                             >
                                 {t("tree.deleteCategory")}
                             </button>
                         </div>
 
-                        <div className="mt-3 space-y-2">
+                        <div className="mt-3 vstack gap-2">
                             {cat.questions.map((qq: FaqQuestionDto) => (
                                 <details
                                     key={qq.id}
@@ -925,19 +916,14 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                 >
                                     <summary className="d-flex align-items-center justify-content-between cursor-pointer fw-medium">
                                         <span>{qq.question}</span>
-                                        <span className="text-xs text-neutral-500">
-                                            {t(
-                                                "tree.orderLabel",
-                                                {
-                                                    value: String(
-                                                        qq.sortOrder
-                                                    ),
-                                                }
-                                            )}
+                                        <span className="small text-muted">
+                                            {t("tree.orderLabel", {
+                                                value: String(qq.sortOrder),
+                                            })}
                                         </span>
                                     </summary>
                                     <div
-                                        className="mt-2 text-sm"
+                                        className="mt-2 small"
                                         dangerouslySetInnerHTML={{
                                             __html: qq.answerHtml,
                                         }}
@@ -945,17 +931,16 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                     <div className="mt-2 d-flex gap-2">
                                         <button
                                             type="button"
-                                            className="btn btn-outline-secondary btn-xs rounded-pill"
+                                            className="btn btn-outline-secondary btn-sm rounded-pill"
                                             onClick={async () => {
                                                 try {
-                                                    const res =
-                                                        await fetch(
-                                                            `/api/faq/questions/full/${qq.id}`,
-                                                            {
-                                                                credentials:
-                                                                    "include",
-                                                            }
-                                                        );
+                                                    const res = await fetch(
+                                                        `/api/faq/questions/full/${qq.id}`,
+                                                        {
+                                                            credentials:
+                                                                "include",
+                                                        }
+                                                    );
                                                     if (!res.ok) {
                                                         alert(
                                                             t(
@@ -1001,8 +986,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                                     });
                                                     window.scrollTo({
                                                         top: 0,
-                                                        behavior:
-                                                            "smooth",
+                                                        behavior: "smooth",
                                                     });
                                                 } catch {
                                                     alert(
@@ -1017,7 +1001,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                         </button>
                                         <button
                                             type="button"
-                                            className="btn btn-outline-danger btn-xs rounded-pill"
+                                            className="btn btn-outline-danger btn-sm rounded-pill"
                                             onClick={() =>
                                                 deleteQuestion(qq.id)
                                             }
@@ -1028,7 +1012,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                 </details>
                             ))}
                             {cat.questions.length === 0 && (
-                                <p className="text-sm text-neutral-500">
+                                <p className="small text-muted mb-0">
                                     {t("tree.noQuestions")}
                                 </p>
                             )}

@@ -1,7 +1,22 @@
-﻿import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
-import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
+﻿import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+    memo,
+} from "react";
+import {
+    Link,
+    useParams,
+    useSearchParams,
+    useNavigate,
+} from "react-router-dom";
 import { fetchJSON } from "../../lib/api";
-import type { ForumThreadDto, PagedResult, ForumPostTreeDto } from "../../lib/types";
+import type {
+    ForumThreadDto,
+    PagedResult,
+    ForumPostTreeDto,
+} from "../../lib/types";
 import Pagination from "../../components/Pagination";
 import { useAuth } from "../../components/AuthContext";
 import PostEditor from "../../components/PostEditor";
@@ -29,7 +44,10 @@ const Avatar: React.FC<{ name: string }> = ({ name }) => {
 };
 
 const fmt = (iso: string) =>
-    new Date(iso).toLocaleString("fr-CA", { dateStyle: "medium", timeStyle: "short" });
+    new Date(iso).toLocaleString("fr-CA", {
+        dateStyle: "medium",
+        timeStyle: "short",
+    });
 
 type Order = "recent" | "old";
 
@@ -38,18 +56,26 @@ function sortTree(nodes: ForumPostTreeDto[], order: Order): ForumPostTreeDto[] {
     const cmp =
         order === "recent"
             ? (a: ForumPostTreeDto, b: ForumPostTreeDto) =>
-                new Date(b.createdUtc).getTime() - new Date(a.createdUtc).getTime()
+                new Date(b.createdUtc).getTime() -
+                new Date(a.createdUtc).getTime()
             : (a: ForumPostTreeDto, b: ForumPostTreeDto) =>
-                new Date(a.createdUtc).getTime() - new Date(b.createdUtc).getTime();
+                new Date(a.createdUtc).getTime() -
+                new Date(b.createdUtc).getTime();
 
     return nodes
         .slice()
         .sort(cmp)
-        .map((n) => ({ ...n, replies: n.replies ? sortTree(n.replies, order) : [] }));
+        .map((n) => ({
+            ...n,
+            replies: n.replies ? sortTree(n.replies, order) : [],
+        }));
 }
 
 /** Collect all reply IDs (used by “collapse/expand all”). */
-function collectReplyIds(nodes: ForumPostTreeDto[], acc: number[] = []): number[] {
+function collectReplyIds(
+    nodes: ForumPostTreeDto[],
+    acc: number[] = []
+): number[] {
     for (const n of nodes) {
         for (const r of n.replies || []) {
             acc.push(r.id);
@@ -59,7 +85,10 @@ function collectReplyIds(nodes: ForumPostTreeDto[], acc: number[] = []): number[
     return acc;
 }
 
-function findNodeById(nodes: ForumPostTreeDto[], id: number): ForumPostTreeDto | undefined {
+function findNodeById(
+    nodes: ForumPostTreeDto[],
+    id: number
+): ForumPostTreeDto | undefined {
     for (const n of nodes) {
         if (n.id === id) return n;
         if (n.replies?.length) {
@@ -120,13 +149,28 @@ const SafeHtml = memo(function SafeHtml({
                     "h4",
                     "img",
                 ],
-                ALLOWED_ATTR: ["href", "target", "rel", "class", "dir", "src", "alt", "width", "height"],
+                ALLOWED_ATTR: [
+                    "href",
+                    "target",
+                    "rel",
+                    "class",
+                    "dir",
+                    "src",
+                    "alt",
+                    "width",
+                    "height",
+                ],
                 FORBID_TAGS: ["script", "iframe", "object", "embed"],
             }),
         [html]
     );
 
-    return <div className={className ?? "post-body"} dangerouslySetInnerHTML={{ __html: clean }} />;
+    return (
+        <div
+            className={className ?? "post-body"}
+            dangerouslySetInnerHTML={{ __html: clean }}
+        />
+    );
 });
 
 /* ---------- Reply editor box (HTML) ---------- */
@@ -138,7 +182,13 @@ type ReplyBoxProps = {
     disabled?: boolean;
 };
 
-const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending, disabled }) => {
+const ReplyBox: React.FC<ReplyBoxProps> = ({
+    value,
+    onChange,
+    onSubmit,
+    sending,
+    disabled,
+}) => {
     const { t, i18n } = useTranslation("pages/Forum/forumThreadView");
     const giphyLang = i18n.language?.startsWith("fr") ? "fr" : "en";
 
@@ -153,7 +203,11 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({ value, onChange, onSubmit, sending,
                 giphyRating="g"
             />
             <div className="d-flex justify-content-end gap-2 mt-2">
-                <button className="btn btn-secondary" onClick={() => onChange("")} disabled={disabled || !!sending}>
+                <button
+                    className="btn btn-secondary"
+                    onClick={() => onChange("")}
+                    disabled={disabled || !!sending}
+                >
                     {t("replyBox.clear")}
                 </button>
                 <button
@@ -177,7 +231,13 @@ type VoteBarProps = {
     size?: "sm" | "md";
 };
 
-const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size = "sm" }) => {
+const VoteBar: React.FC<VoteBarProps> = ({
+    score,
+    myVote,
+    onVote,
+    disabled,
+    size = "sm",
+}) => {
     const { t } = useTranslation("pages/Forum/forumThreadView");
     const upActive = myVote === 1;
     const downActive = myVote === -1;
@@ -185,7 +245,8 @@ const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size
     return (
         <div className="d-inline-flex align-items-center gap-2">
             <button
-                className={`btn btn-outline-success ${btnSize} ${upActive ? "active" : ""}`}
+                className={`btn btn-outline-success ${btnSize} ${upActive ? "active" : ""
+                    }`}
                 onClick={() => onVote(upActive ? 0 : 1)}
                 disabled={disabled}
                 title={t("vote.like")}
@@ -196,7 +257,8 @@ const VoteBar: React.FC<VoteBarProps> = ({ score, myVote, onVote, disabled, size
                 {score}
             </span>
             <button
-                className={`btn btn-outline-danger ${btnSize} ${downActive ? "active" : ""}`}
+                className={`btn btn-outline-danger ${btnSize} ${downActive ? "active" : ""
+                    }`}
                 onClick={() => onVote(downActive ? 0 : -1)}
                 disabled={disabled}
                 title={t("vote.dislike")}
@@ -244,6 +306,9 @@ type PostCardProps = {
 
     // extra UI placed right after the body/actions (e.g., sort & collapse controls under OP)
     extraUnderBody?: React.ReactNode;
+
+    // is this the OP card?
+    isOp?: boolean;
 };
 
 const PostCard: React.FC<PostCardProps> = memo(
@@ -271,6 +336,7 @@ const PostCard: React.FC<PostCardProps> = memo(
         setEditText,
         saving,
         canModerate,
+        isOp = false,
     }) => {
         const { t, i18n } = useTranslation("pages/Forum/forumThreadView");
         const giphyLang = i18n.language?.startsWith("fr") ? "fr" : "en";
@@ -289,9 +355,23 @@ const PostCard: React.FC<PostCardProps> = memo(
         const editedBy = (p as any).editedBy as string | undefined;
         const editedUtc = (p as any).editedUtc as string | undefined;
 
+        const cardClasses = [
+            "card",
+            "card--tinted",
+            "shadow-sm",
+            "border-0",
+            "mb-2",
+            "hl-hover",
+        ];
+        if (isOp) cardClasses.push("hl-blue-border");
+        if (!isOp && depth === 0) cardClasses.push("hl-soft");
+
         return (
-            <div className="card shadow-sm border-0 mb-2">
-                <div className="card-body">
+            <div className={cardClasses.join(" ")}>
+                <div
+                    className={`card-body ${isOp ? "highlight-bar-primary" : ""
+                        }`}
+                >
                     <div className="d-flex align-items-start gap-3">
                         <Avatar name={p.createdBy} />
 
@@ -299,14 +379,22 @@ const PostCard: React.FC<PostCardProps> = memo(
                             <div className="d-flex justify-content-between align-items-center">
                                 <strong>{p.createdBy}</strong>
                                 <div className="d-flex align-items-center gap-2">
-                                    <small className="text-muted">{fmt(p.createdUtc)}</small>
+                                    <small className="text-muted">
+                                        {fmt(p.createdUtc)}
+                                    </small>
                                     {depth >= 1 && (
                                         <button
                                             className="btn btn-sm btn-outline-secondary"
-                                            onClick={() => onToggleCollapsed(p.id)}
+                                            onClick={() =>
+                                                onToggleCollapsed(p.id)
+                                            }
                                             aria-expanded={!isCollapsed}
                                             aria-controls={`post-${p.id}-body`}
-                                            title={isCollapsed ? t("buttons.expand") : t("buttons.collapse")}
+                                            title={
+                                                isCollapsed
+                                                    ? t("buttons.expand")
+                                                    : t("buttons.collapse")
+                                            }
                                         >
                                             {isCollapsed ? (
                                                 <>
@@ -328,22 +416,42 @@ const PostCard: React.FC<PostCardProps> = memo(
                                 <div id={`post-${p.id}-body`}>
                                     {!isEditing ? (
                                         <>
-                                            <SafeHtml html={bodyHtml} className="mt-2 post-body" />
+                                            <SafeHtml
+                                                html={bodyHtml}
+                                                className="mt-2 post-body"
+                                            />
 
                                             {editedUtc || editedBy ? (
                                                 <div className="text-muted small mt-2">
                                                     {editedBy && editedUtc
-                                                        ? t("post.editedByOn", { by: editedBy, date: fmt(editedUtc!) })
+                                                        ? t(
+                                                            "post.editedByOn",
+                                                            {
+                                                                by: editedBy,
+                                                                date: fmt(
+                                                                    editedUtc!
+                                                                ),
+                                                            }
+                                                        )
                                                         : editedBy
-                                                            ? t("post.editedBy", { by: editedBy })
-                                                            : t("post.editedOn", { date: fmt(editedUtc!) })}
+                                                            ? t(
+                                                                "post.editedBy",
+                                                                { by: editedBy }
+                                                            )
+                                                            : t("post.editedOn", {
+                                                                date: fmt(
+                                                                    editedUtc!
+                                                                ),
+                                                            })}
                                                 </div>
                                             ) : null}
 
                                             <div className="mt-2 d-flex align-items-center gap-3">
                                                 <button
                                                     className="btn btn-sm btn-outline-primary"
-                                                    onClick={() => onToggleReply(p.id)}
+                                                    onClick={() =>
+                                                        onToggleReply(p.id)
+                                                    }
                                                     disabled={!canReply}
                                                 >
                                                     <i className="bi bi-reply me-1" />
@@ -354,28 +462,47 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                     <VoteBar
                                                         score={score}
                                                         myVote={myVote}
-                                                        onVote={(next) => onVotePost(p.id, next)}
+                                                        onVote={(next) =>
+                                                            onVotePost(
+                                                                p.id,
+                                                                next
+                                                            )
+                                                        }
                                                         size="sm"
                                                     />
                                                 )}
 
                                                 <small className="text-muted ms-auto">
-                                                    {t("post.repliesCount", { count: directReplies })}
+                                                    {t(
+                                                        "post.repliesCount",
+                                                        { count: directReplies }
+                                                    )}
                                                 </small>
 
                                                 {canEdit && (
                                                     <div className="btn-group btn-group-sm ms-2">
                                                         <button
                                                             className="btn btn-outline-secondary"
-                                                            onClick={() => onStartEdit(p.id, bodyHtml)}
+                                                            onClick={() =>
+                                                                onStartEdit(
+                                                                    p.id,
+                                                                    bodyHtml
+                                                                )
+                                                            }
                                                         >
                                                             {t("actions.edit")}
                                                         </button>
                                                         <button
                                                             className="btn btn-outline-danger"
-                                                            onClick={() => onDeletePost(p.id)}
+                                                            onClick={() =>
+                                                                onDeletePost(
+                                                                    p.id
+                                                                )
+                                                            }
                                                         >
-                                                            {t("actions.delete")}
+                                                            {t(
+                                                                "actions.delete"
+                                                            )}
                                                         </button>
                                                     </div>
                                                 )}
@@ -383,9 +510,15 @@ const PostCard: React.FC<PostCardProps> = memo(
 
                                             {replyOpen[p.id] && canReply && (
                                                 <ReplyBox
-                                                    value={replyText[p.id] || ""}
-                                                    onChange={(v) => onChangeReply(p.id, v)}
-                                                    onSubmit={() => onSubmitReply(p.id)}
+                                                    value={
+                                                        replyText[p.id] || ""
+                                                    }
+                                                    onChange={(v) =>
+                                                        onChangeReply(p.id, v)
+                                                    }
+                                                    onSubmit={() =>
+                                                        onSubmitReply(p.id)
+                                                    }
                                                     sending={sending[p.id]}
                                                 />
                                             )}
@@ -395,33 +528,72 @@ const PostCard: React.FC<PostCardProps> = memo(
                                             {p.replies?.length ? (
                                                 <div
                                                     className="mt-2 ps-2 ps-sm-3 border-start forum-post-replies"
-                                                    style={{ marginLeft: indentPx }}
+                                                    style={{
+                                                        marginLeft: indentPx,
+                                                    }}
                                                 >
                                                     {p.replies.map((child) => (
                                                         <PostCard
                                                             key={child.id}
                                                             p={child}
                                                             depth={depth + 1}
-                                                            canReply={canReply}
-                                                            replyOpen={replyOpen}
-                                                            replyText={replyText}
+                                                            canReply={
+                                                                canReply
+                                                            }
+                                                            replyOpen={
+                                                                replyOpen
+                                                            }
+                                                            replyText={
+                                                                replyText
+                                                            }
                                                             sending={sending}
-                                                            onToggleReply={onToggleReply}
-                                                            onChangeReply={onChangeReply}
-                                                            onSubmitReply={onSubmitReply}
-                                                            collapsed={collapsed}
-                                                            onToggleCollapsed={onToggleCollapsed}
-                                                            showVoteOnThisCard={true}
-                                                            onVotePost={onVotePost}
-                                                            onStartEdit={onStartEdit}
-                                                            onCancelEdit={onCancelEdit}
-                                                            onSaveEdit={onSaveEdit}
-                                                            onDeletePost={onDeletePost}
+                                                            onToggleReply={
+                                                                onToggleReply
+                                                            }
+                                                            onChangeReply={
+                                                                onChangeReply
+                                                            }
+                                                            onSubmitReply={(
+                                                                idVal
+                                                            ) =>
+                                                                onSubmitReply(
+                                                                    idVal
+                                                                )
+                                                            }
+                                                            collapsed={
+                                                                collapsed
+                                                            }
+                                                            onToggleCollapsed={
+                                                                onToggleCollapsed
+                                                            }
+                                                            showVoteOnThisCard={
+                                                                true
+                                                            }
+                                                            onVotePost={
+                                                                onVotePost
+                                                            }
+                                                            onStartEdit={
+                                                                onStartEdit
+                                                            }
+                                                            onCancelEdit={
+                                                                onCancelEdit
+                                                            }
+                                                            onSaveEdit={
+                                                                onSaveEdit
+                                                            }
+                                                            onDeletePost={
+                                                                onDeletePost
+                                                            }
                                                             editing={editing}
                                                             editText={editText}
-                                                            setEditText={setEditText}
+                                                            setEditText={
+                                                                setEditText
+                                                            }
                                                             saving={saving}
-                                                            canModerate={canModerate}
+                                                            canModerate={
+                                                                canModerate
+                                                            }
+                                                            isOp={false}
                                                         />
                                                     ))}
                                                 </div>
@@ -430,29 +602,51 @@ const PostCard: React.FC<PostCardProps> = memo(
                                     ) : (
                                         <div className="mt-2">
                                             <PostEditor
-                                                initialHTML={editText[p.id] ?? bodyHtml}
+                                                initialHTML={
+                                                    editText[p.id] ?? bodyHtml
+                                                }
                                                 onChange={(v) =>
-                                                    setEditText((tState) => ({ ...tState, [p.id]: v }))
+                                                    setEditText((tState) => ({
+                                                        ...tState,
+                                                        [p.id]: v,
+                                                    }))
                                                 }
                                                 ariaLabel={t("actions.edit")}
-                                                giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
+                                                giphyApiKey={
+                                                    import.meta.env
+                                                        .VITE_GIPHY_KEY
+                                                }
                                                 giphyLang={giphyLang}
                                                 giphyRating="g"
                                             />
                                             <div className="d-flex gap-2 justify-content-end mt-2">
                                                 <button
                                                     className="btn btn-secondary btn-sm"
-                                                    onClick={() => onCancelEdit(p.id)}
+                                                    onClick={() =>
+                                                        onCancelEdit(p.id)
+                                                    }
                                                     disabled={saving[p.id]}
                                                 >
                                                     {t("threadHeader.cancel")}
                                                 </button>
                                                 <button
                                                     className="btn btn-primary btn-sm"
-                                                    onClick={() => onSaveEdit(p.id)}
-                                                    disabled={saving[p.id] || !(editText[p.id] || "").trim()}
+                                                    onClick={() =>
+                                                        onSaveEdit(p.id)
+                                                    }
+                                                    disabled={
+                                                        saving[p.id] ||
+                                                        !(
+                                                            editText[p.id] ||
+                                                            ""
+                                                        ).trim()
+                                                    }
                                                 >
-                                                    {saving[p.id] ? t("saving") : t("threadHeader.save")}
+                                                    {saving[p.id]
+                                                        ? t("saving")
+                                                        : t(
+                                                            "threadHeader.save"
+                                                        )}
                                                 </button>
                                             </div>
                                         </div>
@@ -495,7 +689,8 @@ const ForumThreadView: React.FC = () => {
         (!!user && Array.isArray(roles) && roles.includes("ForumModerator"));
 
     const [thread, setThread] = useState<ForumThreadDto | null>(null);
-    const [posts, setPosts] = useState<PagedResult<ForumPostTreeDto> | null>(null);
+    const [posts, setPosts] =
+        useState<PagedResult<ForumPostTreeDto> | null>(null);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
@@ -521,7 +716,9 @@ const ForumThreadView: React.FC = () => {
         try {
             setLoading(true);
             setErr(null);
-            const tData = await fetchJSON<ForumThreadDto>(`/api/forum/threads/${threadId}`);
+            const tData = await fetchJSON<ForumThreadDto>(
+                `/api/forum/threads/${threadId}`
+            );
             setThread(tData);
             setTitleDraft(tData.title || "");
             const p = await fetchJSON<PagedResult<ForumPostTreeDto>>(
@@ -547,25 +744,33 @@ const ForumThreadView: React.FC = () => {
 
     /** Server may specify vote mode per thread; default applies otherwise. */
     const voteMode: "thread" | "op" =
-        ((thread as any)?.voteMode === "op" || (thread as any)?.voteMode === "thread")
+        ((thread as any)?.voteMode === "op" ||
+            (thread as any)?.voteMode === "thread")
             ? ((thread as any).voteMode as "op" | "thread")
             : VOTE_MODE_DEFAULT;
 
-    const sortedItems = useMemo(() => (posts ? sortTree(posts.items, order) : []), [posts, order]);
+    const sortedItems = useMemo(
+        () => (posts ? sortTree(posts.items, order) : []),
+        [posts, order]
+    );
 
     /** OP for this page (page 1 only: earliest top-level in the page items). */
     const opOnPage = useMemo(() => {
         if (!posts || !posts.items.length || page !== 1) return null;
         let min = posts.items[0];
         for (const item of posts.items) {
-            if (new Date(item.createdUtc).getTime() < new Date(min.createdUtc).getTime()) min = item;
+            if (
+                new Date(item.createdUtc).getTime() <
+                new Date(min.createdUtc).getTime()
+            )
+                min = item;
         }
         return min;
     }, [posts, page]);
 
     // collapse helpers
-    const toggleCollapsed = useCallback((id: number) => {
-        setCollapsed((c) => ({ ...c, [id]: !c[id] }));
+    const toggleCollapsed = useCallback((idVal: number) => {
+        setCollapsed((c) => ({ ...c, [idVal]: !c[idVal] }));
     }, []);
     const collapseAllReplies = useCallback(() => {
         if (!posts) return;
@@ -597,7 +802,10 @@ const ForumThreadView: React.FC = () => {
                 await fetchJSON(`/api/forum/threads/${threadId}/posts`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ body: bodyHtml, parentPostId: parentPostId ?? null }),
+                    body: JSON.stringify({
+                        body: bodyHtml,
+                        parentPostId: parentPostId ?? null,
+                    }),
                 });
 
                 setReplyText((tState) => ({ ...tState, [key]: "" }));
@@ -628,24 +836,43 @@ const ForumThreadView: React.FC = () => {
 
             // optimistic
             setThread((tState) =>
-                tState ? ({ ...(tState as any), score: prevScore + delta, myVote: next } as any) : tState
+                tState
+                    ? ({
+                        ...(tState as any),
+                        score: prevScore + delta,
+                        myVote: next,
+                    } as any)
+                    : tState
             );
             setVoting(true);
             try {
-                const res = await fetchJSON<{ score: number; myVote: number }>(`/api/forum/threads/${threadId}/vote`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ value: next }),
-                });
+                const res = await fetchJSON<{ score: number; myVote: number }>(
+                    `/api/forum/threads/${threadId}/vote`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ value: next }),
+                    }
+                );
                 setThread((tState) =>
                     tState
-                        ? ({ ...(tState as any), score: res.score ?? 0, myVote: res.myVote ?? 0 } as any)
+                        ? ({
+                            ...(tState as any),
+                            score: res.score ?? 0,
+                            myVote: res.myVote ?? 0,
+                        } as any)
                         : tState
                 );
             } catch (e) {
                 console.error(e);
                 setThread((tState) =>
-                    tState ? ({ ...(tState as any), score: prevScore, myVote: prevVote } as any) : tState
+                    tState
+                        ? ({
+                            ...(tState as any),
+                            score: prevScore,
+                            myVote: prevVote,
+                        } as any)
+                        : tState
                 );
                 alert(t("alerts.voteFailed"));
             } finally {
@@ -775,7 +1002,9 @@ const ForumThreadView: React.FC = () => {
         async (postId: number) => {
             if (!confirm(t("confirm.deletePost"))) return;
             try {
-                await fetchJSON(`/api/forum/posts/${postId}`, { method: "DELETE" });
+                await fetchJSON(`/api/forum/posts/${postId}`, {
+                    method: "DELETE",
+                });
                 await load();
             } catch (e) {
                 console.error(e);
@@ -809,7 +1038,9 @@ const ForumThreadView: React.FC = () => {
         async (nextPinned: boolean) => {
             if (!thread || !isModerator) return;
             const prev = thread.isPinned;
-            setThread((tState) => (tState ? { ...tState, isPinned: nextPinned } : tState));
+            setThread((tState) =>
+                tState ? { ...tState, isPinned: nextPinned } : tState
+            );
             try {
                 await fetchJSON(`/api/forum/admin/threads/${thread.id}/pin`, {
                     method: "PUT",
@@ -818,7 +1049,9 @@ const ForumThreadView: React.FC = () => {
                 });
             } catch (e) {
                 console.error(e);
-                setThread((tState) => (tState ? { ...tState, isPinned: prev } : tState));
+                setThread((tState) =>
+                    tState ? { ...tState, isPinned: prev } : tState
+                );
                 alert(t("modThread.errors.pinFailed"));
             }
         },
@@ -829,16 +1062,23 @@ const ForumThreadView: React.FC = () => {
         async (nextLocked: boolean) => {
             if (!thread || !isModerator) return;
             const prev = thread.isLocked;
-            setThread((tState) => (tState ? { ...tState, isLocked: nextLocked } : tState));
+            setThread((tState) =>
+                tState ? { ...tState, isLocked: nextLocked } : tState
+            );
             try {
-                await fetchJSON(`/api/forum/admin/threads/${thread.id}/lock`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ locked: nextLocked }),
-                });
+                await fetchJSON(
+                    `/api/forum/admin/threads/${thread.id}/lock`,
+                    {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ locked: nextLocked }),
+                    }
+                );
             } catch (e) {
                 console.error(e);
-                setThread((tState) => (tState ? { ...tState, isLocked: prev } : tState));
+                setThread((tState) =>
+                    tState ? { ...tState, isLocked: prev } : tState
+                );
                 alert(t("modThread.errors.lockFailed"));
             }
         },
@@ -863,26 +1103,40 @@ const ForumThreadView: React.FC = () => {
 
     /** Controls displayed under the OP (or first when OP not on page). */
     const Controls = (
-        <div className="my-3 d-flex flex-wrap gap-2 align-items-center">
+        <div className="my-3 d-flex flex-wrap gap-2 align-items-center section-highlight-mint p-2 p-sm-3">
             <div className="input-group input-group-sm forum-controls-order-group">
-                <span className="input-group-text">{t("controls.order.label")}</span>
+                <span className="input-group-text">
+                    {t("controls.order.label")}
+                </span>
                 <select
                     className="form-select"
                     value={order}
                     onChange={(e) => setOrder(e.target.value as Order)}
                     aria-label={t("controls.order.aria")}
                 >
-                    <option value="recent">{t("controls.order.recent")}</option>
+                    <option value="recent">
+                        {t("controls.order.recent")}
+                    </option>
                     <option value="old">{t("controls.order.old")}</option>
                 </select>
             </div>
 
-            <div className="btn-group btn-group-sm" role="group" aria-label="collapse/expand replies">
-                <button className="btn btn-outline-secondary" onClick={collapseAllReplies}>
+            <div
+                className="btn-group btn-group-sm"
+                role="group"
+                aria-label="collapse/expand replies"
+            >
+                <button
+                    className="btn btn-outline-secondary"
+                    onClick={collapseAllReplies}
+                >
                     <i className="bi bi-chevron-up me-1" />
                     {t("controls.collapseReplies")}
                 </button>
-                <button className="btn btn-outline-secondary" onClick={expandAllReplies}>
+                <button
+                    className="btn btn-outline-secondary"
+                    onClick={expandAllReplies}
+                >
                     <i className="bi bi-chevron-down me-1" />
                     {t("controls.expandReplies")}
                 </button>
@@ -894,8 +1148,8 @@ const ForumThreadView: React.FC = () => {
     return (
         <div className="container py-3">
             {/* Thread header card (title, meta, voting, and global mod toggles) */}
-            <div className="card shadow-sm border-0 mb-3">
-                <div className="card-body">
+            <div className="card card--accent section-highlight-primary mb-3">
+                <div className="card-body highlight-bar-primary">
                     <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
                         <div className="d-flex gap-3 align-items-start">
                             {voteMode === "thread" && (
@@ -911,12 +1165,12 @@ const ForumThreadView: React.FC = () => {
                             <div>
                                 <div className="mb-1">
                                     {thread?.isPinned && (
-                                        <span className="badge bg-warning text-dark me-2">
+                                        <span className="pill-highlight-primary me-2">
                                             {t("threadHeader.pinned")}
                                         </span>
                                     )}
                                     {thread?.isLocked && (
-                                        <span className="badge bg-secondary me-2">
+                                        <span className="pill-highlight-mint me-2">
                                             {t("threadHeader.locked")}
                                         </span>
                                     )}
@@ -925,14 +1179,21 @@ const ForumThreadView: React.FC = () => {
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
                                     {!titleEditing ? (
                                         <>
-                                            <h1 className="h4 mb-1 mb-0">
-                                                {thread?.title ?? t("threadHeader.defaultTitle")}
+                                            <h1 className="h4 mb-1 mb-0 section-title-accent">
+                                                {thread?.title ??
+                                                    t(
+                                                        "threadHeader.defaultTitle"
+                                                    )}
                                             </h1>
                                             {canEditTitle && (
                                                 <button
                                                     className="btn btn-sm btn-outline-secondary"
-                                                    onClick={() => setTitleEditing(true)}
-                                                    title={t("threadHeader.editTitle")}
+                                                    onClick={() =>
+                                                        setTitleEditing(true)
+                                                    }
+                                                    title={t(
+                                                        "threadHeader.editTitle"
+                                                    )}
                                                 >
                                                     {t("threadHeader.edit")}
                                                 </button>
@@ -943,13 +1204,19 @@ const ForumThreadView: React.FC = () => {
                                             <input
                                                 className="form-control form-control-sm forum-thread-title-input"
                                                 value={titleDraft}
-                                                onChange={(e) => setTitleDraft(e.target.value)}
+                                                onChange={(e) =>
+                                                    setTitleDraft(
+                                                        e.target.value
+                                                    )
+                                                }
                                             />
                                             <button
                                                 className="btn btn-sm btn-secondary"
                                                 onClick={() => {
                                                     setTitleEditing(false);
-                                                    setTitleDraft(thread?.title ?? "");
+                                                    setTitleDraft(
+                                                        thread?.title ?? ""
+                                                    );
                                                 }}
                                             >
                                                 {t("threadHeader.cancel")}
@@ -966,10 +1233,14 @@ const ForumThreadView: React.FC = () => {
                                 </div>
 
                                 {thread && (
-                                    <div className="text-muted small">
-                                        {t("threadHeader.by", { name: thread.createdBy })} •{" "}
-                                        {fmt(thread.createdUtc)} •{" "}
-                                        {t("commentsCount", { count: thread.postCount })}
+                                    <div className="text-muted small mt-1">
+                                        {t("threadHeader.by", {
+                                            name: thread.createdBy,
+                                        })}{" "}
+                                        • {fmt(thread.createdUtc)} •{" "}
+                                        {t("commentsCount", {
+                                            count: thread.postCount,
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -977,7 +1248,8 @@ const ForumThreadView: React.FC = () => {
 
                         <div className="d-flex flex-column align-items-end gap-2 ms-auto">
                             <Link
-                                to={`/forum/${safeLang}/c/${thread?.categoryId ?? ""}`}
+                                to={`/forum/${safeLang}/c/${thread?.categoryId ?? ""
+                                    }`}
                                 className="btn btn-outline-secondary btn-sm"
                             >
                                 <i className="bi bi-arrow-left me-2" />
@@ -993,9 +1265,16 @@ const ForumThreadView: React.FC = () => {
                                                 className="form-check-input"
                                                 type="checkbox"
                                                 checked={thread.isPinned}
-                                                onChange={(e) => togglePinned(e.target.checked)}
+                                                onChange={(e) =>
+                                                    togglePinned(
+                                                        e.target.checked
+                                                    )
+                                                }
                                             />
-                                            <label htmlFor="mod-pin" className="form-check-label">
+                                            <label
+                                                htmlFor="mod-pin"
+                                                className="form-check-label"
+                                            >
                                                 {t("modThread.labels.pinned")}
                                             </label>
                                         </div>
@@ -1005,9 +1284,16 @@ const ForumThreadView: React.FC = () => {
                                                 className="form-check-input"
                                                 type="checkbox"
                                                 checked={thread.isLocked}
-                                                onChange={(e) => toggleLocked(e.target.checked)}
+                                                onChange={(e) =>
+                                                    toggleLocked(
+                                                        e.target.checked
+                                                    )
+                                                }
                                             />
-                                            <label htmlFor="mod-lock" className="form-check-label">
+                                            <label
+                                                htmlFor="mod-lock"
+                                                className="form-check-label"
+                                            >
                                                 {t("modThread.labels.locked")}
                                             </label>
                                         </div>
@@ -1034,7 +1320,7 @@ const ForumThreadView: React.FC = () => {
                 <div className="row g-3">
                     {Array.from({ length: 4 }).map((_, i) => (
                         <div className="col-12" key={i}>
-                            <div className="card shadow-sm">
+                            <div className="card card--tinted hl-soft">
                                 <div className="card-body">
                                     <div className="placeholder-glow mb-2">
                                         <span className="placeholder col-8" />
@@ -1048,7 +1334,13 @@ const ForumThreadView: React.FC = () => {
                     ))}
                 </div>
             ) : !posts || !posts.items.length ? (
-                <div className="alert alert-info">{t("noPosts")}</div>
+                <div className="card card--tinted section-highlight-mint">
+                    <div className="card-body">
+                        <div className="alert alert-info mb-0">
+                            {t("noPosts")}
+                        </div>
+                    </div>
+                </div>
             ) : (
                 <>
                     {/* Comments tree */}
@@ -1063,15 +1355,21 @@ const ForumThreadView: React.FC = () => {
                                             key={opOnPage.id}
                                             p={opOnPage}
                                             depth={0}
-                                            canReply={!!user && !thread?.isLocked}
+                                            canReply={
+                                                !!user && !thread?.isLocked
+                                            }
                                             replyOpen={replyOpen}
                                             replyText={replyText}
                                             sending={sending}
                                             onToggleReply={onToggleReply}
                                             onChangeReply={onChangeReply}
-                                            onSubmitReply={(idVal) => doReply(idVal)}
+                                            onSubmitReply={(idVal) =>
+                                                doReply(idVal)
+                                            }
                                             collapsed={collapsed}
-                                            onToggleCollapsed={toggleCollapsed}
+                                            onToggleCollapsed={
+                                                toggleCollapsed
+                                            }
                                             showVoteOnThisCard={isOpVotable}
                                             onVotePost={onVotePost}
                                             extraUnderBody={Controls}
@@ -1084,25 +1382,39 @@ const ForumThreadView: React.FC = () => {
                                             setEditText={setEditText}
                                             saving={saving}
                                             canModerate={isModerator}
+                                            isOp={true}
                                         />
 
                                         {/* Other top-level comments */}
                                         {items
-                                            .filter((p) => p.id !== opOnPage.id)
+                                            .filter(
+                                                (p) => p.id !== opOnPage.id
+                                            )
                                             .map((p) => (
                                                 <PostCard
                                                     key={p.id}
                                                     p={p}
                                                     depth={0}
-                                                    canReply={!!user && !thread?.isLocked}
+                                                    canReply={
+                                                        !!user &&
+                                                        !thread?.isLocked
+                                                    }
                                                     replyOpen={replyOpen}
                                                     replyText={replyText}
                                                     sending={sending}
-                                                    onToggleReply={onToggleReply}
-                                                    onChangeReply={onChangeReply}
-                                                    onSubmitReply={(idVal) => doReply(idVal)}
+                                                    onToggleReply={
+                                                        onToggleReply
+                                                    }
+                                                    onChangeReply={
+                                                        onChangeReply
+                                                    }
+                                                    onSubmitReply={(idVal) =>
+                                                        doReply(idVal)
+                                                    }
                                                     collapsed={collapsed}
-                                                    onToggleCollapsed={toggleCollapsed}
+                                                    onToggleCollapsed={
+                                                        toggleCollapsed
+                                                    }
                                                     showVoteOnThisCard={true}
                                                     onVotePost={onVotePost}
                                                     onStartEdit={onStartEdit}
@@ -1114,6 +1426,7 @@ const ForumThreadView: React.FC = () => {
                                                     setEditText={setEditText}
                                                     saving={saving}
                                                     canModerate={isModerator}
+                                                    isOp={false}
                                                 />
                                             ))}
                                     </>
@@ -1129,13 +1442,17 @@ const ForumThreadView: React.FC = () => {
                                             key={p.id}
                                             p={p}
                                             depth={0}
-                                            canReply={!!user && !thread?.isLocked}
+                                            canReply={
+                                                !!user && !thread?.isLocked
+                                            }
                                             replyOpen={replyOpen}
                                             replyText={replyText}
                                             sending={sending}
                                             onToggleReply={onToggleReply}
                                             onChangeReply={onChangeReply}
-                                            onSubmitReply={(idVal) => doReply(idVal)}
+                                            onSubmitReply={(idVal) =>
+                                                doReply(idVal)
+                                            }
                                             collapsed={collapsed}
                                             onToggleCollapsed={toggleCollapsed}
                                             showVoteOnThisCard={true}
@@ -1149,6 +1466,7 @@ const ForumThreadView: React.FC = () => {
                                             setEditText={setEditText}
                                             saving={saving}
                                             canModerate={isModerator}
+                                            isOp={false}
                                         />
                                     ))}
                                 </>
@@ -1156,7 +1474,11 @@ const ForumThreadView: React.FC = () => {
                         })()}
                     </div>
 
-                    <Pagination page={posts.page} totalPages={posts.totalPages} onPage={(pVal) => setPage(pVal)} />
+                    <Pagination
+                        page={posts.page}
+                        totalPages={posts.totalPages}
+                        onPage={(pVal) => setPage(pVal)}
+                    />
                 </>
             )}
         </div>

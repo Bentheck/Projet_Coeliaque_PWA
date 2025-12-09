@@ -1,5 +1,4 @@
-﻿// src/pages/Forum/ForumThreads.tsx
-import React, { useEffect, useState, useCallback } from "react";
+﻿import React, { useEffect, useState, useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchJSON } from "../../lib/api";
@@ -77,9 +76,7 @@ const ForumThreads: React.FC = () => {
 
     const setThreadFlagLocal = (
         threadId: number,
-        patch: Partial<
-            Pick<ForumThreadListItemDto, "isPinned" | "isLocked">
-        >
+        patch: Partial<Pick<ForumThreadListItemDto, "isPinned" | "isLocked">>
     ) => {
         setData((prev) =>
             prev
@@ -96,8 +93,7 @@ const ForumThreads: React.FC = () => {
     const togglePinned = async (threadId: number, nextPinned: boolean) => {
         if (!isModerator) return;
         setThreadBusy((b) => ({ ...b, [threadId]: true }));
-        const prev =
-            data?.items.find((x) => x.id === threadId)?.isPinned ?? false;
+        const prev = data?.items.find((x) => x.id === threadId)?.isPinned ?? false;
 
         // optimistic
         setThreadFlagLocal(threadId, { isPinned: nextPinned });
@@ -124,8 +120,7 @@ const ForumThreads: React.FC = () => {
     const toggleLocked = async (threadId: number, nextLocked: boolean) => {
         if (!isModerator) return;
         setThreadBusy((b) => ({ ...b, [threadId]: true }));
-        const prev =
-            data?.items.find((x) => x.id === threadId)?.isLocked ?? false;
+        const prev = data?.items.find((x) => x.id === threadId)?.isLocked ?? false;
 
         // optimistic
         setThreadFlagLocal(threadId, { isLocked: nextLocked });
@@ -161,9 +156,7 @@ const ForumThreads: React.FC = () => {
                 prev
                     ? {
                         ...prev,
-                        items: prev.items.filter(
-                            (it) => it.id !== threadId
-                        ),
+                        items: prev.items.filter((it) => it.id !== threadId),
                     }
                     : prev
             );
@@ -181,32 +174,44 @@ const ForumThreads: React.FC = () => {
 
     return (
         <div className="container py-3">
-            <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-                <div className="d-flex align-items-start gap-2">
-                    <Link
-                        to={`/forum/${safeLang}`}
-                        className="btn btn-outline-secondary"
-                    >
-                        <i className="bi bi-arrow-left me-2" />
-                        {t("buttons.categories")}
-                    </Link>
-                    <div>
-                        <h1 className="h4 mb-1">
-                            {cat?.name ||
-                                t("fallback.categoryWithId", { id: cid })}
-                        </h1>
-                        <div className="text-muted small">
-                            {cat?.description || "—"}
+            {/* Header in accent card */}
+            <div className="card card--accent section-highlight-primary mb-3">
+                <div className="card-body d-flex flex-wrap justify-content-between align-items-center gap-2 highlight-bar-primary">
+                    <div className="d-flex align-items-start gap-2 flex-wrap">
+                        <Link
+                            to={`/forum/${safeLang}`}
+                            className="btn btn-outline-secondary"
+                        >
+                            <i className="bi bi-arrow-left me-2" />
+                            {t("buttons.categories")}
+                        </Link>
+                        <div>
+                            <h1 className="h4 mb-1 section-title-accent">
+                                {cat?.name ||
+                                    t("fallback.categoryWithId", { id: cid })}
+                            </h1>
+                            <div className="text-muted small">
+                                {cat?.description || "—"}
+                            </div>
+                            {cat && (
+                                <div className="mt-1">
+                                    <span className="pill-highlight-primary">
+                                        {t("meta.threadCountLabel", {
+                                            count: data?.items.length ?? 0,
+                                        })}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
+                    <Link
+                        className="btn btn-primary"
+                        to={`/forum/${safeLang}/new?categoryId=${cid}`}
+                    >
+                        <i className="bi bi-plus-circle me-2" />
+                        {t("buttons.newThread")}
+                    </Link>
                 </div>
-                <Link
-                    className="btn btn-primary"
-                    to={`/forum/${safeLang}/new?categoryId=${cid}`}
-                >
-                    <i className="bi bi-plus-circle me-2" />
-                    {t("buttons.newThread")}
-                </Link>
             </div>
 
             {err && <div className="alert alert-danger">{err}</div>}
@@ -215,7 +220,7 @@ const ForumThreads: React.FC = () => {
                 <div className="row g-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div className="col-12" key={i}>
-                            <div className="card shadow-sm">
+                            <div className="card card--tinted hl-soft">
                                 <div className="card-body">
                                     <div className="placeholder-glow mb-2">
                                         <span className="placeholder col-8" />
@@ -229,21 +234,39 @@ const ForumThreads: React.FC = () => {
                     ))}
                 </div>
             ) : !data || data.items.length === 0 ? (
-                <div className="alert alert-info">{t("empty")}</div>
+                <div className="card card--tinted section-highlight-mint">
+                    <div className="card-body">
+                        <div className="alert alert-info mb-0">
+                            {t("empty")}
+                        </div>
+                    </div>
+                </div>
             ) : (
                 <>
                     <div className="row g-3">
                         {data.items.map((tItem) => {
                             const busy = !!threadBusy[tItem.id];
+
+                            const cardClasses = [
+                                "card",
+                                "card--tinted",
+                                "shadow-sm",
+                                "h-100",
+                                "hl-hover",
+                            ];
+                            if (tItem.isPinned) cardClasses.push("hl-blue-border");
+                            if (tItem.isLocked) cardClasses.push("hl-soft");
+
                             return (
                                 <div className="col-12" key={tItem.id}>
-                                    <div className="card shadow-sm h-100 border-0 hover-shadow">
+                                    <div className={cardClasses.join(" ")}>
                                         <div className="card-body">
                                             <div className="d-flex justify-content-between align-items-start gap-3">
                                                 <div>
-                                                    <h5 className="mb-1 text-dark">
+                                                    <h5 className="mb-1">
+                                                        {/* badges with pill highlights */}
                                                         {tItem.isPinned && (
-                                                            <span className="badge bg-warning text-dark me-2">
+                                                            <span className="pill-highlight-primary me-2">
                                                                 {
                                                                     t(
                                                                         "badges.pinned"
@@ -252,7 +275,7 @@ const ForumThreads: React.FC = () => {
                                                             </span>
                                                         )}
                                                         {tItem.isLocked && (
-                                                            <span className="badge bg-secondary me-2">
+                                                            <span className="pill-highlight-mint me-2">
                                                                 {
                                                                     t(
                                                                         "badges.locked"
@@ -262,7 +285,7 @@ const ForumThreads: React.FC = () => {
                                                         )}
                                                         <Link
                                                             to={`/forum/${safeLang}/t/${tItem.id}`}
-                                                            className="text-decoration-none text-dark"
+                                                            className="text-decoration-none"
                                                         >
                                                             {tItem.title}
                                                         </Link>
@@ -292,11 +315,8 @@ const ForumThreads: React.FC = () => {
 
                                                 <div className="d-flex flex-column align-items-end gap-1">
                                                     <small className="text-muted text-end">
-                                                        {t("meta.lastPrefix")}
-                                                        &nbsp;
-                                                        {fmt(
-                                                            tItem.lastPostUtc
-                                                        )}
+                                                        {t("meta.lastPrefix")}&nbsp;
+                                                        {fmt(tItem.lastPostUtc)}
                                                         <br />
                                                         {t("meta.by")}{" "}
                                                         {tItem.lastBy}
@@ -370,9 +390,7 @@ const ForumThreads: React.FC = () => {
                                                             <button
                                                                 type="button"
                                                                 className="btn btn-outline-danger btn-sm w-100"
-                                                                disabled={
-                                                                    busy
-                                                                }
+                                                                disabled={busy}
                                                                 onClick={() =>
                                                                     deleteThread(
                                                                         tItem.id

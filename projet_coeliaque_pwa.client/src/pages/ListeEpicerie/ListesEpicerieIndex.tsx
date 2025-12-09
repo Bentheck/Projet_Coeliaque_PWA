@@ -160,7 +160,7 @@ const ListesEpicerieIndex: React.FC = () => {
             </div>
 
             {/* Controls */}
-            <div className="card shadow-sm mb-4">
+            <div className="card card--accent shadow-sm mb-4">
                 <div className="card-body">
                     <div className="row g-2 align-items-center justify-content-center">
                         <div className="col-12 col-lg-8">
@@ -288,18 +288,20 @@ const ListesEpicerieIndex: React.FC = () => {
 
             {/* Content */}
             {filtered.length === 0 ? (
-                <div className="border rounded-3 p-5 text-center bg-light liste-index-empty-card">
-                    <div className="display-6 mb-2">🛒</div>
-                    <h2 className="h5">{t("empty.title")}</h2>
-                    <p className="text-muted mb-3">
-                        {t("empty.subtitle")}
-                    </p>
-                    <Link
-                        to="/liste-epicerie/edit"
-                        className="btn btn-primary"
-                    >
-                        {t("empty.create")}
-                    </Link>
+                <div className="card card--tinted shadow-sm text-center liste-index-empty-card">
+                    <div className="card-body py-5">
+                        <div className="display-6 mb-2">🛒</div>
+                        <h2 className="h5">{t("empty.title")}</h2>
+                        <p className="text-muted mb-3">
+                            {t("empty.subtitle")}
+                        </p>
+                        <Link
+                            to="/liste-epicerie/edit"
+                            className="btn btn-primary"
+                        >
+                            {t("empty.create")}
+                        </Link>
+                    </div>
                 </div>
             ) : (
                 <div className="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 g-3 justify-content-center">
@@ -313,9 +315,7 @@ const ListesEpicerieIndex: React.FC = () => {
                         return (
                             <div className="col" key={l.id}>
                                 <div
-                                    className={`card h-100 shadow-sm ${isCompleted
-                                            ? "border-success"
-                                            : ""
+                                    className={`card card--tinted h-100 shadow-sm ${isCompleted ? "border-success" : ""
                                         }`}
                                 >
                                     <div className="card-body d-flex flex-column">

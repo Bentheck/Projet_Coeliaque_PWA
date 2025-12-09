@@ -38,8 +38,10 @@ const ReportListItem: React.FC<{
             setSuccess(true);
             setTimeout(() => setSuccess(false), 2500);
             onReportGenerated?.();
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : t("errors.generic") ?? String(err);
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -118,6 +120,8 @@ const Rapports: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const total = years?.length ?? 0;
+
     const fetchYears = async () => {
         setLoading(true);
         setError(null);
@@ -126,8 +130,10 @@ const Rapports: React.FC = () => {
             if (!res.ok) throw new Error(await res.text());
             const data: ReportYear[] = await res.json();
             await putReportYearsMany(data);
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : t("errors.generic") ?? String(err);
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -141,8 +147,13 @@ const Rapports: React.FC = () => {
 
     return (
         <div className="container py-3 rapports-container">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-                <h2 className="mb-0">{t("title")}</h2>
+            <div className="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <h2 className="mb-0">{t("title")}</h2>
+                    <div className="text-muted small">
+                        {t("subtitle", { count: total })}
+                    </div>
+                </div>
             </div>
             <div className="card shadow-sm rounded-4 w-auto mx-auto">
                 <div className="card-body p-0">

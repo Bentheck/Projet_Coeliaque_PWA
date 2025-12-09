@@ -7,6 +7,12 @@
     "activeUntilPrefix": "Your membership is active until",
     "none": "You don’t have an active membership."
   },
+  "badge": {
+    "lifetime": "Lifetime",
+    "active": "Active",
+    "expired": "Expired",
+    "none": "No membership"
+  },
   "button": {
     "manage": "Manage subscription / Payment method",
     "opening": "Opening…"

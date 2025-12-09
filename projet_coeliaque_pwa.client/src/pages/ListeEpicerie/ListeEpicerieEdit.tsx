@@ -530,7 +530,7 @@ const ListeEpicerieEdit: React.FC = () => {
 
     /* ------------------------------------ UI ------------------------------------ */
     return (
-        <div className="container my-3">
+        <div className="container my-3 liste-edit-page">
             {/* Header: name + save + back */}
             <div className="d-flex align-items-center gap-2 mb-3">
                 <button
@@ -555,7 +555,7 @@ const ListeEpicerieEdit: React.FC = () => {
 
             {/* Estimated total (CAD) */}
             <div className="mb-3">
-                <span className="badge text-bg-info">
+                <span className="badge liste-badge-total">
                     {t("totals.estimated")}{" "}
                     {totalPrice.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
                 </span>
@@ -607,7 +607,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             ))}
                         </select>
 
-                        <div className="form-check ms-auto">
+                        <div className="form-check ms-auto liste-filter-toggle">
                             <input
                                 id="hideFactureOnSale"
                                 type="checkbox"
@@ -650,50 +650,53 @@ const ListeEpicerieEdit: React.FC = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    factureListState.available.map((i) => (
-                                        <tr key={i.id}>
-                                            <td>
-                                                <strong>{i.item}</strong>
-                                            </td>
-                                            <td>
-                                                <small className="text-muted">
-                                                    {i.typeItem}
-                                                </small>
-                                            </td>
-                                            <td>{i.magasin ?? "—"}</td>
-                                            <td>
-                                                {i.date
-                                                    ? new Date(i.date).toLocaleDateString(
-                                                        undefined,
-                                                        {
-                                                            year: "numeric",
-                                                            month: "short",
-                                                            day: "2-digit",
-                                                        }
-                                                    )
-                                                    : "—"}
-                                            </td>
-                                            <td className="text-end">
-                                                {i.prix.toFixed(2)}$
-                                            </td>
-                                            <td className="text-center">
-                                                <span
-                                                    className={`d-inline-block rounded-circle sale-dot ${i.wasOnSale
-                                                            ? "bg-success"
-                                                            : "bg-danger"
-                                                        }`}
-                                                />
-                                            </td>
-                                            <td className="text-end">
-                                                <button
-                                                    className="btn btn-sm btn-success"
-                                                    onClick={() => addFromFacture(i.id)}
-                                                >
-                                                    {t("actions.addToList")}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    factureListState.available.map((i) => {
+                                        const rowClass = i.wasOnSale ? "liste-row liste-row--onsale" : "liste-row";
+                                        return (
+                                            <tr key={i.id} className={rowClass}>
+                                                <td>
+                                                    <strong>{i.item}</strong>
+                                                </td>
+                                                <td>
+                                                    <small className="text-muted">
+                                                        {i.typeItem}
+                                                    </small>
+                                                </td>
+                                                <td>{i.magasin ?? "—"}</td>
+                                                <td>
+                                                    {i.date
+                                                        ? new Date(i.date).toLocaleDateString(
+                                                            undefined,
+                                                            {
+                                                                year: "numeric",
+                                                                month: "short",
+                                                                day: "2-digit",
+                                                            }
+                                                        )
+                                                        : "—"}
+                                                </td>
+                                                <td className="text-end">
+                                                    {i.prix.toFixed(2)}$
+                                                </td>
+                                                <td className="text-center">
+                                                    <span
+                                                        className={`d-inline-block rounded-circle sale-dot ${i.wasOnSale
+                                                                ? "bg-success"
+                                                                : "bg-danger"
+                                                            }`}
+                                                    />
+                                                </td>
+                                                <td className="text-end">
+                                                    <button
+                                                        className="btn btn-sm btn-success"
+                                                        onClick={() => addFromFacture(i.id)}
+                                                    >
+                                                        {t("actions.addToList")}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -722,7 +725,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 <Modal.Body>
                     {/* Quick creation block (card) */}
                     <h6 className="mb-2">{t("modals.free.createTitle")}</h6>
-                    <div className="card border-info mb-3">
+                    <div className="card card--accent-outline mb-3">
                         <div className="card-body">
                             {/* Quick search header row */}
                             <div className="d-flex flex-wrap align-items-center mb-2 gap-3">
@@ -958,7 +961,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             ))}
                         </select>
 
-                        <div className="form-check ms-auto">
+                        <div className="form-check ms-auto liste-filter-toggle">
                             <input
                                 id="hideFreeOnSale"
                                 type="checkbox"
@@ -1036,8 +1039,24 @@ const ListeEpicerieEdit: React.FC = () => {
                                                             ? ""
                                                             : "—");
 
+                                                const isInList = liste.items.some(
+                                                    (it) => it.freeItemId === fi.id
+                                                );
+
+                                                const rowClass = [
+                                                    "liste-row",
+                                                    fi.wasOnSale
+                                                        ? "liste-row--onsale"
+                                                        : "",
+                                                    isInList
+                                                        ? "liste-row--selected"
+                                                        : "",
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(" ");
+
                                                 return (
-                                                    <tr key={fi.id}>
+                                                    <tr key={fi.id} className={rowClass}>
                                                         <td>
                                                             <strong>
                                                                 {fi.item}
@@ -1193,8 +1212,15 @@ const ListeEpicerieEdit: React.FC = () => {
                                             ? ""
                                             : "—");
 
+                                const rowClass = src?.wasOnSale
+                                    ? "liste-row liste-row--onsale"
+                                    : "liste-row";
+
                                 return (
-                                    <tr key={it.id ?? `fact-${idx}`}>
+                                    <tr
+                                        key={it.id ?? `fact-${idx}`}
+                                        className={rowClass}
+                                    >
                                         <td>
                                             <strong>
                                                 {src?.item ?? "—"}
@@ -1311,8 +1337,15 @@ const ListeEpicerieEdit: React.FC = () => {
                                             ? ""
                                             : "—");
 
+                                const rowClass = src?.wasOnSale
+                                    ? "liste-row liste-row--onsale"
+                                    : "liste-row";
+
                                 return (
-                                    <tr key={it.id ?? `free-${idx}`}>
+                                    <tr
+                                        key={it.id ?? `free-${idx}`}
+                                        className={rowClass}
+                                    >
                                         <td>
                                             <strong>
                                                 {src?.item ?? "—"}

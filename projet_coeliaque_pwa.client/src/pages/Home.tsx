@@ -143,13 +143,16 @@ const Home: React.FC = () => {
 
     return (
         <div className="container my-4 my-md-5">
-            {/* TOP CARD: HERO + FEATURE CARDS */}
-            <div className="card shadow-sm mb-4 border-0">
+            {/* TOP CARD: HERO + FEATURE CARDS + OFFLINE TIMER */}
+            {/* Hero section uses primary highlight */}
+            <div className="card section-highlight-primary mb-4">
                 <div className="card-body py-4 py-md-5">
                     <div className="row align-items-center">
                         {/* Left side: hero text + buttons */}
                         <div className="col-lg-7 mb-4 mb-lg-0 text-center text-lg-start">
-                            <h1 className="display-5 mb-3">{heroTitle}</h1>
+                            <h1 className="display-6 mb-3 fw-bold">
+                                {heroTitle}
+                            </h1>
                             <p className="lead text-muted mb-4">
                                 {heroSubtitle}
                             </p>
@@ -236,7 +239,8 @@ const Home: React.FC = () => {
                         <div className="col-lg-5">
                             <div className="row g-3">
                                 <div className="col-12">
-                                    <div className="card h-100 shadow-sm border-0">
+                                    {/* Feature card → tinted + primary top bar */}
+                                    <div className="card card--tinted h-100 shadow-sm border-0 highlight-bar-primary">
                                         <div className="card-body">
                                             <h2 className="h5 d-flex align-items-center mb-2">
                                                 <i className="bi bi-calculator me-2" />
@@ -254,7 +258,8 @@ const Home: React.FC = () => {
                                 </div>
 
                                 <div className="col-12">
-                                    <div className="card h-100 shadow-sm border-0">
+                                    {/* Feature card → tinted + primary top bar */}
+                                    <div className="card card--tinted h-100 shadow-sm border-0 highlight-bar-primary">
                                         <div className="card-body">
                                             <h2 className="h5 d-flex align-items-center mb-2">
                                                 <i className="bi bi-cart-check me-2" />
@@ -270,7 +275,8 @@ const Home: React.FC = () => {
                                 </div>
 
                                 <div className="col-12">
-                                    <div className="card h-100 shadow-sm border-0">
+                                    {/* Feature card → tinted + primary top bar */}
+                                    <div className="card card--tinted h-100 shadow-sm border-0 highlight-bar-primary">
                                         <div className="card-body">
                                             <h2 className="h5 d-flex align-items-center mb-2">
                                                 <i className="bi bi-chat-dots me-2" />
@@ -287,17 +293,13 @@ const Home: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* BOTTOM CARD: OFFLINE + STORY */}
-            <div className="card shadow-sm border-0">
-                <div className="card-body py-4 py-md-5">
-                    {/* OFFLINE COUNTDOWN (inside bottom card) */}
+                    {/* OFFLINE COUNTDOWN (now inside TOP card) */}
                     {showCountdown && (
-                        <div className="row justify-content-center mb-4">
+                        <div className="row justify-content-center mt-4">
                             <div className="col-12 col-md-7 col-lg-6">
-                                <div className="card shadow-sm">
+                                {/* Offline card → mint highlight */}
+                                <div className="card section-highlight-mint">
                                     <div className="card-header d-flex align-items-center justify-content-between">
                                         <span className="d-inline-flex align-items-center gap-2">
                                             <i
@@ -308,7 +310,7 @@ const Home: React.FC = () => {
                                                 {t("offline.card.title")}
                                             </span>
                                         </span>
-                                        <span className="badge bg-secondary d-inline-flex align-items-center gap-1">
+                                        <span className="pill-highlight-mint">
                                             <i
                                                 className="bi bi-wifi-off"
                                                 aria-hidden="true"
@@ -359,7 +361,13 @@ const Home: React.FC = () => {
                             </div>
                         </div>
                     )}
+                </div>
+            </div>
 
+            {/* BOTTOM CARD: STORY ONLY */}
+            {/* Story section gets subtle primary bar highlight */}
+            <div className="card shadow-sm border-0 highlight-bar-primary">
+                <div className="card-body py-4 py-md-5">
                     {/* STORY SECTION */}
                     <div className="row">
                         <div className="col-lg-8 mb-4 mb-lg-0">
@@ -412,7 +420,8 @@ const Home: React.FC = () => {
                         </div>
 
                         <div className="col-lg-4">
-                            <div className="card h-100 shadow-sm border-0">
+                            {/* Side story card → tinted + mint highlight for CTA */}
+                            <div className="card card--tinted h-100 shadow-sm border-0 section-highlight-mint">
                                 <div className="card-body">
                                     <h3 className="h5 mb-3">
                                         {t("story.sideCard.title")}

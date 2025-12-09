@@ -64,10 +64,13 @@ export default function FactureEdit() {
     // When cache changes, adopt it as the editable snapshot
     useEffect(() => {
         if (cachedFacture) {
-            setFacture({ items: [], ...cachedFacture } as Facture);
+            setFacture({
+                ...(cachedFacture as Facture),
+                items: (cachedFacture.items ?? []) as FactureItem[],
+            });
             setLoading(false);
         }
-    }, [cachedFacture?.id]);
+    }, [cachedFacture]);
 
     // If no cache yet and we're online, fetch once & store
     useEffect(() => {
@@ -95,7 +98,7 @@ export default function FactureEdit() {
         return () => {
             mounted = false;
         };
-    }, [factureId, !!cachedFacture]);
+    }, [factureId, cachedFacture, navigate]);
 
     // Also backfill suggestions if none yet and we're online
     useEffect(() => {
@@ -114,7 +117,8 @@ export default function FactureEdit() {
 
     function handleFactureChange(e: React.ChangeEvent<HTMLInputElement>) {
         if (!facture) return;
-        setFacture({ ...facture, [e.target.name]: e.target.value } as Facture);
+        const { name, value } = e.target;
+        setFacture({ ...facture, [name]: value } as Facture);
     }
 
     function handleItemChange(idx: number, field: keyof FactureItem, value: any) {
@@ -203,12 +207,15 @@ export default function FactureEdit() {
             await putFacture(facture);
             navigate("/factures");
         } catch (err: any) {
-            setError(err.message ?? t("error.saveFailed"));
+            // fixed key: "errors.saveFailed" (plural) to match other pages
+            setError(err.message ?? t("errors.saveFailed"));
         }
     }
 
     if (loading) return <div>{t("loading")}</div>;
     if (!facture) return <div>{t("notFound")}</div>;
+
+    const safeDate = (facture.date || "").slice(0, 10);
 
     return (
         <div className="container py-3">
@@ -242,7 +249,7 @@ export default function FactureEdit() {
                                 <input
                                     name="date"
                                     type="date"
-                                    value={facture.date.slice(0, 10)}
+                                    value={safeDate}
                                     onChange={handleFactureChange}
                                     className="form-control border-black rounded-3"
                                 />
@@ -347,9 +354,7 @@ export default function FactureEdit() {
                                                             )
                                                         }
                                                         placeholder={
-                                                            t(
-                                                                "placeholders.type"
-                                                            ) as string
+                                                            t("placeholders.type") as string
                                                         }
                                                         classNamePrefix="facture-type"
                                                     />
@@ -432,10 +437,7 @@ export default function FactureEdit() {
                                                             )}
                                                         </option>
                                                         {UNIT_OPTIONS.map((u) => (
-                                                            <option
-                                                                key={u}
-                                                                value={u}
-                                                            >
+                                                            <option key={u} value={u}>
                                                                 {u}
                                                             </option>
                                                         ))}
@@ -485,16 +487,10 @@ export default function FactureEdit() {
                                                     <button
                                                         type="button"
                                                         className="btn btn-outline-danger btn-sm rounded-pill px-3 invoice-remove-btn"
-                                                        onClick={() =>
-                                                            handleRemoveItem(i)
-                                                        }
-                                                        aria-label={t(
-                                                            "actions.remove"
-                                                        )}
+                                                        onClick={() => handleRemoveItem(i)}
+                                                        aria-label={t("actions.remove")}
                                                         title={
-                                                            t(
-                                                                "actions.remove"
-                                                            ) as string
+                                                            t("actions.remove") as string
                                                         }
                                                     >
                                                         <i className="bi bi-x-lg"></i>
@@ -516,9 +512,7 @@ export default function FactureEdit() {
                                                     {/* Type de produit */}
                                                     <div className="mb-2">
                                                         <label className="form-label small mb-1">
-                                                            {t(
-                                                                "table.typeProduit"
-                                                            )}
+                                                            {t("table.typeProduit")}
                                                         </label>
                                                         <CreatableSelect
                                                             isClearable
@@ -607,9 +601,7 @@ export default function FactureEdit() {
                                                             className="form-control form-control-sm border-black rounded-2"
                                                             type="number"
                                                             step="0.01"
-                                                            value={
-                                                                item.poidsValeur
-                                                            }
+                                                            value={item.poidsValeur}
                                                             onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
@@ -644,32 +636,23 @@ export default function FactureEdit() {
                                                                     "placeholders.unitFallback"
                                                                 )}
                                                             </option>
-                                                            {UNIT_OPTIONS.map(
-                                                                (u) => (
-                                                                    <option
-                                                                        key={u}
-                                                                        value={u}
-                                                                    >
-                                                                        {u}
-                                                                    </option>
-                                                                )
-                                                            )}
+                                                            {UNIT_OPTIONS.map((u) => (
+                                                                <option key={u} value={u}>
+                                                                    {u}
+                                                                </option>
+                                                            ))}
                                                         </select>
                                                     </div>
 
                                                     {/* Quantité */}
                                                     <div className="mb-1">
                                                         <label className="form-label small mb-0">
-                                                            {t(
-                                                                "table.quantite"
-                                                            )}
+                                                            {t("table.quantite")}
                                                         </label>
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
                                                             type="number"
-                                                            value={
-                                                                item.quantite
-                                                            }
+                                                            value={item.quantite}
                                                             onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
@@ -689,15 +672,12 @@ export default function FactureEdit() {
                                                             className="form-check-input border-dark"
                                                             type="checkbox"
                                                             id={`onsale${i}`}
-                                                            checked={
-                                                                item.wasOnSale
-                                                            }
+                                                            checked={item.wasOnSale}
                                                             onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "wasOnSale",
-                                                                    e.target
-                                                                        .checked
+                                                                    e.target.checked
                                                                 )
                                                             }
                                                         />
@@ -705,9 +685,7 @@ export default function FactureEdit() {
                                                             className="form-check-label small invoice-onsale-label"
                                                             htmlFor={`onsale${i}`}
                                                         >
-                                                            {t(
-                                                                "table.enSoldeQ"
-                                                            )}
+                                                            {t("table.enSoldeQ")}
                                                         </label>
                                                     </div>
 
@@ -718,9 +696,7 @@ export default function FactureEdit() {
                                                             variant="outline-danger"
                                                             className="rounded-pill px-2 py-0 invoice-remove-btn"
                                                             onClick={() =>
-                                                                handleRemoveItem(
-                                                                    i
-                                                                )
+                                                                handleRemoveItem(i)
                                                             }
                                                             aria-label={t(
                                                                 "actions.remove"
@@ -802,9 +778,7 @@ export default function FactureEdit() {
                                                 value: string;
                                             }>
                                         ) =>
-                                            setModalTypeItem(
-                                                option?.value || ""
-                                            )
+                                            setModalTypeItem(option?.value || "")
                                         }
                                         placeholder={
                                             t(
@@ -892,9 +866,7 @@ export default function FactureEdit() {
                                             onChange={handleModalChange}
                                         >
                                             <option value="">
-                                                {t(
-                                                    "placeholders.unitFallback"
-                                                )}
+                                                {t("placeholders.unitFallback")}
                                             </option>
                                             {UNIT_OPTIONS.map((u) => (
                                                 <option key={u} value={u}>

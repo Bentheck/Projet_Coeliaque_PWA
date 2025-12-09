@@ -94,6 +94,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             facture.Id = 0;                 // ensure EF inserts
             facture.UserId = UserId;
 
+            // 🔧 Normalize invoice date to UTC, date-only
+            facture.Date = DateTime.SpecifyKind(dto.Date.Date, DateTimeKind.Utc);
+
             // Ensure FK from items to parent
             if (facture.Items != null)
             {
@@ -131,7 +134,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             // ----- Top-level fields -----
             facture.Annee = dto.Annee;
             facture.FactureId = dto.FactureId;
-            facture.Date = dto.Date;
+            facture.Date = DateTime.SpecifyKind(dto.Date.Date, DateTimeKind.Utc);
             facture.Magasin = dto.Magasin;
 
             var dtoItems = dto.Items ?? new List<FactureItemDto>(); // adjust type name if needed

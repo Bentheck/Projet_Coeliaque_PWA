@@ -13,7 +13,10 @@ const RapportsDisplay: React.FC = () => {
     const navigate = useNavigate();
 
     const row = useLiveQuery(
-        () => (annee ? db.reportBodies.get(Number(annee)) : Promise.resolve(undefined)),
+        () =>
+            annee
+                ? db.reportBodies.get(Number(annee))
+                : Promise.resolve(undefined),
         [annee]
     ) as { year: number; payload: ReportPayload } | undefined;
 
@@ -35,18 +38,26 @@ const RapportsDisplay: React.FC = () => {
         (async () => {
             if (!annee || payload || !navigator.onLine) return;
             try {
-                const res = await fetch(`/api/rapports/${annee}`, { credentials: "include" });
+                const res = await fetch(`/api/rapports/${annee}`, {
+                    credentials: "include",
+                });
                 if (!res.ok) throw new Error(await res.text());
                 const data: ReportPayload = await res.json();
                 if (!cancelled) {
                     await putReportBody(Number(annee), data);
                 }
-            } catch (e: any) {
-                if (!cancelled) setError(e?.message ?? String(e));
+            } catch (e: unknown) {
+                if (!cancelled) {
+                    const message =
+                        e instanceof Error ? e.message : t("errors.generic") ?? String(e);
+                    setError(message);
+                }
             }
         })();
-        return () => { cancelled = true; };
-    }, [annee, payload]);
+        return () => {
+            cancelled = true;
+        };
+    }, [annee, payload, t]);
 
     // print scheduling
     useEffect(() => {
@@ -58,7 +69,10 @@ const RapportsDisplay: React.FC = () => {
         }, 200);
     }, [triggerPrint]);
 
-    function handlePrintClick() { setShowPrompt(true); }
+    function handlePrintClick() {
+        setShowPrompt(true);
+    }
+
     function handlePromptSubmit(e: React.FormEvent) {
         e.preventDefault();
         setShowPrompt(false);
@@ -68,21 +82,35 @@ const RapportsDisplay: React.FC = () => {
     if (!payload && !error) return <div>{t("loading")}</div>;
     if (error) return <div className="alert alert-danger">{error}</div>;
 
-    const totalFormatted = total.toLocaleString(locale, { style: "currency", currency: "CAD" });
+    const totalFormatted = total.toLocaleString(locale, {
+        style: "currency",
+        currency: "CAD",
+    });
 
     return (
         <div className="container py-3" style={{ maxWidth: 1200 }}>
-            <div className="alert alert-info no-print mb-3" style={{ fontSize: "1.06em" }}>
+            <div
+                className="alert alert-info no-print mb-3"
+                style={{ fontSize: "1.06em" }}
+            >
                 <i className="bi bi-info-circle me-2"></i>
                 <b>{t("print.noteLabel")}</b>{" "}
                 {t("print.noteMain")}{" "}
-                <b><i>{t("print.noteNotSaved")}</i></b>
+                <b>
+                    <i>{t("print.noteNotSaved")}</i>
+                </b>
             </div>
 
-            <button className="btn btn-success no-print mb-3" onClick={handlePrintClick}>
+            <button
+                className="btn btn-success no-print mb-3"
+                onClick={handlePrintClick}
+            >
                 {t("print.printButton")}
             </button>
-            <button className="btn btn-outline-secondary no-print mb-3 ms-2" onClick={() => navigate(-1)}>
+            <button
+                className="btn btn-outline-secondary no-print mb-3 ms-2"
+                onClick={() => navigate(-1)}
+            >
                 {t("print.backButton")}
             </button>
 
@@ -112,10 +140,14 @@ const RapportsDisplay: React.FC = () => {
                             padding: 32,
                             minWidth: 350,
                             boxShadow: "0 4px 30px rgba(0,0,0,0.17)",
+                            background: "#fff",
                         }}
                     >
                         <h4 className="mb-4">{t("prompt.title")}</h4>
-                        <div className="alert alert-primary" style={{ fontSize: "1em" }}>
+                        <div
+                            className="alert alert-primary"
+                            style={{ fontSize: "1em" }}
+                        >
                             {t("prompt.help")}
                         </div>
                         <div className="mb-3">
@@ -127,7 +159,9 @@ const RapportsDisplay: React.FC = () => {
                                 type="text"
                                 value={printNom}
                                 onChange={(e) => setPrintNom(e.target.value)}
-                                placeholder={t("prompt.namePlaceholder") as string}
+                                placeholder={
+                                    t("prompt.namePlaceholder") as string
+                                }
                                 maxLength={80}
                                 autoFocus
                                 autoComplete="off"
@@ -143,7 +177,9 @@ const RapportsDisplay: React.FC = () => {
                                 type="text"
                                 value={printNAS}
                                 onChange={(e) => setPrintNAS(e.target.value)}
-                                placeholder={t("prompt.nasPlaceholder") as string}
+                                placeholder={
+                                    t("prompt.nasPlaceholder") as string
+                                }
                                 maxLength={20}
                                 autoComplete="off"
                                 name="no-autofill-nas"
@@ -178,27 +214,64 @@ const RapportsDisplay: React.FC = () => {
                 </style>
 
                 {/* Print-only header fields */}
-                <div className="d-flex gap-4 align-items-end mb-4 mt-2 print-only" style={{ marginTop: 18 }}>
+                <div
+                    className="d-flex gap-4 align-items-end mb-4 mt-2 print-only"
+                    style={{ marginTop: 18 }}
+                >
                     <div>
-                        <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>{t("prompt.nameLabel")}</div>
                         <div
                             style={{
-                                border: "2px solid #333", background: "#fff", width: 260, height: 36, marginBottom: 6,
-                                display: "flex", alignItems: "center", fontSize: "1.07em", paddingLeft: 10,
+                                fontWeight: "bold",
+                                marginBottom: 6,
+                                fontSize: "1.07em",
                             }}
                         >
-                            {printNom || <span style={{ color: "#fff" }}>-</span>}
+                            {t("prompt.nameLabel")}
+                        </div>
+                        <div
+                            style={{
+                                border: "2px solid #333",
+                                background: "#fff",
+                                width: 260,
+                                height: 36,
+                                marginBottom: 6,
+                                display: "flex",
+                                alignItems: "center",
+                                fontSize: "1.07em",
+                                paddingLeft: 10,
+                            }}
+                        >
+                            {printNom || (
+                                <span style={{ color: "#fff" }}>-</span>
+                            )}
                         </div>
                     </div>
                     <div>
-                        <div style={{ fontWeight: "bold", marginBottom: 6, fontSize: "1.07em" }}>{t("prompt.nasLabel")}</div>
                         <div
                             style={{
-                                border: "2px solid #333", background: "#fff", width: 180, height: 36, marginBottom: 6,
-                                display: "flex", alignItems: "center", fontSize: "1.07em", paddingLeft: 10,
+                                fontWeight: "bold",
+                                marginBottom: 6,
+                                fontSize: "1.07em",
                             }}
                         >
-                            {printNAS || <span style={{ color: "#fff" }}>-</span>}
+                            {t("prompt.nasLabel")}
+                        </div>
+                        <div
+                            style={{
+                                border: "2px solid #333",
+                                background: "#fff",
+                                width: 180,
+                                height: 36,
+                                marginBottom: 6,
+                                display: "flex",
+                                alignItems: "center",
+                                fontSize: "1.07em",
+                                paddingLeft: 10,
+                            }}
+                        >
+                            {printNAS || (
+                                <span style={{ color: "#fff" }}>-</span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -206,92 +279,194 @@ const RapportsDisplay: React.FC = () => {
                 <h1>{t("title", { year: annee })}</h1>
                 <p>{t("user", { name: userName })}</p>
 
-                <table className="comparatif-table">
-                    <thead>
-                        <tr>
-                            <th colSpan={7} className="comparatif-header-sg double-divider">{t("table.groups.sansGluten")}</th>
-                            <th colSpan={6} className="comparatif-header-ag double-divider">{t("table.groups.avecGluten")}</th>
-                            <th colSpan={3} className="comparatif-header-total"></th>
-                        </tr>
-                        <tr>
-                            <th className="comparatif-th-sg">{t("table.columns.typeItem")}</th>
-                            <th className="comparatif-th-sg">{t("table.columns.nomSansGluten")}</th>
-                            <th className="comparatif-th-sg">{t("table.columns.quantite")}</th>
-                            <th className="comparatif-th-sg">{t("table.columns.format")}</th>
-                            <th className="comparatif-th-sg">{t("table.columns.unite")}</th>
-                            <th className="comparatif-th-sg">{t("table.columns.prixSans")}</th>
-                            <th className="comparatif-th-sg double-divider">{t("table.columns.prixPar100Sans")}</th>
-                            <th className="comparatif-th-ag">{t("table.columns.marqueAvec")}</th>
-                            <th className="comparatif-th-ag">{t("table.columns.nomAvec")}</th>
-                            <th className="comparatif-th-ag">{t("table.columns.formatAvec")}</th>
-                            <th className="comparatif-th-ag">{t("table.columns.uniteAvec")}</th>
-                            <th className="comparatif-th-ag">{t("table.columns.prixAvec")}</th>
-                            <th className="comparatif-th-ag double-divider">{t("table.columns.prixPar100Avec")}</th>
-                            <th>{t("table.columns.diffPar100")}</th>
-                            <th>{t("table.columns.sousTotalProduit")}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row, i) => (
-                            <tr key={i}>
-                                <td className="comparatif-th-sg">{row.typeItem}</td>
-                                <td className="comparatif-th-sg">{row.nomSansGluten}</td>
-                                <td className="comparatif-th-sg">{row.quantiteSansGluten}</td>
-                                <td className="comparatif-th-sg">{row.formatSansGluten}</td>
-                                <td className="comparatif-th-sg">{row.uniteSansGluten}</td>
-                                <td className="comparatif-th-sg">
-                                    {row.prixSansGluten.toLocaleString(locale, { style: "currency", currency: "CAD" })}
-                                </td>
-                                <td className="comparatif-th-sg double-divider">
-                                    {row.prixPar100SansGluten.toFixed(3)} {row.prixPar100Unit}
-                                </td>
-                                <td className="comparatif-th-ag">{row.marqueAvecGluten ?? ""}</td>
-                                <td className="comparatif-th-ag">{row.nomAvecGluten ?? ""}</td>
-                                <td className="comparatif-th-ag">{row.formatAvecGluten ?? ""}</td>
-                                <td className="comparatif-th-ag">{row.uniteAvecGluten ?? ""}</td>
-                                <td className="comparatif-th-ag">
-                                    {(row.prixAvecGluten ?? 0).toLocaleString(locale, { style: "currency", currency: "CAD" })}
-                                </td>
-                                <td className="comparatif-th-ag double-divider">
-                                    {row.prixPar100AvecGluten.toFixed(3)} {row.prixPar100Unit}
-                                </td>
-                                <td>{row.diffPar100.toFixed(3)} {row.prixPar100Unit}</td>
-                                <td>{row.sousTotalProduit.toLocaleString(locale, { style: "currency", currency: "CAD" })}</td>
+                {rows.length === 0 ? (
+                    <div className="alert alert-secondary">
+                        {t("noRows")}
+                    </div>
+                ) : (
+                    <table className="comparatif-table">
+                        <thead>
+                            <tr>
+                                <th
+                                    colSpan={7}
+                                    className="comparatif-header-sg double-divider"
+                                >
+                                    {t("table.groups.sansGluten")}
+                                </th>
+                                <th
+                                    colSpan={6}
+                                    className="comparatif-header-ag double-divider"
+                                >
+                                    {t("table.groups.avecGluten")}
+                                </th>
+                                <th
+                                    colSpan={3}
+                                    className="comparatif-header-total"
+                                ></th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                            <tr>
+                                <th className="comparatif-th-sg">
+                                    {t("table.columns.typeItem")}
+                                </th>
+                                <th className="comparatif-th-sg">
+                                    {t("table.columns.nomSansGluten")}
+                                </th>
+                                <th className="comparatif-th-sg">
+                                    {t("table.columns.quantite")}
+                                </th>
+                                <th className="comparatif-th-sg">
+                                    {t("table.columns.format")}
+                                </th>
+                                <th className="comparatif-th-sg">
+                                    {t("table.columns.unite")}
+                                </th>
+                                <th className="comparatif-th-sg">
+                                    {t("table.columns.prixSans")}
+                                </th>
+                                <th className="comparatif-th-sg double-divider">
+                                    {t("table.columns.prixPar100Sans")}
+                                </th>
+                                <th className="comparatif-th-ag">
+                                    {t("table.columns.marqueAvec")}
+                                </th>
+                                <th className="comparatif-th-ag">
+                                    {t("table.columns.nomAvec")}
+                                </th>
+                                <th className="comparatif-th-ag">
+                                    {t("table.columns.formatAvec")}
+                                </th>
+                                <th className="comparatif-th-ag">
+                                    {t("table.columns.uniteAvec")}
+                                </th>
+                                <th className="comparatif-th-ag">
+                                    {t("table.columns.prixAvec")}
+                                </th>
+                                <th className="comparatif-th-ag double-divider">
+                                    {t("table.columns.prixPar100Avec")}
+                                </th>
+                                <th>{t("table.columns.diffPar100")}</th>
+                                <th>{t("table.columns.sousTotalProduit")}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row, i) => (
+                                <tr key={i}>
+                                    <td className="comparatif-th-sg">
+                                        {row.typeItem}
+                                    </td>
+                                    <td className="comparatif-th-sg">
+                                        {row.nomSansGluten}
+                                    </td>
+                                    <td className="comparatif-th-sg">
+                                        {row.quantiteSansGluten}
+                                    </td>
+                                    <td className="comparatif-th-sg">
+                                        {row.formatSansGluten}
+                                    </td>
+                                    <td className="comparatif-th-sg">
+                                        {row.uniteSansGluten}
+                                    </td>
+                                    <td className="comparatif-th-sg">
+                                        {row.prixSansGluten.toLocaleString(
+                                            locale,
+                                            {
+                                                style: "currency",
+                                                currency: "CAD",
+                                            }
+                                        )}
+                                    </td>
+                                    <td className="comparatif-th-sg double-divider">
+                                        {row.prixPar100SansGluten.toFixed(3)}{" "}
+                                        {row.prixPar100Unit}
+                                    </td>
+                                    <td className="comparatif-th-ag">
+                                        {row.marqueAvecGluten ?? ""}
+                                    </td>
+                                    <td className="comparatif-th-ag">
+                                        {row.nomAvecGluten ?? ""}
+                                    </td>
+                                    <td className="comparatif-th-ag">
+                                        {row.formatAvecGluten ?? ""}
+                                    </td>
+                                    <td className="comparatif-th-ag">
+                                        {row.uniteAvecGluten ?? ""}
+                                    </td>
+                                    <td className="comparatif-th-ag">
+                                        {(row.prixAvecGluten ?? 0).toLocaleString(
+                                            locale,
+                                            {
+                                                style: "currency",
+                                                currency: "CAD",
+                                            }
+                                        )}
+                                    </td>
+                                    <td className="comparatif-th-ag double-divider">
+                                        {row.prixPar100AvecGluten.toFixed(3)}{" "}
+                                        {row.prixPar100Unit}
+                                    </td>
+                                    <td>
+                                        {row.diffPar100.toFixed(3)}{" "}
+                                        {row.prixPar100Unit}
+                                    </td>
+                                    <td>
+                                        {row.sousTotalProduit.toLocaleString(
+                                            locale,
+                                            {
+                                                style: "currency",
+                                                currency: "CAD",
+                                            }
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
 
                 <div style={{ marginTop: 32, fontSize: "1.1em" }}>
                     <b>{t("total", { total: totalFormatted })}</b>
                 </div>
 
-                <div className="mt-5 p-4 rounded-3 bg-light border" style={{ fontSize: "1em", maxWidth: 900 }}>
+                <div
+                    className="mt-5 p-4 rounded-3 bg-light border"
+                    style={{ fontSize: "1em", maxWidth: 900 }}
+                >
                     <h4 className="fw-bold mb-2">
                         <i className="bi bi-calculator me-2"></i>
                         {t("explain.title")}
                     </h4>
                     <ul>
                         <li>
-                            <b>{t("explain.pricePer100.title")}</b><br />
+                            <b>{t("explain.pricePer100.title")}</b>
+                            <br />
                             <span>
-                                <code>{t("explain.pricePer100.formula")}</code><br />
+                                <code>{t("explain.pricePer100.formula")}</code>
+                                <br />
                                 {t("explain.pricePer100.example")}
                             </span>
                         </li>
                         <li className="mt-2">
-                            <b>{t("explain.diff.title")}</b><br />
-                            <span><code>{t("explain.diff.formula")}</code></span>
+                            <b>{t("explain.diff.title")}</b>
+                            <br />
+                            <span>
+                                <code>{t("explain.diff.formula")}</code>
+                            </span>
                         </li>
                         <li className="mt-2">
-                            <b>{t("explain.sousTotal.title")}</b><br />
-                            <span><code>{t("explain.sousTotal.formula")}</code></span>
+                            <b>{t("explain.sousTotal.title")}</b>
+                            <br />
+                            <span>
+                                <code>{t("explain.sousTotal.formula")}</code>
+                            </span>
                         </li>
                         <li className="mt-2">
                             <b>{t("explain.total.title")}</b>
                         </li>
                     </ul>
-                    <div className="mt-2 text-secondary" style={{ fontSize: "0.95em" }}>
+                    <div
+                        className="mt-2 text-secondary"
+                        style={{ fontSize: "0.95em" }}
+                    >
                         <i>{t("explain.note")}</i>
                     </div>
                 </div>

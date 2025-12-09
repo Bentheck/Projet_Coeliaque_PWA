@@ -99,56 +99,116 @@ const Membership: React.FC = () => {
     const endDate = membership?.endDate ?? null;
     const active = membership?.isActive ?? false;
 
-    return (
-        <div className="membership-page">
-            <h1>{t("title")}</h1>
+    let statusCard: React.ReactNode;
 
-            {/* Status block */}
-            {loading ? (
-                <p>{t("loading")}</p>
-            ) : endDate ? (
-                isLifetime(endDate) ? (
-                    <div className="alert alert-success">
-                        {t("alert.lifetimePrefix")} <b>{t("alert.lifetimeLabel")}</b>. 🎉
-                    </div>
-                ) : active ? (
-                    <div className="alert alert-success">
-                        {t("alert.activeUntilPrefix")} <b>{formatDateTime(endDate)}</b>
-                    </div>
-                ) : (
-                    <div className="alert alert-warning">
-                        {t("alert.expiredPrefix")} <b>{formatDateTime(endDate)}</b>
-                    </div>
-                )
-            ) : (
-                <div className="alert alert-warning">{t("alert.none")}</div>
-            )}
-
-            {/* Manage in Stripe portal */}
-            <div className="mt-3 d-flex gap-2">
-                <button
-                    className={buttonClass}
-                    onClick={openPortal}
-                    disabled={buttonDisabled}
-                    title={!isOnline ? t("portal.offlineTitle") : undefined}
-                >
-                    {portalLoading ? t("button.opening") : t("button.manage")}
-                </button>
+    if (loading) {
+        statusCard = (
+            <div className="card card--tinted mb-3 border-0">
+                <div className="card-body py-3">
+                    <p className="mb-0">{t("loading")}</p>
+                </div>
             </div>
+        );
+    } else if (endDate) {
+        if (isLifetime(endDate)) {
+            // Lifetime → mint highlight
+            statusCard = (
+                <div className="card card--mint mb-3 border-0">
+                    <div className="card-body py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <span>
+                            {t("alert.lifetimePrefix")}{" "}
+                            <b>{t("alert.lifetimeLabel")}</b>. 🎉
+                        </span>
+                        <span className="badge text-bg-success">
+                            {t("badge.lifetime") ?? "À vie"}
+                        </span>
+                    </div>
+                </div>
+            );
+        } else if (active) {
+            // Active until → mint
+            statusCard = (
+                <div className="card card--mint mb-3 border-0">
+                    <div className="card-body py-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                        <span>
+                            {t("alert.activeUntilPrefix")}{" "}
+                            <b>{formatDateTime(endDate)}</b>
+                        </span>
+                        <span className="badge text-bg-success">
+                            {t("badge.active") ?? "Active"}
+                        </span>
+                    </div>
+                </div>
+            );
+        } else {
+            // Expired → tinted (soft blue)
+            statusCard = (
+                <div className="card card--tinted mb-3 border-0">
+                    <div className="card-body py-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                        <span>
+                            {t("alert.expiredPrefix")}{" "}
+                            <b>{formatDateTime(endDate)}</b>
+                        </span>
+                        <span className="badge text-bg-warning">
+                            {t("badge.expired") ?? "Expirée"}
+                        </span>
+                    </div>
+                </div>
+            );
+        }
+    } else {
+        // No membership → tinted info card
+        statusCard = (
+            <div className="card card--tinted mb-3 border-0">
+                <div className="card-body py-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                    <span>{t("alert.none")}</span>
+                    <span className="badge text-bg-secondary">
+                        {t("badge.none") ?? "Aucune adhésion"}
+                    </span>
+                </div>
+            </div>
+        );
+    }
 
-            <hr className="my-4" />
+    return (
+        <div className="container py-4">
+            <div className="card card--accent membership-page shadow-sm border-0">
+                <div className="card-body">
+                    <h1 className="h4 mb-3">{t("title")}</h1>
 
-            {/* Help section */}
-            <div className="text-muted small">
-                <p>
-                    <b>{t("help.updateCard.title")}</b> : {t("help.updateCard.body")}
-                </p>
-                <p>
-                    <b>{t("help.cancelRenewal.title")}</b> : {t("help.cancelRenewal.body")}
-                </p>
-                <p>
-                    <b>{t("help.invoices.title")}</b> : {t("help.invoices.body")}
-                </p>
+                    {/* STATUS HIGHLIGHT CARD */}
+                    {statusCard}
+
+                    {/* Manage in Stripe portal */}
+                    <div className="mt-3 d-flex flex-wrap gap-2">
+                        <button
+                            className={buttonClass}
+                            onClick={openPortal}
+                            disabled={buttonDisabled}
+                            title={!isOnline ? t("portal.offlineTitle") : undefined}
+                        >
+                            {portalLoading ? t("button.opening") : t("button.manage")}
+                        </button>
+                    </div>
+
+                    <hr className="my-4" />
+
+                    {/* Help section */}
+                    <div className="text-muted small">
+                        <p>
+                            <b>{t("help.updateCard.title")}</b> :{" "}
+                            {t("help.updateCard.body")}
+                        </p>
+                        <p>
+                            <b>{t("help.cancelRenewal.title")}</b> :{" "}
+                            {t("help.cancelRenewal.body")}
+                        </p>
+                        <p>
+                            <b>{t("help.invoices.title")}</b> :{" "}
+                            {t("help.invoices.body")}
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );

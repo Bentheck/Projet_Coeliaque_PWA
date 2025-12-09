@@ -248,6 +248,49 @@ const SuperAdminPanel: React.FC = () => {
         setEndDate(LIFETIME_DATE_INPUT);
     };
 
+    /** Remove lifetime membership:
+     * - If start date is within 1 year of today, set end = start + 1 year.
+     * - Otherwise, set end = today + 1 month.
+     */
+    const removeLifetime = () => {
+        if (!membership || !membership.endDateUtc?.startsWith(LIFETIME_DATE_INPUT)) {
+            return;
+        }
+        if (!confirm("Retirer l’adhésion à vie et revenir à une période limitée ?")) return;
+
+        // Ensure we have a start date baseline
+        let currentStart = startDate;
+        if (!currentStart) {
+            currentStart = todayUtcDateInput();
+            setStartDate(currentStart);
+        }
+
+        const todayStr = todayUtcDateInput();
+        const today = new Date(todayStr + "T00:00:00Z");
+        const start = new Date(currentStart + "T00:00:00Z");
+
+        const diffMs = today.getTime() - start.getTime();
+        const oneYearMs = 365 * 24 * 60 * 60 * 1000;
+
+        let newEndStr: string;
+
+        if (diffMs <= oneYearMs) {
+            // Start date within last year -> end = start + 1 year
+            const endCandidate = new Date(start);
+            endCandidate.setUTCFullYear(endCandidate.getUTCFullYear() + 1);
+            newEndStr = endCandidate.toISOString().slice(0, 10);
+        } else {
+            // Older than a year -> give one month from today
+            const oneMonthLater = new Date(
+                Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, today.getUTCDate())
+            );
+            newEndStr = oneMonthLater.toISOString().slice(0, 10);
+        }
+
+        setActive(true);
+        setEndDate(newEndStr);
+    };
+
     /* ======================== UI ======================== */
     return (
         <div className="container py-3">
@@ -356,7 +399,7 @@ const SuperAdminPanel: React.FC = () => {
                                     />
                                 </div>
 
-                                <div className="col-md-3 d-grid d-md-flex align-items-end gap-2">
+                                <div className="col-md-3 d-grid d-md-flex align-items-end gap-2 flex-wrap">
                                     <button
                                         className="btn btn-outline-secondary w-100"
                                         type="button"
@@ -364,6 +407,17 @@ const SuperAdminPanel: React.FC = () => {
                                     >
                                         Adhésion à vie
                                     </button>
+
+                                    {membership?.endDateUtc?.startsWith(LIFETIME_DATE_INPUT) && (
+                                        <button
+                                            className="btn btn-outline-warning w-100"
+                                            type="button"
+                                            onClick={removeLifetime}
+                                        >
+                                            Retirer « à vie »
+                                        </button>
+                                    )}
+
                                     <button
                                         className="btn btn-primary w-100"
                                         onClick={saveMembership}

@@ -7,6 +7,12 @@
     "activeUntilPrefix": "Votre abonnement est actif jusqu’au",
     "none": "Vous n’avez pas d’abonnement actif."
   },
+  "badge": {
+    "lifetime": "À vie",
+    "active": "Active",
+    "expired": "Expirée",
+    "none": "Aucune adhésion"
+  },
   "button": {
     "manage": "Gérer l’abonnement / Mode de paiement",
     "opening": "Ouverture…"

@@ -350,89 +350,95 @@ const ListeEpicerieView: React.FC = () => {
 
     return (
         <div className="container py-4" id="print-section">
-            {/* HEADER: back + title, then a row with switch + buttons, all LEFT aligned */}
-            <div className="mb-2">
-                {/* First line: Retour + title/date + spinner */}
-                <div className="d-flex align-items-center gap-2">
-                    <Link
-                        to="/liste-epicerie"
-                        className="btn btn-outline-secondary d-print-none"
-                    >
-                        ← {t("back")}
-                    </Link>
-
+            {/* HEADER + SUMMARY in accent card */}
+            <div className="card card--accent shadow-sm mb-3">
+                <div className="card-body">
+                    {/* First line: Retour + title/date + spinner */}
                     <div className="d-flex align-items-center gap-2">
-                        <div>
-                            <h1 className="h5 mb-0">
-                                {liste.name || t("titleDefault")}
-                            </h1>
-                            <div className="text-muted small">
-                                {t("createdOn", {
-                                    date: fmtDate(liste.created),
-                                })}
+                        <Link
+                            to="/liste-epicerie"
+                            className="btn btn-outline-secondary d-print-none"
+                        >
+                            ← {t("back")}
+                        </Link>
+
+                        <div className="d-flex align-items-center gap-2">
+                            <div>
+                                <h1 className="h5 mb-0">
+                                    {liste.name || t("titleDefault")}
+                                </h1>
+                                <div className="text-muted small">
+                                    {t("createdOn", {
+                                        date: fmtDate(liste.created),
+                                    })}
+                                </div>
                             </div>
+
+                            {detailLoading && (
+                                <span className="ms-2 small text-muted d-flex align-items-center gap-2">
+                                    <span
+                                        className="spinner-border spinner-border-sm"
+                                        role="status"
+                                        aria-hidden="true"
+                                    ></span>
+                                    <span>{t("detailLoading")}</span>
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Second line: Terminé + Modifier + Imprimer */}
+                    <div className="d-flex align-items-center gap-2 mt-2 d-print-none">
+                        <div className="form-check form-switch mb-0">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="completeSwitch"
+                                checked={isCompleted}
+                                onChange={(e) => setCompleted(e.target.checked)}
+                            />
+                            <label
+                                className="form-check-label"
+                                htmlFor="completeSwitch"
+                            >
+                                {t("completed")}
+                            </label>
                         </div>
 
-                        {detailLoading && (
-                            <span className="ms-2 small text-muted d-flex align-items-center gap-2">
-                                <span
-                                    className="spinner-border spinner-border-sm"
-                                    role="status"
-                                    aria-hidden="true"
-                                ></span>
-                                <span>{t("detailLoading")}</span>
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                {/* Second line: Terminé + Modifier + Imprimer, LEFT aligned under the header */}
-                <div className="d-flex align-items-center gap-2 mt-2 d-print-none">
-                    <div className="form-check form-switch mb-0">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="completeSwitch"
-                            checked={isCompleted}
-                            onChange={(e) => setCompleted(e.target.checked)}
-                        />
-                        <label
-                            className="form-check-label"
-                            htmlFor="completeSwitch"
+                        <Link
+                            to={`/liste-epicerie/edit/${liste.id}`}
+                            className={`btn btn-outline-primary ${isCompleted ? "disabled" : ""
+                                }`}
                         >
-                            {t("completed")}
-                        </label>
+                            {t("edit")}
+                        </Link>
+
+                        <button
+                            className="btn btn-outline-secondary"
+                            onClick={() => window.print()}
+                        >
+                            {t("print")}
+                        </button>
                     </div>
 
-                    <Link
-                        to={`/liste-epicerie/edit/${liste.id}`}
-                        className={`btn btn-outline-primary ${isCompleted ? "disabled" : ""
-                            }`}
-                    >
-                        {t("edit")}
-                    </Link>
-
-                    <button
-                        className="btn btn-outline-secondary"
-                        onClick={() => window.print()}
-                    >
-                        {t("print")}
-                    </button>
+                    {/* Summary bar */}
+                    <div className="text-muted small mt-3 mb-0 d-print-none">
+                        <span className="me-3">
+                            {t("summary.rows", { count: rows.length })}
+                        </span>
+                        <span className="me-3">
+                            {t("summary.totalQty", { count: totalQty })}
+                        </span>
+                        <span className="me-3">
+                            {t("summary.favorites", {
+                                count: favoritesCount,
+                            })}
+                        </span>
+                        <span>
+                            {t("summary.onSale", { count: specialsCount })}
+                        </span>
+                    </div>
                 </div>
-            </div>
-
-            {/* Summary bar – comes AFTER the buttons, like demo */}
-            <div className="text-muted small mb-3 d-print-none">
-                <span className="me-3">
-                    {t("summary.rows", { count: rows.length })}
-                </span>
-                <span className="me-3">
-                    {t("summary.totalQty", { count: totalQty })}
-                </span>
-                <span className="me-3">
-                    {t("summary.favorites", { count: favoritesCount })}
-                </span>
-                <span>{t("summary.onSale", { count: specialsCount })}</span>
             </div>
 
             {/* Minimal print metadata */}
@@ -445,170 +451,191 @@ const ListeEpicerieView: React.FC = () => {
             </div>
 
             {rows.length === 0 ? (
-                <div className="border rounded-3 p-4 text-center bg-light">
-                    {t("empty")}
+                <div className="card card--tinted shadow-sm text-center">
+                    <div className="card-body py-4">
+                        {t("empty")}
+                    </div>
                 </div>
             ) : (
                 <>
                     {/* Desktop / print table */}
                     <div className="d-none d-xl-block d-print-block">
-                        <div className="table-responsive">
-                            <table className="table table-sm align-middle">
-                                <thead className="table-light">
-                                    <tr>
-                                        <th className="text-center liste-view-col-done">
-                                            {t("table.done")}
-                                        </th>
-                                        <th className="liste-view-col-product">
-                                            {t("table.product")}
-                                        </th>
-                                        <th>{t("table.type")}</th>
-                                        <th>{t("table.store")}</th>
-                                        <th>{t("table.weight")}</th>
-                                        <th className="text-end">
-                                            {t("table.unitPrice")}
-                                        </th>
-                                        <th className="text-end liste-view-col-qty">
-                                            {t("table.quantity")}
-                                        </th>
-                                        <th className="text-end">
-                                            {t("table.subtotal")}
-                                        </th>
-                                        <th className="text-center">
-                                            {t("table.special")}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {groupedByStore.map(
-                                        ([storeName, storeRows]) => (
-                                            <React.Fragment key={storeName}>
-                                                <tr className="table-group-divider bg-light">
-                                                    <td
-                                                        colSpan={9}
-                                                        className="fw-semibold"
-                                                    >
-                                                        {storeName}
-                                                    </td>
-                                                </tr>
-                                                {storeRows.map((r) => (
-                                                    <tr key={r.key}>
-                                                        <td className="text-center liste-view-check-cell">
-                                                            <input
-                                                                className="form-check-input d-print-none liste-view-check-input"
-                                                                type="checkbox"
-                                                                checked={
-                                                                    r.checked
-                                                                }
-                                                                disabled={
-                                                                    isCompleted ||
-                                                                    r.id == null
-                                                                }
-                                                                onChange={(
-                                                                    e
-                                                                ) =>
-                                                                    setItemChecked(
-                                                                        r.id,
-                                                                        e.target
-                                                                            .checked
-                                                                    )
-                                                                }
-                                                                aria-label={t(
-                                                                    "aria.markAsDone",
-                                                                    {
-                                                                        name: r.name,
-                                                                    }
-                                                                )}
-                                                            />
-                                                            <div
-                                                                className={`liste-view-check-box ${r.checked
-                                                                        ? "liste-view-check-box--checked"
-                                                                        : ""
-                                                                    }`}
-                                                            >
-                                                                {r.checked
-                                                                    ? "✓"
-                                                                    : ""}
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <strong
-                                                                className={
-                                                                    r.checked
-                                                                        ? "text-decoration-line-through"
-                                                                        : ""
-                                                                }
-                                                            >
-                                                                {r.name}
-                                                            </strong>{" "}
-                                                            {r.favorite && (
-                                                                <span className="badge bg-warning text-dark align-middle">
-                                                                    ★{" "}
-                                                                    {t(
-                                                                        "badges.favorite"
-                                                                    )}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            <small className="text-muted">
-                                                                {r.type || "—"}
-                                                            </small>
-                                                        </td>
-                                                        <td>
-                                                            {r.store || "—"}
-                                                        </td>
-                                                        <td>{r.weight}</td>
-                                                        <td className="text-end">
-                                                            {fmtMoney(
-                                                                r.unitPrice ??
-                                                                undefined
-                                                            )}
-                                                        </td>
-                                                        <td className="text-end">
-                                                            {r.qty}
-                                                        </td>
-                                                        <td className="text-end">
-                                                            {fmtMoney(
-                                                                r.subtotal ??
-                                                                undefined
-                                                            )}
-                                                        </td>
-                                                        <td className="text-center">
-                                                            {r.special ? (
-                                                                <span className="badge bg-success">
-                                                                    {t(
-                                                                        "common.yes"
-                                                                    )}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="badge bg-secondary">
-                                                                    {t(
-                                                                        "common.no"
-                                                                    )}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </React.Fragment>
-                                        )
-                                    )}
-                                </tbody>
-                                    {anyPrice && (
-                                        <tfoot>
-                                            <tr className="liste-total-row">
-                                                <th colSpan={7} className="text-end">
-                                                    {t("table.total")}
+                        <div className="card card--tinted shadow-sm">
+                            <div className="card-body">
+                                <div className="table-responsive">
+                                    <table className="table table-sm align-middle">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th className="text-center liste-view-col-done">
+                                                    {t("table.done")}
+                                                </th>
+                                                <th className="liste-view-col-product">
+                                                    {t("table.product")}
+                                                </th>
+                                                <th>{t("table.type")}</th>
+                                                <th>{t("table.store")}</th>
+                                                <th>{t("table.weight")}</th>
+                                                <th className="text-end">
+                                                    {t("table.unitPrice")}
+                                                </th>
+                                                <th className="text-end liste-view-col-qty">
+                                                    {t("table.quantity")}
                                                 </th>
                                                 <th className="text-end">
-                                                    {fmtMoney(totalCost)}
+                                                    {t("table.subtotal")}
                                                 </th>
-                                                <th></th>
+                                                <th className="text-center">
+                                                    {t("table.special")}
+                                                </th>
                                             </tr>
-                                        </tfoot>
-                                    )}
-                            </table>
+                                        </thead>
+                                        <tbody>
+                                            {groupedByStore.map(
+                                                ([storeName, storeRows]) => (
+                                                    <React.Fragment
+                                                        key={storeName}
+                                                    >
+                                                        <tr className="table-group-divider bg-light">
+                                                            <td
+                                                                colSpan={9}
+                                                                className="fw-semibold"
+                                                            >
+                                                                {storeName}
+                                                            </td>
+                                                        </tr>
+                                                        {storeRows.map((r) => (
+                                                            <tr key={r.key}>
+                                                                <td className="text-center liste-view-check-cell">
+                                                                    <input
+                                                                        className="form-check-input d-print-none liste-view-check-input"
+                                                                        type="checkbox"
+                                                                        checked={
+                                                                            r.checked
+                                                                        }
+                                                                        disabled={
+                                                                            isCompleted ||
+                                                                            r.id ==
+                                                                            null
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            setItemChecked(
+                                                                                r.id,
+                                                                                e
+                                                                                    .target
+                                                                                    .checked
+                                                                            )
+                                                                        }
+                                                                        aria-label={t(
+                                                                            "aria.markAsDone",
+                                                                            {
+                                                                                name: r.name,
+                                                                            }
+                                                                        )}
+                                                                    />
+                                                                    <div
+                                                                        className={`liste-view-check-box ${r.checked
+                                                                                ? "liste-view-check-box--checked"
+                                                                                : ""
+                                                                            }`}
+                                                                    >
+                                                                        {r.checked
+                                                                            ? "✓"
+                                                                            : ""}
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <strong
+                                                                        className={
+                                                                            r.checked
+                                                                                ? "text-decoration-line-through"
+                                                                                : ""
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            r.name
+                                                                        }
+                                                                    </strong>{" "}
+                                                                    {r.favorite && (
+                                                                        <span className="badge bg-warning text-dark align-middle">
+                                                                            ★{" "}
+                                                                            {t(
+                                                                                "badges.favorite"
+                                                                            )}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td>
+                                                                    <small className="text-muted">
+                                                                        {r.type ||
+                                                                            "—"}
+                                                                    </small>
+                                                                </td>
+                                                                <td>
+                                                                    {r.store ||
+                                                                        "—"}
+                                                                </td>
+                                                                <td>
+                                                                    {
+                                                                        r.weight
+                                                                    }
+                                                                </td>
+                                                                <td className="text-end">
+                                                                    {fmtMoney(
+                                                                        r.unitPrice ??
+                                                                        undefined
+                                                                    )}
+                                                                </td>
+                                                                <td className="text-end">
+                                                                    {r.qty}
+                                                                </td>
+                                                                <td className="text-end">
+                                                                    {fmtMoney(
+                                                                        r.subtotal ??
+                                                                        undefined
+                                                                    )}
+                                                                </td>
+                                                                <td className="text-center">
+                                                                    {r.special ? (
+                                                                        <span className="badge bg-success">
+                                                                            {t(
+                                                                                "common.yes"
+                                                                            )}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="badge bg-secondary">
+                                                                            {t(
+                                                                                "common.no"
+                                                                            )}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </React.Fragment>
+                                                )
+                                            )}
+                                        </tbody>
+                                        {anyPrice && (
+                                            <tfoot>
+                                                <tr className="liste-total-row">
+                                                    <th
+                                                        colSpan={7}
+                                                        className="text-end"
+                                                    >
+                                                        {t("table.total")}
+                                                    </th>
+                                                    <th className="text-end">
+                                                        {fmtMoney(totalCost)}
+                                                    </th>
+                                                    <th></th>
+                                                </tr>
+                                            </tfoot>
+                                        )}
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -617,7 +644,7 @@ const ListeEpicerieView: React.FC = () => {
                         <div className="row g-2">
                             {rows.map((r) => (
                                 <div className="col-12" key={r.key}>
-                                    <div className="card">
+                                    <div className="card card--tinted shadow-sm">
                                         <div className="card-body">
                                             <div className="d-flex justify-content-between">
                                                 <div className="d-flex align-items-start">
@@ -626,7 +653,9 @@ const ListeEpicerieView: React.FC = () => {
                                                             className="form-check-input"
                                                             type="checkbox"
                                                             id={`chk-${r.key}`}
-                                                            checked={r.checked}
+                                                            checked={
+                                                                r.checked
+                                                            }
                                                             disabled={
                                                                 isCompleted ||
                                                                 r.id == null

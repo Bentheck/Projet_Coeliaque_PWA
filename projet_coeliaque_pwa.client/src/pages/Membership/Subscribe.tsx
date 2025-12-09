@@ -1,5 +1,4 @@
-﻿// Subscribe.tsx
-import React from "react";
+﻿import React from "react";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -16,7 +15,8 @@ const Subscribe: React.FC = () => {
     const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine);
 
     // Dev-only: show the "daily test" button on localhost
-    const isLocal = typeof window !== "undefined" && window.location.hostname === "localhost";
+    const isLocal =
+        typeof window !== "undefined" && window.location.hostname === "localhost";
 
     React.useEffect(() => {
         const on = () => setIsOnline(true);
@@ -83,34 +83,52 @@ const Subscribe: React.FC = () => {
 
     return (
         <div className="container py-4">
-            <h1>{t("title")}</h1>
+            <div className="card card--accent shadow-sm border-0">
+                <div className="card-body">
+                    <h1 className="h4 mb-3">{t("title")}</h1>
 
-            {!isOnline && <div className="alert alert-warning my-3">{t("offlineBanner")}</div>}
+                    {!isOnline && (
+                        <div className="card card--tinted border-0 mb-3">
+                            <div className="card-body py-2">
+                                <div className="d-flex align-items-center gap-2">
+                                    <i className="bi bi-wifi-off" aria-hidden="true" />
+                                    <span>{t("offlineBanner")}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-            <div className="d-flex gap-2">
-                <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={loading || !isOnline}
-                    onClick={() => startCheckout(false)}
-                >
-                    {loading ? t("buttons.loading") : t("buttons.primary")}
-                </button>
+                    <p className="text-muted mb-3">
+                        {t("intro") ?? "" /* optional extra description key */}
+                    </p>
 
-                {isLocal && (
-                    <button
-                        type="button"
-                        className="btn btn-outline-secondary"
-                        disabled={loading || !isOnline}
-                        onClick={() => startCheckout(true)}
-                    >
-                        {loading ? t("buttons.loading") : t("buttons.test")}
-                    </button>
-                )}
-            </div>
+                    <div className="d-flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            disabled={loading || !isOnline}
+                            onClick={() => startCheckout(false)}
+                        >
+                            {loading ? t("buttons.loading") : t("buttons.primary")}
+                        </button>
 
-            <div className="text-muted mt-3 subscribe-key-hint">
-                {t("keyLabel")} <code>{getPublishableKey().slice(0, 16)}…</code>
+                        {isLocal && (
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary"
+                                disabled={loading || !isOnline}
+                                onClick={() => startCheckout(true)}
+                            >
+                                {loading ? t("buttons.loading") : t("buttons.test")}
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="text-muted mt-3 subscribe-key-hint">
+                        {t("keyLabel")}{" "}
+                        <code>{getPublishableKey().slice(0, 16)}…</code>
+                    </div>
+                </div>
             </div>
         </div>
     );

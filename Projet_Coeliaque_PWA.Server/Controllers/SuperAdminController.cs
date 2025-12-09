@@ -237,21 +237,30 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (m == null)
             {
-                // create new row; choose sensible defaults if not provided
+                var start = input.StartDateUtc.HasValue
+                    ? EnsureUtc(input.StartDateUtc.Value)
+                    : now;
+
+                var end = input.EndDateUtc.HasValue
+                    ? EnsureUtc(input.EndDateUtc.Value)
+                    : now.AddYears(1);
+
                 m = new Membership
                 {
                     UserId = userId,
-                    StartDate = input.StartDateUtc ?? now,
-                    EndDate = input.EndDateUtc ?? now.AddYears(1),
+                    StartDate = start,
+                    EndDate = end,
                 };
                 _db.Memberships.Add(m);
             }
             else
             {
-                if (input.StartDateUtc.HasValue) m.StartDate = input.StartDateUtc.Value;
-                if (input.EndDateUtc.HasValue) m.EndDate = input.EndDateUtc.Value;
+                if (input.StartDateUtc.HasValue)
+                    m.StartDate = EnsureUtc(input.StartDateUtc.Value);
 
-                // Optional: allow toggling active state by dates
+                if (input.EndDateUtc.HasValue)
+                    m.EndDate = EnsureUtc(input.EndDateUtc.Value);
+
                 if (input.Active.HasValue)
                 {
                     if (input.Active.Value)
@@ -261,7 +270,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     }
                     else
                     {
-                        // immediately deactivate by setting EndDate in the past
                         m.EndDate = now.AddSeconds(-1);
                     }
                 }
@@ -269,6 +277,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _db.SaveChangesAsync();
             return Ok(new MembershipDto(userId, m.StartDate, m.EndDate, m.IsActive));
+        }
+
+        private static DateTime EnsureUtc(DateTime dt)
+        {
+            // Do NOT convert, just mark as UTC – the values are already “UTC” semantically
+            return dt.Kind == DateTimeKind.Utc
+                ? dt
+                : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
         }
 
         #endregion

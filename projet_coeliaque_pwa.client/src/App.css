@@ -3,24 +3,33 @@
 /* ========================================================================= */
 
 :root {
-    /* Base – slightly darker greys */
-    --color-bg: #d1d5db; /* page background (gray-300-ish) */
-    --color-surface: #e5e7eb; /* main container / cards (gray-200) */
-    --color-surface-2: #f3f4f6; /* secondary surfaces / headers (gray-100) */
-
-    --color-text: #111827;
+    /* BACKGROUNDS AND SURFACES */
+    --color-bg: #f0f7ff; /* full-page soft blue */
+    --color-surface: #ffffff; /* clean white cards */
+    --color-surface-2: #e8f2ff; /* pale blue surfaces: headers, inputs */
+    --color-surface-3: #dbe9ff; /* stronger tint for sections */
+    /* TEXT */
+    --color-text: #0b1120;
     --color-text-muted: #4b5563;
-    --color-border: #cbd5e1;
-    --color-hover: #e2e8f0;
-    /* Primary / brand */
-    --color-primary: #1b6ec2;
-    --color-primary-border: #1861ac;
+    /* BORDERS + HOVER */
+    --color-border: #c3d2e8; /* blue-tinted border */
+    --color-hover: #e0edff; /* hover with blue */
+    /* PRIMARY BLUE */
+    --color-primary: #0b6acb;
+    --color-primary-border: #084a96;
     --color-primary-text: #ffffff;
-    /* Shadows */
-    --shadow-card: 0 2px 8px rgba(0,0,0,0.10);
-    --shadow-elevated: 0 2px 16px rgba(0,0,0,0.12);
-    /* Table header */
-    --color-table-head: #e5e7eb;
+    /* SOFT PRIMARY VARIANTS */
+    --color-primary-soft: #bfdcff;
+    --color-primary-soft-alt: #93c5fd;
+    /* MINT ACCENTS */
+    --color-accent-mint: #0ffcbe;
+    --color-accent-mint-soft: rgba(15, 252, 190, 0.25);
+    --color-accent-mint-border: rgba(15, 252, 190, 0.7);
+    /* SHADOWS */
+    --shadow-card: 0 4px 14px rgba(15, 23, 42, 0.12);
+    --shadow-elevated: 0 8px 24px rgba(15, 23, 42, 0.20);
+    /* TABLE HEADER DEFAULT */
+    --color-table-head: var(--color-surface-3);
 }
 
 /* Dark mode overrides */
@@ -44,7 +53,6 @@ html[data-theme="dark"] {
 /* GLOBAL / BASE                                                             */
 /* ========================================================================= */
 
-/* Root sizing / flex layout */
 html,
 body,
 #root {
@@ -53,7 +61,7 @@ body,
 }
 
 body {
-    margin: 0; /* important to avoid extra space */
+    margin: 0;
     background: var(--color-bg);
     color: var(--color-text);
 }
@@ -77,11 +85,24 @@ body {
     color: var(--color-text);
 }
 
-/* Links */
+/* Brand – keep it on one line by default */
 a.navbar-brand {
-    white-space: normal;
-    text-align: center;
-    word-break: break-all;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    font-size: 1.15rem;
+    color: var(--color-text) !important;
+    white-space: nowrap;
+    word-break: normal;
+    text-align: left;
+}
+
+/* On very small screens, allow wrapping on words */
+@media (max-width: 576px) {
+    a.navbar-brand {
+        white-space: normal;
+        word-break: break-word;
+        text-align: center;
+    }
 }
 
 a {
@@ -90,15 +111,29 @@ a {
 
     a:hover,
     a:focus {
-        color: var(--color-primary);
+        color: var(--color-primary-border);
     }
 
-/* Text muted */
+.text-primary {
+    color: var(--color-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary-border) !important;
+    color: var(--color-primary-text) !important;
+}
+
+.badge.bg-primary {
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary-border) !important;
+    color: var(--color-primary-text) !important;
+}
+
 .text-muted {
     color: var(--color-text-muted) !important;
 }
 
-/* Borders helpers */
 .border-top {
     border-top: 1px solid var(--color-border);
 }
@@ -107,7 +142,6 @@ a {
     border-bottom: 1px solid var(--color-border);
 }
 
-/* Shadow helper */
 .box-shadow {
     box-shadow: 0 .25rem .75rem rgba(0,0,0,.05);
 }
@@ -117,7 +151,6 @@ button.accept-policy {
     line-height: inherit;
 }
 
-/* Generic Bootstrap bg utilities aligned with theme */
 .bg-white,
 .bg-light {
     background-color: var(--color-surface) !important;
@@ -129,12 +162,97 @@ button.accept-policy {
 /* ========================================================================= */
 
 .navbar {
-    background: var(--color-surface);
-    color: var(--color-text);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    background: transparent;
+    border: none;
+    box-shadow: none;
     font-size: 1.07rem;
+    padding: 0;
+    margin: 0;
 }
 
+/* Pill wrapper */
+.navbar-inner {
+    background: #ffffff;
+    color: var(--color-text);
+    display: block;
+    transform-origin: center center;
+    transform: scale(1);
+    opacity: 1;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: border-radius 0.25s ease, margin 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease, max-width 0.25s ease, width 0.25s ease, transform 0.25s ease, opacity 0.25s ease, backdrop-filter 0.25s ease, background-color 0.25s ease;
+}
+
+    /* Inner Bootstrap container: flex row that can wrap by default */
+    .navbar-inner > .container {
+        width: 100%;
+        max-width: 100%;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap; /* “mobile” layout by default */
+    }
+
+/* Top state */
+.navbar--top .navbar-inner {
+    border-radius: 0;
+    margin: 0;
+    padding: 0.5rem 1rem;
+    box-shadow: none;
+    border-bottom: 1px solid var(--color-border);
+    max-width: 100%;
+    width: 100%;
+    background: #ffffff;
+    transform: scale(1);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* Floating state (scrolled) – pill always at least as wide as content */
+.navbar--floating .navbar-inner {
+    border-radius: 1rem;
+    margin: 0.75rem auto 1.5rem;
+    padding: 0.5rem 1.25rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
+    border: 1px solid var(--color-border);
+    width: 100%;
+    max-width: 100%; /* no cap by default */
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    transform: scale(0.97);
+    opacity: 1;
+}
+
+/* Desktop “monitor” layout: from 1440px and up */
+@media (min-width: 1440px) {
+    .navbar--floating .navbar-inner {
+        /* shrink visually, but still big enough for one-line content */
+        width: calc(100% - 4rem); /* ~2rem margin each side */
+        max-width: none;
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+
+    .navbar-inner > .container {
+        flex-wrap: nowrap; /* keep everything on one line */
+        justify-content: flex-start;
+    }
+
+    .navbar-inner .navbar-brand {
+        margin-right: 1.5rem; /* gap between brand and “Calculateur” */
+    }
+
+    .navbar-inner .navbar-collapse {
+        flex: 1 1 auto;
+    }
+}
+
+/* Brand + links */
 .navbar-brand {
     font-weight: bold;
     letter-spacing: 0.5px;
@@ -155,9 +273,10 @@ button.accept-policy {
 .navbar .dropdown-menu,
 .navbar .dropdown-menu.show {
     border: 1px solid var(--color-border);
-    background-color: var(--color-surface) !important;
+    background-color: #ffffff !important;
     color: var(--color-text) !important;
     box-shadow: var(--shadow-elevated);
+    border-radius: 0.75rem;
 }
 
 /* Dropdown items */
@@ -171,52 +290,66 @@ button.accept-policy {
         color: var(--color-text) !important;
     }
 
-/* Generic dropdown fallback (non-navbar) */
+/* Fallback */
 .dropdown-item:active,
 .dropdown-item:focus {
     background-color: var(--color-hover);
     color: var(--color-text);
 }
 
-/* Dark-mode specific touch-ups for navbar */
-html[data-theme="dark"] .navbar {
+/* ========================================================================= */
+/* DARK MODE NAVBAR                                                          */
+/* ========================================================================= */
+
+html[data-theme="dark"] .navbar-inner {
     background: #1e293b !important;
     color: #e5e7eb;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.6);
 }
 
-    html[data-theme="dark"] .navbar .navbar-brand,
-    html[data-theme="dark"] .navbar .nav-link {
-        color: #e5e7eb !important;
+html[data-theme="dark"] .navbar--top .navbar-inner {
+    border-bottom: 1px solid #334155;
+    box-shadow: none;
+}
+
+html[data-theme="dark"] .navbar--floating .navbar-inner {
+    border: 1px solid #334155;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+html[data-theme="dark"] .navbar .navbar-brand,
+html[data-theme="dark"] .navbar .nav-link {
+    color: #e5e7eb !important;
+}
+
+    html[data-theme="dark"] .navbar .nav-link:hover,
+    html[data-theme="dark"] .navbar .nav-link:focus {
+        color: #facc15 !important;
     }
 
-        html[data-theme="dark"] .navbar .nav-link:hover,
-        html[data-theme="dark"] .navbar .nav-link:focus {
-            color: #facc15 !important;
-        }
+html[data-theme="dark"] .navbar .dropdown-menu,
+html[data-theme="dark"] .navbar .dropdown-menu.show {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+    color: #e5e7eb !important;
+}
 
-    html[data-theme="dark"] .navbar .dropdown-menu,
-    html[data-theme="dark"] .navbar .dropdown-menu.show {
-        background-color: #0f172a !important;
-        border-color: #1e293b !important;
-        color: #e5e7eb !important;
+html[data-theme="dark"] .navbar .dropdown-item {
+    color: #e5e7eb !important;
+}
+
+    html[data-theme="dark"] .navbar .dropdown-item:hover,
+    html[data-theme="dark"] .navbar .dropdown-item:focus {
+        background: #334155 !important;
+        color: #ffffff !important;
     }
-
-    html[data-theme="dark"] .navbar .dropdown-item {
-        color: #e5e7eb !important;
-    }
-
-        html[data-theme="dark"] .navbar .dropdown-item:hover,
-        html[data-theme="dark"] .navbar .dropdown-item:focus {
-            background: #334155 !important;
-            color: #ffffff !important;
-        }
 
 /* ========================================================================= */
 /* MAIN CONTAINER + FOOTER                                                   */
 /* ========================================================================= */
 
-/* Wrapper that stretches from bottom of navbar to bottom of viewport */
 .app-shell {
     flex: 1 0 auto;
     display: flex;
@@ -232,12 +365,11 @@ main.container {
 
 footer {
     font-size: 0.96rem;
-    opacity: 0.8;
-    background: var(--color-bg);
+    opacity: 0.9;
+    background: var(--color-surface-2);
     border-top: 1px solid var(--color-border);
     color: var(--color-text-muted);
 }
-
 
 /* ========================================================================= */
 /* CARDS / TABLES / LIST GROUPS                                              */
@@ -247,12 +379,26 @@ footer {
 .rounded-4 {
     border-radius: 1rem !important;
     box-shadow: var(--shadow-card) !important;
-    background: var(--color-surface);
+    background: var(--color-surface-2);
     color: var(--color-text);
-    border: 1px solid rgba(148,163,184,0.25);
+    border: 1px solid var(--color-border);
 }
 
-/* Dark mode card tuning (slightly more contrast) */
+.card--tinted {
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+}
+
+.card--accent {
+    background: var(--color-primary-soft);
+    border-color: var(--color-primary-border);
+}
+
+.card--mint {
+    background: var(--color-accent-mint-soft);
+    border-color: var(--color-accent-mint-border);
+}
+
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .rounded-4 {
     background: #1e293b !important;
@@ -274,7 +420,6 @@ html[data-theme="dark"] .rounded-4 {
     border-color: var(--color-border);
 }
 
-/* Dark mode – table cells */
 html[data-theme="dark"] .table thead th {
     background: #1e293b !important;
     color: #e5e7eb !important;
@@ -311,14 +456,19 @@ html[data-theme="dark"] .list-group-item {
 /* BUTTONS / INPUTS / MODALS                                                 */
 /* ========================================================================= */
 
-/* Primary button */
 .btn-primary {
     color: var(--color-primary-text);
     background-color: var(--color-primary);
     border-color: var(--color-primary-border);
 }
 
-/* Alias for typo'd class "btn success" (Rapports print button) */
+    .btn-primary:hover,
+    .btn-primary:focus {
+        background-color: var(--color-primary-border);
+        border-color: #08365f;
+    }
+
+/* Alias for typo'd class "btn success" */
 .btn.success {
     color: var(--color-primary-text);
     background-color: var(--color-primary);
@@ -327,17 +477,15 @@ html[data-theme="dark"] .list-group-item {
 
     .btn.success:hover,
     .btn.success:focus {
-        background-color: #15579e;
-        border-color: #144b87;
+        background-color: var(--color-primary-border);
+        border-color: #08365f;
     }
 
-/* Dark mode button alias */
 html[data-theme="dark"] .btn.success {
     background-color: #2563eb !important;
     border-color: #1d4ed8 !important;
 }
 
-/* Nav pills */
 .nav-pills .nav-link.active,
 .nav-pills .show > .nav-link {
     color: #fff;
@@ -345,14 +493,12 @@ html[data-theme="dark"] .btn.success {
     border-color: var(--color-primary-border);
 }
 
-/* Outline buttons */
 .btn-outline-primary,
 .btn-outline-danger,
 .btn-outline-secondary {
     border-width: 2px;
 }
 
-/* Dark mode – buttons */
 html[data-theme="dark"] .btn-primary {
     background-color: #2563eb !important;
     border-color: #1d4ed8 !important;
@@ -371,11 +517,11 @@ html[data-theme="dark"] .btn-outline-danger {
         background-color: #1e293b !important;
     }
 
-/* Inputs / selects / textareas */
+/* Inputs */
 input,
 select,
 textarea {
-    background: var(--color-surface);
+    background: var(--color-surface-2);
     color: var(--color-text);
     border-color: var(--color-border);
 }
@@ -384,10 +530,9 @@ textarea {
     select:focus,
     textarea:focus {
         border-color: var(--color-primary);
-        box-shadow: 0 0 0 2px rgba(59,130,246,0.3);
+        box-shadow: 0 0 0 2px rgba(16,110,190,0.35);
     }
 
-/* Dark mode fields */
 html[data-theme="dark"] input,
 html[data-theme="dark"] select,
 html[data-theme="dark"] textarea {
@@ -427,7 +572,6 @@ html[data-theme="dark"] .modal-footer {
 /* ========================================================================= */
 
 @media print {
-    /* Only print #print-section */
     body * {
         visibility: hidden !important;
     }
@@ -453,7 +597,6 @@ html[data-theme="dark"] .modal-footer {
         display: none !important;
     }
 
-    /* Light palette even if app is in dark mode */
     :root,
     html[data-theme="dark"] {
         --color-bg: #ffffff;
@@ -463,8 +606,8 @@ html[data-theme="dark"] .modal-footer {
         --color-text-muted: #6b7280;
         --color-border: #e5e7eb;
         --color-hover: #e2e8f0;
-        --color-primary: #1b6ec2;
-        --color-primary-border: #1861ac;
+        --color-primary: #106ebe;
+        --color-primary-border: #0b4f8a;
         --color-primary-text: #ffffff;
         --color-table-head: #f6f8fa;
     }
@@ -473,7 +616,6 @@ html[data-theme="dark"] .modal-footer {
         color: #6b7280 !important;
     }
 
-    /* Ensure tables / report cells print on white */
     #print-section .comparatif-table th,
     #print-section .comparatif-table td {
         background: #ffffff !important;
@@ -481,7 +623,6 @@ html[data-theme="dark"] .modal-footer {
         border-color: #d1d5db !important;
     }
 
-    /* Stripe receipt card also prints light if present */
     #print-section .subscription-receipt-card {
         background: #ffffff !important;
         border-color: #d1d5db !important;
@@ -495,7 +636,7 @@ html[data-theme="dark"] .modal-footer {
 }
 
 /* ========================================================================= */
-/* PAGE-SPECIFIC STYLES (KEEPING YOUR EXISTING LAYOUT)                       */
+/* PAGE-SPECIFIC STYLES (unchanged from your version)                        */
 /* ========================================================================= */
 
 /* --- Comparatif table --- */
@@ -518,29 +659,29 @@ html[data-theme="dark"] .modal-footer {
     }
 
 .comparatif-header-sg {
-    background: #b53e3e;
+    background: var(--color-primary);
     color: #ffffff;
     font-weight: bold;
     font-size: 1.08em;
 }
 
 .comparatif-th-sg {
-    background: #fbe5e5;
+    background: var(--color-primary-soft);
 }
 
 .comparatif-header-ag {
-    background: #919191;
+    background: var(--color-primary-border);
     color: #ffffff;
     font-weight: bold;
     font-size: 1.08em;
 }
 
 .comparatif-th-ag {
-    background: #f4f4f4;
+    background: var(--color-primary-soft-alt);
 }
 
 .comparatif-header-total {
-    background: #d8eac6;
+    background: var(--color-accent-mint-soft);
 }
 
 .double-divider {
@@ -718,6 +859,7 @@ html[data-theme="dark"] .modal-footer {
     font-size: 0.86rem;
 }
 
+/* Badge payé → menthe calme */
 .subscription-badge-paid {
     padding: 0.3rem 0.8rem;
     border-radius: 999px;
@@ -725,13 +867,10 @@ html[data-theme="dark"] .modal-footer {
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    background-color: rgba(34, 197, 94, 0.12);
-    color: #16a34a;
-    border: 1px solid rgba(22, 163, 74, 0.4);
+    background-color: var(--color-accent-mint-soft);
+    color: #047f63;
+    border: 1px solid var(--color-accent-mint-border);
 }
-
-/* For non-paid statuses, the same badge will still show but color is fine.
-   If you want different colors, you can add a modifier class later. */
 
 .subscription-receipt-body {
     border-top: 1px dashed var(--color-border);
@@ -779,7 +918,6 @@ html[data-theme="dark"] .subscription-transaction-id {
 /* ========================================================================= */
 
 @media print {
-    /* Ensure light palette even if app is in dark mode */
     :root {
         --color-bg: #ffffff;
         --color-surface: #ffffff;
@@ -808,24 +946,138 @@ html[data-theme="dark"] .subscription-transaction-id {
 /* --- Liste Épicerie (edit/view/index) --- */
 
 /* ===========================================================
-   FIX BOOTSTRAP SWITCHES IN DARK MODE
+   Liste Épicerie EDIT – highlight / theme integration
    =========================================================== */
 
+.liste-edit-page {
+    /* nothing structural here yet, just a hook for scoping */
+}
+
+/* 1) Estimated total badge – mint & soft primary */
+.liste-badge-total {
+    background: var(--color-accent-mint-soft);
+    border: 1px solid var(--color-accent-mint-border);
+    color: #047f63;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+}
+
+/* 2) Card for quick free-item creation – blue + mint outline */
+.card--accent-outline {
+    background: var(--color-primary-soft);
+    border: 1px solid var(--color-primary-border);
+    box-shadow: 0 0 0 1px var(--color-accent-mint-border);
+}
+
+/* 3) Selects for types – make them look “active” */
+.liste-edit-page .liste-edit-select-narrow {
+    background-color: var(--color-surface-2);
+    border-color: var(--color-primary-border);
+}
+
+/* 4) Filters: "Hide on sale" toggles – highlight when active */
+.liste-filter-toggle {
+    padding: 0.1rem 0.3rem;
+    border-radius: 999px;
+}
+
+    .liste-filter-toggle .form-check-input {
+        margin-right: 0.35rem;
+    }
+
+        .liste-filter-toggle .form-check-input:checked + .form-check-label {
+            background-color: var(--color-primary-soft);
+            color: var(--color-primary-border);
+            border-radius: 999px;
+            padding: 0.1rem 0.65rem;
+        }
+
+/* 5) Table headers and row hover – use soft blue + hover color */
+.liste-edit-page .table thead th {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-border);
+}
+
+.liste-edit-page table.table tbody tr:hover {
+    background-color: var(--color-hover);
+}
+
+/* 6) Row-level highlights
+   - onsale rows → mint background
+   - selected free item (already in list) → stronger border/left bar
+*/
+.liste-row--onsale {
+    background-color: var(--color-accent-mint-soft);
+}
+
+.liste-row--selected {
+    box-shadow: inset 3px 0 0 var(--color-primary-border);
+}
+
+/* Keep hover readable on special rows */
+.liste-edit-page .liste-row--onsale:hover {
+    background-color: var(--color-accent-mint-soft);
+}
+
+/* 7) Buttons in Liste-Épicerie edit – make outline buttons colorful */
+.liste-edit-page .btn-outline-primary {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-primary-border);
+    color: var(--color-primary-border);
+}
+
+    .liste-edit-page .btn-outline-primary:hover {
+        background-color: var(--color-primary);
+        border-color: var(--color-primary-border);
+        color: var(--color-primary-text);
+    }
+
+.liste-edit-page .btn-outline-success {
+    background-color: var(--color-accent-mint-soft);
+    border-color: var(--color-accent-mint-border);
+    color: #047f63;
+}
+
+    .liste-edit-page .btn-outline-success:hover {
+        background-color: var(--color-accent-mint);
+        border-color: var(--color-accent-mint-border);
+        color: #022c22;
+    }
+
+.liste-edit-page .btn-outline-secondary {
+    background-color: var(--color-surface-2);
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+    .liste-edit-page .btn-outline-secondary:hover {
+        background-color: var(--color-hover);
+    }
+
+/* 8) Input focus – use primary + soft blue background */
+.liste-edit-page input.form-control:focus,
+.liste-edit-page select.form-select:focus {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(16, 110, 190, 0.25);
+}
+
+/* Switches in dark mode */
 html[data-theme="dark"] .form-switch .form-check-input {
-    background-color: #0f172a !important; /* dark background */
-    border-color: #475569 !important; /* muted border */
+    background-color: #0f172a !important;
+    border-color: #475569 !important;
     box-shadow: inset 0 0 0 2px #475569 !important;
 }
 
     html[data-theme="dark"] .form-switch .form-check-input:checked {
-        background-color: #2563eb !important; /* blue when ON */
+        background-color: #2563eb !important;
         border-color: #1d4ed8 !important;
         box-shadow: inset 0 0 0 2px #1d4ed8 !important;
     }
 
-    /* Make the knob visible */
     html[data-theme="dark"] .form-switch .form-check-input::before {
-        background-color: #e5e7eb !important; /* knob color */
+        background-color: #e5e7eb !important;
     }
 
 .liste-edit-header-name-input {
@@ -907,7 +1159,7 @@ html[data-theme="dark"] .form-switch .form-check-input {
 
 /* Dark mode override */
 html[data-theme="dark"] .liste-search-addon {
-    background-color: #020617; /* same tone as inputs in dark */
+    background-color: #020617;
     color: #e5e7eb;
     border-color: #334155;
 }
@@ -949,8 +1201,9 @@ html[data-theme="dark"] .liste-total-row td {
     pointer-events: none;
 }
 
+/* Checked → menthe douce */
 .liste-view-check-box--checked {
-    background-color: #b6f2b3;
+    background-color: var(--color-accent-mint-soft);
 }
 
 /* Index page */
@@ -1020,7 +1273,7 @@ html[data-theme="dark"] .liste-total-row td {
 .facture-type-mobile__control--is-focused,
 .facture-type-modal__control--is-focused {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(59,130,246,0.3);
+    box-shadow: 0 0 0 2px rgba(16,110,190,0.35);
 }
 
 .facture-type__value-container,
@@ -1288,3 +1541,161 @@ html[data-theme="dark"] .rapport-print-modal input.form-control {
     html[data-theme="dark"] .rapport-print-modal input.form-control::placeholder {
         color: #9ca3af !important;
     }
+
+/* ========================================================================= */
+/* HIGHLIGHT UTILITIES                                                       */
+/* ========================================================================= */
+
+/* Section / card highlight – primary (blue) */
+.section-highlight-primary {
+    background: linear-gradient( 135deg, var(--color-primary-soft) 0%, #ffffff 45%, var(--color-primary-soft-alt) 100% );
+    border-radius: 1rem;
+    border: 1px solid var(--color-primary-border);
+    box-shadow: var(--shadow-card);
+}
+
+/* Section / card highlight – mint (success / positive) */
+.section-highlight-mint {
+    background: radial-gradient( circle at top left, var(--color-accent-mint-soft) 0%, #ffffff 55% );
+    border-radius: 1rem;
+    border: 1px solid var(--color-accent-mint-border);
+    box-shadow: var(--shadow-card);
+}
+
+/* Subtle top border highlight (for inside cards) */
+.highlight-bar-primary {
+    border-top: 3px solid var(--color-primary-border);
+}
+
+.highlight-bar-mint {
+    border-top: 3px solid var(--color-accent-mint-border);
+}
+
+/* Small pill / tag highlight */
+.pill-highlight-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary-border);
+    border: 1px solid var(--color-primary-border);
+}
+
+.pill-highlight-mint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background-color: var(--color-accent-mint-soft);
+    color: #047f63;
+    border: 1px solid var(--color-accent-mint-border);
+}
+
+/* Dark mode tweaks so highlights still pop */
+html[data-theme="dark"] .section-highlight-primary {
+    background: linear-gradient( 135deg, rgba(37,99,235,0.35) 0%, #020617 50%, rgba(59,130,246,0.5) 100% );
+    border-color: #1d4ed8;
+}
+
+html[data-theme="dark"] .section-highlight-mint {
+    background: radial-gradient( circle at top left, rgba(34,197,94,0.35) 0%, #020617 55% );
+    border-color: var(--color-accent-mint-border);
+}
+
+html[data-theme="dark"] .pill-highlight-primary {
+    background-color: rgba(37,99,235,0.2);
+    color: #bfdbfe;
+}
+
+html[data-theme="dark"] .pill-highlight-mint {
+    background-color: rgba(16,185,129,0.2);
+    color: #6ee7b7;
+}
+
+
+/* ===============================================
+   GLOBAL HIGHLIGHTS & ACCENTS
+   =============================================== */
+
+/* Soft blue highlight */
+.hl-soft {
+    background: var(--color-primary-soft) !important;
+}
+
+/* Hover highlight (tables, rows, cards) */
+.hl-hover:hover {
+    background: var(--color-hover) !important;
+}
+
+/* Mint accent border (selected items, on-sale, active) */
+.hl-mint-border {
+    border: 2px solid var(--color-accent-mint) !important;
+}
+
+/* Mint accent background (lighter version) */
+.hl-mint-bg {
+    background: var(--color-accent-mint-soft) !important;
+}
+
+/* Blue border applied to cards or containers */
+.hl-blue-border {
+    border: 2px solid var(--color-primary-border) !important;
+}
+
+/* Section headers */
+.section-title-accent {
+    border-left: 6px solid var(--color-primary);
+    padding-left: 10px;
+}
+
+/* Table hover */
+.table-hover tbody tr:hover {
+    background-color: var(--color-hover) !important;
+}
+
+/* Price on-sale (mint highlight) */
+.price-onsale {
+    background: var(--color-accent-mint-soft);
+    border-left: 4px solid var(--color-accent-mint);
+}
+
+/* Inputs focused */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.18rem rgba(11, 106, 203, 0.25);
+}
+
+/* Buttons upgraded with your colors */
+.btn-primary {
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary-border) !important;
+}
+
+.btn-outline-primary:hover {
+    background: var(--color-primary-soft) !important;
+    border-color: var(--color-primary-border) !important;
+}
+
+/* Mint outline button */
+.btn-mint-outline {
+    border: 2px solid var(--color-accent-mint) !important;
+    color: var(--color-accent-mint);
+}
+
+    .btn-mint-outline:hover {
+        background: var(--color-accent-mint-soft) !important;
+        color: black;
+    }
+
