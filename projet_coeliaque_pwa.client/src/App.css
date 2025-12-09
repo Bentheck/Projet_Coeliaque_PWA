@@ -8,21 +8,22 @@
     --color-surface: #ffffff; /* clean white cards */
     --color-surface-2: #e8f2ff; /* pale blue surfaces: headers, inputs */
     --color-surface-3: #dbe9ff; /* stronger tint for sections */
-    /* TEXT */
+    /* TEXT (AAA vs all backgrounds above) */
     --color-text: #0b1120;
     --color-text-muted: #4b5563;
     /* BORDERS + HOVER */
     --color-border: #c3d2e8; /* blue-tinted border */
     --color-hover: #e0edff; /* hover with blue */
-    /* PRIMARY BLUE */
-    --color-primary: #0b6acb;
-    --color-primary-border: #084a96;
+    /* PRIMARY BLUE (AAA vs white & light backgrounds) */
+    --color-primary: #084a96; /* darker blue for AAA */
+    --color-primary-border: #063264; /* even darker for AAA */
     --color-primary-text: #ffffff;
     /* SOFT PRIMARY VARIANTS */
     --color-primary-soft: #bfdcff;
     --color-primary-soft-alt: #93c5fd;
     /* MINT ACCENTS */
     --color-accent-mint: #0ffcbe;
+    /* approximate underlying solid for contrast math: #c3feee */
     --color-accent-mint-soft: rgba(15, 252, 190, 0.25);
     --color-accent-mint-border: rgba(15, 252, 190, 0.7);
     /* SHADOWS */
@@ -41,8 +42,9 @@ html[data-theme="dark"] {
     --color-text-muted: #9ca3af;
     --color-border: #1f2937;
     --color-hover: #334155;
-    --color-primary: #2563eb;
-    --color-primary-border: #1d4ed8;
+    /* Dark primary tuned for AAA vs white */
+    --color-primary: #1e40af; /* darker indigo */
+    --color-primary-border: #1d3fb5; /* slightly lighter border */
     --color-primary-text: #ffffff;
     --shadow-card: 0 2px 18px rgba(0,0,0,0.75);
     --shadow-elevated: 0 2px 24px rgba(0,0,0,0.85);
@@ -53,9 +55,7 @@ html[data-theme="dark"] {
 /* GLOBAL / BASE                                                             */
 /* ========================================================================= */
 
-html,
-body,
-#root {
+html, body, #root {
     height: 100%;
     min-height: 100vh;
 }
@@ -79,7 +79,7 @@ body {
     justify-content: center;
 }
 
-/* Body */
+/* Body (duplicate but harmless) */
 body {
     background: var(--color-bg);
     color: var(--color-text);
@@ -456,6 +456,7 @@ html[data-theme="dark"] .list-group-item {
 /* BUTTONS / INPUTS / MODALS                                                 */
 /* ========================================================================= */
 
+/* Base primary button (light) */
 .btn-primary {
     color: var(--color-primary-text);
     background-color: var(--color-primary);
@@ -481,11 +482,74 @@ html[data-theme="dark"] .list-group-item {
         border-color: #08365f;
     }
 
-html[data-theme="dark"] .btn.success {
-    background-color: #2563eb !important;
-    border-color: #1d4ed8 !important;
+/* Solid MINT button (light) */
+.btn-mint {
+    background-color: var(--color-accent-mint);
+    border-color: var(--color-accent-mint-border);
+    color: #022c22;
 }
 
+    .btn-mint:hover,
+    .btn-mint:focus {
+        background-color: #0fd9a4;
+        border-color: #0aa27d;
+        color: #022c22;
+    }
+
+    /* Active state tuned for AAA */
+    .btn-mint:active,
+    .btn-mint.active,
+    .show > .btn-mint.dropdown-toggle {
+        background-color: #0ac6ae; /* adjusted for >= 7:1 */
+        border-color: #089573;
+        color: #022c22;
+    }
+
+    /* Disabled mint – AAA text vs soft mint */
+    .btn-mint:disabled,
+    .btn-mint.disabled {
+        background-color: var(--color-accent-mint-soft);
+        border-color: var(--color-accent-mint-border);
+        color: #374151; /* darker muted text for AAA */
+    }
+
+/* Global “lift” effect for all buttons */
+.btn {
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+    .btn:hover,
+    .btn:focus-visible {
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+        transform: translateY(-1px);
+    }
+
+    .btn:active,
+    .btn.active,
+    .show > .btn.dropdown-toggle {
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.22);
+        transform: translateY(0);
+    }
+
+/* Dark mode variants – primary/“success” tuned to AAA vs white */
+html[data-theme="dark"] .btn.success {
+    background-color: #1e40af !important;
+    border-color: #1d3fb5 !important;
+}
+
+html[data-theme="dark"] .btn-primary {
+    background-color: #1e40af !important;
+    border-color: #1d3fb5 !important;
+}
+
+/* Dark mode MINT solid button – stays AAA vs text */
+html[data-theme="dark"] .btn-mint {
+    background-color: #0bbf95 !important;
+    border-color: #089573 !important;
+    color: #022c22 !important;
+}
+
+/* Outlines */
 .nav-pills .nav-link.active,
 .nav-pills .show > .nav-link {
     color: #fff;
@@ -499,11 +563,7 @@ html[data-theme="dark"] .btn.success {
     border-width: 2px;
 }
 
-html[data-theme="dark"] .btn-primary {
-    background-color: #2563eb !important;
-    border-color: #1d4ed8 !important;
-}
-
+/* Dark mode outlines */
 html[data-theme="dark"] .btn-outline-primary,
 html[data-theme="dark"] .btn-outline-secondary,
 html[data-theme="dark"] .btn-outline-danger {
@@ -544,7 +604,7 @@ html[data-theme="dark"] textarea {
     html[data-theme="dark"] input:focus,
     html[data-theme="dark"] select:focus,
     html[data-theme="dark"] textarea:focus {
-        border-color: #2563eb !important;
+        border-color: var(--color-primary) !important;
         box-shadow: 0 0 0 2px rgba(37,99,235,0.5) !important;
     }
 
@@ -636,7 +696,7 @@ html[data-theme="dark"] .modal-footer {
 }
 
 /* ========================================================================= */
-/* PAGE-SPECIFIC STYLES (unchanged from your version)                        */
+/* PAGE-SPECIFIC STYLES (Comparatif, Forum, etc.)                            */
 /* ========================================================================= */
 
 /* --- Comparatif table --- */
@@ -712,6 +772,7 @@ html[data-theme="dark"] .modal-footer {
 }
 
 /* Forum admin / avatars */
+
 .forum-admin-container {
 }
 
@@ -859,7 +920,7 @@ html[data-theme="dark"] .modal-footer {
     font-size: 0.86rem;
 }
 
-/* Badge payé → menthe calme */
+/* Badge payé → menthe calme (AAA tuned) */
 .subscription-badge-paid {
     padding: 0.3rem 0.8rem;
     border-radius: 999px;
@@ -868,7 +929,7 @@ html[data-theme="dark"] .modal-footer {
     letter-spacing: 0.05em;
     text-transform: uppercase;
     background-color: var(--color-accent-mint-soft);
-    color: #047f63;
+    color: #045e3e; /* darker teal for AAA */
     border: 1px solid var(--color-accent-mint-border);
 }
 
@@ -945,19 +1006,17 @@ html[data-theme="dark"] .subscription-transaction-id {
 
 /* --- Liste Épicerie (edit/view/index) --- */
 
-/* ===========================================================
-   Liste Épicerie EDIT – highlight / theme integration
-   =========================================================== */
+/* Liste Épicerie EDIT – highlight / theme integration */
 
 .liste-edit-page {
-    /* nothing structural here yet, just a hook for scoping */
+    /* hook for scoping */
 }
 
-/* 1) Estimated total badge – mint & soft primary */
+/* 1) Estimated total badge – mint & soft primary (AAA) */
 .liste-badge-total {
     background: var(--color-accent-mint-soft);
     border: 1px solid var(--color-accent-mint-border);
-    color: #047f63;
+    color: #045e3e; /* AAA vs soft mint */
     font-weight: 600;
     border-radius: 999px;
     padding: 0.35rem 0.9rem;
@@ -1003,10 +1062,7 @@ html[data-theme="dark"] .subscription-transaction-id {
     background-color: var(--color-hover);
 }
 
-/* 6) Row-level highlights
-   - onsale rows → mint background
-   - selected free item (already in list) → stronger border/left bar
-*/
+/* 6) Row-level highlights */
 .liste-row--onsale {
     background-color: var(--color-accent-mint-soft);
 }
@@ -1033,10 +1089,11 @@ html[data-theme="dark"] .subscription-transaction-id {
         color: var(--color-primary-text);
     }
 
+/* AAA mint outline button here too */
 .liste-edit-page .btn-outline-success {
     background-color: var(--color-accent-mint-soft);
     border-color: var(--color-accent-mint-border);
-    color: #047f63;
+    color: #045e3e; /* AAA vs soft mint */
 }
 
     .liste-edit-page .btn-outline-success:hover {
@@ -1120,6 +1177,7 @@ html[data-theme="dark"] .form-switch .form-check-input {
 }
 
 /* View page */
+
 .liste-view-col-done {
     width: 80px;
 }
@@ -1583,7 +1641,7 @@ html[data-theme="dark"] .rapport-print-modal input.form-control {
     letter-spacing: 0.04em;
     text-transform: uppercase;
     background-color: var(--color-primary-soft);
-    color: var(--color-primary-border);
+    color: var(--color-primary-border); /* AAA vs primary-soft */
     border: 1px solid var(--color-primary-border);
 }
 
@@ -1598,14 +1656,14 @@ html[data-theme="dark"] .rapport-print-modal input.form-control {
     letter-spacing: 0.04em;
     text-transform: uppercase;
     background-color: var(--color-accent-mint-soft);
-    color: #047f63;
+    color: #045e3e; /* AAA vs soft mint */
     border: 1px solid var(--color-accent-mint-border);
 }
 
 /* Dark mode tweaks so highlights still pop */
 html[data-theme="dark"] .section-highlight-primary {
     background: linear-gradient( 135deg, rgba(37,99,235,0.35) 0%, #020617 50%, rgba(59,130,246,0.5) 100% );
-    border-color: #1d4ed8;
+    border-color: #1d3fb5;
 }
 
 html[data-theme="dark"] .section-highlight-mint {
@@ -1623,10 +1681,7 @@ html[data-theme="dark"] .pill-highlight-mint {
     color: #6ee7b7;
 }
 
-
-/* ===============================================
-   GLOBAL HIGHLIGHTS & ACCENTS
-   =============================================== */
+/* GLOBAL HIGHLIGHTS & ACCENTS */
 
 /* Soft blue highlight */
 .hl-soft {
@@ -1677,7 +1732,7 @@ html[data-theme="dark"] .pill-highlight-mint {
     box-shadow: 0 0 0 0.18rem rgba(11, 106, 203, 0.25);
 }
 
-/* Buttons upgraded with your colors */
+/* Buttons upgraded with your colors (bottom overrides) */
 .btn-primary {
     background: var(--color-primary) !important;
     border-color: var(--color-primary-border) !important;
@@ -1688,14 +1743,192 @@ html[data-theme="dark"] .pill-highlight-mint {
     border-color: var(--color-primary-border) !important;
 }
 
-/* Mint outline button */
+/* Mint outline button – AAA text vs white & soft mint */
 .btn-mint-outline {
     border: 2px solid var(--color-accent-mint) !important;
-    color: var(--color-accent-mint);
+    color: #045e3e; /* AAA vs white */
 }
 
     .btn-mint-outline:hover {
         background: var(--color-accent-mint-soft) !important;
-        color: black;
+        color: #000000; /* black vs soft mint = huge contrast */
     }
+
+/* Dark mode mint outline */
+html[data-theme="dark"] .btn-mint-outline {
+    border-color: #089573 !important;
+    color: #0bbf95 !important;
+}
+
+    html[data-theme="dark"] .btn-mint-outline:hover {
+        background-color: rgba(11,191,149,0.18) !important;
+    }
+
+
+.field-help-wrapper {
+    display: inline-flex;
+    align-items: center;
+}
+
+.field-help-icon span {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border, #d1d5db);
+    font-size: 0.75rem;
+    line-height: 1.1rem;
+    text-align: center;
+}
+
+.field-help-bubble {
+    position: absolute;
+    top: 125%;
+    left: 0;
+    z-index: 10;
+    max-width: 260px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-3, #e5f0ff);
+    color: var(--color-text, #111827);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    font-size: 0.8rem;
+}
+
+/* Help bubble icon container */
+.field-help-wrapper {
+    position: relative;
+}
+
+/* Hoverable or clickable "?" icon */
+.field-help-icon span {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border, #cbd5e1);
+    background: var(--color-surface-2, #e5efff);
+    font-size: 0.75rem;
+    line-height: 1.1rem;
+    text-align: center;
+    color: var(--color-text, #0f172a);
+}
+
+/* The bubble itself */
+.field-help-bubble {
+    position: absolute;
+    z-index: 999;
+    max-width: 270px;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-3, #dbeafe);
+    color: var(--color-text, #0f172a);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    font-size: 0.8rem;
+    animation: bubbleFadeIn 0.15s ease-out;
+}
+
+/* Opens to the RIGHT of the icon */
+.field-help-bubble-right {
+    left: 130%; /* adjust distance from "?" */
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+    /* Optional small arrow pointing left */
+    .field-help-bubble-right::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+        border-right: 6px solid var(--color-surface-3, #dbeafe);
+    }
+
+@keyframes bubbleFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+    }
+}
+
+.field-help-wrapper {
+    position: relative;
+}
+
+.field-help-icon {
+    text-decoration: none;
+    font-weight: 600;
+    line-height: 1;
+}
+
+    .field-help-icon span {
+        display: inline-flex;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 999px;
+        border: 1px solid var(--color-border, #d1d5db);
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+
+.field-help-bubble {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 260px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-3, #e5f0ff);
+    color: var(--color-text, #111827);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+    font-size: 0.8rem;
+    z-index: 10;
+}
+
+.field-help-bubble-right {
+    left: 110%;
+    margin-left: 0.5rem;
+}
+
+.field-help-bubble-left {
+    right: 110%;
+    margin-right: 0.5rem;
+}
+
+/* Base is the same help bubble shape; error variant is red-tinted */
+.help-bubble.error-bubble {
+    background-color: #fef2f2; /* very light red */
+    border-color: #b91c1c; /* dark red border */
+    color: #7f1d1d; /* dark red text */
+}
+
+    .help-bubble.error-bubble .error-bubble-icon {
+        margin-right: 0.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9em;
+    }
+
+    /* Right arrow */
+    .help-bubble.error-bubble.error-bubble--right::before {
+        border-right-color: #b91c1c;
+    }
+
+    /* Left arrow */
+    .help-bubble.error-bubble.error-bubble--left::before {
+        border-left-color: #b91c1c;
+    }
+
 

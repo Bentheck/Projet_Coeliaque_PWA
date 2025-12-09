@@ -74,7 +74,7 @@ const ForumCategories: React.FC = () => {
             <div className="d-flex justify-content-between align-items-stretch mb-3 flex-wrap gap-2">
                 <div className="card card--accent section-highlight-primary flex-grow-1">
                     <div className="card-body">
-                        <h1 className="h3 mb-2 section-title-accent">
+                        <h1 className="h3 mb-2">
                             {t("title")}
                         </h1>
                         <div className="text-muted">{t("subtitle")}</div>

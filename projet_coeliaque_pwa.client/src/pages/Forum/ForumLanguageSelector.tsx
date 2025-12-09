@@ -12,7 +12,7 @@ const ForumLanguageSelector: React.FC = () => {
                 <div className="col-12 col-md-8 col-lg-6">
                     <div className="card card--accent section-highlight-primary text-center">
                         <div className="card-body">
-                            <h1 className="h3 mb-2 section-title-accent">
+                            <h1 className="h3 mb-2">
                                 {t("title", "Forum")}
                             </h1>
                             <p className="text-muted mb-4">
@@ -38,7 +38,7 @@ const ForumLanguageSelector: React.FC = () => {
                                 </button>
 
                                 <button
-                                    className="btn btn-mint-outline btn-lg"
+                                    className="btn btn-mint btn-lg"
                                     onClick={() => navigate("/forum/en")}
                                 >
                                     {t("buttons.english", "English")}

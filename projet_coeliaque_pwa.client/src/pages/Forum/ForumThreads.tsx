@@ -176,7 +176,7 @@ const ForumThreads: React.FC = () => {
         <div className="container py-3">
             {/* Header in accent card */}
             <div className="card card--accent section-highlight-primary mb-3">
-                <div className="card-body d-flex flex-wrap justify-content-between align-items-center gap-2 highlight-bar-primary">
+                <div className="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div className="d-flex align-items-start gap-2 flex-wrap">
                         <Link
                             to={`/forum/${safeLang}`}
@@ -186,7 +186,7 @@ const ForumThreads: React.FC = () => {
                             {t("buttons.categories")}
                         </Link>
                         <div>
-                            <h1 className="h4 mb-1 section-title-accent">
+                            <h1 className="h4 mb-1">
                                 {cat?.name ||
                                     t("fallback.categoryWithId", { id: cid })}
                             </h1>

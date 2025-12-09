@@ -369,7 +369,7 @@ const PostCard: React.FC<PostCardProps> = memo(
         return (
             <div className={cardClasses.join(" ")}>
                 <div
-                    className={`card-body ${isOp ? "highlight-bar-primary" : ""
+                    className={`card-body ${isOp ? "" : ""
                         }`}
                 >
                     <div className="d-flex align-items-start gap-3">
@@ -1149,7 +1149,7 @@ const ForumThreadView: React.FC = () => {
         <div className="container py-3">
             {/* Thread header card (title, meta, voting, and global mod toggles) */}
             <div className="card card--accent section-highlight-primary mb-3">
-                <div className="card-body highlight-bar-primary">
+                <div className="card-body">
                     <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
                         <div className="d-flex gap-3 align-items-start">
                             {voteMode === "thread" && (

@@ -49,6 +49,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             public string Email { get; set; } = "";
             public string Password { get; set; } = "";
+            // NEW: public display name used in the forum / app UI
+            public string DisplayName { get; set; } = "";
         }
 
         /// <summary>Register a new user and email them a confirmation link.</summary>
@@ -57,9 +59,37 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req)
         {
+            // Basic email/password presence
             if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
                 return BadRequest(new { errorCode = ErrorCodes.MissingEmailOrPassword });
 
+            // Normalize + validate display name
+            var displayName = (req.DisplayName ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                return BadRequest(new { errorCode = ErrorCodes.MissingDisplayName });
+            }
+
+            if (displayName.Length < 3 || displayName.Length > 40)
+            {
+                // You can map this to errors.displayNameTooLong (or similar) on the frontend.
+                return BadRequest(new { error = "Le nom affiché doit contenir entre 3 et 40 caractères." });
+            }
+
+            // Enforce uniqueness (case-insensitive) against existing user profiles
+            var nameInUse = await _db.UserProfiles
+                .AsNoTracking()
+                .AnyAsync(p =>
+                    p.DisplayName != null &&
+                    p.DisplayName.ToLower() == displayName.ToLower());
+
+            if (nameInUse)
+            {
+                return Conflict(new { errorCode = ErrorCodes.DisplayNameAlreadyTaken });
+            }
+
+            // Create Identity user (email is the login)
             var user = new IdentityUser { UserName = req.Email, Email = req.Email };
             var result = await _userManager.CreateAsync(user, req.Password);
 
@@ -70,6 +100,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     identityErrors = result.Errors.Select(e => e.Code).ToArray()
                 });
 
+            // Create a UserProfile row immediately with the chosen display name
+            var profile = new UserProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                DisplayName = displayName,
+                JoinedUtc = DateTime.UtcNow
+            };
+            _db.UserProfiles.Add(profile);
+            await _db.SaveChangesAsync();
+
+            // Mirror display name to a claim so navbar / AuthContext can use it instantly
+            await _userManager.AddClaimAsync(user, new Claim("display_name", displayName));
+
+            // Email confirmation
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var encodedToken = HttpUtility.UrlEncode(token);
             var confirmationUrl =
@@ -241,7 +286,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 avatarUrl = AbsoluteContentUrl(profile.AvatarPath) + $"?v={v}";
             }
 
-            var now = DateTime.UtcNow;
             var hasActiveMembership = await _membershipService.HasActiveMembershipAsync(uid);
             var membershipStatus = hasActiveMembership ? "Active" : "Inactive";
 
@@ -285,5 +329,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public const string EmailAlreadyConfirmed = "EmailAlreadyConfirmed";
         public const string InvalidCredentials = "InvalidCredentials";
         public const string IdentityValidationFailed = "IdentityValidationFailed";
+
+        // NEW for display name
+        public const string MissingDisplayName = "MissingDisplayName";
+        public const string DisplayNameAlreadyTaken = "DisplayNameAlreadyTaken";
     }
 }
