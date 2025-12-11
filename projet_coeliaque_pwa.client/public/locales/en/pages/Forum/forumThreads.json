@@ -14,7 +14,9 @@
   "meta": {
     "lastPrefix": "Last",
     "by": "by",
-    "createdLine": "By {{author}} • {{date}} • {{count}} {{posts}}"
+    "createdLine": "By {{author}} • {{date}} • {{count}} {{posts}}",
+    "threadCountLabel_one": "{{count}} thread",
+    "threadCountLabel_other": "{{count}} threads"
   },
   "counts": {
     "post_one": "post",

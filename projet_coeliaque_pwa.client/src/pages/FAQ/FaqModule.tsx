@@ -15,6 +15,8 @@ import type {
 
 import { useTranslation } from "react-i18next";
 
+import "../../styles/faq.css"
+
 /* -------------------------------------------
    Helpers
 ------------------------------------------- */
@@ -115,9 +117,9 @@ export function FaqPage({ className = "" }: { className?: string }) {
     );
 
     return (
-        <section className={className}>
+        <section className={`faq-page ${className}`.trim()}>
             {/* Header / search in an accent card */}
-            <div className="card card--accent shadow-sm mb-4">
+            <div className="card card--accent mb-4 faq-header-card">
                 <div className="card-body">
                     <h1 className="h4 mb-1">{t("title")}</h1>
                     <p className="mb-3 small text-muted">
@@ -156,9 +158,9 @@ export function FaqPage({ className = "" }: { className?: string }) {
                 {filtered.map((cat) => (
                     <details
                         key={cat.id}
-                        className="rounded-4 border bg-white p-4 shadow-sm"
+                        className="faq-category rounded-4 p-4"
                     >
-                        <summary className="d-flex align-items-center justify-content-between cursor-pointer user-select-none fw-semibold">
+                        <summary className="faq-category-summary d-flex align-items-center justify-content-between cursor-pointer user-select-none fw-semibold">
                             <span>{cat.name}</span>
                             <span className="small text-muted">
                                 {t("resultsCount", {
@@ -180,7 +182,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
                             {cat.questions.map((qq) => (
                                 <details
                                     key={qq.id}
-                                    className="rounded-4 border p-3"
+                                    className="faq-question rounded-4 p-3"
                                 >
                                     <summary className="cursor-pointer fw-medium">
                                         {qq.question}
@@ -209,9 +211,11 @@ export function FaqPage({ className = "" }: { className?: string }) {
                 )}
             </div>
 
-            <aside className="mt-4 rounded-4 border-start border-4 border-warning bg-warning-subtle p-3 small">
-                <strong>{t("disclaimer.title")}</strong>{" "}
-                {t("disclaimer.body")}
+            <aside className="mt-4 alert alert-warning small faq-disclaimer">
+                <strong className="d-block mb-1">
+                    {t("disclaimer.title")}
+                </strong>
+                <span>{t("disclaimer.body")}</span>
             </aside>
         </section>
     );
@@ -429,7 +433,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
     );
 
     return (
-        <section className={className}>
+        <section className={`faq-admin-page ${className}`.trim()}>
             <header className="mb-4">
                 <h1 className="h4 fw-bold mb-1">
                     {t("title")}
@@ -458,7 +462,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             </header>
 
             {/* Category form */}
-            <div className="mb-4 rounded-4 border bg-white p-4 shadow-sm">
+            <div className="mb-4 card card--tinted p-4 faq-admin-card">
                 <h2 className="h6 fw-semibold mb-3">
                     {editingCatId
                         ? t("categoryForm.edit")
@@ -624,7 +628,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             </div>
 
             {/* Question form */}
-            <div className="mb-4 rounded-4 border bg-white p-4 shadow-sm">
+            <div className="mb-4 card card--tinted p-4 faq-admin-card">
                 <h2 className="h6 fw-semibold mb-3">
                     {qForm.id
                         ? t("questionForm.edit")
@@ -832,9 +836,9 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                 {tree.map((cat) => (
                     <details
                         key={cat.id}
-                        className="rounded-4 border bg-white p-4 shadow-sm"
+                        className="faq-admin-category rounded-4 p-4"
                     >
-                        <summary className="d-flex align-items-center justify-content-between cursor-pointer user-select-none fw-semibold">
+                        <summary className="faq-admin-category-summary d-flex align-items-center justify-content-between cursor-pointer user-select-none fw-semibold">
                             <span>{cat.name}</span>
                             <span className="small text-muted">
                                 {t("tree.questionsCount", {
@@ -912,7 +916,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                             {cat.questions.map((qq: FaqQuestionDto) => (
                                 <details
                                     key={qq.id}
-                                    className="rounded-4 border p-3"
+                                    className="faq-admin-question rounded-4 p-3"
                                 >
                                     <summary className="d-flex align-items-center justify-content-between cursor-pointer fw-medium">
                                         <span>{qq.question}</span>

@@ -10,6 +10,9 @@
     "cancel": "Annuler"
   },
   "form": {
+    "headings": {
+      "create": "Créer une facture"
+    },
     "labels": {
       "year": "Année",
       "invoiceId": "Facture ID",

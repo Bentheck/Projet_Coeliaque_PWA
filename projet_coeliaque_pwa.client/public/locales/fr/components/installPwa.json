@@ -6,7 +6,7 @@
     "labelOther": "Installer l’app"
   },
   "alerts": {
-    "notReady": "L’installation n’est pas encore disponible. Réessayez dans quelques secondes."
+    "notReady": "Votre navigateur ne permet pas l’installation directement via ce bouton. Utilisez plutôt l’option « Installer l’application » dans la barre d’adresse."
   },
   "ios": {
     "header": "Installer sur iPhone / iPad",

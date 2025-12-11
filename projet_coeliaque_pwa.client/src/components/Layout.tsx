@@ -11,7 +11,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Navbar />
 
             {/* main no longer flex-grow → it wraps content */}
-            <main className="container my-4">
+            <main className="">
                 {children}
             </main>
 

@@ -10,6 +10,9 @@
     "cancel": "Cancel"
   },
   "form": {
+    "headings": {
+      "create": "Create invoice"
+    },
     "labels": {
       "year": "Year",
       "invoiceId": "Invoice ID",

@@ -14,7 +14,9 @@
   "meta": {
     "lastPrefix": "Dernier",
     "by": "par",
-    "createdLine": "Par {{author}} • {{date}} • {{count}} {{posts}}"
+    "createdLine": "Par {{author}} • {{date}} • {{count}} {{posts}}",
+    "threadCountLabel_one": "{{count}} fil",
+    "threadCountLabel_other": "{{count}} fils"
   },
   "counts": {
     "post_one": "message",

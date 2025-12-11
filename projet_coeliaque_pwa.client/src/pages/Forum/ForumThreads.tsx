@@ -9,6 +9,7 @@ import type {
 } from "../../lib/types";
 import Pagination from "../../components/Pagination";
 import { useAuth } from "../../components/AuthContext";
+import "../../styles/forum.css";
 
 const ForumThreads: React.FC = () => {
     const { t, i18n } = useTranslation("pages/Forum/forumThreads");
@@ -93,7 +94,8 @@ const ForumThreads: React.FC = () => {
     const togglePinned = async (threadId: number, nextPinned: boolean) => {
         if (!isModerator) return;
         setThreadBusy((b) => ({ ...b, [threadId]: true }));
-        const prev = data?.items.find((x) => x.id === threadId)?.isPinned ?? false;
+        const prev =
+            data?.items.find((x) => x.id === threadId)?.isPinned ?? false;
 
         // optimistic
         setThreadFlagLocal(threadId, { isPinned: nextPinned });
@@ -120,7 +122,8 @@ const ForumThreads: React.FC = () => {
     const toggleLocked = async (threadId: number, nextLocked: boolean) => {
         if (!isModerator) return;
         setThreadBusy((b) => ({ ...b, [threadId]: true }));
-        const prev = data?.items.find((x) => x.id === threadId)?.isLocked ?? false;
+        const prev =
+            data?.items.find((x) => x.id === threadId)?.isLocked ?? false;
 
         // optimistic
         setThreadFlagLocal(threadId, { isLocked: nextLocked });
@@ -156,7 +159,9 @@ const ForumThreads: React.FC = () => {
                 prev
                     ? {
                         ...prev,
-                        items: prev.items.filter((it) => it.id !== threadId),
+                        items: prev.items.filter(
+                            (it) => it.id !== threadId
+                        ),
                     }
                     : prev
             );
@@ -174,8 +179,8 @@ const ForumThreads: React.FC = () => {
 
     return (
         <div className="container py-3">
-            {/* Header in accent card */}
-            <div className="card card--accent section-highlight-primary mb-3">
+            {/* Header in accent card + border */}
+            <div className="card card--accent section-highlight-primary section-border-primary shadow-sm mb-3">
                 <div className="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div className="d-flex align-items-start gap-2 flex-wrap">
                         <Link
@@ -220,7 +225,7 @@ const ForumThreads: React.FC = () => {
                 <div className="row g-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div className="col-12" key={i}>
-                            <div className="card card--tinted hl-soft">
+                            <div className="card card--tinted hl-soft shadow-sm border-0">
                                 <div className="card-body">
                                     <div className="placeholder-glow mb-2">
                                         <span className="placeholder col-8" />
@@ -234,7 +239,7 @@ const ForumThreads: React.FC = () => {
                     ))}
                 </div>
             ) : !data || data.items.length === 0 ? (
-                <div className="card card--tinted section-highlight-mint">
+                <div className="card card--tinted section-highlight-mint shadow-sm border-0">
                     <div className="card-body">
                         <div className="alert alert-info mb-0">
                             {t("empty")}
@@ -254,7 +259,8 @@ const ForumThreads: React.FC = () => {
                                 "h-100",
                                 "hl-hover",
                             ];
-                            if (tItem.isPinned) cardClasses.push("hl-blue-border");
+                            if (tItem.isPinned)
+                                cardClasses.push("hl-blue-border");
                             if (tItem.isLocked) cardClasses.push("hl-soft");
 
                             return (
@@ -267,20 +273,16 @@ const ForumThreads: React.FC = () => {
                                                         {/* badges with pill highlights */}
                                                         {tItem.isPinned && (
                                                             <span className="pill-highlight-primary me-2">
-                                                                {
-                                                                    t(
-                                                                        "badges.pinned"
-                                                                    )
-                                                                }
+                                                                {t(
+                                                                    "badges.pinned"
+                                                                )}
                                                             </span>
                                                         )}
                                                         {tItem.isLocked && (
                                                             <span className="pill-highlight-mint me-2">
-                                                                {
-                                                                    t(
-                                                                        "badges.locked"
-                                                                    )
-                                                                }
+                                                                {t(
+                                                                    "badges.locked"
+                                                                )}
                                                             </span>
                                                         )}
                                                         <Link
@@ -315,7 +317,8 @@ const ForumThreads: React.FC = () => {
 
                                                 <div className="d-flex flex-column align-items-end gap-1">
                                                     <small className="text-muted text-end">
-                                                        {t("meta.lastPrefix")}&nbsp;
+                                                        {t("meta.lastPrefix")}
+                                                        &nbsp;
                                                         {fmt(tItem.lastPostUtc)}
                                                         <br />
                                                         {t("meta.by")}{" "}

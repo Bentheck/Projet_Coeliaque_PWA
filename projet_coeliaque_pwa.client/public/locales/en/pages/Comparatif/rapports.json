@@ -15,7 +15,13 @@
     "generate": {
       "label": "Generate",
       "loading": "Generating…"
-    }
+    },
+    "refresh": {
+      "title": "Reload report list",
+      "label": "Reload",
+      "loading": "Reloading…"
+    },
+    "backToComparatif": "Back to comparison"
   },
   "status": {
     "ok": "OK"

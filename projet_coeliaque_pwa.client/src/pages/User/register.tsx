@@ -221,7 +221,7 @@ export default function Register() {
     return (
         <form
             onSubmit={handleSubmit}
-            className="card p-4 mx-auto my-5 auth-card"
+            className="card border-accent-primary p-4 mx-auto my-5 auth-card"
             noValidate
         >
             <div className="d-flex align-items-center justify-content-between mb-2">
@@ -420,7 +420,7 @@ export default function Register() {
             </div>
 
             <button
-                className="btn btn-success w-100"
+                className="btn btn-primary w-100"
                 type="submit"
                 disabled={submitting}
             >

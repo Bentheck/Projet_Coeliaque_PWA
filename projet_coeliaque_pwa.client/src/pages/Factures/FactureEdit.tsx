@@ -14,6 +14,7 @@ import {
     type Facture as IFacture,
     type FactureItem as IFactureItem,
 } from "../../offline/db";
+import "../../styles/facture-edit.css";
 
 const UNIT_OPTIONS = ["g", "kg", "mg", "lb", "oz", "ml", "l", "fl oz", "un", "dozen"];
 
@@ -221,8 +222,8 @@ export default function FactureEdit() {
         <div className="container py-3">
             <div className="card shadow-sm rounded-4 mx-auto facture-edit-card">
                 <div className="card-body">
-                    <h2 className="mb-4">
-                        <i className="bi bi-receipt-cutoff me-2"></i>
+                    <h2 className="h4 fw-bold mb-4">
+                        <i className="bi bi-receipt-cutoff me-2" />
                         {t("title.editInvoice")}
                     </h2>
 
@@ -239,7 +240,7 @@ export default function FactureEdit() {
                                     name="factureId"
                                     value={facture.factureId}
                                     onChange={handleFactureChange}
-                                    className="form-control border-black rounded-3"
+                                    className="form-control rounded-3"
                                 />
                             </Col>
                             <Col md={3}>
@@ -251,7 +252,7 @@ export default function FactureEdit() {
                                     type="date"
                                     value={safeDate}
                                     onChange={handleFactureChange}
-                                    className="form-control border-black rounded-3"
+                                    className="form-control rounded-3"
                                 />
                             </Col>
                             <Col md={3}>
@@ -263,7 +264,7 @@ export default function FactureEdit() {
                                     type="number"
                                     value={facture.annee}
                                     onChange={handleFactureChange}
-                                    className="form-control border-black rounded-3"
+                                    className="form-control rounded-3"
                                 />
                             </Col>
                             <Col md={3}>
@@ -274,16 +275,18 @@ export default function FactureEdit() {
                                     name="magasin"
                                     value={facture.magasin}
                                     onChange={handleFactureChange}
-                                    className="form-control border-black rounded-3"
+                                    className="form-control rounded-3"
                                 />
                             </Col>
                         </Row>
 
                         {/* Items section */}
                         <div className="mb-4">
-                            <h4 className="mb-3 border-bottom pb-2">
-                                <i className="bi bi-list-columns me-2"></i>
-                                {t("items.title")}
+                            <h4 className="mb-3 border-bottom pb-2 d-flex align-items-center">
+                                <span>
+                                    <i className="bi bi-list-columns me-2" />
+                                    {t("items.title")}
+                                </span>
                                 <Button
                                     variant="success"
                                     size="sm"
@@ -291,14 +294,18 @@ export default function FactureEdit() {
                                     onClick={openAddModal}
                                     type="button"
                                 >
-                                    <i className="bi bi-plus-circle"></i>{" "}
+                                    <i className="bi bi-plus-circle" />{" "}
                                     {t("items.addButton")}
                                 </Button>
                             </h4>
 
                             {/* Desktop table */}
                             <div className="d-none d-xl-block">
-                                <Table bordered hover className="align-middle mb-3 facture-items-table">
+                                <Table
+                                    bordered
+                                    hover
+                                    className="align-middle mb-3 facture-items-table"
+                                >
                                     <thead className="table-light text-center">
                                         <tr>
                                             <th className="invoice-col-type">
@@ -322,7 +329,7 @@ export default function FactureEdit() {
                                             <th className="invoice-col-onsale text-nowrap">
                                                 {t("table.enSoldeQ")}
                                             </th>
-                                            <th className="invoice-col-actions"></th>
+                                            <th className="invoice-col-actions" />
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -363,7 +370,7 @@ export default function FactureEdit() {
                                                 {/* Marque / Produit */}
                                                 <td>
                                                     <input
-                                                        className="form-control border-black rounded-2"
+                                                        className="form-control rounded-2"
                                                         value={item.item}
                                                         onChange={(e) =>
                                                             handleItemChange(
@@ -381,7 +388,7 @@ export default function FactureEdit() {
                                                 {/* Prix */}
                                                 <td>
                                                     <input
-                                                        className="form-control border-black rounded-2"
+                                                        className="form-control rounded-2"
                                                         type="number"
                                                         step="0.01"
                                                         value={item.prix}
@@ -401,7 +408,7 @@ export default function FactureEdit() {
                                                 {/* Poids */}
                                                 <td>
                                                     <input
-                                                        className="form-control border-black rounded-2"
+                                                        className="form-control rounded-2"
                                                         type="number"
                                                         step="0.01"
                                                         value={item.poidsValeur}
@@ -421,7 +428,7 @@ export default function FactureEdit() {
                                                 {/* Unité */}
                                                 <td>
                                                     <select
-                                                        className="form-select border-black rounded-2"
+                                                        className="form-select rounded-2"
                                                         value={item.poidsUnite}
                                                         onChange={(e) =>
                                                             handleItemChange(
@@ -447,7 +454,7 @@ export default function FactureEdit() {
                                                 {/* Quantité */}
                                                 <td>
                                                     <input
-                                                        className="form-control border-black rounded-2"
+                                                        className="form-control rounded-2"
                                                         type="number"
                                                         value={item.quantite}
                                                         onChange={(e) =>
@@ -466,7 +473,7 @@ export default function FactureEdit() {
                                                 {/* En solde ? */}
                                                 <td className="text-center">
                                                     <input
-                                                        className="form-check-input border-dark"
+                                                        className="form-check-input"
                                                         type="checkbox"
                                                         checked={item.wasOnSale}
                                                         onChange={(e) =>
@@ -476,9 +483,7 @@ export default function FactureEdit() {
                                                                 e.target.checked
                                                             )
                                                         }
-                                                        aria-label={t(
-                                                            "table.enSoldeQ"
-                                                        )}
+                                                        aria-label={t("table.enSoldeQ")}
                                                     />
                                                 </td>
 
@@ -493,7 +498,7 @@ export default function FactureEdit() {
                                                             t("actions.remove") as string
                                                         }
                                                     >
-                                                        <i className="bi bi-x-lg"></i>
+                                                        <i className="bi bi-x-lg" />
                                                     </button>
                                                 </td>
                                             </tr>
@@ -507,7 +512,7 @@ export default function FactureEdit() {
                                 <div className="row g-3">
                                     {facture.items.map((item, i) => (
                                         <div className="col-12" key={i}>
-                                            <div className="card border border-dark shadow-sm rounded-3">
+                                            <div className="card card--tinted shadow-sm rounded-3">
                                                 <div className="card-body py-2 px-3">
                                                     {/* Type de produit */}
                                                     <div className="mb-2">
@@ -535,8 +540,7 @@ export default function FactureEdit() {
                                                                 handleItemChange(
                                                                     i,
                                                                     "typeItem",
-                                                                    option?.value ||
-                                                                    ""
+                                                                    option?.value || ""
                                                                 )
                                                             }
                                                             placeholder={
@@ -554,7 +558,7 @@ export default function FactureEdit() {
                                                             {t("table.marque")}
                                                         </label>
                                                         <input
-                                                            className="form-control form-control-sm border-black rounded-2"
+                                                            className="form-control form-control-sm rounded-2"
                                                             value={item.item}
                                                             onChange={(e) =>
                                                                 handleItemChange(
@@ -575,7 +579,7 @@ export default function FactureEdit() {
                                                             {t("table.prix")}
                                                         </label>
                                                         <input
-                                                            className="form-control form-control-sm border-black rounded-2"
+                                                            className="form-control form-control-sm rounded-2"
                                                             type="number"
                                                             step="0.01"
                                                             value={item.prix}
@@ -598,7 +602,7 @@ export default function FactureEdit() {
                                                             {t("table.poids")}
                                                         </label>
                                                         <input
-                                                            className="form-control form-control-sm border-black rounded-2"
+                                                            className="form-control form-control-sm rounded-2"
                                                             type="number"
                                                             step="0.01"
                                                             value={item.poidsValeur}
@@ -621,7 +625,7 @@ export default function FactureEdit() {
                                                             {t("table.unite")}
                                                         </label>
                                                         <select
-                                                            className="form-select form-select-sm border-black rounded-2"
+                                                            className="form-select form-select-sm rounded-2"
                                                             value={item.poidsUnite}
                                                             onChange={(e) =>
                                                                 handleItemChange(
@@ -650,7 +654,7 @@ export default function FactureEdit() {
                                                             {t("table.quantite")}
                                                         </label>
                                                         <input
-                                                            className="form-control form-control-sm border-black rounded-2"
+                                                            className="form-control form-control-sm rounded-2"
                                                             type="number"
                                                             value={item.quantite}
                                                             onChange={(e) =>
@@ -669,7 +673,7 @@ export default function FactureEdit() {
                                                     {/* En solde ? */}
                                                     <div className="form-check mt-2">
                                                         <input
-                                                            className="form-check-input border-dark"
+                                                            className="form-check-input"
                                                             type="checkbox"
                                                             id={`onsale${i}`}
                                                             checked={item.wasOnSale}
@@ -707,7 +711,7 @@ export default function FactureEdit() {
                                                                 ) as string
                                                             }
                                                         >
-                                                            <i className="bi bi-x-lg"></i>
+                                                            <i className="bi bi-x-lg" />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -723,7 +727,7 @@ export default function FactureEdit() {
                                 type="submit"
                                 className="btn btn-primary rounded-pill px-4"
                             >
-                                <i className="bi bi-save me-2"></i>
+                                <i className="bi bi-save me-2" />
                                 {t("buttons.save")}
                             </Button>
                             <Button
@@ -732,7 +736,7 @@ export default function FactureEdit() {
                                 type="button"
                                 onClick={() => navigate("/factures")}
                             >
-                                <i className="bi bi-arrow-return-left me-2"></i>
+                                <i className="bi bi-arrow-return-left me-2" />
                                 {t("buttons.cancel")}
                             </Button>
                         </div>
@@ -749,7 +753,7 @@ export default function FactureEdit() {
             >
                 <Modal.Header closeButton>
                     <Modal.Title>
-                        <i className="bi bi-plus-circle me-2"></i>
+                        <i className="bi bi-plus-circle me-2" />
                         {t("modal.title")}
                     </Modal.Title>
                 </Modal.Header>
@@ -796,7 +800,7 @@ export default function FactureEdit() {
                                         onClick={handleNextStep}
                                     >
                                         {t("modal.next")}{" "}
-                                        <i className="bi bi-arrow-right ms-2"></i>
+                                        <i className="bi bi-arrow-right ms-2" />
                                     </Button>
                                 </div>
                             </>
@@ -895,7 +899,7 @@ export default function FactureEdit() {
                                         className="btn btn-secondary rounded-pill px-4"
                                         onClick={handleBackStep}
                                     >
-                                        <i className="bi bi-arrow-left me-2"></i>
+                                        <i className="bi bi-arrow-left me-2" />
                                         {t("modal.prev")}
                                     </Button>
                                     <Button
@@ -906,7 +910,7 @@ export default function FactureEdit() {
                                             !modalForm.poidsUnite.trim()
                                         }
                                     >
-                                        <i className="bi bi-plus-circle me-2"></i>
+                                        <i className="bi bi-plus-circle me-2" />
                                         {t("modal.add")}
                                     </Button>
                                 </div>

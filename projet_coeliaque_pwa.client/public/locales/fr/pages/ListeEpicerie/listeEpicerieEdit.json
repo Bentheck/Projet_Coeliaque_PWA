@@ -29,7 +29,7 @@
       "emptyType": "Aucun produit pour ce type.",
       "quickSearchLabel": "Recherche rapide",
       "quickSearchGluten": "Version sans gluten",
-      "quickSearchHint": "Utilise le type (ou le nom) comme mot-clé, par exemple « pain », « pâtes », etc. Si « Version sans gluten » est cochée, « sans gluten » est ajouté automatiquement à la recherche.",
+      "quickSearchHint": "Utilise le type (ou le nom) comme mot-clé, par exemple « pain », « pâtes », etc. Si « Version sans gluten » est cochée, « sans gluten » est ajouté automatiquement à la recherche. Prendre note que la recherche « sans gluten » peut retourner des résultats avec gluten, prenez le temps de vérifier s'il vous plaît'.",
       "quickSearchButtons": {
         "walmart": "Walmart",
         "maxi": "Maxi",

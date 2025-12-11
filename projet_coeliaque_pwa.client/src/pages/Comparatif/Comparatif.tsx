@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 
 import { db, type ComparatifYearDto, type ReportYearDto } from "../../offline/db";
 import { syncDown } from "../../offline/sync";
+import "../../styles/comparatif.css";
 
 const REPORT_ROUTE = (annee: number) => `/rapports/${annee}`;
 
@@ -39,9 +40,6 @@ const Comparatif: React.FC = () => {
 
     const isReportGenerated = (annee: number) =>
         !!reportYears?.some((r) => r.year === annee && r.reportGenerated);
-
-    const totalYears = years?.length ?? 0;
-    const totalGenerated = reportYears?.filter((r) => r.reportGenerated).length ?? 0;
 
     async function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -138,57 +136,67 @@ const Comparatif: React.FC = () => {
     }
 
     return (
-        <div className="container comparatif-container">
-            <div className="d-flex flex-column align-items-center mb-2">
-                <h2 className="mb-1">{t("header.title")}</h2>
-                <div className="text-muted small mb-2">
-                    {t("header.stats", {
-                        total: totalYears,
-                        generated: totalGenerated,
-                    })}
+        <div className="container comparatif-container py-3">
+            {/* Header card with title + stats + new button */}
+            <div className="card card--accent shadow-sm mb-3">
+                <div className="card-body d-flex flex-wrap align-items-center gap-3">
+                    <div className="flex-grow-1">
+                        <h2 className="h4 mb-1">
+                            <i className="bi bi-bar-chart-line me-2" />
+                            {t("header.title")}
+                        </h2>
+                    </div>
+
+                    <div className="ms-auto">
+                        <button
+                            className="btn btn-primary comparatif-new-btn"
+                            onClick={() => setShowForm((f) => !f)}
+                            type="button"
+                        >
+                            <i className="bi bi-plus-circle me-1" />
+                            <span className="d-none d-sm-inline">
+                                {t("actions.new.long")}
+                            </span>
+                            <span className="d-sm-none">
+                                {t("actions.new.short")}
+                            </span>
+                        </button>
+                    </div>
                 </div>
-                <button
-                    className="btn btn-primary comparatif-new-btn"
-                    onClick={() => setShowForm((f) => !f)}
-                >
-                    <i className="bi bi-plus-circle me-1" />
-                    <span className="d-none d-sm-inline">
-                        {t("actions.new.long")}
-                    </span>
-                    <span className="d-sm-none">
-                        {t("actions.new.short")}
-                    </span>
-                </button>
             </div>
 
             {showForm && (
                 <form className="mb-3" onSubmit={handleCreate}>
-                    <div className="input-group">
-                        <input
-                            type="number"
-                            className="form-control"
-                            value={newYear}
-                            min={1990}
-                            max={2100}
-                            onChange={(e) => setNewYear(Number(e.target.value))}
-                            required
-                            disabled={submitting}
-                        />
-                        <button
-                            className="btn btn-success"
-                            type="submit"
-                            disabled={submitting}
-                        >
-                            {t("form.create")}
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            type="button"
-                            onClick={() => setShowForm(false)}
-                            disabled={submitting}
-                        >
-                            {t("form.cancel")}
-                        </button>
+                    <div className="card card--tinted shadow-sm">
+                        <div className="card-body">
+                            <div className="input-group">
+                                <input
+                                    type="number"
+                                    className="form-control"
+                                    value={newYear}
+                                    min={1990}
+                                    max={2100}
+                                    onChange={(e) => setNewYear(Number(e.target.value))}
+                                    required
+                                    disabled={submitting}
+                                />
+                                <button
+                                    className="btn btn-success"
+                                    type="submit"
+                                    disabled={submitting}
+                                >
+                                    {t("form.create")}
+                                </button>
+                                <button
+                                    className="btn btn-secondary"
+                                    type="button"
+                                    onClick={() => setShowForm(false)}
+                                    disabled={submitting}
+                                >
+                                    {t("form.cancel")}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             )}
@@ -197,13 +205,17 @@ const Comparatif: React.FC = () => {
             {genError && <div className="alert alert-danger">{genError}</div>}
 
             {loading ? (
-                <div>{t("loading")}</div>
+                <div className="card card--tinted shadow-sm">
+                    <div className="card-body">{t("loading")}</div>
+                </div>
             ) : !years || years.length === 0 ? (
-                <div className="alert alert-secondary text-center">
-                    {t("empty")}
+                <div className="card card--tinted shadow-sm">
+                    <div className="card-body text-center text-muted">
+                        {t("empty")}
+                    </div>
                 </div>
             ) : (
-                <div>
+                <div className="vstack gap-2">
                     {years.map((y) => {
                         const generated = isReportGenerated(y.annee);
                         const busy = genLoading === y.annee;
@@ -211,7 +223,7 @@ const Comparatif: React.FC = () => {
                         return (
                             <div
                                 key={y.id}
-                                className="card mb-2 border-0 shadow-sm"
+                                className="card card--tinted border-0 shadow-sm"
                             >
                                 <div className="card-body d-flex align-items-start flex-wrap gap-2 comparatif-card-body">
                                     <div className="comparatif-year-main">
@@ -233,12 +245,13 @@ const Comparatif: React.FC = () => {
 
                                     <div className="d-flex gap-2 ms-auto">
                                         <button
-                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"
+                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-mint" : "btn-mint"
                                                 }`}
                                             onClick={() =>
                                                 handleGenerateReport(y.annee)
                                             }
                                             disabled={busy}
+                                            type="button"
                                             title={
                                                 generated
                                                     ? (t(
@@ -294,10 +307,11 @@ const Comparatif: React.FC = () => {
                                         </button>
 
                                         <button
-                                            className="btn btn-outline-primary btn-sm"
+                                            className="btn btn-primary btn-sm rounded-pill px-3"
                                             onClick={() =>
                                                 navigate(`/comparatif/${y.id}`)
                                             }
+                                            type="button"
                                             title={t("buttons.view.title") as string}
                                         >
                                             <i className="bi bi-eye" />
@@ -307,10 +321,11 @@ const Comparatif: React.FC = () => {
                                         </button>
 
                                         <button
-                                            className="btn btn-outline-danger btn-sm"
+                                            className="btn btn-outline-danger btn-sm rounded-pill px-3"
                                             onClick={() =>
                                                 handleDelete(y.id, y.annee)
                                             }
+                                            type="button"
                                             title={t("buttons.delete.title") as string}
                                         >
                                             <i className="bi bi-trash" />

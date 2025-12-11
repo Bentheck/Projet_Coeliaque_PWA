@@ -15,6 +15,7 @@ import {
     putComparatifTypes,
 } from "../../offline/db";
 import { syncDown } from "../../offline/sync";
+import "../../styles/comparatif.css";
 
 const UNIT_OPTIONS = ["mg", "g", "kg", "lb", "oz", "ml", "l", "fl oz"];
 
@@ -63,7 +64,9 @@ const ComparatifEdit: React.FC = () => {
 
             try {
                 if (!year && navigator.onLine) {
-                    const res = await fetch(`/api/comparatifyears/${id}`, { credentials: "include" });
+                    const res = await fetch(`/api/comparatifyears/${id}`, {
+                        credentials: "include",
+                    });
                     if (res.ok) {
                         const data: ComparatifYearDto = await res.json();
                         await putComparatifYear(data);
@@ -87,9 +90,10 @@ const ComparatifEdit: React.FC = () => {
             if (!year || !navigator.onLine) return;
             if (typeRow?.types && typeRow.types.length) return;
             try {
-                const resT = await fetch(`/api/comparatifyears/types?annee=${year.annee}`, {
-                    credentials: "include",
-                });
+                const resT = await fetch(
+                    `/api/comparatifyears/types?annee=${year.annee}`,
+                    { credentials: "include" }
+                );
                 if (resT.ok) {
                     const types: string[] = await resT.json();
                     await putComparatifTypes(year.annee, types || []);
@@ -129,10 +133,13 @@ const ComparatifEdit: React.FC = () => {
 
         const target = lines[idx];
         try {
-            const res = await fetch(`/api/comparatifyears/${year.id}/lines/${target.id}`, {
-                method: "DELETE",
-                credentials: "include",
-            });
+            const res = await fetch(
+                `/api/comparatifyears/${year.id}/lines/${target.id}`,
+                {
+                    method: "DELETE",
+                    credentials: "include",
+                }
+            );
 
             const next = lines.filter((_, i) => i !== idx);
 
@@ -261,7 +268,6 @@ const ComparatifEdit: React.FC = () => {
         const url = buildSearchUrl(store, term);
         if (!url) return;
 
-        // Pure browser navigation: no fetch, no scraping, just a new tab
         window.open(url, "_blank", "noopener,noreferrer");
     };
 
@@ -309,7 +315,9 @@ const ComparatifEdit: React.FC = () => {
             if (!res.ok) throw new Error(await res.text());
 
             // refresh single year to get server ids
-            const rf = await fetch(`/api/comparatifyears/${year.id}`, { credentials: "include" });
+            const rf = await fetch(`/api/comparatifyears/${year.id}`, {
+                credentials: "include",
+            });
             if (rf.ok) {
                 const data: ComparatifYearDto = await rf.json();
                 await putComparatifYear(data);
@@ -330,8 +338,8 @@ const ComparatifEdit: React.FC = () => {
             <div className="card shadow-sm rounded-4 mx-auto comparatif-edit-card">
                 <div className="card-body">
                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                        <h2 className="mb-0">
-                            <i className="bi bi-sliders me-2"></i>
+                        <h2 className="h4 mb-0">
+                            <i className="bi bi-sliders me-2" />
                             {t("header.title", { year: year.annee })}
                         </h2>
                         <div>
@@ -342,7 +350,7 @@ const ComparatifEdit: React.FC = () => {
                                 onClick={openAddModal}
                                 type="button"
                             >
-                                <i className="bi bi-plus-circle"></i> {t("actions.addLine")}
+                                <i className="bi bi-plus-circle" /> {t("actions.addLine")}
                             </Button>
                         </div>
                     </div>
@@ -355,11 +363,19 @@ const ComparatifEdit: React.FC = () => {
                             <Table bordered hover className="align-middle">
                                 <thead className="table-light text-center">
                                     <tr>
-                                        <th style={{ minWidth: 220 }}>{t("table.headers.type")}</th>
+                                        <th style={{ minWidth: 220 }}>
+                                            {t("table.headers.type")}
+                                        </th>
                                         <th>{t("table.headers.brand")}</th>
-                                        <th style={{ width: 140 }}>{t("table.headers.price")}</th>
-                                        <th style={{ width: 160 }}>{t("table.headers.weight")}</th>
-                                        <th style={{ width: 140 }}>{t("table.headers.unit")}</th>
+                                        <th style={{ width: 140 }}>
+                                            {t("table.headers.price")}
+                                        </th>
+                                        <th style={{ width: 160 }}>
+                                            {t("table.headers.weight")}
+                                        </th>
+                                        <th style={{ width: 140 }}>
+                                            {t("table.headers.unit")}
+                                        </th>
                                         <th>{t("table.headers.store")}</th>
                                         <th style={{ width: 90 }}></th>
                                     </tr>
@@ -371,10 +387,12 @@ const ComparatifEdit: React.FC = () => {
                                                 <Select
                                                     classNamePrefix="facture-type"
                                                     isClearable
-                                                    options={allowedTypeOptionsFor(i).map((v) => ({
-                                                        label: v,
-                                                        value: v,
-                                                    }))}
+                                                    options={allowedTypeOptionsFor(i).map(
+                                                        (v) => ({
+                                                            label: v,
+                                                            value: v,
+                                                        })
+                                                    )}
                                                     value={
                                                         item.typeItem
                                                             ? {
@@ -414,7 +432,7 @@ const ComparatifEdit: React.FC = () => {
                                             </td>
                                             <td>
                                                 <input
-                                                    className="form-control border-black rounded-2"
+                                                    className="form-control rounded-2"
                                                     value={item.marque}
                                                     onChange={(e) =>
                                                         handleLineChange(
@@ -432,7 +450,7 @@ const ComparatifEdit: React.FC = () => {
                                             </td>
                                             <td>
                                                 <input
-                                                    className="form-control border-black rounded-2"
+                                                    className="form-control rounded-2"
                                                     type="number"
                                                     step="0.01"
                                                     value={item.prix}
@@ -452,7 +470,7 @@ const ComparatifEdit: React.FC = () => {
                                             </td>
                                             <td>
                                                 <input
-                                                    className="form-control border-black rounded-2"
+                                                    className="form-control rounded-2"
                                                     type="number"
                                                     step="0.01"
                                                     value={item.poidsValeur}
@@ -472,7 +490,7 @@ const ComparatifEdit: React.FC = () => {
                                             </td>
                                             <td>
                                                 <select
-                                                    className="form-select border-black rounded-2"
+                                                    className="form-select rounded-2"
                                                     value={item.poidsUnite}
                                                     onChange={(e) =>
                                                         handleLineChange(
@@ -494,7 +512,7 @@ const ComparatifEdit: React.FC = () => {
                                             </td>
                                             <td>
                                                 <input
-                                                    className="form-control border-black rounded-2"
+                                                    className="form-control rounded-2"
                                                     value={item.magasin}
                                                     onChange={(e) =>
                                                         handleLineChange(
@@ -520,11 +538,9 @@ const ComparatifEdit: React.FC = () => {
                                                             "delete.ariaLine"
                                                         ) as string
                                                     }
-                                                    title={
-                                                        t("delete.title") as string
-                                                    }
+                                                    title={t("delete.title") as string}
                                                 >
-                                                    <i className="bi bi-x-lg"></i>
+                                                    <i className="bi bi-x-lg" />
                                                 </button>
                                             </td>
                                         </tr>
@@ -538,7 +554,7 @@ const ComparatifEdit: React.FC = () => {
                             <div className="row g-3">
                                 {lines.map((item, i) => (
                                     <div className="col-12" key={item.id}>
-                                        <div className="card border border-dark shadow-sm rounded-3">
+                                        <div className="card card--tinted border-0 shadow-sm rounded-3">
                                             <div className="card-body py-2 px-3">
                                                 <div className="mb-2 d-flex justify-content-between align-items-start">
                                                     <div className="me-2">
@@ -576,7 +592,7 @@ const ComparatifEdit: React.FC = () => {
                                                             ) as string
                                                         }
                                                     >
-                                                        <i className="bi bi-x-lg"></i>
+                                                        <i className="bi bi-x-lg" />
                                                     </Button>
                                                 </div>
 
@@ -587,7 +603,7 @@ const ComparatifEdit: React.FC = () => {
                                                     </label>
                                                     {isMobile ? (
                                                         <select
-                                                            className="form-select form-select-sm border-black rounded-2"
+                                                            className="form-select form-select-sm rounded-2"
                                                             value={item.typeItem}
                                                             onChange={(e) =>
                                                                 handleLineChange(
@@ -689,7 +705,7 @@ const ComparatifEdit: React.FC = () => {
                                                         {t("labels.brand")}
                                                     </label>
                                                     <input
-                                                        className="form-control form-control-sm border-black rounded-2"
+                                                        className="form-control form-control-sm rounded-2"
                                                         value={item.marque}
                                                         onChange={(e) =>
                                                             handleLineChange(
@@ -712,7 +728,7 @@ const ComparatifEdit: React.FC = () => {
                                                         {t("labels.price")}
                                                     </label>
                                                     <input
-                                                        className="form-control form-control-sm border-black rounded-2"
+                                                        className="form-control form-control-sm rounded-2"
                                                         type="number"
                                                         step="0.01"
                                                         inputMode="decimal"
@@ -738,7 +754,7 @@ const ComparatifEdit: React.FC = () => {
                                                         {t("labels.weight")}
                                                     </label>
                                                     <input
-                                                        className="form-control form-control-sm border-black rounded-2"
+                                                        className="form-control form-control-sm rounded-2"
                                                         type="number"
                                                         step="0.01"
                                                         inputMode="decimal"
@@ -764,7 +780,7 @@ const ComparatifEdit: React.FC = () => {
                                                         {t("labels.unit")}
                                                     </label>
                                                     <select
-                                                        className="form-select form-select-sm border-black rounded-2"
+                                                        className="form-select form-select-sm rounded-2"
                                                         value={item.poidsUnite}
                                                         onChange={(e) =>
                                                             handleLineChange(
@@ -791,7 +807,7 @@ const ComparatifEdit: React.FC = () => {
                                                         {t("labels.store")}
                                                     </label>
                                                     <input
-                                                        className="form-control form-control-sm border-black rounded-2"
+                                                        className="form-control form-control-sm rounded-2"
                                                         value={item.magasin}
                                                         onChange={(e) =>
                                                             handleLineChange(
@@ -814,12 +830,12 @@ const ComparatifEdit: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="d-flex justify-content-end gap-2">
+                        <div className="d-flex justify-content-end gap-2 mt-3">
                             <Button
                                 type="submit"
                                 className="btn btn-primary rounded-pill px-4"
                             >
-                                <i className="bi bi-save me-2"></i>
+                                <i className="bi bi-save me-2" />
                                 {t("btn.save")}
                             </Button>
                             <Button
@@ -828,7 +844,7 @@ const ComparatifEdit: React.FC = () => {
                                 type="button"
                                 onClick={() => navigate("/comparatif")}
                             >
-                                <i className="bi bi-arrow-return-left me-2"></i>
+                                <i className="bi bi-arrow-return-left me-2" />
                                 {t("btn.cancel")}
                             </Button>
                         </div>
@@ -846,7 +862,7 @@ const ComparatifEdit: React.FC = () => {
             >
                 <Modal.Header closeButton>
                     <Modal.Title>
-                        <i className="bi bi-plus-circle me-2"></i>
+                        <i className="bi bi-plus-circle me-2" />
                         {t("modal.title")}
                     </Modal.Title>
                 </Modal.Header>
@@ -875,8 +891,7 @@ const ComparatifEdit: React.FC = () => {
                                                     (opt) =>
                                                         !lines.some(
                                                             (l) =>
-                                                                l.typeItem ===
-                                                                opt
+                                                                l.typeItem === opt
                                                         )
                                                 )
                                                 .map((topt) => (
@@ -897,8 +912,7 @@ const ComparatifEdit: React.FC = () => {
                                                     (opt) =>
                                                         !lines.some(
                                                             (l) =>
-                                                                l.typeItem ===
-                                                                opt
+                                                                l.typeItem === opt
                                                         )
                                                 )
                                                 .map((v) => ({
@@ -949,7 +963,7 @@ const ComparatifEdit: React.FC = () => {
                                         onClick={() => setModalStep(2)}
                                     >
                                         {t("modal.step1.next")}{" "}
-                                        <i className="bi bi-arrow-right ms-2"></i>
+                                        <i className="bi bi-arrow-right ms-2" />
                                     </Button>
                                 </div>
                             </>
@@ -958,9 +972,7 @@ const ComparatifEdit: React.FC = () => {
                                 {/* Quick online search buttons */}
                                 <div className="mb-3">
                                     <Form.Label className="fw-bold">
-                                        {t(
-                                            "modal.step2.quickSearchLabel"
-                                        )}
+                                        {t("modal.step2.quickSearchLabel")}
                                     </Form.Label>
                                     <div className="d-flex flex-wrap gap-2">
                                         <Button
@@ -1045,7 +1057,7 @@ const ComparatifEdit: React.FC = () => {
                                                     marque: e.target.value,
                                                 }))
                                             }
-                                            className="border-black rounded-3"
+                                            className="rounded-3"
                                         />
                                     </Col>
                                     <Col md={3}>
@@ -1067,7 +1079,7 @@ const ComparatifEdit: React.FC = () => {
                                                     ),
                                                 }))
                                             }
-                                            className="border-black rounded-3"
+                                            className="rounded-3"
                                         />
                                     </Col>
                                     <Col md={3}>
@@ -1089,7 +1101,7 @@ const ComparatifEdit: React.FC = () => {
                                                     ),
                                                 }))
                                             }
-                                            className="border-black rounded-3"
+                                            className="rounded-3"
                                         />
                                     </Col>
                                 </Row>
@@ -1105,11 +1117,10 @@ const ComparatifEdit: React.FC = () => {
                                             onChange={(e) =>
                                                 setModalForm((p) => ({
                                                     ...p,
-                                                    poidsUnite:
-                                                        e.target.value,
+                                                    poidsUnite: e.target.value,
                                                 }))
                                             }
-                                            className="border-black rounded-3"
+                                            className="rounded-3"
                                         >
                                             <option value="">
                                                 {t("unit.placeholder")}
@@ -1136,7 +1147,7 @@ const ComparatifEdit: React.FC = () => {
                                                     magasin: e.target.value,
                                                 }))
                                             }
-                                            className="border-black rounded-3"
+                                            className="rounded-3"
                                         />
                                     </Col>
                                 </Row>
@@ -1146,7 +1157,7 @@ const ComparatifEdit: React.FC = () => {
                                         className="btn btn-secondary rounded-pill px-4"
                                         onClick={() => setModalStep(1)}
                                     >
-                                        <i className="bi bi-arrow-left me-2"></i>
+                                        <i className="bi bi-arrow-left me-2" />
                                         {t("modal.step2.back")}
                                     </Button>
                                     <Button
@@ -1158,7 +1169,7 @@ const ComparatifEdit: React.FC = () => {
                                             !modalTypeItem.trim()
                                         }
                                     >
-                                        <i className="bi bi-plus-circle me-2"></i>
+                                        <i className="bi bi-plus-circle me-2" />
                                         {t("modal.step2.submit")}
                                     </Button>
                                 </div>

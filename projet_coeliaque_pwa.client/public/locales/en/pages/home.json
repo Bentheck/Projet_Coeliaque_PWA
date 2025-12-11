@@ -3,7 +3,7 @@
     "title": "Services Coeliaque: your gluten-free tools in one place.",
     "subtitle": "Calculate your tax credit, manage your grocery lists and connect with the community — even when you’re offline.",
     "loggedInTitle": "Welcome back to Services Coeliaque, {{name}}!",
-    "loggedInSubtitle": "Your receipts, grocery lists and community discussions are ready whenever you are.",
+    "loggedInSubtitle": "Your invoices, grocery lists, and community discussions are at your disposal whenever you are.",
     "loggedInNoMembershipTitle": "Welcome to Services Coeliaque, {{name}}!",
     "loggedInNoMembershipSubtitle": "To unlock tax reports, grocery lists and all features, you’ll first need to activate your membership."
   },
@@ -65,6 +65,58 @@
     "footer": {
       "ttl": "Offline access is valid for about {{hours}} hours after your last connection.",
       "cached": "{{count}} entries currently cached on this device."
+    }
+  },
+  "installCard": {
+    "title": "Install Services Coeliaque on your device",
+    "intro": "Add the site to your home screen or app menu for faster access and an optimized experience.",
+    "ios": {
+      "title": "On iPhone / iPad (Safari):",
+      "step1": "Open the site in Safari.",
+      "step2": "Tap the Share button (a square with an upward arrow).",
+      "step3": "Scroll and tap “Add to Home Screen”.",
+      "step4": "Confirm the name if needed, then tap “Add”."
+    },
+    "android": {
+      "title": "On Android (Chrome):",
+      "step1": "Open the site in Google Chrome.",
+      "step2": "Tap the menu (⋮) in the top-right corner.",
+      "step3": "Choose “Add to Home screen”, then “Install” if prompted.",
+      "step4": "The icon will appear on your home screen like an app."
+    },
+    "chromeDesktop": {
+      "title": "On desktop (Google Chrome):",
+      "step1": "Open the site in Chrome.",
+      "step2": "If an “Install” icon appears in the address bar, click it and choose “Install”.",
+      "step3": "If you don’t see an icon, open the menu (⋮) > “Cast, save and share” > “Install page as app”.",
+      "step4": "The app will be available in your Start menu and/or Dock like a native application."
+    },
+    "edgeDesktop": {
+      "title": "On desktop (Microsoft Edge):",
+      "step1": "Open the site in Microsoft Edge.",
+      "step2": "Click the menu (⋯) in the top-right corner.",
+      "step3": "Go to “Extra tools” / “More tools” if present, then “Apps”.",
+      "step4": "Choose “Install this site as an app” or “Install ‘Services Coeliaque’”."
+    },
+    "safariDesktop": {
+      "title": "On macOS (Safari, macOS Sonoma or later):",
+      "step1": "Open the site in Safari.",
+      "step2": "In the menu bar, choose “File” > “Add to Dock”.",
+      "step3": "Or use the Share button and select “Add to Dock”.",
+      "step4": "The icon will appear in the Dock as a dedicated app."
+    },
+    "firefoxDesktop": {
+      "title": "On desktop (Firefox):",
+      "body1": "Firefox supports some PWA features but does not always offer full installation like Chrome or Edge.",
+      "body2": "You can still create a shortcut to the site (for example, in your Dock or taskbar) using your system tools or browser bookmarks."
+    },
+    "otherDesktop": {
+      "title": "On desktop (other browsers):",
+      "body": "On most modern desktop browsers, an install button may appear in the address bar, or an “Install” / “Apps” option may be available in the browser menu."
+    },
+    "otherMobile": {
+      "title": "On mobile (other browsers):",
+      "body": "In many mobile browsers, the option “Add to Home screen” or “Install app” is available in the browser menu (⋮ or ☰)."
     }
   }
 }

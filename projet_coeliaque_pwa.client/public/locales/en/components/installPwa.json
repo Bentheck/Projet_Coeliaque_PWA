@@ -6,7 +6,7 @@
     "labelOther": "Install the app"
   },
   "alerts": {
-    "notReady": "Installation isn't available yet. Try again in a few seconds."
+    "notReady": "Your browser doesn’t allow installation directly from this button. Please use the “Install app” option in the address bar instead."
   },
   "ios": {
     "header": "Install on iPhone / iPad",

@@ -5,6 +5,7 @@ import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto } from "../../lib/types";
 import { useAuth } from "../../components/AuthContext";
 import PostEditor from "../../components/PostEditor";
+import "../../styles/forum.css";
 
 const ForumNewThread: React.FC = () => {
     const { t, i18n } = useTranslation("pages/Forum/forumNewThread");
@@ -66,7 +67,10 @@ const ForumNewThread: React.FC = () => {
     }, [bodyHtml]);
 
     const canSubmit =
-        !sending && !!categoryId && title.trim().length > 0 && bodyPlain.length > 0;
+        !sending &&
+        !!categoryId &&
+        title.trim().length > 0 &&
+        bodyPlain.length > 0;
 
     const createThread = async () => {
         if (!canSubmit) return;
@@ -92,7 +96,7 @@ const ForumNewThread: React.FC = () => {
     if (!user) {
         return (
             <div className="container py-3">
-                <div className="card section-highlight-mint">
+                <div className="card card--tinted section-highlight-mint section-border-primary shadow-sm">
                     <div className="card-body">
                         <div className="alert alert-secondary mb-0">
                             {t("messages.loginToPost")}
@@ -120,7 +124,7 @@ const ForumNewThread: React.FC = () => {
 
             {err && <div className="alert alert-danger">{err}</div>}
 
-            <div className="card card--tinted section-highlight-primary">
+            <div className="card card--tinted section-highlight-primary section-border-primary shadow-sm">
                 <div className="card-body highlight-bar-primary">
                     <div className="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <span className="pill-highlight-primary">

@@ -98,7 +98,7 @@ const SubscribeSuccess: React.FC = () => {
 
     return (
         <div className="container py-4">
-            <div className="card card--accent shadow-sm border-0">
+            <div className="card card--accent shadow-sm border-accent-primary">
                 <div className="card-body">
                     {/* Everything we want to print must be inside #print-section */}
                     <div id="print-section" className="subscription-success">

@@ -29,7 +29,7 @@
       "emptyType": "No products for this type.",
       "quickSearchLabel": "Quick search",
       "quickSearchGluten": "Gluten-free version",
-      "quickSearchHint": "Uses the type (or the name) as a keyword, for example “bread”, “pasta”, etc. If “Gluten-free version” is checked, “gluten-free” is automatically added to the search.",
+      "quickSearchHint": "Use the type (or the name) as a keyword, for example ‘bread’, ‘pasta’, etc. If ‘Gluten-free version’ is checked, ‘gluten-free’ is automatically added to the search. Please note that searching for ‘gluten-free’ can still return products that contain gluten, so take the time to double-check.",
       "quickSearchButtons": {
         "walmart": "Walmart",
         "maxi": "Maxi",

@@ -44,7 +44,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
-            // Dev-only switch: /api/subscribe/create-checkout-session?test=1
             bool useDailyTestPrice =
                 _env.IsDevelopment() &&
                 (Request.Query.TryGetValue("test", out var q) &&
@@ -57,7 +56,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (string.IsNullOrWhiteSpace(priceId))
                 return BadRequest(new { error = "Stripe price not configured." });
 
-            // Optional in dev: force a specific customer (Test Clocks)
             string customerId = null;
             if (_env.IsDevelopment() && Request.Query.TryGetValue("customerId", out var cq))
                 customerId = cq.ToString();
@@ -87,9 +85,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 Mode = "subscription",
                 PaymentMethodTypes = new List<string> { "card" },
                 LineItems = new List<SessionLineItemOptions>
-                {
-                    new SessionLineItemOptions { Price = priceId, Quantity = 1 }
-                },
+        {
+            new SessionLineItemOptions { Price = priceId, Quantity = 1 }
+        },
                 SuccessUrl = $"{_frontendUrl}/subscribe/success?session_id={{CHECKOUT_SESSION_ID}}",
                 CancelUrl = $"{_frontendUrl}/subscribe/cancel",
                 Metadata = new Dictionary<string, string> { ["user_id"] = user.Id },
@@ -110,8 +108,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
 
-            return Ok(new { sessionId = session.Id });
+            // ✅ Return both sessionId and url
+            return Ok(new
+            {
+                sessionId = session.Id,
+                url = session.Url
+            });
         }
+
 
         /// <summary>
         /// Creates a Stripe Billing Portal session so the user can manage payment methods, invoices, and subscriptions.

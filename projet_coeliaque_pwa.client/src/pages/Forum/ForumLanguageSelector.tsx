@@ -1,6 +1,7 @@
 ﻿import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import "../../styles/forum.css";
 
 const ForumLanguageSelector: React.FC = () => {
     const navigate = useNavigate();
@@ -10,7 +11,7 @@ const ForumLanguageSelector: React.FC = () => {
         <div className="container py-5">
             <div className="row justify-content-center">
                 <div className="col-12 col-md-8 col-lg-6">
-                    <div className="card card--accent section-highlight-primary text-center">
+                    <div className="card card--accent section-highlight-primary section-border-primary shadow-sm text-center">
                         <div className="card-body">
                             <h1 className="h3 mb-2">
                                 {t("title", "Forum")}
@@ -25,7 +26,10 @@ const ForumLanguageSelector: React.FC = () => {
                             {/* Small pill accent above buttons */}
                             <div className="mb-3">
                                 <span className="pill-highlight-primary">
-                                    {t("badge.community", "Community forum")}
+                                    {t(
+                                        "badge.community",
+                                        "Community forum"
+                                    )}
                                 </span>
                             </div>
 

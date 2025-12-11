@@ -22,6 +22,7 @@ import { useAuth } from "../../components/AuthContext";
 import PostEditor from "../../components/PostEditor";
 import DOMPurify from "dompurify";
 import { useTranslation } from "react-i18next";
+import "../../styles/forum.css";
 
 /** One of the two vote UIs will be active:
  *  - "thread": vote on the whole thread via header bar (all comments, incl. OP, show no vote bar)
@@ -178,6 +179,7 @@ type ReplyBoxProps = {
     value: string;
     onChange: (v: string) => void; // receives HTML
     onSubmit: () => void;
+    onCancel: () => void;
     sending?: boolean;
     disabled?: boolean;
 };
@@ -186,6 +188,7 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
     value,
     onChange,
     onSubmit,
+    onCancel,
     sending,
     disabled,
 }) => {
@@ -204,7 +207,14 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
             />
             <div className="d-flex justify-content-end gap-2 mt-2">
                 <button
-                    className="btn btn-secondary"
+                    className="btn btn-outline-secondary"
+                    onClick={onCancel}
+                    disabled={disabled || !!sending}
+                >
+                    {t("replyBox.cancel")}
+                </button>
+                <button
+                    className="btn btn-outline-secondary"
                     onClick={() => onChange("")}
                     disabled={disabled || !!sending}
                 >
@@ -309,6 +319,9 @@ type PostCardProps = {
 
     // is this the OP card?
     isOp?: boolean;
+
+    /** When true, render without outer card wrapper (for OP embedded in header) */
+    embedded?: boolean;
 };
 
 const PostCard: React.FC<PostCardProps> = memo(
@@ -337,6 +350,7 @@ const PostCard: React.FC<PostCardProps> = memo(
         saving,
         canModerate,
         isOp = false,
+        embedded = false,
     }) => {
         const { t, i18n } = useTranslation("pages/Forum/forumThreadView");
         const giphyLang = i18n.language?.startsWith("fr") ? "fr" : "en";
@@ -355,307 +369,293 @@ const PostCard: React.FC<PostCardProps> = memo(
         const editedBy = (p as any).editedBy as string | undefined;
         const editedUtc = (p as any).editedUtc as string | undefined;
 
+        // card classes only if NOT embedded
         const cardClasses = [
             "card",
             "card--tinted",
             "shadow-sm",
-            "border-0",
-            "mb-2",
+            "forum-post-card",
             "hl-hover",
         ];
-        if (isOp) cardClasses.push("hl-blue-border");
-        if (!isOp && depth === 0) cardClasses.push("hl-soft");
 
-        return (
-            <div className={cardClasses.join(" ")}>
-                <div
-                    className={`card-body ${isOp ? "" : ""
-                        }`}
-                >
-                    <div className="d-flex align-items-start gap-3">
-                        <Avatar name={p.createdBy} />
+        // accent border on every post
+        cardClasses.push("hl-blue-border");
 
-                        <div className="flex-grow-1">
-                            <div className="d-flex justify-content-between align-items-center">
-                                <strong>{p.createdBy}</strong>
-                                <div className="d-flex align-items-center gap-2">
-                                    <small className="text-muted">
-                                        {fmt(p.createdUtc)}
-                                    </small>
-                                    {depth >= 1 && (
-                                        <button
-                                            className="btn btn-sm btn-outline-secondary"
-                                            onClick={() =>
-                                                onToggleCollapsed(p.id)
-                                            }
-                                            aria-expanded={!isCollapsed}
-                                            aria-controls={`post-${p.id}-body`}
-                                            title={
-                                                isCollapsed
-                                                    ? t("buttons.expand")
-                                                    : t("buttons.collapse")
-                                            }
-                                        >
-                                            {isCollapsed ? (
-                                                <>
-                                                    <i className="bi bi-chevron-down me-1" />
-                                                    {t("buttons.expand")}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-chevron-up me-1" />
-                                                    {t("buttons.collapse")}
-                                                </>
-                                            )}
-                                        </button>
-                                    )}
-                                </div>
+        // alternate tones by depth
+        const toneClass =
+            depth % 2 === 0 ? "forum-post-tone-a" : "forum-post-tone-b";
+        cardClasses.push(toneClass);
+
+        if (isOp) cardClasses.push("forum-post-card-op");
+
+        const inner = (
+            <div className="forum-post-inner">
+                <div className="d-flex align-items-start gap-3">
+                    <Avatar name={p.createdBy} />
+
+                    <div className="flex-grow-1">
+                        <div className="d-flex justify-content-between align-items-center">
+                            <strong>{p.createdBy}</strong>
+                            <div className="d-flex align-items-center gap-2">
+                                <small className="text-muted">
+                                    {fmt(p.createdUtc)}
+                                </small>
+                                {depth >= 1 && (
+                                    <button
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={() =>
+                                            onToggleCollapsed(p.id)
+                                        }
+                                        aria-expanded={!isCollapsed}
+                                        aria-controls={`post-${p.id}-body`}
+                                        title={
+                                            isCollapsed
+                                                ? t("buttons.expand")
+                                                : t("buttons.collapse")
+                                        }
+                                    >
+                                        {isCollapsed ? (
+                                            <>
+                                                <i className="bi bi-chevron-down me-1" />
+                                                {t("buttons.expand")}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-chevron-up me-1" />
+                                                {t("buttons.collapse")}
+                                            </>
+                                        )}
+                                    </button>
+                                )}
                             </div>
+                        </div>
 
-                            {!isCollapsed && (
-                                <div id={`post-${p.id}-body`}>
-                                    {!isEditing ? (
-                                        <>
-                                            <SafeHtml
-                                                html={bodyHtml}
-                                                className="mt-2 post-body"
-                                            />
+                        {!isCollapsed && (
+                            <div id={`post-${p.id}-body`}>
+                                {!isEditing ? (
+                                    <>
+                                        <SafeHtml
+                                            html={bodyHtml}
+                                            className="mt-2 post-body"
+                                        />
 
-                                            {editedUtc || editedBy ? (
-                                                <div className="text-muted small mt-2">
-                                                    {editedBy && editedUtc
-                                                        ? t(
-                                                            "post.editedByOn",
-                                                            {
-                                                                by: editedBy,
-                                                                date: fmt(
-                                                                    editedUtc!
-                                                                ),
-                                                            }
-                                                        )
-                                                        : editedBy
-                                                            ? t(
-                                                                "post.editedBy",
-                                                                { by: editedBy }
-                                                            )
-                                                            : t("post.editedOn", {
-                                                                date: fmt(
-                                                                    editedUtc!
-                                                                ),
-                                                            })}
-                                                </div>
-                                            ) : null}
-
-                                            <div className="mt-2 d-flex align-items-center gap-3">
-                                                <button
-                                                    className="btn btn-sm btn-outline-primary"
-                                                    onClick={() =>
-                                                        onToggleReply(p.id)
-                                                    }
-                                                    disabled={!canReply}
-                                                >
-                                                    <i className="bi bi-reply me-1" />
-                                                    {t("post.reply")}
-                                                </button>
-
-                                                {showVoteOnThisCard && (
-                                                    <VoteBar
-                                                        score={score}
-                                                        myVote={myVote}
-                                                        onVote={(next) =>
-                                                            onVotePost(
-                                                                p.id,
-                                                                next
-                                                            )
+                                        {editedUtc || editedBy ? (
+                                            <div className="text-muted small mt-2">
+                                                {editedBy && editedUtc
+                                                    ? t(
+                                                        "post.editedByOn",
+                                                        {
+                                                            by: editedBy,
+                                                            date: fmt(
+                                                                editedUtc!
+                                                            ),
                                                         }
-                                                        size="sm"
-                                                    />
-                                                )}
-
-                                                <small className="text-muted ms-auto">
-                                                    {t(
-                                                        "post.repliesCount",
-                                                        { count: directReplies }
-                                                    )}
-                                                </small>
-
-                                                {canEdit && (
-                                                    <div className="btn-group btn-group-sm ms-2">
-                                                        <button
-                                                            className="btn btn-outline-secondary"
-                                                            onClick={() =>
-                                                                onStartEdit(
-                                                                    p.id,
-                                                                    bodyHtml
-                                                                )
-                                                            }
-                                                        >
-                                                            {t("actions.edit")}
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-outline-danger"
-                                                            onClick={() =>
-                                                                onDeletePost(
-                                                                    p.id
-                                                                )
-                                                            }
-                                                        >
-                                                            {t(
-                                                                "actions.delete"
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                    )
+                                                    : editedBy
+                                                        ? t("post.editedBy", {
+                                                            by: editedBy,
+                                                        })
+                                                        : t("post.editedOn", {
+                                                            date: fmt(editedUtc!),
+                                                        })}
                                             </div>
+                                        ) : null}
 
-                                            {replyOpen[p.id] && canReply && (
-                                                <ReplyBox
-                                                    value={
-                                                        replyText[p.id] || ""
+                                        <div className="mt-2 d-flex align-items-center gap-3">
+                                            <button
+                                                className="btn btn-sm btn-outline-primary"
+                                                onClick={() =>
+                                                    onToggleReply(p.id)
+                                                }
+                                                disabled={!canReply}
+                                            >
+                                                <i className="bi bi-reply me-1" />
+                                                {t("post.reply")}
+                                            </button>
+
+                                            {showVoteOnThisCard && (
+                                                <VoteBar
+                                                    score={score}
+                                                    myVote={myVote}
+                                                    onVote={(next) =>
+                                                        onVotePost(p.id, next)
                                                     }
-                                                    onChange={(v) =>
-                                                        onChangeReply(p.id, v)
-                                                    }
-                                                    onSubmit={() =>
-                                                        onSubmitReply(p.id)
-                                                    }
-                                                    sending={sending[p.id]}
+                                                    size="sm"
                                                 />
                                             )}
 
-                                            {extraUnderBody}
+                                            <small className="text-muted ms-auto">
+                                                {t("post.repliesCount", {
+                                                    count: directReplies,
+                                                })}
+                                            </small>
 
-                                            {p.replies?.length ? (
-                                                <div
-                                                    className="mt-2 ps-2 ps-sm-3 border-start forum-post-replies"
-                                                    style={{
-                                                        marginLeft: indentPx,
-                                                    }}
-                                                >
-                                                    {p.replies.map((child) => (
-                                                        <PostCard
-                                                            key={child.id}
-                                                            p={child}
-                                                            depth={depth + 1}
-                                                            canReply={
-                                                                canReply
-                                                            }
-                                                            replyOpen={
-                                                                replyOpen
-                                                            }
-                                                            replyText={
-                                                                replyText
-                                                            }
-                                                            sending={sending}
-                                                            onToggleReply={
-                                                                onToggleReply
-                                                            }
-                                                            onChangeReply={
-                                                                onChangeReply
-                                                            }
-                                                            onSubmitReply={(
-                                                                idVal
-                                                            ) =>
-                                                                onSubmitReply(
-                                                                    idVal
-                                                                )
-                                                            }
-                                                            collapsed={
-                                                                collapsed
-                                                            }
-                                                            onToggleCollapsed={
-                                                                onToggleCollapsed
-                                                            }
-                                                            showVoteOnThisCard={
-                                                                true
-                                                            }
-                                                            onVotePost={
-                                                                onVotePost
-                                                            }
-                                                            onStartEdit={
-                                                                onStartEdit
-                                                            }
-                                                            onCancelEdit={
-                                                                onCancelEdit
-                                                            }
-                                                            onSaveEdit={
-                                                                onSaveEdit
-                                                            }
-                                                            onDeletePost={
-                                                                onDeletePost
-                                                            }
-                                                            editing={editing}
-                                                            editText={editText}
-                                                            setEditText={
-                                                                setEditText
-                                                            }
-                                                            saving={saving}
-                                                            canModerate={
-                                                                canModerate
-                                                            }
-                                                            isOp={false}
-                                                        />
-                                                    ))}
+                                            {canEdit && (
+                                                <div className="btn-group btn-group-sm ms-2">
+                                                    <button
+                                                        className="btn btn-outline-secondary"
+                                                        onClick={() =>
+                                                            onStartEdit(
+                                                                p.id,
+                                                                bodyHtml
+                                                            )
+                                                        }
+                                                    >
+                                                        {t("actions.edit")}
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-outline-danger"
+                                                        onClick={() =>
+                                                            onDeletePost(p.id)
+                                                        }
+                                                    >
+                                                        {t("actions.delete")}
+                                                    </button>
                                                 </div>
-                                            ) : null}
-                                        </>
-                                    ) : (
-                                        <div className="mt-2">
-                                            <PostEditor
-                                                initialHTML={
-                                                    editText[p.id] ?? bodyHtml
-                                                }
-                                                onChange={(v) =>
-                                                    setEditText((tState) => ({
-                                                        ...tState,
-                                                        [p.id]: v,
-                                                    }))
-                                                }
-                                                ariaLabel={t("actions.edit")}
-                                                giphyApiKey={
-                                                    import.meta.env
-                                                        .VITE_GIPHY_KEY
-                                                }
-                                                giphyLang={giphyLang}
-                                                giphyRating="g"
-                                            />
-                                            <div className="d-flex gap-2 justify-content-end mt-2">
-                                                <button
-                                                    className="btn btn-secondary btn-sm"
-                                                    onClick={() =>
-                                                        onCancelEdit(p.id)
-                                                    }
-                                                    disabled={saving[p.id]}
-                                                >
-                                                    {t("threadHeader.cancel")}
-                                                </button>
-                                                <button
-                                                    className="btn btn-primary btn-sm"
-                                                    onClick={() =>
-                                                        onSaveEdit(p.id)
-                                                    }
-                                                    disabled={
-                                                        saving[p.id] ||
-                                                        !(
-                                                            editText[p.id] ||
-                                                            ""
-                                                        ).trim()
-                                                    }
-                                                >
-                                                    {saving[p.id]
-                                                        ? t("saving")
-                                                        : t(
-                                                            "threadHeader.save"
-                                                        )}
-                                                </button>
-                                            </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+
+                                        {replyOpen[p.id] && canReply && (
+                                            <ReplyBox
+                                                value={replyText[p.id] || ""}
+                                                onChange={(v) =>
+                                                    onChangeReply(p.id, v)
+                                                }
+                                                onSubmit={() =>
+                                                    onSubmitReply(p.id)
+                                                }
+                                                onCancel={() => {
+                                                    onChangeReply(p.id, "");
+                                                    onToggleReply(p.id);
+                                                }}
+                                                sending={sending[p.id]}
+                                            />
+                                        )}
+
+                                        {extraUnderBody}
+
+                                        {p.replies?.length ? (
+                                            <div
+                                                className="mt-2 ps-2 ps-sm-3 border-start forum-post-replies"
+                                                style={{
+                                                    marginLeft: indentPx,
+                                                }}
+                                            >
+                                                {p.replies.map((child) => (
+                                                    <PostCard
+                                                        key={child.id}
+                                                        p={child}
+                                                        depth={depth + 1}
+                                                        canReply={canReply}
+                                                        replyOpen={replyOpen}
+                                                        replyText={replyText}
+                                                        sending={sending}
+                                                        onToggleReply={
+                                                            onToggleReply
+                                                        }
+                                                        onChangeReply={
+                                                            onChangeReply
+                                                        }
+                                                        onSubmitReply={(
+                                                            idVal
+                                                        ) =>
+                                                            onSubmitReply(idVal)
+                                                        }
+                                                        collapsed={collapsed}
+                                                        onToggleCollapsed={
+                                                            onToggleCollapsed
+                                                        }
+                                                        showVoteOnThisCard={
+                                                            true
+                                                        }
+                                                        onVotePost={onVotePost}
+                                                        onStartEdit={
+                                                            onStartEdit
+                                                        }
+                                                        onCancelEdit={
+                                                            onCancelEdit
+                                                        }
+                                                        onSaveEdit={onSaveEdit}
+                                                        onDeletePost={
+                                                            onDeletePost
+                                                        }
+                                                        editing={editing}
+                                                        editText={editText}
+                                                        setEditText={
+                                                            setEditText
+                                                        }
+                                                        saving={saving}
+                                                        canModerate={
+                                                            canModerate
+                                                        }
+                                                        isOp={false}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : null}
+                                    </>
+                                ) : (
+                                    <div className="mt-2">
+                                        <PostEditor
+                                            initialHTML={
+                                                editText[p.id] ?? bodyHtml
+                                            }
+                                            onChange={(v) =>
+                                                setEditText((tState) => ({
+                                                    ...tState,
+                                                    [p.id]: v,
+                                                }))
+                                            }
+                                            ariaLabel={t("actions.edit")}
+                                            giphyApiKey={
+                                                import.meta.env.VITE_GIPHY_KEY
+                                            }
+                                            giphyLang={giphyLang}
+                                            giphyRating="g"
+                                        />
+                                        <div className="d-flex gap-2 justify-content-end mt-2">
+                                            <button
+                                                className="btn btn-secondary btn-sm"
+                                                onClick={() =>
+                                                    onCancelEdit(p.id)
+                                                }
+                                                disabled={saving[p.id]}
+                                            >
+                                                {t("threadHeader.cancel")}
+                                            </button>
+                                            <button
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() =>
+                                                    onSaveEdit(p.id)
+                                                }
+                                                disabled={
+                                                    saving[p.id] ||
+                                                    !(editText[p.id] || "")
+                                                        .trim()
+                                                }
+                                            >
+                                                {saving[p.id]
+                                                    ? t("saving")
+                                                    : t("threadHeader.save")}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
+            </div>
+        );
+
+        if (embedded) {
+            // used for OP inside header card: no outer card wrapper
+            return inner;
+        }
+
+        return (
+            <div className={cardClasses.join(" ")}>
+                <div className="card-body">{inner}</div>
             </div>
         );
     }
@@ -1179,7 +1179,7 @@ const ForumThreadView: React.FC = () => {
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
                                     {!titleEditing ? (
                                         <>
-                                            <h1 className="h4 mb-1 mb-0 section-title-accent">
+                                            <h1 className="h4 mb-1 mb-0">
                                                 {thread?.title ??
                                                     t(
                                                         "threadHeader.defaultTitle"
@@ -1311,6 +1311,39 @@ const ForumThreadView: React.FC = () => {
                             )}
                         </div>
                     </div>
+
+                    {/* OP content embedded in the same card as the header (page 1 only) */}
+                    {opOnPage && page === 1 && (
+                        <div className="mt-3 pt-3 border-top forum-op-wrapper">
+                            <PostCard
+                                p={opOnPage}
+                                depth={0}
+                                canReply={!!user && !thread?.isLocked}
+                                replyOpen={replyOpen}
+                                replyText={replyText}
+                                sending={sending}
+                                onToggleReply={onToggleReply}
+                                onChangeReply={onChangeReply}
+                                onSubmitReply={(idVal) => doReply(idVal)}
+                                collapsed={collapsed}
+                                onToggleCollapsed={toggleCollapsed}
+                                showVoteOnThisCard={voteMode === "op"}
+                                onVotePost={onVotePost}
+                                extraUnderBody={Controls}
+                                onStartEdit={onStartEdit}
+                                onCancelEdit={onCancelEdit}
+                                onSaveEdit={onSaveEdit}
+                                onDeletePost={onDeletePost}
+                                editing={editing}
+                                editText={editText}
+                                setEditText={setEditText}
+                                saving={saving}
+                                canModerate={isModerator}
+                                isOp={true}
+                                embedded={true}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1347,13 +1380,15 @@ const ForumThreadView: React.FC = () => {
                     <div className="vstack gap-2 mb-3">
                         {(() => {
                             const items = sortedItems;
-                            if (opOnPage) {
-                                const isOpVotable = voteMode === "op";
-                                return (
-                                    <>
+
+                            if (opOnPage && page === 1) {
+                                // OP already rendered in header card; show only other top-level comments
+                                return items
+                                    .filter((p) => p.id !== opOnPage.id)
+                                    .map((p) => (
                                         <PostCard
-                                            key={opOnPage.id}
-                                            p={opOnPage}
+                                            key={p.id}
+                                            p={p}
                                             depth={0}
                                             canReply={
                                                 !!user && !thread?.isLocked
@@ -1370,9 +1405,8 @@ const ForumThreadView: React.FC = () => {
                                             onToggleCollapsed={
                                                 toggleCollapsed
                                             }
-                                            showVoteOnThisCard={isOpVotable}
+                                            showVoteOnThisCard={true}
                                             onVotePost={onVotePost}
-                                            extraUnderBody={Controls}
                                             onStartEdit={onStartEdit}
                                             onCancelEdit={onCancelEdit}
                                             onSaveEdit={onSaveEdit}
@@ -1382,58 +1416,12 @@ const ForumThreadView: React.FC = () => {
                                             setEditText={setEditText}
                                             saving={saving}
                                             canModerate={isModerator}
-                                            isOp={true}
+                                            isOp={false}
                                         />
-
-                                        {/* Other top-level comments */}
-                                        {items
-                                            .filter(
-                                                (p) => p.id !== opOnPage.id
-                                            )
-                                            .map((p) => (
-                                                <PostCard
-                                                    key={p.id}
-                                                    p={p}
-                                                    depth={0}
-                                                    canReply={
-                                                        !!user &&
-                                                        !thread?.isLocked
-                                                    }
-                                                    replyOpen={replyOpen}
-                                                    replyText={replyText}
-                                                    sending={sending}
-                                                    onToggleReply={
-                                                        onToggleReply
-                                                    }
-                                                    onChangeReply={
-                                                        onChangeReply
-                                                    }
-                                                    onSubmitReply={(idVal) =>
-                                                        doReply(idVal)
-                                                    }
-                                                    collapsed={collapsed}
-                                                    onToggleCollapsed={
-                                                        toggleCollapsed
-                                                    }
-                                                    showVoteOnThisCard={true}
-                                                    onVotePost={onVotePost}
-                                                    onStartEdit={onStartEdit}
-                                                    onCancelEdit={onCancelEdit}
-                                                    onSaveEdit={onSaveEdit}
-                                                    onDeletePost={onDeletePost}
-                                                    editing={editing}
-                                                    editText={editText}
-                                                    setEditText={setEditText}
-                                                    saving={saving}
-                                                    canModerate={isModerator}
-                                                    isOp={false}
-                                                />
-                                            ))}
-                                    </>
-                                );
+                                    ));
                             }
 
-                            // OP not on this page: show controls first, then all top-level comments
+                            // OP not on this page: show controls first, then all comments as cards
                             return (
                                 <>
                                     {Controls}

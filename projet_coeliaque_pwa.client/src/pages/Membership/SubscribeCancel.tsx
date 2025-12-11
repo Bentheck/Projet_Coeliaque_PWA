@@ -6,7 +6,7 @@ const SubscribeCancel: React.FC = () => {
 
     return (
         <div className="container py-4">
-            <div className="card card--tinted shadow-sm border-0">
+            <div className="card card--tinted shadow-sm border-accent-primary">
                 <div className="card-body">
                     <h1 className="h5 mb-2">{t("title")}</h1>
                     <p className="text-muted mb-0">{t("message")}</p>

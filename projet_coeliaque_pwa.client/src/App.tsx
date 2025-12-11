@@ -1,6 +1,6 @@
 ﻿// src/App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import "./app.css";
+import "./styles/app-theme.css";
 
 import Layout from "./components/Layout";
 import Home from "./pages/Home";

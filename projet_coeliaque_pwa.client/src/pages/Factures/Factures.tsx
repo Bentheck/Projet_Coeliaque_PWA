@@ -10,6 +10,7 @@ import {
     removeFacture,
     type Facture as IFacture,
 } from "../../offline/db";
+import "../../styles/factures-index.css";
 
 const LIST_KEY = "factures/all";
 
@@ -183,25 +184,14 @@ const Factures: React.FC = () => {
     // ----- Render -----
     return (
         <div className="container factures-container py-3">
-            {/* Header card with title, subtitle & stats */}
-            <div className="d-flex justify-content-between align-items-stretch mb-3 flex-wrap gap-2">
-                <div className="card card--accent shadow-sm flex-grow-1">
-                    <div className="card-body">
-                        <h1 className="h4 mb-1">
-                            {t("headings.title")}
-                        </h1>
-                        <p className="mb-2 small text-muted">
-                            {t("headings.subtitle")}
-                        </p>
-                        <div className="small text-muted">
-                            {t("headings.count", { count: totalCount })}
-                        </div>
-                    </div>
-                </div>
+            <div className="card card--accent shadow-sm mb-3">
+                <div className="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h1 className="h4 mb-0">
+                        {t("headings.title")}
+                    </h1>
 
-                <div className="d-flex align-items-center">
                     <button
-                        className="btn btn-primary ms-lg-3 mt-2 mt-lg-0 factures-new-btn"
+                        className="btn btn-primary factures-new-btn"
                         onClick={startCreate}
                         type="button"
                     >
@@ -219,7 +209,7 @@ const Factures: React.FC = () => {
 
             {/* Inline create/edit form */}
             {formMode !== "none" && (
-                <div className="card shadow-sm border-0 mb-3">
+                <div className="card card--tinted shadow-sm mb-3">
                     <div className="card-body">
                         <h2 className="h6 mb-3">
                             {formMode === "edit"
@@ -321,7 +311,7 @@ const Factures: React.FC = () => {
                     {list.map((facture: Facture) => (
                         <div
                             key={facture.id}
-                            className="card card--tinted border-0 shadow-sm"
+                            className="card card--tinted shadow-sm"
                         >
                             <div className="card-body d-flex align-items-start factures-card-body">
                                 <div className="factures-card-main">

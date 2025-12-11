@@ -1,7 +1,6 @@
 ﻿import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import InstallPWA from "../components/InstallPWA";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "./ThemeContext"; // 👈 Theme
 
@@ -105,7 +104,7 @@ export default function Navbar() {
     // --- Language switcher ---
     const currentLang = i18n.language?.startsWith("fr") ? "fr" : "en";
     const nextLang = currentLang === "fr" ? "en" : "fr";
-    const currentLangLabel = currentLang.toUpperCase();
+    const currentLangLabel = nextLang.toUpperCase();
 
     const handleSwitchLanguage = () => {
         i18n.changeLanguage(nextLang);
@@ -401,11 +400,6 @@ export default function Navbar() {
                                 <i className="bi bi-translate me-1"></i>
                                 {currentLangLabel}
                             </button>
-                        </li>
-
-                        {/* Install PWA button */}
-                        <li className="nav-item my-2 my-lg-0">
-                            <InstallPWA />
                         </li>
 
                         {user ? (

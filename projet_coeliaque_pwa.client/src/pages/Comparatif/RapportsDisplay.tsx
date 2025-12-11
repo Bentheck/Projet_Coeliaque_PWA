@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 
 import { db, type ReportPayload, putReportBody } from "../../offline/db";
+import "../../styles/rapports.css";
 
 const RapportsDisplay: React.FC = () => {
     const { t, i18n } = useTranslation("pages/Comparatif/rapportsDisplay");
@@ -49,7 +50,9 @@ const RapportsDisplay: React.FC = () => {
             } catch (e: unknown) {
                 if (!cancelled) {
                     const message =
-                        e instanceof Error ? e.message : t("errors.generic") ?? String(e);
+                        e instanceof Error
+                            ? e.message
+                            : t("errors.generic") ?? String(e);
                     setError(message);
                 }
             }
@@ -88,12 +91,12 @@ const RapportsDisplay: React.FC = () => {
     });
 
     return (
-        <div className="container py-3" style={{ maxWidth: 1200 }}>
+        <div className="container py-3 rapports-display-container">
+            {/* Info banner + actions (screen only) */}
             <div
-                className="alert alert-info no-print mb-3"
-                style={{ fontSize: "1.06em" }}
+                className="alert alert-info no-print mb-3 rapports-print-note"
             >
-                <i className="bi bi-info-circle me-2"></i>
+                <i className="bi bi-info-circle me-2" />
                 <b>{t("print.noteLabel")}</b>{" "}
                 {t("print.noteMain")}{" "}
                 <b>
@@ -101,53 +104,35 @@ const RapportsDisplay: React.FC = () => {
                 </b>
             </div>
 
-            <button
-                className="btn btn-success no-print mb-3"
-                onClick={handlePrintClick}
-            >
-                {t("print.printButton")}
-            </button>
-            <button
-                className="btn btn-outline-secondary no-print mb-3 ms-2"
-                onClick={() => navigate(-1)}
-            >
-                {t("print.backButton")}
-            </button>
+            <div className="no-print mb-3 d-flex flex-wrap gap-2">
+                <button
+                    className="btn btn-success rounded-pill px-4"
+                    onClick={handlePrintClick}
+                    type="button"
+                >
+                    <i className="bi bi-printer me-2" />
+                    {t("print.printButton")}
+                </button>
+                <button
+                    className="btn btn-outline-secondary rounded-pill px-4"
+                    onClick={() => navigate(-1)}
+                    type="button"
+                >
+                    <i className="bi bi-arrow-return-left me-2" />
+                    {t("print.backButton")}
+                </button>
+            </div>
 
             {/* Minimal modal */}
             {showPrompt && (
-                <div
-                    className="rapport-print-modal-overlay"
-                    style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 9999,
-                        background: "rgba(0,0,0,0.35)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
+                <div className="rapport-print-modal-overlay no-print">
                     <form
                         onSubmit={handlePromptSubmit}
                         autoComplete="off"
                         className="rapport-print-modal"
-                        style={{
-                            borderRadius: 12,
-                            padding: 32,
-                            minWidth: 350,
-                            boxShadow: "0 4px 30px rgba(0,0,0,0.17)",
-                            background: "#fff",
-                        }}
                     >
                         <h4 className="mb-4">{t("prompt.title")}</h4>
-                        <div
-                            className="alert alert-primary"
-                            style={{ fontSize: "1em" }}
-                        >
+                        <div className="alert alert-primary rapports-prompt-help">
                             {t("prompt.help")}
                         </div>
                         <div className="mb-3">
@@ -214,61 +199,22 @@ const RapportsDisplay: React.FC = () => {
                 </style>
 
                 {/* Print-only header fields */}
-                <div
-                    className="d-flex gap-4 align-items-end mb-4 mt-2 print-only"
-                    style={{ marginTop: 18 }}
-                >
+                <div className="d-flex gap-4 align-items-end mb-4 print-only rapports-print-header">
                     <div>
-                        <div
-                            style={{
-                                fontWeight: "bold",
-                                marginBottom: 6,
-                                fontSize: "1.07em",
-                            }}
-                        >
+                        <div className="rapports-print-label">
                             {t("prompt.nameLabel")}
                         </div>
-                        <div
-                            style={{
-                                border: "2px solid #333",
-                                background: "#fff",
-                                width: 260,
-                                height: 36,
-                                marginBottom: 6,
-                                display: "flex",
-                                alignItems: "center",
-                                fontSize: "1.07em",
-                                paddingLeft: 10,
-                            }}
-                        >
+                        <div className="rapports-print-box rapports-print-box-name">
                             {printNom || (
                                 <span style={{ color: "#fff" }}>-</span>
                             )}
                         </div>
                     </div>
                     <div>
-                        <div
-                            style={{
-                                fontWeight: "bold",
-                                marginBottom: 6,
-                                fontSize: "1.07em",
-                            }}
-                        >
+                        <div className="rapports-print-label">
                             {t("prompt.nasLabel")}
                         </div>
-                        <div
-                            style={{
-                                border: "2px solid #333",
-                                background: "#fff",
-                                width: 180,
-                                height: 36,
-                                marginBottom: 6,
-                                display: "flex",
-                                alignItems: "center",
-                                fontSize: "1.07em",
-                                paddingLeft: 10,
-                            }}
-                        >
+                        <div className="rapports-print-box rapports-print-box-nas">
                             {printNAS || (
                                 <span style={{ color: "#fff" }}>-</span>
                             )}
@@ -276,15 +222,19 @@ const RapportsDisplay: React.FC = () => {
                     </div>
                 </div>
 
-                <h1>{t("title", { year: annee })}</h1>
-                <p>{t("user", { name: userName })}</p>
+                <h1 className="mb-1">
+                    {t("title", { year: annee })}
+                </h1>
+                <p className="text-muted">
+                    {t("user", { name: userName })}
+                </p>
 
                 {rows.length === 0 ? (
-                    <div className="alert alert-secondary">
+                    <div className="alert alert-secondary mt-3">
                         {t("noRows")}
                     </div>
                 ) : (
-                    <table className="comparatif-table">
+                    <table className="comparatif-table mt-3">
                         <thead>
                             <tr>
                                 <th
@@ -423,51 +373,47 @@ const RapportsDisplay: React.FC = () => {
                     </table>
                 )}
 
-                <div style={{ marginTop: 32, fontSize: "1.1em" }}>
+                <div className="rapports-total mt-4">
                     <b>{t("total", { total: totalFormatted })}</b>
                 </div>
 
-                <div
-                    className="mt-5 p-4 rounded-3 bg-light border"
-                    style={{ fontSize: "1em", maxWidth: 900 }}
-                >
-                    <h4 className="fw-bold mb-2">
-                        <i className="bi bi-calculator me-2"></i>
-                        {t("explain.title")}
-                    </h4>
-                    <ul>
-                        <li>
-                            <b>{t("explain.pricePer100.title")}</b>
-                            <br />
-                            <span>
-                                <code>{t("explain.pricePer100.formula")}</code>
+                <div className="rapports-explain card card--tinted shadow-sm mt-4">
+                    <div className="card-body">
+                        <h4 className="fw-bold mb-2">
+                            <i className="bi bi-calculator me-2" />
+                            {t("explain.title")}
+                        </h4>
+                        <ul className="mb-2">
+                            <li>
+                                <b>{t("explain.pricePer100.title")}</b>
                                 <br />
-                                {t("explain.pricePer100.example")}
-                            </span>
-                        </li>
-                        <li className="mt-2">
-                            <b>{t("explain.diff.title")}</b>
-                            <br />
-                            <span>
-                                <code>{t("explain.diff.formula")}</code>
-                            </span>
-                        </li>
-                        <li className="mt-2">
-                            <b>{t("explain.sousTotal.title")}</b>
-                            <br />
-                            <span>
-                                <code>{t("explain.sousTotal.formula")}</code>
-                            </span>
-                        </li>
-                        <li className="mt-2">
-                            <b>{t("explain.total.title")}</b>
-                        </li>
-                    </ul>
-                    <div
-                        className="mt-2 text-secondary"
-                        style={{ fontSize: "0.95em" }}
-                    >
-                        <i>{t("explain.note")}</i>
+                                <span>
+                                    <code>{t("explain.pricePer100.formula")}</code>
+                                    <br />
+                                    {t("explain.pricePer100.example")}
+                                </span>
+                            </li>
+                            <li className="mt-2">
+                                <b>{t("explain.diff.title")}</b>
+                                <br />
+                                <span>
+                                    <code>{t("explain.diff.formula")}</code>
+                                </span>
+                            </li>
+                            <li className="mt-2">
+                                <b>{t("explain.sousTotal.title")}</b>
+                                <br />
+                                <span>
+                                    <code>{t("explain.sousTotal.formula")}</code>
+                                </span>
+                            </li>
+                            <li className="mt-2">
+                                <b>{t("explain.total.title")}</b>
+                            </li>
+                        </ul>
+                        <div className="mt-2 text-secondary rapports-explain-note">
+                            <i>{t("explain.note")}</i>
+                        </div>
                     </div>
                 </div>
             </div>

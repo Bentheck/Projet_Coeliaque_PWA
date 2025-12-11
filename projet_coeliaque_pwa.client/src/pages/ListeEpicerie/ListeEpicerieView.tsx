@@ -9,6 +9,7 @@ import {
     type FactureItem,
 } from "../../offline/db";
 import { syncDown } from "../../offline/sync";
+import "../../styles/liste-epicerie.css";
 
 /* ============================== Small helpers ============================== */
 const fmtMoney = (n: number | null | undefined) =>
@@ -242,7 +243,7 @@ const ListeEpicerieView: React.FC = () => {
         const map = new Map<string, DisplayRow[]>();
         for (const r of rows) {
             const storeKey =
-                r.store || t("summary.unknownStore", "Autre magasin");
+                r.store || t("summary.unknownStore") || "Autre magasin";
             if (!map.has(storeKey)) map.set(storeKey, []);
             map.get(storeKey)!.push(r);
         }
@@ -262,7 +263,7 @@ const ListeEpicerieView: React.FC = () => {
     const allChecked = rows.length > 0 && rows.every((r) => r.checked);
     const isCompleted = !!(liste?.completed ?? allChecked);
 
-    /* ------------------------------ Mutations (real app) ------------------------------ */
+    /* ------------------------------ Mutations ------------------------------ */
 
     const setCompleted = async (next: boolean) => {
         if (!liste) return;
@@ -349,12 +350,12 @@ const ListeEpicerieView: React.FC = () => {
     }
 
     return (
-        <div className="container py-4" id="print-section">
+        <div className="container py-4 liste-view-page" id="print-section">
             {/* HEADER + SUMMARY in accent card */}
-            <div className="card card--accent shadow-sm mb-3">
+            <div className="card card--accent section-border-primary shadow-sm mb-3">
                 <div className="card-body">
                     {/* First line: Retour + title/date + spinner */}
-                    <div className="d-flex align-items-center gap-2">
+                    <div className="d-flex flex-wrap align-items-center gap-2">
                         <Link
                             to="/liste-epicerie"
                             className="btn btn-outline-secondary d-print-none"
@@ -388,7 +389,7 @@ const ListeEpicerieView: React.FC = () => {
                     </div>
 
                     {/* Second line: Terminé + Modifier + Imprimer */}
-                    <div className="d-flex align-items-center gap-2 mt-2 d-print-none">
+                    <div className="d-flex flex-wrap align-items-center gap-2 mt-2 d-print-none">
                         <div className="form-check form-switch mb-0">
                             <input
                                 className="form-check-input"
@@ -451,16 +452,14 @@ const ListeEpicerieView: React.FC = () => {
             </div>
 
             {rows.length === 0 ? (
-                <div className="card card--tinted shadow-sm text-center">
-                    <div className="card-body py-4">
-                        {t("empty")}
-                    </div>
+                <div className="card card--tinted section-border-primary shadow-sm text-center">
+                    <div className="card-body py-4">{t("empty")}</div>
                 </div>
             ) : (
                 <>
                     {/* Desktop / print table */}
                     <div className="d-none d-xl-block d-print-block">
-                        <div className="card card--tinted shadow-sm">
+                        <div className="card card--tinted section-border-primary shadow-sm">
                             <div className="card-body">
                                 <div className="table-responsive">
                                     <table className="table table-sm align-middle">
@@ -644,7 +643,7 @@ const ListeEpicerieView: React.FC = () => {
                         <div className="row g-2">
                             {rows.map((r) => (
                                 <div className="col-12" key={r.key}>
-                                    <div className="card card--tinted shadow-sm">
+                                    <div className="card card--tinted shadow-sm border-0">
                                         <div className="card-body">
                                             <div className="d-flex justify-content-between">
                                                 <div className="d-flex align-items-start">

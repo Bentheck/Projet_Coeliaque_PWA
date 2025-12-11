@@ -4,6 +4,7 @@ import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto } from "../../lib/types";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthContext";
+import "../../styles/forum.css";
 
 const ForumCategories: React.FC = () => {
     const { t } = useTranslation("pages/Forum/forumCategories");
@@ -56,7 +57,7 @@ const ForumCategories: React.FC = () => {
 
     const deleteCategory = async (id: number) => {
         if (!isAdmin) return;
-        if (!confirm(t("mod.deleteCategoryConfirm"))) return; // i18n key in forumCategories
+        if (!confirm(t("mod.deleteCategoryConfirm"))) return;
         try {
             await fetchJSON(`/api/forum/admin/categories/${id}`, {
                 method: "DELETE",
@@ -64,19 +65,17 @@ const ForumCategories: React.FC = () => {
             setCats((prev) => prev.filter((c) => c.id !== id));
         } catch (e) {
             console.error(e);
-            alert(t("mod.deleteCategoryFailed")); // i18n key in forumCategories
+            alert(t("mod.deleteCategoryFailed"));
         }
     };
 
     return (
         <div className="container py-3">
-            {/* Header / context with highlight */}
+            {/* Header / context with primary highlight + border */}
             <div className="d-flex justify-content-between align-items-stretch mb-3 flex-wrap gap-2">
-                <div className="card card--accent section-highlight-primary flex-grow-1">
+                <div className="card card--accent section-highlight-primary section-border-primary shadow-sm flex-grow-1">
                     <div className="card-body">
-                        <h1 className="h3 mb-2">
-                            {t("title")}
-                        </h1>
+                        <h1 className="h3 mb-2">{t("title")}</h1>
                         <div className="text-muted">{t("subtitle")}</div>
                     </div>
                 </div>
@@ -98,7 +97,7 @@ const ForumCategories: React.FC = () => {
                 <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div className="col" key={i}>
-                            <div className="card card--tinted h-100 hl-soft">
+                            <div className="card card--tinted h-100 hl-soft shadow-sm border-0">
                                 <div className="card-body">
                                     <h5 className="card-title placeholder-glow">
                                         <span className="placeholder col-7" />
@@ -113,7 +112,7 @@ const ForumCategories: React.FC = () => {
                     ))}
                 </div>
             ) : cats.length === 0 ? (
-                <div className="card card--tinted section-highlight-mint">
+                <div className="card card--tinted section-highlight-mint shadow-sm border-0">
                     <div className="card-body">
                         <div className="alert alert-info mb-0">
                             {t("empty")}
@@ -125,7 +124,7 @@ const ForumCategories: React.FC = () => {
                 <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
                     {cats.map((c) => (
                         <div className="col" key={c.id}>
-                            <div className="card card--tinted h-100 hl-hover position-relative">
+                            <div className="card card--tinted h-100 hl-hover position-relative shadow-sm border-0">
                                 <div className="card-body d-flex flex-column">
                                     <h5 className="card-title mb-2 d-flex justify-content-between align-items-start">
                                         <span>{c.name}</span>

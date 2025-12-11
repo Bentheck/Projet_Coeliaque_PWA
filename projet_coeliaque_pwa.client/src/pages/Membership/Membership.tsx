@@ -119,7 +119,7 @@ const Membership: React.FC = () => {
                             {t("alert.lifetimePrefix")}{" "}
                             <b>{t("alert.lifetimeLabel")}</b>. 🎉
                         </span>
-                        <span className="badge text-bg-success">
+                        <span className="badge text-bg-success border-accent-primary">
                             {t("badge.lifetime") ?? "À vie"}
                         </span>
                     </div>
@@ -134,7 +134,7 @@ const Membership: React.FC = () => {
                             {t("alert.activeUntilPrefix")}{" "}
                             <b>{formatDateTime(endDate)}</b>
                         </span>
-                        <span className="badge text-bg-success">
+                        <span className="badge text-bg-success border-accent-primary">
                             {t("badge.active") ?? "Active"}
                         </span>
                     </div>
@@ -149,7 +149,7 @@ const Membership: React.FC = () => {
                             {t("alert.expiredPrefix")}{" "}
                             <b>{formatDateTime(endDate)}</b>
                         </span>
-                        <span className="badge text-bg-warning">
+                        <span className="badge text-bg-warning border-accent-primary">
                             {t("badge.expired") ?? "Expirée"}
                         </span>
                     </div>
@@ -162,7 +162,7 @@ const Membership: React.FC = () => {
             <div className="card card--tinted mb-3 border-0">
                 <div className="card-body py-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
                     <span>{t("alert.none")}</span>
-                    <span className="badge text-bg-secondary">
+                    <span className="badge text-bg-secondary border-accent-primary">
                         {t("badge.none") ?? "Aucune adhésion"}
                     </span>
                 </div>
@@ -172,7 +172,7 @@ const Membership: React.FC = () => {
 
     return (
         <div className="container py-4">
-            <div className="card card--accent membership-page shadow-sm border-0">
+            <div className="card card--accent membership-page shadow-sm border-accent-primary">
                 <div className="card-body">
                     <h1 className="h4 mb-3">{t("title")}</h1>
 

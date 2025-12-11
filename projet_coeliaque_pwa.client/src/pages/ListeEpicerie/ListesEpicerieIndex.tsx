@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type ListeEpicerieDto } from "../../offline/db";
 import { syncDown } from "../../offline/sync";
+import "../../styles/liste-epicerie.css";
 
 /** Server DTO for list metadata shown on the index */
 type SortKey = "recent" | "oldest" | "name";
@@ -160,7 +161,7 @@ const ListesEpicerieIndex: React.FC = () => {
             </div>
 
             {/* Controls */}
-            <div className="card card--accent shadow-sm mb-4">
+            <div className="card card--accent section-border-primary shadow-sm mb-4">
                 <div className="card-body">
                     <div className="row g-2 align-items-center justify-content-center">
                         <div className="col-12 col-lg-8">
@@ -178,9 +179,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                     aria-label={t("search.aria")}
                                     aria-describedby="search-addon"
                                     value={q}
-                                    onChange={(e) =>
-                                        setQ(e.target.value)
-                                    }
+                                    onChange={(e) => setQ(e.target.value)}
                                 />
                                 {q && (
                                     <button
@@ -206,13 +205,9 @@ const ListesEpicerieIndex: React.FC = () => {
                             <ul className="nav nav-pills">
                                 <li className="nav-item">
                                     <button
-                                        className={`nav-link ${status === "active"
-                                                ? "active"
-                                                : ""
+                                        className={`nav-link ${status === "active" ? "active" : ""
                                             }`}
-                                        onClick={() =>
-                                            applyStatus("active")
-                                        }
+                                        onClick={() => applyStatus("active")}
                                     >
                                         {t("filters.active")}{" "}
                                         <span className="badge text-bg-light ms-1">
@@ -226,9 +221,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                                 ? "active"
                                                 : ""
                                             }`}
-                                        onClick={() =>
-                                            applyStatus("completed")
-                                        }
+                                        onClick={() => applyStatus("completed")}
                                     >
                                         {t("filters.completed")}{" "}
                                         <span className="badge text-bg-light ms-1">
@@ -238,9 +231,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                 </li>
                                 <li className="nav-item">
                                     <button
-                                        className={`nav-link ${status === "all"
-                                                ? "active"
-                                                : ""
+                                        className={`nav-link ${status === "all" ? "active" : ""
                                             }`}
                                         onClick={() => applyStatus("all")}
                                     >
@@ -288,7 +279,7 @@ const ListesEpicerieIndex: React.FC = () => {
 
             {/* Content */}
             {filtered.length === 0 ? (
-                <div className="card card--tinted shadow-sm text-center liste-index-empty-card">
+                <div className="card card--tinted shadow-sm text-center liste-index-empty-card border-0">
                     <div className="card-body py-5">
                         <div className="display-6 mb-2">🛒</div>
                         <h2 className="h5">{t("empty.title")}</h2>
@@ -315,7 +306,7 @@ const ListesEpicerieIndex: React.FC = () => {
                         return (
                             <div className="col" key={l.id}>
                                 <div
-                                    className={`card card--tinted h-100 shadow-sm ${isCompleted ? "border-success" : ""
+                                    className={`card card--tinted h-100 shadow-sm border-0 ${isCompleted ? "border-success" : ""
                                         }`}
                                 >
                                     <div className="card-body d-flex flex-column">
@@ -333,7 +324,9 @@ const ListesEpicerieIndex: React.FC = () => {
                                                     }`}
                                             >
                                                 {isCompleted
-                                                    ? t("status.completed")
+                                                    ? t(
+                                                        "status.completed"
+                                                    )
                                                     : t("status.active")}
                                             </span>
                                         </div>
@@ -373,9 +366,7 @@ const ListesEpicerieIndex: React.FC = () => {
                                             </span>
                                             <small className="text-muted">
                                                 {t("createdOn", {
-                                                    date: formatDate(
-                                                        l.created
-                                                    ),
+                                                    date: formatDate(l.created),
                                                 })}
                                             </small>
                                         </div>
