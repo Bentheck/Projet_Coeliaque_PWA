@@ -25,7 +25,8 @@
     "removeAvatar": "Retirer l’avatar",
     "save": "Enregistrer",
     "cancel": "Annuler",
-    "chooseFile": "Choisir un fichier"
+    "chooseFile": "Choisir un fichier",
+    "resetPassword": "Réinitialiser le mot de passe"
   },
   "messages": {
     "avatarUpdated": "Avatar mis à jour.",

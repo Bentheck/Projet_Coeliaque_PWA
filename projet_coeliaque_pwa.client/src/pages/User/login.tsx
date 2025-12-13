@@ -183,6 +183,12 @@ export default function Login() {
                 />
             </div>
 
+            <div className="mt-3 text-center">
+                <a href="/forgot-password" className="btn btn-link px-0">
+                    {t("links.forgotPassword")}
+                </a>
+            </div>
+
             <button className="btn btn-primary w-100" type="submit" disabled={loading}>
                 {loading ? t("buttons.loading") : t("buttons.submit")}
             </button>

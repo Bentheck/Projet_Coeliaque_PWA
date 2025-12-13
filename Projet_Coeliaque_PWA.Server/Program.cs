@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Projet_Coeliaque_PWA.Server.Auth;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Mapping;
 using Projet_Coeliaque_PWA.Server.Services;
+using Projet_Coeliaque_PWA.Server.Services.Email;
 
 namespace Projet_Coeliaque_PWA.Server
 {
@@ -27,7 +28,6 @@ namespace Projet_Coeliaque_PWA.Server
 
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-            // Identity with roles (SuperAdmin/Admin). Keep confirmed account requirement.
             builder.Services
                 .AddDefaultIdentity<IdentityUser>(opts =>
                 {
@@ -36,24 +36,37 @@ namespace Projet_Coeliaque_PWA.Server
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
 
+            builder.Services.Configure<SmtpEmailOptions>(builder.Configuration.GetSection("Email"));
+
+            var emailOpt = builder.Configuration.GetSection("Email").Get<SmtpEmailOptions>() ?? new SmtpEmailOptions();
+            var useSmtp = !builder.Environment.IsDevelopment() || emailOpt.UseSmtpInDev;
+
+            if (useSmtp)
+            {
+                builder.Services.AddTransient<Projet_Coeliaque_PWA.Server.Services.IEmailSender, SmtpEmailSender>();
+            }
+            else
+            {
+                builder.Services.AddTransient<Projet_Coeliaque_PWA.Server.Services.IEmailSender, DevEmailSender>();
+            }
+
+            builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, IdentityEmailSenderAdapter>();
+            builder.Services.AddSingleton<Projet_Coeliaque_PWA.Server.Services.Email.EmailTemplateService>();
+
             // App services
             builder.Services.AddHostedService<StripeMembershipReconciler>();
             builder.Services.AddScoped<IMembershipService, MembershipService>();
-            builder.Services.AddTransient<IEmailSender, DevEmailSender>();
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
             builder.Services.AddHttpContextAccessor();
 
             // Authorization handlers / policies
-            // IMPORTANT: use Scoped (or Transient) because handler uses DbContext (scoped)
             builder.Services.AddScoped<IAuthorizationHandler, IsForumAdminHandler>();
 
             builder.Services.AddAuthorization(options =>
             {
-                // DB-backed forum admins policy (handled by IsForumAdminHandler)
                 options.AddPolicy("IsForumAdmin", policy =>
                     policy.Requirements.Add(new IsForumAdminRequirement()));
 
-                // SuperAdmin remains an Identity role for managing ForumAdmins & site-wide Admins
                 options.AddPolicy("IsSuperAdmin", policy => policy.RequireRole("SuperAdmin"));
             });
 
@@ -65,15 +78,22 @@ namespace Projet_Coeliaque_PWA.Server
                 options.Cookie.IsEssential = true;
             });
 
+            // Contact rate limiting (in-memory)
+            builder.Services.AddMemoryCache();
+            builder.Services.AddSingleton(new ContactRateLimitOptions
+            {
+                WindowSeconds = 60,
+                MaxPerEmail = 1, // 1 request / min per email
+                MaxPerIp = 2     // 2 requests / min per IP
+            });
+            builder.Services.AddSingleton<ContactRateLimiter>();
+
             // Controllers
             builder.Services.AddControllers();
-            
+
             var app = builder.Build();
 
             // ---- Seed roles + default SuperAdmin from configuration ----
-            // Config keys:
-            //  "Seed:SuperAdminEmail": "superadmin@yourapp.local"
-            //  "Seed:SuperAdminPassword": "ChangeMe123!"
             using (var scope = app.Services.CreateScope())
             {
                 var sp = scope.ServiceProvider;
@@ -92,20 +112,15 @@ namespace Projet_Coeliaque_PWA.Server
             }
 
             app.UseHttpsRedirection();
-
             app.UseStaticFiles();
-
             app.UseRouting();
-
             app.UseSession();
-
             app.UseAuthentication();
             app.UseAuthorization();
 
             // API endpoints
-            app.MapIdentityApi<IdentityUser>(); // expose /api/account/* if you want the minimal Identity API
+            app.MapIdentityApi<IdentityUser>();
             app.MapControllers();
-
             app.MapStaticAssets();
 
             app.Run();
@@ -116,14 +131,12 @@ namespace Projet_Coeliaque_PWA.Server
                 var roleMgr = services.GetRequiredService<RoleManager<IdentityRole>>();
                 var userMgr = services.GetRequiredService<UserManager<IdentityUser>>();
 
-                // Ensure roles exist
                 foreach (var role in new[] { "SuperAdmin", "Admin" })
                 {
                     if (!await roleMgr.RoleExistsAsync(role))
                         await roleMgr.CreateAsync(new IdentityRole(role));
                 }
 
-                // Seed default SuperAdmin (optional)
                 var email = config["Seed:SuperAdminEmail"];
                 var pass = config["Seed:SuperAdminPassword"];
 

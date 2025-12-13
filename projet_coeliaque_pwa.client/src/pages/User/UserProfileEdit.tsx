@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../components/AuthContext";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 const MAX_MB = 5;
 
@@ -177,11 +178,9 @@ const ProfileEdit: React.FC = () => {
                             className="rounded-circle border profile-avatar-lg"
                         />
                     ) : (
-                            <div
-                                className="rounded-circle bg-light border d-flex align-items-center justify-content-center profile-avatar-placeholder"
-                            >
-                                <i className="bi bi-person profile-avatar-icon" />
-                            </div>
+                        <div className="rounded-circle bg-light border d-flex align-items-center justify-content-center profile-avatar-placeholder">
+                            <i className="bi bi-person profile-avatar-icon" />
+                        </div>
                     )}
                 </div>
 
@@ -278,7 +277,7 @@ const ProfileEdit: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="mt-3 d-flex gap-2">
+                    <div className="mt-3 d-flex flex-wrap gap-2">
                         <button className="btn btn-primary" onClick={saveProfile} disabled={busy}>
                             {t("buttons.save")}
                         </button>
@@ -289,6 +288,11 @@ const ProfileEdit: React.FC = () => {
                         >
                             {t("buttons.cancel")}
                         </button>
+
+                        {/* Reset password (goes to the "forgot password" flow) */}
+                        <Link to="/forgot-password" className="btn btn-outline-primary ms-auto">
+                            {t("buttons.resetPassword", { defaultValue: "Réinitialiser le mot de passe" })}
+                        </Link>
                     </div>
                 </div>
             </div>

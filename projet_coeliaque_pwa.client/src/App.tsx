@@ -38,6 +38,8 @@ import Register from "./pages/User/register";
 import Logout from "./pages/User/logout";
 import UserProfileView from "./pages/User/UserProfileView";
 import UserProfileEdit from "./pages/User/UserProfileEdit";
+import ForgotPassword from "./pages/User/ForgotPassword";
+import ResetPassword from "./pages/User/ResetPassword";
 
 import Subscribe from "./pages/Membership/Subscribe";
 import SubscribeSuccess from "./pages/Membership/SubscribeSuccess";
@@ -51,8 +53,9 @@ import RequireSuperAdmin from "./components/RequireSuperAdmin";
 import RequireForumAdmin from "./components/RequireForumAdmin";
 import GlobalOfflineGuard from "./components/GlobalOfflineGuard";
 
-// FAQ
+// FAQ - contact
 import { FaqPage as FaqPublic, FaqAdmin as FaqAdminPage } from "./pages/FAQ/FaqModule";
+import ContactPage from "./pages/FAQ/contact";
 
 // DEMO (offline-only) pages
 import DemoHome from "./demo/DemoHome";
@@ -274,9 +277,10 @@ export default function App() {
                             }
                         />
 
-                        {/* FAQ */}
+                        {/* FAQ - contact */}
                         <Route path="/faq" element={<FaqPublic />} />
                         <Route path="/faq/calculateur" element={<FaqPublic />} />
+                        <Route path="/contact" element={<ContactPage />} />
 
                         {/* User */}
                         <Route path="/u/:userId" element={<UserProfileView />} />
@@ -292,6 +296,8 @@ export default function App() {
                         {/* Auth */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/logout" element={<Logout />} />
 
                         {/* Membership */}

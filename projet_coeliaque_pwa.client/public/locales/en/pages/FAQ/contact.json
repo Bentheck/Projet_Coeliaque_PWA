@@ -1,0 +1,38 @@
+﻿{
+  "title": "Contact us",
+  "intro": "Send us your request. We'll reply by email as soon as possible.",
+  "success": "Thank you. Your message has been sent.",
+  "fields": {
+    "type": {
+      "label": "Request type",
+      "support": "Support",
+      "info": "Information",
+      "help": "Support: technical/account issues. Information: general questions."
+    },
+    "email": "Your email",
+    "reason": "Reason",
+    "reasonSuggestions": [
+      "Login issue",
+      "Password reset",
+      "Payment or subscription issue",
+      "Bug or technical error",
+      "Suggestion or improvement",
+      "Other"
+    ],
+    "details": "Description"
+  },
+  "helpers": {
+    "replyTo": "We'll use this address to reply to you (Reply-To).",
+    "detailsHint": "Include as many details as possible (steps, context, error message, etc.).",
+    "reasonHint": "Choose a suggestion or enter your own reason."
+  },
+  "buttons": {
+    "submit": "Send",
+    "loading": "Sending…"
+  },
+  "errors": {
+    "failed": "Unable to send your message. Please try again later.",
+    "network": "Unable to reach the server. Check your network and try again.",
+    "rateLimited": "Too many requests. Please wait {{seconds}}s and try again."
+  }
+}

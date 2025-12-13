@@ -1,6 +1,5 @@
 ﻿// Controllers/AccountController.cs
 using System.Security.Claims;
-using System.Web;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
+using Projet_Coeliaque_PWA.Server.Services.Email;
+using System.Text;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -19,6 +21,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IMembershipService _membershipService;
         private readonly IEmailSender _emailSender;
+        private readonly EmailTemplateService _emailTemplates;
         private readonly ApplicationDbContext _db;
         private readonly string _frontendUrl;
 
@@ -27,6 +30,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             UserManager<IdentityUser> userManager,
             IMembershipService membershipService,
             IEmailSender emailSender,
+            EmailTemplateService emailTemplates,
             ApplicationDbContext db,
             IConfiguration config)
         {
@@ -34,6 +38,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _userManager = userManager;
             _membershipService = membershipService;
             _emailSender = emailSender;
+            _emailTemplates = emailTemplates;
             _db = db;
             _frontendUrl = config["FrontendUrl"] ?? "/";
         }
@@ -43,15 +48,35 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             public string Email { get; set; } = "";
             public string Password { get; set; } = "";
+
+            /// <summary>Optional UI language hint: "fr", "fr-CA", "en", "en-US", etc.</summary>
+            public string? Lang { get; set; }
         }
 
         public class RegisterRequest
         {
             public string Email { get; set; } = "";
             public string Password { get; set; } = "";
-            // NEW: public display name used in the forum / app UI
             public string DisplayName { get; set; } = "";
+
+            /// <summary>Optional UI language hint: "fr", "fr-CA", "en", "en-US", etc.</summary>
+            public string? Lang { get; set; }
         }
+
+        public class ForgotPasswordRequest
+        {
+            public string Email { get; set; } = "";
+            public string? Lang { get; set; }
+        }
+
+        public class ResetPasswordRequest
+        {
+            public string UserId { get; set; } = "";
+            public string Token { get; set; } = ""; // Base64Url token
+            public string NewPassword { get; set; } = "";
+            public string? Lang { get; set; }
+        }
+
 
         /// <summary>Register a new user and email them a confirmation link.</summary>
         // POST: api/account/register
@@ -73,16 +98,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (displayName.Length < 3 || displayName.Length > 40)
             {
-                // You can map this to errors.displayNameTooLong (or similar) on the frontend.
+                // Frontend can map this to an i18n key if you want.
                 return BadRequest(new { error = "Le nom affiché doit contenir entre 3 et 40 caractères." });
             }
 
             // Enforce uniqueness (case-insensitive) against existing user profiles
+            var lower = displayName.ToLower();
             var nameInUse = await _db.UserProfiles
                 .AsNoTracking()
-                .AnyAsync(p =>
-                    p.DisplayName != null &&
-                    p.DisplayName.ToLower() == displayName.ToLower());
+                .AnyAsync(p => p.DisplayName != null && p.DisplayName.ToLower() == lower);
 
             if (nameInUse)
             {
@@ -94,11 +118,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var result = await _userManager.CreateAsync(user, req.Password);
 
             if (!result.Succeeded)
+            {
                 return BadRequest(new
                 {
                     errorCode = ErrorCodes.IdentityValidationFailed,
                     identityErrors = result.Errors.Select(e => e.Code).ToArray()
                 });
+            }
 
             // Create a UserProfile row immediately with the chosen display name
             var profile = new UserProfile
@@ -114,16 +140,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             // Mirror display name to a claim so navbar / AuthContext can use it instantly
             await _userManager.AddClaimAsync(user, new Claim("display_name", displayName));
 
+            // Language selection: explicit request -> Accept-Language -> default fr
+            var lang = EmailTemplateService.NormalizeLang(
+                req.Lang ?? Request.Headers["Accept-Language"].ToString()
+            );
+
             // Email confirmation
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var encodedToken = HttpUtility.UrlEncode(token);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
             var confirmationUrl =
                 $"{Request.Scheme}://{Request.Host}/api/account/confirm-email?userId={user.Id}&token={encodedToken}";
 
-            await _emailSender.SendEmailAsync(
-                user.Email!, "Confirmez votre compte",
-                $"Merci de vous être inscrit !<br/>" +
-                $"Pour activer votre compte, cliquez : <a href=\"{confirmationUrl}\">Confirmer l’email</a>");
+            var subject = EmailSubjects.ConfirmEmail(lang);
+            var html = _emailTemplates.BuildConfirmEmail(lang, confirmationUrl);
+
+            await _emailSender.SendEmailAsync(user.Email!, subject, html);
 
             return Ok(new { ok = true });
         }
@@ -138,7 +169,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (user == null)
                 return Redirect($"{_frontendUrl}/login?confirmedbaduser=1");
 
-            var result = await _userManager.ConfirmEmailAsync(user, token);
+            // IMPORTANT: token arrives URL-encoded, decode before confirming
+            string decodedToken;
+            try
+            {
+                decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            }
+            catch
+            {
+                return Redirect($"{_frontendUrl}/login?confirmederror=1");
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
             if (result.Succeeded)
                 return Redirect($"{_frontendUrl}/login?confirmed=1");
 
@@ -151,6 +193,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpPost("resend-confirmation")]
         public async Task<IActionResult> ResendConfirmation([FromBody] LoginRequest req)
         {
+            if (string.IsNullOrWhiteSpace(req.Email))
+                return BadRequest(new { errorCode = ErrorCodes.MissingEmailOrPassword });
+
             var user = await _userManager.FindByEmailAsync(req.Email);
             if (user == null)
                 return NotFound(new { errorCode = ErrorCodes.UserNotFound });
@@ -158,14 +203,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (await _userManager.IsEmailConfirmedAsync(user))
                 return BadRequest(new { errorCode = ErrorCodes.EmailAlreadyConfirmed });
 
+            var lang = EmailTemplateService.NormalizeLang(
+                req.Lang ?? Request.Headers["Accept-Language"].ToString()
+            );
+
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var encodedToken = HttpUtility.UrlEncode(token);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
             var confirmationUrl =
                 $"{Request.Scheme}://{Request.Host}/api/account/confirm-email?userId={user.Id}&token={encodedToken}";
 
-            await _emailSender.SendEmailAsync(
-                user.Email!, "Confirmez votre compte",
-                $"Pour activer votre compte, cliquez : <a href=\"{confirmationUrl}\">Confirmer l’email</a>");
+            var subject = EmailSubjects.ConfirmEmail(lang);
+            var html = _emailTemplates.BuildConfirmEmail(lang, confirmationUrl);
+
+            await _emailSender.SendEmailAsync(user.Email!, subject, html);
 
             return Ok(new { ok = true });
         }
@@ -213,7 +263,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpGet("status")]
         public async Task<IActionResult> Status()
         {
-            // Not authenticated → send a clean empty payload the client already understands.
             if (!(User?.Identity?.IsAuthenticated ?? false))
             {
                 return Ok(new
@@ -252,33 +301,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
             }
 
-            // EF Core queries (no tracking as this is a read-only snapshot).
-            var membership = await _membershipService.GetCurrentMembershipAsync(uid);
-
             var profile = await _db.UserProfiles
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.UserId == uid);
 
-            // DB-backed forum admins
             var isForumAdmin = await _db.Set<ForumAdmin>()
                 .AsNoTracking()
                 .AnyAsync(a => a.UserId == uid);
 
-            // "Moderator" = user appears as a moderator on at least one thread.
             var isForumModerator = await _db.ForumThreadModerators
                 .AsNoTracking()
                 .AnyAsync(m => m.UserId == uid);
 
-            // Identity role/claims.
             var isSuperAdmin = await _userManager.IsInRoleAsync(user, "SuperAdmin");
             var claims = await _userManager.GetClaimsAsync(user);
 
-            // Prefer a custom profile display name; fall back to legacy claim.
             var displayName = !string.IsNullOrWhiteSpace(profile?.DisplayName)
                 ? profile!.DisplayName
                 : claims.FirstOrDefault(c => c.Type == "display_name")?.Value;
 
-            // Build an absolute avatar URL with cache-busting.
             string? avatarUrl = null;
             if (!string.IsNullOrWhiteSpace(profile?.AvatarPath))
             {
@@ -306,6 +347,79 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             });
         }
 
+        // POST: api/account/forgot-password
+        [AllowAnonymous]
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
+        {
+            // Always return OK to avoid user enumeration.
+            if (string.IsNullOrWhiteSpace(req.Email))
+                return Ok(new { ok = true });
+
+            var lang = EmailTemplateService.NormalizeLang(
+                req.Lang ?? Request.Headers["Accept-Language"].ToString()
+            );
+
+            var user = await _userManager.FindByEmailAsync(req.Email);
+
+            // If user doesn't exist or email isn't confirmed, still return OK (security).
+            if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
+                return Ok(new { ok = true });
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+            // Send user to FRONTEND reset page directly
+            var resetUrl = $"{_frontendUrl.TrimEnd('/')}/reset-password?userId={user.Id}&token={encodedToken}";
+
+            var subject = EmailSubjects.ResetPassword(lang);
+            var html = _emailTemplates.BuildResetPassword(lang, resetUrl);
+
+            await _emailSender.SendEmailAsync(user.Email!, subject, html);
+
+            return Ok(new { ok = true });
+        }
+
+        // POST: api/account/reset-password
+        [AllowAnonymous]
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(req.UserId) ||
+                string.IsNullOrWhiteSpace(req.Token) ||
+                string.IsNullOrWhiteSpace(req.NewPassword))
+            {
+                return BadRequest(new { errorCode = ErrorCodes.MissingEmailOrPassword });
+            }
+
+            var user = await _userManager.FindByIdAsync(req.UserId);
+            if (user == null)
+            {
+                // Keep it generic to avoid user enumeration.
+                return BadRequest(new { errorCode = ErrorCodes.ResetPasswordFailed });
+            }
+
+            string decodedToken;
+            try
+            {
+                decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(req.Token));
+            }
+            catch
+            {
+                return BadRequest(new { errorCode = ErrorCodes.ResetTokenInvalid });
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, decodedToken, req.NewPassword);
+            if (result.Succeeded)
+                return Ok(new { ok = true });
+
+            return BadRequest(new
+            {
+                errorCode = ErrorCodes.ResetPasswordFailed,
+                identityErrors = result.Errors.Select(e => e.Code).ToArray()
+            });
+        }
+
         /// <summary>Convert a stored relative content path to an absolute URL.</summary>
         private string AbsoluteContentUrl(string? relativePath)
         {
@@ -330,8 +444,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public const string InvalidCredentials = "InvalidCredentials";
         public const string IdentityValidationFailed = "IdentityValidationFailed";
 
-        // NEW for display name
         public const string MissingDisplayName = "MissingDisplayName";
         public const string DisplayNameAlreadyTaken = "DisplayNameAlreadyTaken";
+
+        public const string ResetPasswordFailed = "ResetPasswordFailed";
+        public const string ResetTokenInvalid = "ResetTokenInvalid";
     }
 }

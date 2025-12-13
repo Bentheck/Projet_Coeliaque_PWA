@@ -25,7 +25,8 @@
     "removeAvatar": "Remove avatar",
     "save": "Save",
     "cancel": "Cancel",
-    "chooseFile": "Choose file"
+    "chooseFile": "Choose file",
+    "resetPassword": "Reset password"
   },
   "messages": {
     "avatarUpdated": "Avatar updated.",
