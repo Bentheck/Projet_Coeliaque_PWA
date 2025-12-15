@@ -885,6 +885,12 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
+                    b.Property<DateTime?>("DisclaimerAcceptedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisclaimerVersion")
+                        .HasColumnType("text");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(32)

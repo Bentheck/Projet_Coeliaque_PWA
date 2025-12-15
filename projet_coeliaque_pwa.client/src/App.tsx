@@ -69,6 +69,10 @@ import DemoListeEpicerieView from "./demo/DemoListeEpicerieView";
 import DemoFactures from "./demo/DemoFactures";
 import DemoFactureEdit from "./demo/DemoFactureEdit";
 
+import DisclaimerPage from "./pages/Legal/Disclaimer";
+import TermsOfServicePage from "./pages/Legal/TermsOfService";
+import PrivacyPage from "./pages/Legal/Privacy"
+
 export default function App() {
     return (
         <AuthProvider>
@@ -335,6 +339,15 @@ export default function App() {
                                 </AuthGuard>
                             }
                         />
+
+                        {/* Legal */}
+                        <Route path="/legal/disclaimer" element={<DisclaimerPage />} />
+                        <Route path="/legal/tos" element={<TermsOfServicePage />} />
+                        <Route path="/legal/privacy" element={<PrivacyPage />} />
+
+                        <Route path="/disclaimer" element={<DisclaimerPage />} />
+                        <Route path="/terms" element={<TermsOfServicePage />} />
+                        <Route path="/privacy" element={<PrivacyPage />} />
 
                         {/* 404 */}
                         <Route path="*" element={<NotFound />} />

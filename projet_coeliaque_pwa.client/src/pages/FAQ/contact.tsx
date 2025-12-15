@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthContext";
 
-type ContactKind = "support" | "info";
+type ContactKind = "support" | "info" | "feedback";
 
 type ApiResponse = { ok?: boolean; message?: string };
 type ApiError = {
@@ -14,6 +14,18 @@ type ApiError = {
     scope?: "email" | "ip";
 };
 
+const MAX_FILES = 5;
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB each
+const MAX_TOTAL_BYTES = 15 * 1024 * 1024; // 15MB total
+
+function isAllowedImage(f: File) {
+    return (f?.type || "").toLowerCase().startsWith("image/");
+}
+
+function formatKb(bytes: number) {
+    return `${Math.round(bytes / 1024)} KB`;
+}
+
 export default function ContactPage() {
     const { t, i18n } = useTranslation("pages/FAQ/contact");
     const { user } = useAuth() as any;
@@ -22,6 +34,8 @@ export default function ContactPage() {
     const [email, setEmail] = useState<string>("");
     const [reason, setReason] = useState<string>("");
     const [details, setDetails] = useState<string>("");
+
+    const [files, setFiles] = useState<File[]>([]);
 
     const [busy, setBusy] = useState(false);
     const [ok, setOk] = useState<string | null>(null);
@@ -38,6 +52,11 @@ export default function ContactPage() {
         return Array.isArray(v) ? (v as string[]).filter(Boolean) : [];
     }, [t]);
 
+    const totalBytes = useMemo(
+        () => files.reduce((sum, f) => sum + (f?.size || 0), 0),
+        [files]
+    );
+
     const canSend = useMemo(() => {
         return (
             email.trim().length > 3 &&
@@ -46,6 +65,51 @@ export default function ContactPage() {
             details.trim().length >= 10
         );
     }, [email, reason, details]);
+
+    const addFiles = (incoming: File[]) => {
+        if (!incoming || incoming.length === 0) return;
+
+        setFiles((prev) => {
+            const next = [...prev];
+
+            // Track total bytes with what we already have
+            let runningTotal = next.reduce((sum, f) => sum + (f?.size || 0), 0);
+
+            for (const f of incoming) {
+                if (!f) continue;
+
+                // Enforce max count
+                if (next.length >= MAX_FILES) break;
+
+                // Type gate
+                if (!isAllowedImage(f)) continue;
+
+                // Per-file size gate
+                if (f.size > MAX_FILE_BYTES) continue;
+
+                // Total size gate
+                if (runningTotal + f.size > MAX_TOTAL_BYTES) break;
+
+                // Optional: prevent exact duplicates (name+size+lastModified)
+                const dup = next.some(
+                    (x) =>
+                        x.name === f.name &&
+                        x.size === f.size &&
+                        x.lastModified === f.lastModified
+                );
+                if (dup) continue;
+
+                next.push(f);
+                runningTotal += f.size;
+            }
+
+            return next;
+        });
+    };
+
+    const removeFileAt = (idx: number) => {
+        setFiles((prev) => prev.filter((_, i) => i !== idx));
+    };
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -56,18 +120,25 @@ export default function ContactPage() {
         setError(null);
 
         try {
+            const form = new FormData();
+            form.append("Kind", kind);
+            form.append("Email", email);
+            form.append("Reason", reason);
+            form.append("Details", details);
+            form.append("Lang", i18n.language);
+            form.append(
+                "PageUrl",
+                typeof window !== "undefined" ? window.location.href : ""
+            );
+
+            for (const f of files) {
+                form.append("Files", f); // must match backend property name
+            }
+
             const res = await fetch("/api/contact", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({
-                    kind,
-                    email,
-                    reason,
-                    details,
-                    lang: i18n.language,
-                    pageUrl: typeof window !== "undefined" ? window.location.href : null,
-                }),
+                body: form,
             });
 
             if (res.ok) {
@@ -75,13 +146,12 @@ export default function ContactPage() {
                 setOk(data?.message || t("success"));
                 setReason("");
                 setDetails("");
+                setFiles([]);
                 return;
             }
 
-            // Default error
             let msg = t("errors.failed");
 
-            // Rate limit
             if (res.status === 429) {
                 let seconds: number | undefined;
 
@@ -103,7 +173,6 @@ export default function ContactPage() {
                 return;
             }
 
-            // Other errors
             try {
                 const data = (await res.json()) as ApiError;
                 msg = data?.message || msg;
@@ -149,6 +218,7 @@ export default function ContactPage() {
                             />
                             {t("fields.type.support")}
                         </label>
+
                         <label className="btn btn-outline-primary">
                             <input
                                 type="radio"
@@ -158,6 +228,17 @@ export default function ContactPage() {
                                 onChange={() => setKind("info")}
                             />
                             {t("fields.type.info")}
+                        </label>
+
+                        <label className="btn btn-outline-primary">
+                            <input
+                                type="radio"
+                                name="contact-kind"
+                                className="me-2"
+                                checked={kind === "feedback"}
+                                onChange={() => setKind("feedback")}
+                            />
+                            {t("fields.type.suggestion")}
                         </label>
                     </div>
                     <div className="form-text">{t("fields.type.help")}</div>
@@ -179,7 +260,6 @@ export default function ContactPage() {
                     <div className="form-text">{t("helpers.replyTo")}</div>
                 </div>
 
-                {/* Reason suggestions + free text */}
                 <div className="mb-3">
                     <label className="form-label" htmlFor="contact-reason">
                         {t("fields.reason")}
@@ -212,7 +292,6 @@ export default function ContactPage() {
                         required
                     />
 
-                    {/* Optional helper (add key in JSON) */}
                     <div className="form-text">{t("helpers.reasonHint")}</div>
                 </div>
 
@@ -230,6 +309,66 @@ export default function ContactPage() {
                         required
                     />
                     <div className="form-text">{t("helpers.detailsHint")}</div>
+                </div>
+
+                {/* Attachments */}
+                <div className="mb-3">
+                    <label className="form-label" htmlFor="contact-files">
+                        {t("fields.attachments")}
+                    </label>
+
+                    <input
+                        id="contact-files"
+                        type="file"
+                        className="form-control"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => {
+                            const selected = Array.from(e.target.files || []);
+                            addFiles(selected);
+                            // allow selecting same file again later
+                            e.currentTarget.value = "";
+                        }}
+                        disabled={files.length >= MAX_FILES}
+                    />
+
+                    <div className="form-text">
+                        {t("helpers.attachmentsHint", {
+                            maxFiles: MAX_FILES,
+                            maxMb: Math.round(MAX_FILE_BYTES / 1024 / 1024),
+                            totalMb: Math.round(MAX_TOTAL_BYTES / 1024 / 1024),
+                        })}
+                    </div>
+
+                    {files.length > 0 && (
+                        <div className="mt-2">
+                            <ul className="mb-0 small list-unstyled">
+                                {files.map((f, idx) => (
+                                    <li key={`${f.name}-${f.size}-${f.lastModified}-${idx}`} className="d-flex align-items-center justify-content-between gap-2 py-1 border-bottom">
+                                        <span className="text-truncate" style={{ maxWidth: "70%" }}>
+                                            {f.name} <span className="text-muted">({formatKb(f.size)})</span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-danger btn-sm"
+                                            onClick={() => removeFileAt(idx)}
+                                            aria-label={t("helpers.removeAttachmentAria", { defaultValue: "Remove attachment" })}
+                                        >
+                                            {t("buttons.remove", { defaultValue: "Remove" })}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <div className="small text-muted mt-2">
+                                {t("helpers.attachmentsTotal", {
+                                    defaultValue: "Total: {{count}} file(s), {{kb}} KB",
+                                    count: files.length,
+                                    kb: Math.round(totalBytes / 1024),
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <button className="btn btn-primary w-100" type="submit" disabled={busy || !canSend}>

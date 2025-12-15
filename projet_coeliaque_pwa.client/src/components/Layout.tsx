@@ -1,6 +1,7 @@
 ﻿// src/components/Layout.tsx
 import Navbar from "./Navbar";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const { t } = useTranslation("components/layout");
@@ -10,15 +11,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="app-root d-flex flex-column min-vh-100">
             <Navbar />
 
-            {/* main no longer flex-grow → it wraps content */}
-            <main className="">
-                {children}
-            </main>
+            <main>{children}</main>
 
-            {/* mt-auto pushes footer to the bottom of app-root */}
             <footer className="py-3 mt-auto">
                 <div className="container text-center">
-                    <div>{t("footer.copyright", { year })}</div>
+                    {/* Legal links */}
+                    <div className="mb-1 small">
+                        <Link to="/disclaimer" className="text-muted mx-2">
+                            {t("footer.disclaimer")}
+                        </Link>
+                        ·
+                        <Link to="/terms" className="text-muted mx-2">
+                            {t("footer.terms")}
+                        </Link>
+                        ·
+                        <Link to="/privacy" className="text-muted mx-2">
+                            {t("footer.privacy")}
+                        </Link>
+                    </div>
+
+                    {/* Copyright */}
+                    <div className="small">
+                        {t("footer.copyright", { year })}
+                    </div>
+
+                    {/* Branding */}
                     <div className="text-muted small">
                         {t("footer.poweredBy")}{" "}
                         <a
@@ -26,7 +43,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             target="_blank"
                             rel="noopener noreferrer"
                         >
-                            Solutions Bensoft
+                            Solutions BenSoft
                         </a>
                     </div>
                 </div>

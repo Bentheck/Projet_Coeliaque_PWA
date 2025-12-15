@@ -7,6 +7,7 @@ using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Mapping;
 using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
+using Projet_Coeliaque_PWA.Server.Filters;
 
 namespace Projet_Coeliaque_PWA.Server
 {
@@ -87,6 +88,9 @@ namespace Projet_Coeliaque_PWA.Server
                 MaxPerIp = 2     // 2 requests / min per IP
             });
             builder.Services.AddSingleton<ContactRateLimiter>();
+
+            builder.Services.Configure<DisclaimerOptions>(builder.Configuration.GetSection("Disclaimer"));
+            builder.Services.AddScoped<RequireDisclaimerFilter>();
 
             // Controllers
             builder.Services.AddControllers();

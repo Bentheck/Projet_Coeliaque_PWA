@@ -1,6 +1,9 @@
 ﻿{
   "footer": {
-    "copyright": "© {{year}} Services Coeliaque",
-    "poweredBy": "Propulsé par"
+    "disclaimer": "Avertissement légal",
+    "terms": "Conditions d’utilisation",
+    "privacy": "Politique de confidentialité",
+    "poweredBy": "Propulsé par",
+    "copyright": "© {{year}} Service Coeliaque"
   }
 }

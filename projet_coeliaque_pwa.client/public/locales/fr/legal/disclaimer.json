@@ -1,0 +1,26 @@
+﻿{
+  "currentVersion": "v1",
+  "actions": {
+    "viewFull": "Voir l’avertissement complet"
+  },
+  "v1": {
+    "title": "Avertissement légal — Service Coeliaque",
+    "lead": "Veuillez lire attentivement l’avertissement ci-dessous. Vous devez faire défiler jusqu’à la fin pour pouvoir accepter.",
+    "scrollHint": "Faites défiler jusqu’en bas pour activer « Accepter ».",
+    "scrollOk": "Vous avez atteint la fin. Vous pouvez accepter.",
+    "accept": "Accepter",
+    "accepting": "Acceptation…",
+    "decline": "Refuser",
+    "loginHint": "Connectez-vous pour accepter et continuer à utiliser les fonctionnalités restreintes.",
+    "acceptRequiresLogin": "Veuillez vous connecter pour accepter.",
+    "acceptedOk": "Accepté. Merci.",
+    "paragraphs": [
+      "Service Coeliaque est une application logicielle opérée par Solutions BenSoft. Le service est fourni à titre informatif uniquement et ne constitue en aucun cas un avis professionnel, notamment comptable, fiscal, juridique, médical ou financier.",
+      "Les seules informations requises pour créer un compte sont une adresse courriel valide et un nom d’utilisateur (nom affiché). Toute information ajoutée volontairement par l’utilisateur dans son profil ou dans l’application relève de sa responsabilité exclusive.",
+      "Les résultats, rapports, calculs et contenus générés par l’application dépendent exclusivement des données saisies par l’utilisateur. Solutions BenSoft ne garantit ni l’exactitude, ni l’admissibilité, ni la conformité des résultats à un programme, une loi ou une politique de remboursement.",
+      "Le service est fourni « tel quel » et selon disponibilité, sans garantie expresse ou implicite. Dans toute la mesure permise par la loi, Solutions BenSoft décline toute responsabilité découlant de l’utilisation ou de l’impossibilité d’utiliser Service Coeliaque.",
+      "Les abonnements numériques peuvent être remboursables uniquement dans le délai et selon les conditions affichés au moment du paiement et applicables à l’achat. Au-delà de ce délai, aucun remboursement ne sera accordé.",
+      "En utilisant Service Coeliaque, vous acceptez le présent avertissement ainsi que ses mises à jour futures, lesquelles peuvent nécessiter une nouvelle acceptation."
+    ]
+  }
+}

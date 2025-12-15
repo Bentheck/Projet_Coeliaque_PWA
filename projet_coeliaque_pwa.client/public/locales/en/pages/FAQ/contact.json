@@ -7,7 +7,8 @@
       "label": "Request type",
       "support": "Support",
       "info": "Information",
-      "help": "Support: technical/account issues. Information: general questions."
+      "suggestion": "Suggestion / improvement",
+      "help": "Support: technical/account issues. Information: general questions. Suggestion / improvement: ideas and feedback."
     },
     "email": "Your email",
     "reason": "Reason",
@@ -16,19 +17,23 @@
       "Password reset",
       "Payment or subscription issue",
       "Bug or technical error",
-      "Suggestion or improvement",
       "Other"
     ],
-    "details": "Description"
+    "details": "Description",
+    "attachments": "Attachments (optional)"
   },
   "helpers": {
     "replyTo": "We'll use this address to reply to you (Reply-To).",
     "detailsHint": "Include as many details as possible (steps, context, error message, etc.).",
-    "reasonHint": "Choose a suggestion or enter your own reason."
+    "reasonHint": "Choose a suggestion or enter your own reason.",
+    "attachmentsHint": "Up to {{maxFiles}} images, {{maxMb}} MB each ({{totalMb}} MB total).",
+    "removeAttachmentAria": "Remove attachment",
+    "attachmentsTotal": "Total: {{count}} file(s), {{kb}} KB"
   },
   "buttons": {
     "submit": "Send",
-    "loading": "Sending…"
+    "loading": "Sending…",
+    "remove": "Remove"
   },
   "errors": {
     "failed": "Unable to send your message. Please try again later.",

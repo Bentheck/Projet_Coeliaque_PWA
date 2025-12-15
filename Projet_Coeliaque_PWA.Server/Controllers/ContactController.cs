@@ -33,7 +33,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public class ContactRequest
         {
             [Required]
-            public string Kind { get; set; } = "support"; // "support" | "info"
+            public string Kind { get; set; } = "support"; // "support" | "info" | "feedback"
 
             [Required]
             [EmailAddress]
@@ -50,12 +50,38 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             public string Details { get; set; } = "";
 
             public string? Lang { get; set; }
-            public string? PageUrl { get; set; } // accepted, but NOT included in email
+            public string? PageUrl { get; set; }
+
+            // multipart field name must be "Files"
+            public List<IFormFile> Files { get; set; } = new();
+        }
+
+        // Attachment constraints (must align with front-end)
+        private const int MaxFiles = 5;
+        private const long MaxFileBytes = 5 * 1024 * 1024;     // 5MB each
+        private const long MaxTotalBytes = 15 * 1024 * 1024;   // 15MB total
+
+        private static string HtmlEncode(string s) => WebUtility.HtmlEncode(s ?? "");
+
+        private static string SafeFileName(string name)
+        {
+            name = Path.GetFileName(name ?? "file");
+            foreach (var c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+
+            return string.IsNullOrWhiteSpace(name) ? "file" : name;
+        }
+
+        private static bool IsAllowedImage(IFormFile f)
+        {
+            var ct = (f.ContentType ?? "").Trim();
+            return ct.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
         }
 
         [AllowAnonymous]
         [HttpPost]
-        public async Task<IActionResult> Send([FromBody] ContactRequest req)
+        [RequestSizeLimit(20_000_000)] // 20MB request (adjust if needed)
+        public async Task<IActionResult> Send([FromForm] ContactRequest req)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new { errorCode = "ValidationFailed", message = "Invalid request." });
@@ -86,17 +112,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             // Destination routing (appsettings.json -> Email:Contact:SupportTo / InfoTo)
             var kind = (req.Kind ?? "").Trim().ToLowerInvariant();
-            var to = kind == "info"
-                ? (_config["Email:Contact:InfoTo"] ?? "info@servicescoeliaque.ca")
-                : (_config["Email:Contact:SupportTo"] ?? "support@servicescoeliaque.ca");
 
-            // Subject prefix
-            var prefix = kind == "info" ? "[Info]" : "[Support]";
+            var infoTo = _config["Email:Contact:InfoTo"] ?? "info@servicescoeliaque.ca";
+            var supportTo = _config["Email:Contact:SupportTo"] ?? "support@servicescoeliaque.ca";
+
+            // Treat feedback exactly like info for routing
+            var to = (kind == "info" || kind == "feedback") ? infoTo : supportTo;
+
+            // Subject prefix: distinct label per kind
+            var prefix = kind switch
+            {
+                "info" => "[Info]",
+                "feedback" => "[Feedback]",
+                _ => "[Support]"
+            };
+
             var subject = $"{prefix} {req.Reason}".Trim();
 
             // Build safe HTML
-            static string HtmlEncode(string s) => WebUtility.HtmlEncode(s ?? "");
-
             var body = new StringBuilder();
             body.Append("<div style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.4\">");
 
@@ -130,11 +163,43 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             body.Append("</div>");
 
+            // Convert uploaded files -> EmailAttachment list
+            var attachments = new List<EmailAttachment>();
+
+            var files = req.Files ?? new List<IFormFile>();
+            if (files.Count > MaxFiles)
+                return BadRequest(new { errorCode = "ValidationFailed", message = "Too many attachments." });
+
+            long total = 0;
+
+            foreach (var f in files)
+            {
+                if (f == null || f.Length <= 0) continue;
+
+                if (f.Length > MaxFileBytes)
+                    return BadRequest(new { errorCode = "ValidationFailed", message = "Attachment too large." });
+
+                total += f.Length;
+                if (total > MaxTotalBytes)
+                    return BadRequest(new { errorCode = "ValidationFailed", message = "Attachments exceed total limit." });
+
+                if (!IsAllowedImage(f))
+                    return BadRequest(new { errorCode = "ValidationFailed", message = "Invalid attachment type." });
+
+                var safeName = SafeFileName(f.FileName);
+                var contentType = string.IsNullOrWhiteSpace(f.ContentType) ? "application/octet-stream" : f.ContentType;
+
+                using var ms = new MemoryStream();
+                await f.CopyToAsync(ms);
+
+                attachments.Add(new EmailAttachment(safeName, ms.ToArray(), contentType));
+            }
+
             // Log diagnostics WITHOUT showing them in the email
             var ua = Request.Headers.UserAgent.ToString();
             _logger.LogInformation(
-                "Contact received | Kind={Kind} | Email={Email} | Reason={Reason} | Page={Page} | IP={IP} | UA={UA}",
-                kind, req.Email, req.Reason, req.PageUrl, ip, ua
+                "Contact received | Kind={Kind} | Email={Email} | Reason={Reason} | Page={Page} | IP={IP} | UA={UA} | Attachments={Attachments}",
+                kind, req.Email, req.Reason, req.PageUrl, ip, ua, attachments.Count
             );
 
             // Reply-To must be the USER (so support can click Reply)
@@ -143,7 +208,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 subject: subject,
                 htmlMessage: body.ToString(),
                 replyToEmail: req.Email,
-                replyToName: req.Email
+                replyToName: req.Email,
+                attachments: attachments.Count > 0 ? attachments : null
             );
 
             return Ok(new

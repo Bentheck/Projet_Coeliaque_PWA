@@ -1,15 +1,16 @@
 ﻿// Controllers/AccountController.cs
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
-using System.Text;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -25,6 +26,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly ApplicationDbContext _db;
         private readonly string _frontendUrl;
 
+        // NEW: disclaimer options (current required version)
+        private readonly DisclaimerOptions _disclaimerOpt;
+
         public AccountController(
             SignInManager<IdentityUser> signInManager,
             UserManager<IdentityUser> userManager,
@@ -32,7 +36,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             IEmailSender emailSender,
             EmailTemplateService emailTemplates,
             ApplicationDbContext db,
-            IConfiguration config)
+            IConfiguration config,
+            IOptions<DisclaimerOptions> disclaimerOpt)
         {
             _signInManager = signInManager;
             _userManager = userManager;
@@ -41,6 +46,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _emailTemplates = emailTemplates;
             _db = db;
             _frontendUrl = config["FrontendUrl"] ?? "/";
+
+            _disclaimerOpt = disclaimerOpt.Value;
         }
 
         // ---------- DTOs ----------
@@ -61,6 +68,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             /// <summary>Optional UI language hint: "fr", "fr-CA", "en", "en-US", etc.</summary>
             public string? Lang { get; set; }
+
+            // NEW: disclaimer acceptance
+            public bool DisclaimerAccepted { get; set; }
+            public string? DisclaimerVersion { get; set; }
         }
 
         public class ForgotPasswordRequest
@@ -77,6 +88,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             public string? Lang { get; set; }
         }
 
+        public sealed class AcceptDisclaimerRequest
+        {
+            // optional: what the client thinks it is accepting (diagnostics only)
+            public string? Version { get; set; }
+        }
+
+        private string CurrentDisclaimerVersion()
+        {
+            return string.IsNullOrWhiteSpace(_disclaimerOpt.CurrentVersion)
+                ? "v1"
+                : _disclaimerOpt.CurrentVersion.Trim();
+        }
 
         /// <summary>Register a new user and email them a confirmation link.</summary>
         // POST: api/account/register
@@ -88,13 +111,26 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
                 return BadRequest(new { errorCode = ErrorCodes.MissingEmailOrPassword });
 
+            // NEW: must accept disclaimer AND must accept the CURRENT version
+            var requiredVersion = CurrentDisclaimerVersion();
+
+            if (!req.DisclaimerAccepted || string.IsNullOrWhiteSpace(req.DisclaimerVersion))
+                return BadRequest(new { errorCode = ErrorCodes.DisclaimerNotAccepted });
+
+            if (!string.Equals(req.DisclaimerVersion.Trim(), requiredVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new
+                {
+                    errorCode = ErrorCodes.DisclaimerVersionMismatch,
+                    requiredVersion
+                });
+            }
+
             // Normalize + validate display name
             var displayName = (req.DisplayName ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(displayName))
-            {
                 return BadRequest(new { errorCode = ErrorCodes.MissingDisplayName });
-            }
 
             if (displayName.Length < 3 || displayName.Length > 40)
             {
@@ -109,9 +145,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .AnyAsync(p => p.DisplayName != null && p.DisplayName.ToLower() == lower);
 
             if (nameInUse)
-            {
                 return Conflict(new { errorCode = ErrorCodes.DisplayNameAlreadyTaken });
-            }
 
             // Create Identity user (email is the login)
             var user = new IdentityUser { UserName = req.Email, Email = req.Email };
@@ -126,14 +160,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
             }
 
-            // Create a UserProfile row immediately with the chosen display name
+            // Create a UserProfile row immediately with the chosen display name + disclaimer acceptance
             var profile = new UserProfile
             {
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
                 DisplayName = displayName,
-                JoinedUtc = DateTime.UtcNow
+                JoinedUtc = DateTime.UtcNow,
+
+                DisclaimerAcceptedUtc = DateTime.UtcNow,
+                DisclaimerVersion = requiredVersion
             };
+
             _db.UserProfiles.Add(profile);
             await _db.SaveChangesAsync();
 
@@ -253,11 +291,45 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         /// <summary>
+        /// Accept the CURRENT disclaimer version for the logged-in user.
+        /// Used for re-accept flows after version bumps and for a legal page "Accept" button.
+        /// </summary>
+        // POST: api/account/accept-disclaimer
+        [Authorize]
+        [HttpPost("accept-disclaimer")]
+        public async Task<IActionResult> AcceptDisclaimer([FromBody] AcceptDisclaimerRequest req)
+        {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(uid))
+                return Unauthorized(new { errorCode = ErrorCodes.Unauthorized });
+
+            var requiredVersion = CurrentDisclaimerVersion();
+
+            var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
+            if (profile == null)
+                return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
+
+            profile.DisclaimerVersion = requiredVersion;
+            profile.DisclaimerAcceptedUtc = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                ok = true,
+                requiredVersion,
+                acceptedVersion = requiredVersion,
+                acceptedUtc = profile.DisclaimerAcceptedUtc
+            });
+        }
+
+        /// <summary>
         /// Returns the current auth/user profile snapshot (used by the navbar / AuthContext).
         /// Now distinguishes:
         /// - isSuperAdmin  (Identity role)
         /// - isForumAdmin  (DB ForumAdmins)
         /// - isForumModerator (any moderator in ForumThreadModerators)
+        /// Also returns disclaimer status (required vs accepted version).
         /// </summary>
         // GET: api/account/status
         [HttpGet("status")]
@@ -330,6 +402,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var hasActiveMembership = await _membershipService.HasActiveMembershipAsync(uid);
             var membershipStatus = hasActiveMembership ? "Active" : "Inactive";
 
+            // NEW: disclaimer status
+            var requiredDisclaimerVersion = CurrentDisclaimerVersion();
+            var acceptedVersion = (profile?.DisclaimerVersion ?? "").Trim();
+
+            var needsReaccept =
+                string.IsNullOrWhiteSpace(acceptedVersion) ||
+                !string.Equals(acceptedVersion, requiredDisclaimerVersion, StringComparison.OrdinalIgnoreCase);
+
             return Ok(new
             {
                 user = new
@@ -343,7 +423,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 membershipStatus,
                 isSuperAdmin,
                 isForumAdmin,
-                isForumModerator
+                isForumModerator,
+
+                disclaimer = new
+                {
+                    requiredVersion = requiredDisclaimerVersion,
+                    acceptedVersion = string.IsNullOrWhiteSpace(acceptedVersion) ? null : acceptedVersion,
+                    acceptedUtc = profile?.DisclaimerAcceptedUtc,
+                    needsReaccept
+                }
             });
         }
 
@@ -446,6 +534,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         public const string MissingDisplayName = "MissingDisplayName";
         public const string DisplayNameAlreadyTaken = "DisplayNameAlreadyTaken";
+
+        public const string DisclaimerNotAccepted = "DisclaimerNotAccepted";
+        public const string DisclaimerVersionMismatch = "DisclaimerVersionMismatch";
+
+        public const string Unauthorized = "Unauthorized";
+        public const string ProfileNotFound = "ProfileNotFound";
 
         public const string ResetPasswordFailed = "ResetPasswordFailed";
         public const string ResetTokenInvalid = "ResetTokenInvalid";

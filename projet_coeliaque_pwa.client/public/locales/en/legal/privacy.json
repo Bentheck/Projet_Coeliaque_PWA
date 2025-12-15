@@ -1,0 +1,78 @@
+﻿{
+  "currentVersion": "v1",
+  "v1": {
+    "title": "Privacy Policy — Service Coeliaque",
+    "subtitle": "Effective upon acceptance",
+    "sections": [
+      {
+        "title": "Service identification",
+        "paragraphs": [
+          "Service Coeliaque is a software application operated and maintained by Solutions BenSoft.",
+          "This Privacy Policy describes how information is handled when using Service Coeliaque."
+        ]
+      },
+      {
+        "title": "Information we collect",
+        "paragraphs": [
+          "The only information required to create an account is a valid email address and a username (display name).",
+          "No sensitive personal information such as legal name, address, date of birth, banking, or medical data is required."
+        ]
+      },
+      {
+        "title": "User-provided content",
+        "paragraphs": [
+          "Any data, text, documents, or content voluntarily entered by the user into the application is provided under the user’s sole responsibility.",
+          "Solutions BenSoft does not verify, validate, or assume responsibility for user-provided content."
+        ]
+      },
+      {
+        "title": "Local storage and offline data",
+        "paragraphs": [
+          "Service Coeliaque may store certain data locally on your device to enable offline functionality.",
+          "Clearing browser data, reinstalling the application, changing devices, or device loss may result in irreversible data loss."
+        ]
+      },
+      {
+        "title": "Payments",
+        "paragraphs": [
+          "Payments and subscriptions are processed by third-party payment providers.",
+          "Solutions BenSoft does not store or process payment card information."
+        ]
+      },
+      {
+        "title": "Use of information",
+        "paragraphs": [
+          "Information is used solely for authentication, service functionality, and communication related to Service Coeliaque.",
+          "No personal information is sold or shared for advertising purposes."
+        ]
+      },
+      {
+        "title": "Data security",
+        "paragraphs": [
+          "Solutions BenSoft implements reasonable technical measures to protect information.",
+          "However, no system can guarantee absolute security, and use of the service is at your own risk."
+        ]
+      },
+      {
+        "title": "Data retention",
+        "paragraphs": [
+          "Account-related information is retained only for as long as the account remains active or as required by law.",
+          "Users may request account deletion, subject to legal or operational retention requirements."
+        ]
+      },
+      {
+        "title": "Policy updates",
+        "paragraphs": [
+          "This Privacy Policy may be updated from time to time.",
+          "Continued use of the service may require acceptance of the updated policy."
+        ]
+      },
+      {
+        "title": "Governing law",
+        "paragraphs": [
+          "This Privacy Policy is governed by the laws of the Province of Québec and the applicable federal laws of Canada."
+        ]
+      }
+    ]
+  }
+}

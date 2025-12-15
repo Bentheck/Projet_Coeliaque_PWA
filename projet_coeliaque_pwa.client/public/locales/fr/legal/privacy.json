@@ -1,0 +1,78 @@
+﻿{
+  "currentVersion": "v1",
+  "v1": {
+    "title": "Politique de confidentialité — Service Coeliaque",
+    "subtitle": "En vigueur dès l’acceptation",
+    "sections": [
+      {
+        "title": "Identification du service",
+        "paragraphs": [
+          "Service Coeliaque est une application logicielle opérée et maintenue par Solutions BenSoft.",
+          "La présente politique décrit la façon dont les informations sont traitées lors de l’utilisation de Service Coeliaque."
+        ]
+      },
+      {
+        "title": "Informations collectées",
+        "paragraphs": [
+          "Les seules informations requises pour créer un compte sont une adresse courriel valide et un nom d’utilisateur (nom affiché).",
+          "Aucune information personnelle sensible telle que le nom légal, l’adresse, la date de naissance, les informations bancaires ou médicales n’est requise."
+        ]
+      },
+      {
+        "title": "Contenu fourni par l’utilisateur",
+        "paragraphs": [
+          "Toute donnée, texte, document ou contenu saisi volontairement par l’utilisateur est fourni sous sa responsabilité exclusive.",
+          "Solutions BenSoft ne vérifie pas et n’assume aucune responsabilité quant au contenu fourni par les utilisateurs."
+        ]
+      },
+      {
+        "title": "Stockage local et fonctionnement hors ligne",
+        "paragraphs": [
+          "Service Coeliaque peut stocker certaines données localement sur votre appareil afin de permettre le fonctionnement hors ligne.",
+          "La suppression des données du navigateur, la réinstallation de l’application, le changement d’appareil ou la perte de celui-ci peuvent entraîner une perte de données irréversible."
+        ]
+      },
+      {
+        "title": "Paiements",
+        "paragraphs": [
+          "Les paiements et abonnements sont traités par des fournisseurs de paiement tiers.",
+          "Solutions BenSoft ne stocke ni ne traite les informations de cartes de paiement."
+        ]
+      },
+      {
+        "title": "Utilisation des informations",
+        "paragraphs": [
+          "Les informations sont utilisées uniquement à des fins d’authentification, de fonctionnement du service et de communication liée à Service Coeliaque.",
+          "Aucune information personnelle n’est vendue ou partagée à des fins publicitaires."
+        ]
+      },
+      {
+        "title": "Sécurité des données",
+        "paragraphs": [
+          "Solutions BenSoft met en place des mesures techniques raisonnables pour protéger les informations.",
+          "Toutefois, aucun système ne peut garantir une sécurité absolue et l’utilisation du service se fait aux risques de l’utilisateur."
+        ]
+      },
+      {
+        "title": "Conservation des données",
+        "paragraphs": [
+          "Les informations liées au compte sont conservées aussi longtemps que le compte demeure actif ou selon les exigences légales applicables.",
+          "Les utilisateurs peuvent demander la suppression de leur compte, sous réserve des obligations légales ou opérationnelles."
+        ]
+      },
+      {
+        "title": "Modifications de la politique",
+        "paragraphs": [
+          "La présente politique de confidentialité peut être modifiée à tout moment.",
+          "L’utilisation continue du service peut nécessiter l’acceptation d’une version mise à jour."
+        ]
+      },
+      {
+        "title": "Droit applicable",
+        "paragraphs": [
+          "La présente politique de confidentialité est régie par les lois de la province de Québec et les lois fédérales du Canada applicables."
+        ]
+      }
+    ]
+  }
+}

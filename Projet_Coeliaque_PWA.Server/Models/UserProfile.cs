@@ -18,6 +18,10 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public DateTime JoinedUtc { get; set; } = DateTime.UtcNow;
         public DateTime? LastSeenUtc { get; set; }
 
+        // NEW: disclaimer acceptance (stored in profile table)
+        public DateTime? DisclaimerAcceptedUtc { get; set; }
+        public string? DisclaimerVersion { get; set; }
+
         // denormalized counters (optional, maintained by posts controller / jobs)
         public int ThreadCount { get; set; }
         public int PostCount { get; set; }

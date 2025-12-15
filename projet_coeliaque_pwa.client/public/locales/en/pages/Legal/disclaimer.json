@@ -1,0 +1,26 @@
+﻿{
+  "page": {
+    "title": "Legal Disclaimer",
+    "fullVersionHint": "This is the full legal disclaimer for Service Coeliaque (operated by Solutions BenSoft).",
+    "tosComingSoon": "Terms of Service page will be added separately."
+  },
+  "messages": {
+    "accepted": "Accepted. Thank you."
+  },
+  "errors": {
+    "defaultError": "Something went wrong.",
+    "missingContent": "Disclaimer content is missing.",
+    "loginRequired": "Please log in to accept."
+  },
+  "actions": {
+    "back": "Back",
+    "accept": "Accept",
+    "accepting": "Accepting…",
+    "loginHint": "Log in to accept (required for restricted features).",
+    "login": "Login",
+    "viewFull": "View full disclaimer"
+  },
+  "meta": {
+    "versionLabel": "Current version:"
+  }
+}

@@ -44,7 +44,8 @@
     "displayNameTooLong": "Le nom affiché doit contenir au plus 40 caractères.",
     "displayNameTaken": "Ce nom affiché est déjà utilisé.",
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
-    "passwordRequired": "Le mot de passe et sa confirmation sont requis."
+    "passwordRequired": "Le mot de passe et sa confirmation sont requis.",
+    "disclaimerRequired": "Vous devez accepter l’avis de non-responsabilité pour créer un compte."
   },
   "help": {
     "displayNameAria": "Aide sur le nom affiché",

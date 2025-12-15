@@ -16,15 +16,25 @@ namespace Projet_Coeliaque_PWA.Server.Services
             _logger = logger;
         }
 
-        public async Task SendEmailAsync(string toEmail, string subject, string htmlMessage)
-    => await SendEmailAsync(toEmail, subject, htmlMessage, null, null);
+        public Task SendEmailAsync(string toEmail, string subject, string htmlMessage)
+            => SendEmailAsync(toEmail, subject, htmlMessage, null, null, null);
+
+        public Task SendEmailAsync(
+            string toEmail,
+            string subject,
+            string htmlMessage,
+            string? replyToEmail,
+            string? replyToName
+        )
+            => SendEmailAsync(toEmail, subject, htmlMessage, replyToEmail, replyToName, null);
 
         public async Task SendEmailAsync(
             string toEmail,
             string subject,
             string htmlMessage,
             string? replyToEmail,
-            string? replyToName
+            string? replyToName,
+            IReadOnlyList<EmailAttachment>? attachments
         )
         {
             if (string.IsNullOrWhiteSpace(toEmail))
@@ -62,10 +72,29 @@ namespace Projet_Coeliaque_PWA.Server.Services
             message.To.Add(MailboxAddress.Parse(toEmail));
             message.Subject = subject ?? "";
 
-            message.Body = new BodyBuilder
+            var builder = new BodyBuilder
             {
                 HtmlBody = htmlMessage ?? ""
-            }.ToMessageBody();
+            };
+
+            // Attachments (images from contact form)
+            if (attachments != null && attachments.Count > 0)
+            {
+                foreach (var att in attachments)
+                {
+                    if (att == null) continue;
+                    if (att.Content == null || att.Content.Length == 0) continue;
+
+                    var fileName = string.IsNullOrWhiteSpace(att.FileName) ? "attachment" : att.FileName;
+                    var contentType = string.IsNullOrWhiteSpace(att.ContentType)
+                        ? "application/octet-stream"
+                        : att.ContentType;
+
+                    builder.Attachments.Add(fileName, att.Content, ContentType.Parse(contentType));
+                }
+            }
+
+            message.Body = builder.ToMessageBody();
 
             using var client = new SmtpClient();
 
