@@ -45,7 +45,8 @@
     "displayNameTaken": "This display name is already taken.",
     "passwordMismatch": "The passwords do not match.",
     "passwordRequired": "Password and confirmation are required.",
-    "disclaimerRequired": "You must accept the disclaimer to create an account."
+    "disclaimerRequired": "You must accept the disclaimer to create an account.",
+    "emailTaken": "This email is already in use."
   },
   "help": {
     "displayNameAria": "Help about the display name",

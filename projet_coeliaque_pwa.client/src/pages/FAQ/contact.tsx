@@ -47,10 +47,19 @@ export default function ContactPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.email, user?.name]);
 
+    // ✅ Suggestions adapt to selected "kind"
     const reasonSuggestions = useMemo(() => {
-        const v = t("fields.reasonSuggestions", { returnObjects: true });
+        const v = t(`fields.reasonSuggestions.${kind}`, { returnObjects: true });
         return Array.isArray(v) ? (v as string[]).filter(Boolean) : [];
-    }, [t]);
+    }, [t, kind]);
+
+    // ✅ If user switches kind, ensure "reason" still matches available options
+    useEffect(() => {
+        if (!reason) return;
+        if (reasonSuggestions.length === 0) return;
+        if (!reasonSuggestions.includes(reason)) setReason("");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kind]);
 
     const totalBytes = useMemo(
         () => files.reduce((sum, f) => sum + (f?.size || 0), 0),
@@ -193,7 +202,11 @@ export default function ContactPage() {
             <h1 className="h4 mb-2">{t("title")}</h1>
             <p className="text-muted mb-4">{t("intro")}</p>
 
-            <form onSubmit={submit} className="card border-accent-primary p-4 contact-card" noValidate>
+            <form
+                onSubmit={submit}
+                className="card border-accent-primary p-4 contact-card"
+                noValidate
+            >
                 {ok && (
                     <div className="alert alert-success" role="status" aria-live="polite">
                         {ok}
@@ -344,15 +357,23 @@ export default function ContactPage() {
                         <div className="mt-2">
                             <ul className="mb-0 small list-unstyled">
                                 {files.map((f, idx) => (
-                                    <li key={`${f.name}-${f.size}-${f.lastModified}-${idx}`} className="d-flex align-items-center justify-content-between gap-2 py-1 border-bottom">
+                                    <li
+                                        key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
+                                        className="d-flex align-items-center justify-content-between gap-2 py-1 border-bottom"
+                                    >
                                         <span className="text-truncate" style={{ maxWidth: "70%" }}>
-                                            {f.name} <span className="text-muted">({formatKb(f.size)})</span>
+                                            {f.name}{" "}
+                                            <span className="text-muted">
+                                                ({formatKb(f.size)})
+                                            </span>
                                         </span>
                                         <button
                                             type="button"
                                             className="btn btn-outline-danger btn-sm"
                                             onClick={() => removeFileAt(idx)}
-                                            aria-label={t("helpers.removeAttachmentAria", { defaultValue: "Remove attachment" })}
+                                            aria-label={t("helpers.removeAttachmentAria", {
+                                                defaultValue: "Remove attachment",
+                                            })}
                                         >
                                             {t("buttons.remove", { defaultValue: "Remove" })}
                                         </button>
@@ -371,7 +392,11 @@ export default function ContactPage() {
                     )}
                 </div>
 
-                <button className="btn btn-primary w-100" type="submit" disabled={busy || !canSend}>
+                <button
+                    className="btn btn-primary w-100"
+                    type="submit"
+                    disabled={busy || !canSend}
+                >
                     {busy ? t("buttons.loading") : t("buttons.submit")}
                 </button>
             </form>

@@ -1,0 +1,29 @@
+﻿{
+  "currentVersion": "v1",
+  "actions": {
+    "viewFull": "View full terms of service"
+  },
+  "v1": {
+    "title": "Terms of Service — Service Coeliaque",
+    "lead": "Please read the terms below carefully. You must scroll to the end to enable acceptance.",
+    "scrollHint": "Scroll to the bottom to enable Accept.",
+    "scrollOk": "You have reached the end. You may accept.",
+    "accept": "Accept",
+    "accepting": "Accepting…",
+    "decline": "Decline",
+    "loginHint": "Log in to accept and continue using restricted features.",
+    "acceptRequiresLogin": "Please log in to accept.",
+    "acceptedOk": "Accepted. Thank you.",
+    "paragraphs": [
+      "1. Service Coeliaque is a software application operated by Solutions BenSoft. By creating an account or using the service, you agree to these Terms of Service.",
+      "2. If you do not agree with these terms, you must not use the service.",
+      "3. You are responsible for the accuracy, legality, and relevance of all data and content you provide.",
+      "4. You are responsible for safeguarding your login credentials and all activity under your account.",
+      "5. Solutions BenSoft may moderate or remove content that violates these Terms, applicable laws, or community standards.",
+      "6. Paid subscriptions may be refunded within seven (7) days of purchase, provided the service has not been used excessively. After this period or in cases of excessive usage, no refunds will be issued.",
+      "7. Solutions BenSoft reserves the right to modify, suspend, or discontinue the service at any time. The service is provided “as is” and “as available”.",
+      "8. To the fullest extent permitted by law, Solutions BenSoft shall not be liable for damages arising from the use or inability to use the service.",
+      "9. These Terms may be updated from time to time. Continued use of the service may require acceptance of updated terms."
+    ]
+  }
+}

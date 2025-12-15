@@ -1,0 +1,29 @@
+﻿{
+  "currentVersion": "v1",
+  "actions": {
+    "viewFull": "Voir les conditions d’utilisation complètes"
+  },
+  "v1": {
+    "title": "Conditions d’utilisation — Service Coeliaque",
+    "lead": "Veuillez lire attentivement les conditions ci-dessous. Vous devez faire défiler jusqu’à la fin pour activer l’acceptation.",
+    "scrollHint": "Faites défiler jusqu’en bas pour activer l’acceptation.",
+    "scrollOk": "Vous avez atteint la fin. Vous pouvez accepter.",
+    "accept": "Accepter",
+    "accepting": "Acceptation…",
+    "decline": "Refuser",
+    "loginHint": "Connectez-vous pour accepter et continuer à utiliser les fonctionnalités restreintes.",
+    "acceptRequiresLogin": "Veuillez vous connecter pour accepter.",
+    "acceptedOk": "Accepté. Merci.",
+    "paragraphs": [
+      "1. Service Coeliaque est une application logicielle exploitée par Solutions BenSoft. En créant un compte, en accédant au service ou en l’utilisant, vous reconnaissez avoir lu, compris et accepté les présentes conditions.",
+      "2. Si vous n’acceptez pas ces conditions, vous ne devez pas utiliser le service.",
+      "3. Vous êtes responsable de l’exactitude, de la légalité et de la pertinence de toutes les données et de tout contenu que vous saisissez ou publiez.",
+      "4. Vous êtes responsable de la confidentialité de vos identifiants de connexion et de toutes les activités effectuées sous votre compte.",
+      "5. Solutions BenSoft se réserve le droit de modérer, restreindre ou supprimer tout contenu utilisateur enfreignant les présentes conditions ou les lois applicables.",
+      "6. Les abonnements payants peuvent être remboursés dans un délai de sept (7) jours suivant l’achat, à condition que le service n’ait pas été utilisé de manière excessive. Au-delà de ce délai ou en cas d’utilisation excessive, aucun remboursement ne sera accordé.",
+      "7. Solutions BenSoft se réserve le droit de modifier, suspendre ou interrompre le service à tout moment. Le service est fourni « tel quel » et « selon disponibilité ».",
+      "8. Dans toute la mesure permise par la loi, Solutions BenSoft ne pourra être tenue responsable des dommages résultant de l’utilisation ou de l’impossibilité d’utiliser Service Coeliaque.",
+      "9. Les présentes conditions peuvent être mises à jour à tout moment. L’utilisation continue du service peut nécessiter l’acceptation d’une version mise à jour."
+    ]
+  }
+}

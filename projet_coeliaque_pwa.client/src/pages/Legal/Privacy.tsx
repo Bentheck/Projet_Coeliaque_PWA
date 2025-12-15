@@ -13,7 +13,7 @@ export default function PrivacyPage() {
     const { t: tPage } = useTranslation("pages/Legal/privacy");
 
     // Full legal content
-    const { t: tLegal } = useTranslation("legal/privacy");
+    const { t: tLegal } = useTranslation("legal/privacy_full");
 
     const navigate = useNavigate();
 

@@ -12,13 +12,29 @@
     },
     "email": "Your email",
     "reason": "Reason",
-    "reasonSuggestions": [
-      "Login issue",
-      "Password reset",
-      "Payment or subscription issue",
-      "Bug or technical error",
-      "Other"
-    ],
+    "reasonSuggestions": {
+      "support": [
+        "Login issue",
+        "Password reset",
+        "Bug or technical error",
+        "Payment or subscription issue",
+        "Other"
+      ],
+      "info": [
+        "How the app works",
+        "Plans / pricing",
+        "Privacy and data",
+        "Compatibility / devices",
+        "Other"
+      ],
+      "feedback": [
+        "Improvement suggestion",
+        "Feature request",
+        "General feedback",
+        "Usability issue",
+        "Other"
+      ]
+    },
     "details": "Description",
     "attachments": "Attachments (optional)"
   },

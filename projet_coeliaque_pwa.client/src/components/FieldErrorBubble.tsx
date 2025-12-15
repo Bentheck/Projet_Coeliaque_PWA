@@ -8,8 +8,11 @@ type FieldErrorBubbleProps = {
 };
 
 /**
- * Small inline error bubble you can attach next to labels / inputs.
+ * Small overlay error bubble you can attach next to labels / inputs.
  * Renders nothing if `message` is empty.
+ *
+ * NOTE: This assumes the parent "anchor" element is position: relative
+ * (see Register.tsx: .field-label-anchor).
  */
 const FieldErrorBubble: React.FC<FieldErrorBubbleProps> = ({
     id,

@@ -1,0 +1,107 @@
+﻿/* Anchor wrapper for label text + bubbles (participates in layout, stable) */
+.field-label-anchor {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.field-label-text {
+    display: inline-block;
+}
+
+/* Base bubble (overlay, does NOT take layout space) */
+.help-bubble {
+    position: absolute;
+    z-index: 50;
+    /* default: bubble appears to the right of the anchor */
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin-left: 0; /* important: no layout offset */
+    padding: 0.35rem 0.55rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    line-height: 1.2;
+    width: max-content;
+    max-width: 340px;
+    white-space: normal;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    /* prevent bubble from blocking clicks */
+    pointer-events: none;
+}
+
+/* Error bubble */
+.error-bubble {
+    background: #fff1f2;
+    color: #991b1b;
+    border: 1px solid #fecdd3;
+}
+
+.error-bubble-icon {
+    flex: 0 0 auto;
+    line-height: 1;
+    margin-top: 0.05rem;
+}
+
+    .error-bubble-icon i {
+        font-size: 0.95rem;
+    }
+
+.error-bubble-text {
+    min-width: 0;
+}
+
+/* If you use placement="left", actually move bubble to the left */
+.help-bubble--left,
+.error-bubble--left {
+    left: auto;
+    right: calc(100% + 10px);
+}
+
+/* Arrow (right placement = bubble appears to the right of the label) */
+.error-bubble--right::before,
+.error-bubble--right::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: -8px;
+    border-style: solid;
+}
+
+.error-bubble--right::before {
+    border-width: 8px 8px 8px 0;
+    border-color: transparent #fecdd3 transparent transparent;
+}
+
+.error-bubble--right::after {
+    left: -7px;
+    border-width: 7px 7px 7px 0;
+    border-color: transparent #fff1f2 transparent transparent;
+}
+
+/* Arrow (left placement = bubble appears to the left of the label) */
+.error-bubble--left::before,
+.error-bubble--left::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: -8px;
+    border-style: solid;
+}
+
+.error-bubble--left::before {
+    border-width: 8px 0 8px 8px;
+    border-color: transparent transparent transparent #fecdd3;
+}
+
+.error-bubble--left::after {
+    right: -7px;
+    border-width: 7px 0 7px 7px;
+    border-color: transparent transparent transparent #fff1f2;
+}

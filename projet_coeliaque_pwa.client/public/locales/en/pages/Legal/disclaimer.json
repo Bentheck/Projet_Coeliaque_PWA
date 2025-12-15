@@ -10,12 +10,14 @@
   "errors": {
     "defaultError": "Something went wrong.",
     "missingContent": "Disclaimer content is missing.",
-    "loginRequired": "Please log in to accept."
+    "loginRequired": "Please log in to accept.",
+    "mustScroll": "Scroll to the bottom to enable acceptance."
   },
   "actions": {
     "back": "Back",
     "accept": "Accept",
     "accepting": "Accepting…",
+    "decline": "Decline",
     "loginHint": "Log in to accept (required for restricted features).",
     "login": "Login",
     "viewFull": "View full disclaimer"

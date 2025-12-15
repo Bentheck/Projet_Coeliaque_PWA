@@ -12,13 +12,29 @@
     },
     "email": "Votre courriel",
     "reason": "Raison",
-    "reasonSuggestions": [
-      "Problème de connexion",
-      "Réinitialisation du mot de passe",
-      "Problème de paiement ou d’abonnement",
-      "Bug ou erreur technique",
-      "Autre"
-    ],
+    "reasonSuggestions": {
+      "support": [
+        "Problème de connexion",
+        "Réinitialisation du mot de passe",
+        "Bug ou erreur technique",
+        "Problème de paiement ou d’abonnement",
+        "Autre"
+      ],
+      "info": [
+        "Fonctionnement de l’application",
+        "Abonnement / tarifs",
+        "Confidentialité et données",
+        "Compatibilité / appareils",
+        "Autre"
+      ],
+      "feedback": [
+        "Suggestion d’amélioration",
+        "Nouvelle fonctionnalité",
+        "Commentaire général",
+        "Problème d’ergonomie",
+        "Autre"
+      ]
+    },
     "details": "Description",
     "attachments": "Pièces jointes (optionnel)"
   },

@@ -44,5 +44,34 @@
     "deletion": "Échec de la suppression.",
     "save": "Échec de la sauvegarde.",
     "generic": "Erreur"
+  },
+  "delete": {
+    "title": "Supprimer le compte",
+    "description": "Cette action est irréversible. Vos données personnelles seront supprimées et vos contributions au forum seront anonymisées.",
+    "openButton": "Supprimer mon compte",
+    "modal": {
+      "title": "Confirmer la suppression du compte",
+      "close": "Fermer",
+      "lead": "Avant de supprimer votre compte, veuillez prendre connaissance de ce qui suit :",
+      "bullets": {
+        "data": "Vos données (factures, listes, comparatifs, rapports, etc.) seront supprimées.",
+        "forum": "Vos publications sur le forum resteront visibles, mais seront anonymisées.",
+        "irreversible": "Cette action est définitive et ne peut pas être annulée."
+      },
+      "passwordLabel": "Mot de passe",
+      "passwordPlaceholder": "Entrez votre mot de passe",
+      "confirmLabel": "Je comprends et je confirme la suppression définitive de mon compte.",
+      "note": "Si vous avez un abonnement actif, vous devez l’annuler (ou attendre sa fin) avant de supprimer votre compte.",
+      "cancel": "Annuler",
+      "deleteButton": "Supprimer définitivement",
+      "deleting": "Suppression…"
+    },
+    "errors": {
+      "invalidPassword": "Mot de passe invalide.",
+      "requiresConfirm": "Vous devez cocher la case de confirmation.",
+      "subscriptionStillActive": "Votre abonnement est toujours actif. Veuillez l’annuler avant de supprimer votre compte.",
+      "generic": "Impossible de supprimer le compte.",
+      "lifetimeSubscription": "Abonnement à vie détecté. Veuillez contacter un administrateur pour supprimer le compte."
+    }
   }
 }

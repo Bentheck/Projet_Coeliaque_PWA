@@ -268,20 +268,27 @@ export default function Navbar() {
                                         <i className="bi bi-chat-dots me-1"></i>{" "}
                                         {t("menu.forum._")}
                                     </a>
-                                    <ul
-                                        className="dropdown-menu"
-                                        aria-labelledby="forumDropdown"
-                                    >
-                                        <li>
-                                            <Link
-                                                className="dropdown-item"
-                                                to="/admin/forum"
-                                            >
-                                                <i className="bi bi-shield-check me-2"></i>
-                                                {t("menu.forum.admin")}
-                                            </Link>
-                                        </li>
-                                    </ul>
+                                        <ul className="dropdown-menu" aria-labelledby="forumDropdown">
+                                            {/* Language selector (entry point) */}
+                                            <li>
+                                                <Link className="dropdown-item" to="/forum">
+                                                    <i className="bi bi-translate me-2"></i>
+                                                    {t("menu.forum.language")} {/* add i18n key */}
+                                                </Link>
+                                            </li>
+
+                                            <li>
+                                                <hr className="dropdown-divider" />
+                                            </li>
+
+                                            {/* Admin panel */}
+                                            <li>
+                                                <Link className="dropdown-item" to="/admin/forum">
+                                                    <i className="bi bi-shield-check me-2"></i>
+                                                    {t("menu.forum.admin")}
+                                                </Link>
+                                            </li>
+                                        </ul>
                                 </li>
                             ) : (
                                 // Normal user → simple link to /forum

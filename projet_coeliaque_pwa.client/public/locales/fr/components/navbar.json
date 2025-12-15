@@ -29,7 +29,8 @@
       "admin": "Admin forum",
       "offlineTitle": "Forum indisponible hors ligne",
       "offlineAlert": "Le forum n’est pas disponible hors ligne.",
-      "offlineLabel": "Forum (hors ligne)"
+      "offlineLabel": "Forum (hors ligne)",
+      "language": "Forum"
     },
     "help": {
       "_": "Aide",

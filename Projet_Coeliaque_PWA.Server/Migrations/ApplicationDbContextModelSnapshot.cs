@@ -885,6 +885,9 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
+                    b.Property<DateTime?>("DeletedUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("DisclaimerAcceptedUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -908,8 +911,20 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Property<int>("PostCount")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("PrivacyAcceptedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PrivacyVersion")
+                        .HasColumnType("text");
+
                     b.Property<int>("ThreadCount")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("TosAcceptedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TosVersion")
+                        .HasColumnType("text");
 
                     b.Property<string>("UserId")
                         .IsRequired()

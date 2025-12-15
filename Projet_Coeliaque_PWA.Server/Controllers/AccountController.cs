@@ -11,6 +11,7 @@ using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
+using Stripe;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -25,9 +26,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly EmailTemplateService _emailTemplates;
         private readonly ApplicationDbContext _db;
         private readonly string _frontendUrl;
+        private readonly IConfiguration _config;
 
-        // NEW: disclaimer options (current required version)
+        // Disclaimer options (current required version)
         private readonly DisclaimerOptions _disclaimerOpt;
+
+        // privacy + tos options
+        private readonly PrivacyOptions _privacyOpt;
+        private readonly TosOptions _tosOpt;
 
         public AccountController(
             SignInManager<IdentityUser> signInManager,
@@ -37,7 +43,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             EmailTemplateService emailTemplates,
             ApplicationDbContext db,
             IConfiguration config,
-            IOptions<DisclaimerOptions> disclaimerOpt)
+            IOptions<DisclaimerOptions> disclaimerOpt,
+            IOptions<PrivacyOptions> privacyOpt,
+            IOptions<TosOptions> tosOpt)
         {
             _signInManager = signInManager;
             _userManager = userManager;
@@ -46,8 +54,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _emailTemplates = emailTemplates;
             _db = db;
             _frontendUrl = config["FrontendUrl"] ?? "/";
+            _config = config;
 
             _disclaimerOpt = disclaimerOpt.Value;
+            _privacyOpt = privacyOpt.Value;
+            _tosOpt = tosOpt.Value;
         }
 
         // ---------- DTOs ----------
@@ -55,8 +66,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             public string Email { get; set; } = "";
             public string Password { get; set; } = "";
-
-            /// <summary>Optional UI language hint: "fr", "fr-CA", "en", "en-US", etc.</summary>
             public string? Lang { get; set; }
         }
 
@@ -65,13 +74,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             public string Email { get; set; } = "";
             public string Password { get; set; } = "";
             public string DisplayName { get; set; } = "";
-
-            /// <summary>Optional UI language hint: "fr", "fr-CA", "en", "en-US", etc.</summary>
             public string? Lang { get; set; }
 
-            // NEW: disclaimer acceptance
+            // Disclaimer acceptance
             public bool DisclaimerAccepted { get; set; }
             public string? DisclaimerVersion { get; set; }
+
+            // privacy acceptance
+            public bool PrivacyAccepted { get; set; }
+            public string? PrivacyVersion { get; set; }
+
+            // tos acceptance
+            public bool TosAccepted { get; set; }
+            public string? TosVersion { get; set; }
         }
 
         public class ForgotPasswordRequest
@@ -88,10 +103,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             public string? Lang { get; set; }
         }
 
-        public sealed class AcceptDisclaimerRequest
+        public sealed class DeleteAccountRequest
         {
-            // optional: what the client thinks it is accepting (diagnostics only)
-            public string? Version { get; set; }
+            public string Password { get; set; } = "";
+            public bool Confirm { get; set; }
         }
 
         private string CurrentDisclaimerVersion()
@@ -101,30 +116,63 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 : _disclaimerOpt.CurrentVersion.Trim();
         }
 
+        private string CurrentPrivacyVersion()
+        {
+            return string.IsNullOrWhiteSpace(_privacyOpt.CurrentVersion)
+                ? "v1"
+                : _privacyOpt.CurrentVersion.Trim();
+        }
+
+        private string CurrentTosVersion()
+        {
+            return string.IsNullOrWhiteSpace(_tosOpt.CurrentVersion)
+                ? "v1"
+                : _tosOpt.CurrentVersion.Trim();
+        }
+
+        private static bool HasIdentityError(IdentityResult result, string code)
+            => result.Errors?.Any(e => string.Equals(e.Code, code, StringComparison.OrdinalIgnoreCase)) == true;
+
         /// <summary>Register a new user and email them a confirmation link.</summary>
-        // POST: api/account/register
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req)
         {
-            // Basic email/password presence
             if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
                 return BadRequest(new { errorCode = ErrorCodes.MissingEmailOrPassword });
 
-            // NEW: must accept disclaimer AND must accept the CURRENT version
-            var requiredVersion = CurrentDisclaimerVersion();
+            var requiredDisclaimer = CurrentDisclaimerVersion();
+            var requiredPrivacy = CurrentPrivacyVersion();
+            var requiredTos = CurrentTosVersion();
 
+            // Disclaimer required
             if (!req.DisclaimerAccepted || string.IsNullOrWhiteSpace(req.DisclaimerVersion))
                 return BadRequest(new { errorCode = ErrorCodes.DisclaimerNotAccepted });
 
-            if (!string.Equals(req.DisclaimerVersion.Trim(), requiredVersion, StringComparison.OrdinalIgnoreCase))
-            {
-                return BadRequest(new
-                {
-                    errorCode = ErrorCodes.DisclaimerVersionMismatch,
-                    requiredVersion
-                });
-            }
+            if (!string.Equals(req.DisclaimerVersion.Trim(), requiredDisclaimer, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { errorCode = ErrorCodes.DisclaimerVersionMismatch, requiredVersion = requiredDisclaimer });
+
+            // Privacy required
+            if (!req.PrivacyAccepted || string.IsNullOrWhiteSpace(req.PrivacyVersion))
+                return BadRequest(new { errorCode = ErrorCodes.PrivacyNotAccepted });
+
+            if (!string.Equals(req.PrivacyVersion.Trim(), requiredPrivacy, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { errorCode = ErrorCodes.PrivacyVersionMismatch, requiredVersion = requiredPrivacy });
+
+            // TOS required
+            if (!req.TosAccepted || string.IsNullOrWhiteSpace(req.TosVersion))
+                return BadRequest(new { errorCode = ErrorCodes.TosNotAccepted });
+
+            if (!string.Equals(req.TosVersion.Trim(), requiredTos, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { errorCode = ErrorCodes.TosVersionMismatch, requiredVersion = requiredTos });
+
+            // Normalize email (Identity treats UserName as unique; you currently use Email as UserName)
+            var email = (req.Email ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(email))
+                return BadRequest(new { errorCode = ErrorCodes.MissingEmailOrPassword });
+
+            // Optional but recommended: normalize casing to avoid "same email different casing" confusion
+            var normalizedEmail = email.ToLowerInvariant();
 
             // Normalize + validate display name
             var displayName = (req.DisplayName ?? string.Empty).Trim();
@@ -133,10 +181,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return BadRequest(new { errorCode = ErrorCodes.MissingDisplayName });
 
             if (displayName.Length < 3 || displayName.Length > 40)
-            {
-                // Frontend can map this to an i18n key if you want.
-                return BadRequest(new { error = "Le nom affiché doit contenir entre 3 et 40 caractères." });
-            }
+                return BadRequest(new { errorCode = ErrorCodes.IdentityValidationFailed });
 
             // Enforce uniqueness (case-insensitive) against existing user profiles
             var lower = displayName.ToLower();
@@ -147,12 +192,28 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (nameInUse)
                 return Conflict(new { errorCode = ErrorCodes.DisplayNameAlreadyTaken });
 
-            // Create Identity user (email is the login)
-            var user = new IdentityUser { UserName = req.Email, Email = req.Email };
+            // Create Identity user
+            // IMPORTANT: Identity "DuplicateUserName" will be "email already used" because UserName == Email here.
+            var user = new IdentityUser
+            {
+                UserName = normalizedEmail,
+                Email = normalizedEmail
+            };
+
             var result = await _userManager.CreateAsync(user, req.Password);
 
             if (!result.Succeeded)
             {
+                // Map identity duplicate to a clear API error code
+                if (HasIdentityError(result, "DuplicateEmail") || HasIdentityError(result, "DuplicateUserName"))
+                {
+                    return Conflict(new
+                    {
+                        errorCode = ErrorCodes.EmailAlreadyTaken,
+                        identityErrors = result.Errors.Select(e => e.Code).ToArray()
+                    });
+                }
+
                 return BadRequest(new
                 {
                     errorCode = ErrorCodes.IdentityValidationFailed,
@@ -160,25 +221,33 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
             }
 
-            // Create a UserProfile row immediately with the chosen display name + disclaimer acceptance
+            // Create UserProfile with legal acceptance
+            var now = DateTime.UtcNow;
+
             var profile = new UserProfile
             {
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
                 DisplayName = displayName,
-                JoinedUtc = DateTime.UtcNow,
+                JoinedUtc = now,
 
-                DisclaimerAcceptedUtc = DateTime.UtcNow,
-                DisclaimerVersion = requiredVersion
+                DisclaimerAcceptedUtc = now,
+                DisclaimerVersion = requiredDisclaimer,
+
+                PrivacyAcceptedUtc = now,
+                PrivacyVersion = requiredPrivacy,
+
+                TosAcceptedUtc = now,
+                TosVersion = requiredTos
             };
 
             _db.UserProfiles.Add(profile);
             await _db.SaveChangesAsync();
 
-            // Mirror display name to a claim so navbar / AuthContext can use it instantly
+            // Mirror display name to claim
             await _userManager.AddClaimAsync(user, new Claim("display_name", displayName));
 
-            // Language selection: explicit request -> Accept-Language -> default fr
+            // Language selection
             var lang = EmailTemplateService.NormalizeLang(
                 req.Lang ?? Request.Headers["Accept-Language"].ToString()
             );
@@ -197,8 +266,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { ok = true });
         }
 
-        /// <summary>Confirm a user's email and redirect them back to the frontend.</summary>
-        // GET: api/account/confirm-email?userId=...&token=...
         [AllowAnonymous]
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
@@ -207,7 +274,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (user == null)
                 return Redirect($"{_frontendUrl}/login?confirmedbaduser=1");
 
-            // IMPORTANT: token arrives URL-encoded, decode before confirming
             string decodedToken;
             try
             {
@@ -225,8 +291,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Redirect($"{_frontendUrl}/login?confirmederror=1");
         }
 
-        /// <summary>Resend the email confirmation link to an unconfirmed user.</summary>
-        // POST: api/account/resend-confirmation
         [AllowAnonymous]
         [HttpPost("resend-confirmation")]
         public async Task<IActionResult> ResendConfirmation([FromBody] LoginRequest req)
@@ -258,8 +322,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { ok = true });
         }
 
-        /// <summary>Sign in with email/password (only if email confirmed).</summary>
-        // POST: api/account/login
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
@@ -280,8 +342,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Unauthorized(new { errorCode = ErrorCodes.InvalidCredentials });
         }
 
-        /// <summary>Sign out the current user.</summary>
-        // POST: api/account/logout
         [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
@@ -290,48 +350,100 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { ok = true });
         }
 
-        /// <summary>
-        /// Accept the CURRENT disclaimer version for the logged-in user.
-        /// Used for re-accept flows after version bumps and for a legal page "Accept" button.
-        /// </summary>
-        // POST: api/account/accept-disclaimer
+        // ---------- Accept endpoints (three distinct docs) ----------
+
         [Authorize]
         [HttpPost("accept-disclaimer")]
-        public async Task<IActionResult> AcceptDisclaimer([FromBody] AcceptDisclaimerRequest req)
+        public async Task<IActionResult> AcceptDisclaimer()
         {
             var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(uid))
                 return Unauthorized(new { errorCode = ErrorCodes.Unauthorized });
 
-            var requiredVersion = CurrentDisclaimerVersion();
+            var required = CurrentDisclaimerVersion();
 
             var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
             if (profile == null)
                 return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
 
-            profile.DisclaimerVersion = requiredVersion;
-            profile.DisclaimerAcceptedUtc = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
+
+            profile.DisclaimerVersion = required;
+            profile.DisclaimerAcceptedUtc = now;
 
             await _db.SaveChangesAsync();
 
             return Ok(new
             {
                 ok = true,
-                requiredVersion,
-                acceptedVersion = requiredVersion,
+                requiredVersion = required,
+                acceptedVersion = required,
                 acceptedUtc = profile.DisclaimerAcceptedUtc
             });
         }
 
-        /// <summary>
-        /// Returns the current auth/user profile snapshot (used by the navbar / AuthContext).
-        /// Now distinguishes:
-        /// - isSuperAdmin  (Identity role)
-        /// - isForumAdmin  (DB ForumAdmins)
-        /// - isForumModerator (any moderator in ForumThreadModerators)
-        /// Also returns disclaimer status (required vs accepted version).
-        /// </summary>
-        // GET: api/account/status
+        [Authorize]
+        [HttpPost("accept-privacy")]
+        public async Task<IActionResult> AcceptPrivacy()
+        {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(uid))
+                return Unauthorized(new { errorCode = ErrorCodes.Unauthorized });
+
+            var required = CurrentPrivacyVersion();
+
+            var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
+            if (profile == null)
+                return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
+
+            var now = DateTime.UtcNow;
+
+            profile.PrivacyVersion = required;
+            profile.PrivacyAcceptedUtc = now;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                ok = true,
+                requiredVersion = required,
+                acceptedVersion = required,
+                acceptedUtc = profile.PrivacyAcceptedUtc
+            });
+        }
+
+        [Authorize]
+        [HttpPost("accept-tos")]
+        public async Task<IActionResult> AcceptTos()
+        {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(uid))
+                return Unauthorized(new { errorCode = ErrorCodes.Unauthorized });
+
+            var required = CurrentTosVersion();
+
+            var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
+            if (profile == null)
+                return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
+
+            var now = DateTime.UtcNow;
+
+            profile.TosVersion = required;
+            profile.TosAcceptedUtc = now;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                ok = true,
+                requiredVersion = required,
+                acceptedVersion = required,
+                acceptedUtc = profile.TosAcceptedUtc
+            });
+        }
+
+        // ---------- Status ----------
+
         [HttpGet("status")]
         public async Task<IActionResult> Status()
         {
@@ -343,7 +455,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     membershipStatus = (string?)null,
                     isSuperAdmin = false,
                     isForumAdmin = false,
-                    isForumModerator = false
+                    isForumModerator = false,
+                    legal = (object?)null
                 });
             }
 
@@ -356,7 +469,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     membershipStatus = (string?)null,
                     isSuperAdmin = false,
                     isForumAdmin = false,
-                    isForumModerator = false
+                    isForumModerator = false,
+                    legal = (object?)null
                 });
             }
 
@@ -369,7 +483,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     membershipStatus = (string?)null,
                     isSuperAdmin = false,
                     isForumAdmin = false,
-                    isForumModerator = false
+                    isForumModerator = false,
+                    legal = (object?)null
                 });
             }
 
@@ -402,13 +517,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var hasActiveMembership = await _membershipService.HasActiveMembershipAsync(uid);
             var membershipStatus = hasActiveMembership ? "Active" : "Inactive";
 
-            // NEW: disclaimer status
-            var requiredDisclaimerVersion = CurrentDisclaimerVersion();
-            var acceptedVersion = (profile?.DisclaimerVersion ?? "").Trim();
+            // required versions
+            var reqDisc = CurrentDisclaimerVersion();
+            var reqPriv = CurrentPrivacyVersion();
+            var reqTos = CurrentTosVersion();
 
-            var needsReaccept =
-                string.IsNullOrWhiteSpace(acceptedVersion) ||
-                !string.Equals(acceptedVersion, requiredDisclaimerVersion, StringComparison.OrdinalIgnoreCase);
+            // accepted versions
+            var accDisc = (profile?.DisclaimerVersion ?? "").Trim();
+            var accPriv = (profile?.PrivacyVersion ?? "").Trim();
+            var accTos = (profile?.TosVersion ?? "").Trim();
+
+            var discNeeds =
+                string.IsNullOrWhiteSpace(accDisc) ||
+                !string.Equals(accDisc, reqDisc, StringComparison.OrdinalIgnoreCase);
+
+            var privNeeds =
+                string.IsNullOrWhiteSpace(accPriv) ||
+                !string.Equals(accPriv, reqPriv, StringComparison.OrdinalIgnoreCase);
+
+            var tosNeeds =
+                string.IsNullOrWhiteSpace(accTos) ||
+                !string.Equals(accTos, reqTos, StringComparison.OrdinalIgnoreCase);
 
             return Ok(new
             {
@@ -425,22 +554,37 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 isForumAdmin,
                 isForumModerator,
 
-                disclaimer = new
+                legal = new
                 {
-                    requiredVersion = requiredDisclaimerVersion,
-                    acceptedVersion = string.IsNullOrWhiteSpace(acceptedVersion) ? null : acceptedVersion,
-                    acceptedUtc = profile?.DisclaimerAcceptedUtc,
-                    needsReaccept
+                    disclaimer = new
+                    {
+                        requiredVersion = reqDisc,
+                        acceptedVersion = string.IsNullOrWhiteSpace(accDisc) ? null : accDisc,
+                        acceptedUtc = profile?.DisclaimerAcceptedUtc,
+                        needsReaccept = discNeeds
+                    },
+                    privacy = new
+                    {
+                        requiredVersion = reqPriv,
+                        acceptedVersion = string.IsNullOrWhiteSpace(accPriv) ? null : accPriv,
+                        acceptedUtc = profile?.PrivacyAcceptedUtc,
+                        needsReaccept = privNeeds
+                    },
+                    tos = new
+                    {
+                        requiredVersion = reqTos,
+                        acceptedVersion = string.IsNullOrWhiteSpace(accTos) ? null : accTos,
+                        acceptedUtc = profile?.TosAcceptedUtc,
+                        needsReaccept = tosNeeds
+                    }
                 }
             });
         }
 
-        // POST: api/account/forgot-password
         [AllowAnonymous]
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
         {
-            // Always return OK to avoid user enumeration.
             if (string.IsNullOrWhiteSpace(req.Email))
                 return Ok(new { ok = true });
 
@@ -450,14 +594,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var user = await _userManager.FindByEmailAsync(req.Email);
 
-            // If user doesn't exist or email isn't confirmed, still return OK (security).
             if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
                 return Ok(new { ok = true });
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
-            // Send user to FRONTEND reset page directly
             var resetUrl = $"{_frontendUrl.TrimEnd('/')}/reset-password?userId={user.Id}&token={encodedToken}";
 
             var subject = EmailSubjects.ResetPassword(lang);
@@ -468,7 +610,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { ok = true });
         }
 
-        // POST: api/account/reset-password
         [AllowAnonymous]
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
@@ -483,7 +624,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var user = await _userManager.FindByIdAsync(req.UserId);
             if (user == null)
             {
-                // Keep it generic to avoid user enumeration.
                 return BadRequest(new { errorCode = ErrorCodes.ResetPasswordFailed });
             }
 
@@ -508,7 +648,324 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             });
         }
 
-        /// <summary>Convert a stored relative content path to an absolute URL.</summary>
+        // ---------- Delete account ----------
+
+        private static object? GetProp(object obj, string name)
+            => obj.GetType().GetProperty(name)?.GetValue(obj);
+
+        private static bool GetBoolProp(object obj, string name)
+        {
+            var v = GetProp(obj, name);
+            return v is bool b && b;
+        }
+
+        private static string? GetStringProp(object obj, string name)
+            => GetProp(obj, name) as string;
+
+        private static DateTime? CoerceToUtcDateTime(object? val)
+        {
+            if (val == null) return null;
+
+            if (val is DateTime dt)
+                return dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+
+            if (val is DateTimeOffset dto)
+                return dto.UtcDateTime;
+
+            if (val is long l && l > 0)
+                return DateTimeOffset.FromUnixTimeSeconds(l).UtcDateTime;
+
+            if (val is int i && i > 0)
+                return DateTimeOffset.FromUnixTimeSeconds(i).UtcDateTime;
+
+            return null;
+        }
+
+        private static DateTime? GetDatePropUtc(object obj, string name)
+            => CoerceToUtcDateTime(GetProp(obj, name));
+
+        private sealed record StripeCancelState(
+            bool SubscriptionExists,
+            bool IsCanceledNow,
+            bool IsCancelingAtPeriodEnd,
+            string? Status,
+            DateTime? CurrentPeriodEndUtc
+        );
+
+        private async Task<StripeCancelState> GetStripeCancelStateAsync(string subscriptionId)
+        {
+            var apiKey = _config["Stripe:SecretKey"];
+            if (string.IsNullOrWhiteSpace(apiKey))
+                return new StripeCancelState(false, false, false, null, null);
+
+            StripeConfiguration.ApiKey = apiKey;
+
+            var svc = new SubscriptionService();
+            Subscription sub;
+
+            try
+            {
+                sub = await svc.GetAsync(subscriptionId);
+            }
+            catch (StripeException ex) when ((int?)ex.HttpStatusCode == 404)
+            {
+                return new StripeCancelState(false, false, false, null, null);
+            }
+
+            // Safe reads across Stripe.NET versions
+            var status = GetStringProp(sub, "Status");
+            var cancelAtPeriodEnd = GetBoolProp(sub, "CancelAtPeriodEnd");
+
+            // Some Stripe states may set CancelAt as well; treat as “scheduled to cancel”
+            var cancelAt = GetDatePropUtc(sub, "CancelAt");
+
+            var endedAt = GetDatePropUtc(sub, "EndedAt");
+            var canceledAt = GetDatePropUtc(sub, "CanceledAt");
+            var cpe = GetDatePropUtc(sub, "CurrentPeriodEnd");
+
+            var isCanceledNow =
+                string.Equals(status, "canceled", StringComparison.OrdinalIgnoreCase) ||
+                endedAt != null ||
+                canceledAt != null;
+
+            var isCancelingAtPeriodEnd =
+                cancelAtPeriodEnd ||
+                cancelAt != null;
+
+            return new StripeCancelState(
+                SubscriptionExists: true,
+                IsCanceledNow: isCanceledNow,
+                IsCancelingAtPeriodEnd: isCancelingAtPeriodEnd,
+                Status: status,
+                CurrentPeriodEndUtc: cpe
+            );
+        }
+
+        [Authorize]
+        [HttpPost("delete")]
+        public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest req)
+        {
+            if (!req.Confirm)
+                return BadRequest(new { errorCode = ErrorCodes.DeleteRequiresConfirm });
+
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(uid))
+                return Unauthorized(new { errorCode = ErrorCodes.Unauthorized });
+
+            var user = await _userManager.FindByIdAsync(uid);
+            if (user == null)
+                return NotFound(new { errorCode = ErrorCodes.UserNotFound });
+
+            // Require password confirmation
+            if (!await _userManager.CheckPasswordAsync(user, req.Password))
+                return Unauthorized(new { errorCode = ErrorCodes.DeleteInvalidPassword });
+
+            await using var tx = await _db.Database.BeginTransactionAsync();
+
+            var membership = await _db.Memberships
+                .AsNoTracking()
+                .Where(m => m.UserId == uid)
+                .OrderByDescending(m => m.EndDate)
+                .FirstOrDefaultAsync();
+
+            static bool IsLifetimeEndDate(DateTime endDate)
+                => endDate.Date == new DateTime(9999, 12, 31);
+
+            if (membership != null && IsLifetimeEndDate(membership.EndDate))
+            {
+                return BadRequest(new { errorCode = ErrorCodes.DeleteLifetimeSubscription });
+            }
+
+            if (membership != null && !string.IsNullOrWhiteSpace(membership.StripeSubscriptionId))
+            {
+                var state = await GetStripeCancelStateAsync(membership.StripeSubscriptionId);
+
+                // Block ONLY when it exists AND active AND not scheduled to end.
+                if (state.SubscriptionExists && !state.IsCanceledNow && !state.IsCancelingAtPeriodEnd)
+                {
+                    return BadRequest(new { errorCode = ErrorCodes.DeleteSubscriptionStillActive });
+                }
+
+                // Optional stricter policy: also block when canceling at period end (user must wait)
+                // if (state.SubscriptionExists && state.IsCancelingAtPeriodEnd && !state.IsCanceledNow)
+                //     return BadRequest(new { errorCode = ErrorCodes.DeleteSubscriptionCancelingAtPeriodEnd });
+            }
+
+            try
+            {
+                var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
+                if (profile == null)
+                    return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
+
+                // Idempotent guard
+                if (profile.DeletedUtc != null)
+                {
+                    await _signInManager.SignOutAsync();
+                    return Ok(new { ok = true });
+                }
+
+                // ============================
+                // 1) HARD DELETE USER DATA
+                // ============================
+
+                // ---------- Grocery lists ----------
+                var groceryListIds = await _db.Set<ListeEpicerie>()
+                    .Where(x => x.UserId == uid)
+                    .Select(x => x.Id)
+                    .ToListAsync();
+
+                if (groceryListIds.Count > 0)
+                {
+                    _db.Set<ListeEpicerieItem>().RemoveRange(
+                        _db.Set<ListeEpicerieItem>().Where(i => groceryListIds.Contains(i.ListeEpicerieId))
+                    );
+
+                    _db.Set<ListeEpicerie>().RemoveRange(
+                        _db.Set<ListeEpicerie>().Where(l => groceryListIds.Contains(l.Id))
+                    );
+                }
+
+                // ---------- Factures ----------
+                var factureIds = await _db.Set<Facture>()
+                    .Where(f => f.UserId == uid)
+                    .Select(f => f.Id)
+                    .ToListAsync();
+
+                if (factureIds.Count > 0)
+                {
+                    _db.Set<FactureItem>().RemoveRange(
+                        _db.Set<FactureItem>().Where(i => factureIds.Contains(i.FactureId))
+                    );
+
+                    _db.Set<Facture>().RemoveRange(
+                        _db.Set<Facture>().Where(f => factureIds.Contains(f.Id))
+                    );
+                }
+
+                // ---------- Comparatif ----------
+                var comparatifYearIds = await _db.Set<ComparatifYear>()
+                    .Where(y => y.UserId == uid)
+                    .Select(y => y.Id)
+                    .ToListAsync();
+
+                if (comparatifYearIds.Count > 0)
+                {
+                    _db.Set<ProductComparison>().RemoveRange(
+                        _db.Set<ProductComparison>().Where(l => comparatifYearIds.Contains(l.ComparatifYearId))
+                    );
+
+                    _db.Set<ComparatifYear>().RemoveRange(
+                        _db.Set<ComparatifYear>().Where(y => comparatifYearIds.Contains(y.Id))
+                    );
+                }
+
+                // ---------- Saved reports ----------
+                _db.Set<SavedReport>().RemoveRange(
+                    _db.Set<SavedReport>().Where(r => r.UserId == uid)
+                );
+
+                // ---------- Free items ----------
+                _db.Set<FreeItem>().RemoveRange(
+                    _db.Set<FreeItem>().Where(x => x.UserId == uid)
+                );
+
+                // ============================
+                // FORUM — SCRUB USER REFERENCES
+                // ============================
+
+                // ---- Forum posts ----
+                var forumPosts = await _db.Set<ForumPost>()
+                    .Where(p => p.CreatedByUserId == uid || p.EditedByUserId == uid)
+                    .ToListAsync();
+
+                foreach (var post in forumPosts)
+                {
+                    // IMPORTANT:
+                    // Do NOT touch post.CreatedByUserId (required) and do NOT set post.CreatedBy = null
+                    // Your Identity scrub already anonymizes the user record.
+
+                    if (post.EditedByUserId == uid)
+                    {
+                        // EditedByUserId is nullable -> OK to null
+                        post.EditedByUserId = null;
+
+                        // Optional: you can omit this too; setting it null is redundant once FK is null
+                        post.EditedBy = null;
+                    }
+                }
+
+                // ---- Forum threads ----
+                var forumThreads = await _db.Set<ForumThread>()
+                    .Where(t => t.CreatedByUserId == uid || t.LastPostByUserId == uid)
+                    .ToListAsync();
+
+                foreach (var thread in forumThreads)
+                {
+                    // IMPORTANT:
+                    // Do NOT touch thread.CreatedByUserId (required) and do NOT set thread.CreatedBy = null
+
+                    if (thread.LastPostByUserId == uid)
+                    {
+                        // nullable -> OK
+                        thread.LastPostByUserId = null;
+                        thread.LastPostBy = null; // optional
+                    }
+                }
+
+                // ============================
+                // 3) PROFILE: ANONYMIZE
+                // ============================
+                profile.DisplayName = $"deleted-{profile.Id.ToString("N")[..8]}";
+                profile.AvatarPath = null;
+                profile.DeletedUtc = DateTime.UtcNow;
+
+                // ============================
+                // 4) IDENTITY: LOCK & SCRUB
+                // ============================
+                var anon = $"deleted_{uid}@deleted.local";
+
+                user.Email = anon;
+                user.NormalizedEmail = anon.ToUpperInvariant();
+                user.UserName = anon;
+                user.NormalizedUserName = anon.ToUpperInvariant();
+                user.EmailConfirmed = false;
+                user.PhoneNumber = null;
+                user.PhoneNumberConfirmed = false;
+                user.LockoutEnabled = true;
+                user.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
+
+                // Remove claims
+                var claims = await _userManager.GetClaimsAsync(user);
+                if (claims.Any())
+                    await _userManager.RemoveClaimsAsync(user, claims);
+
+                // Remove external logins
+                var logins = await _userManager.GetLoginsAsync(user);
+                foreach (var l in logins)
+                    await _userManager.RemoveLoginAsync(user, l.LoginProvider, l.ProviderKey);
+
+                // Invalidate password
+                await _userManager.RemovePasswordAsync(user);
+                await _userManager.AddPasswordAsync(
+                    user,
+                    Guid.NewGuid().ToString("N") + "!Aa1"
+                );
+
+                await _userManager.UpdateAsync(user);
+
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                await _signInManager.SignOutAsync();
+                return Ok(new { ok = true });
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                return StatusCode(500, new { errorCode = ErrorCodes.DeleteFailed });
+            }
+        }
+
         private string AbsoluteContentUrl(string? relativePath)
         {
             if (string.IsNullOrWhiteSpace(relativePath)) return "";
@@ -532,16 +989,44 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public const string InvalidCredentials = "InvalidCredentials";
         public const string IdentityValidationFailed = "IdentityValidationFailed";
 
+        // NEW: clear signal to client
+        public const string EmailAlreadyTaken = "EmailAlreadyTaken";
+
         public const string MissingDisplayName = "MissingDisplayName";
         public const string DisplayNameAlreadyTaken = "DisplayNameAlreadyTaken";
 
         public const string DisclaimerNotAccepted = "DisclaimerNotAccepted";
         public const string DisclaimerVersionMismatch = "DisclaimerVersionMismatch";
 
+        public const string PrivacyNotAccepted = "PrivacyNotAccepted";
+        public const string PrivacyVersionMismatch = "PrivacyVersionMismatch";
+
+        public const string TosNotAccepted = "TosNotAccepted";
+        public const string TosVersionMismatch = "TosVersionMismatch";
+
         public const string Unauthorized = "Unauthorized";
         public const string ProfileNotFound = "ProfileNotFound";
 
         public const string ResetPasswordFailed = "ResetPasswordFailed";
         public const string ResetTokenInvalid = "ResetTokenInvalid";
+
+        // DELETE FLOW (NEW)
+        public const string DeleteRequiresConfirm = "DeleteRequiresConfirm";
+        public const string DeleteInvalidPassword = "InvalidPassword";
+        public const string DeleteSubscriptionStillActive = "SubscriptionStillActive";
+        // public const string DeleteSubscriptionCancelingAtPeriodEnd = "SubscriptionCancelingAtPeriodEnd";
+        public const string DeleteFailed = "DeleteFailed";
+        public const string DeleteLifetimeSubscription = "LifetimeSubscription";
+    }
+
+    // Options classes (keep here or move to /Options)
+    public sealed class PrivacyOptions
+    {
+        public string CurrentVersion { get; set; } = "v1";
+    }
+
+    public sealed class TosOptions
+    {
+        public string CurrentVersion { get; set; } = "v1";
     }
 }

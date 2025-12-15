@@ -1,6 +1,7 @@
 ﻿// src/App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import "./styles/app-theme.css";
+import "./styles/bubbles.css"
 
 import Layout from "./components/Layout";
 import Home from "./pages/Home";

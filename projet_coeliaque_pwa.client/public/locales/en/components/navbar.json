@@ -29,7 +29,8 @@
       "admin": "Forum Admin",
       "offlineTitle": "Forum unavailable offline",
       "offlineAlert": "The forum is not available offline.",
-      "offlineLabel": "Forum (offline)"
+      "offlineLabel": "Forum (offline)",
+      "language": "Forum"
     },
     "help": {
       "_": "Help",
