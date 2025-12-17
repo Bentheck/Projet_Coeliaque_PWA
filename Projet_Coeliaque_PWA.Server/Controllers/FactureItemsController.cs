@@ -19,19 +19,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [Authorize(Policy = "ActiveMembership")]
     [ModuleGate("Factures")]
     public class FactureItemsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
-        private readonly IMembershipService _membershipService;
 
         public FactureItemsController(
-            ApplicationDbContext db,
-            IMembershipService membershipService)
+            ApplicationDbContext db)
         {
             _db = db;
-            _membershipService = membershipService;
         }
 
         private string? UserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -45,7 +42,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<ActionResult<object>> GetTypes([FromQuery] string? q, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var query = _db.FactureItems
                 .AsNoTracking()
@@ -80,7 +76,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var items = _db.FactureItems
                 .AsNoTracking()
@@ -122,7 +117,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<ActionResult<object>> GetOne(int id, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var dto = await _db.FactureItems
                 .AsNoTracking()

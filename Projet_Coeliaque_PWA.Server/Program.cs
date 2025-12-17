@@ -97,6 +97,23 @@ namespace Projet_Coeliaque_PWA.Server
             builder.Services.Configure<DisclaimerOptions>(builder.Configuration.GetSection("Disclaimer"));
             builder.Services.AddScoped<RequireDisclaimerFilter>();
 
+            builder.Services.AddScoped<IAuthorizationHandler, ActiveMembershipHandler>();
+
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("IsForumAdmin", policy =>
+                    policy.Requirements.Add(new IsForumAdminRequirement()));
+
+                options.AddPolicy("IsSuperAdmin", policy => policy.RequireRole("SuperAdmin"));
+
+                // NEW
+                options.AddPolicy("ActiveMembership", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(new ActiveMembershipRequirement());
+                });
+            });
+
             // Controllers
             builder.Services.AddControllers();
 

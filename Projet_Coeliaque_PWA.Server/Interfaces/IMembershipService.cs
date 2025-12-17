@@ -1,5 +1,5 @@
 ﻿public interface IMembershipService
 {
-    Task<Membership> GetCurrentMembershipAsync(string userId);
+    Task<Membership?> GetCurrentMembershipAsync(string userId);
     Task<bool> HasActiveMembershipAsync(string userId);
 }
