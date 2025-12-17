@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
 
@@ -13,20 +14,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     [ApiController]
     [Route("api/comparatifyears")]
     [Authorize]
+    [ModuleGate("Comparatif")]
     public class ComparatifYearsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
         private readonly IMembershipService _membershipService;
+        private readonly IAuditLogService _audit;
 
         public ComparatifYearsController(
             ApplicationDbContext db,
             IMapper mapper,
-            IMembershipService membershipService)
+            IMembershipService membershipService,
+            IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
             _membershipService = membershipService;
+            _audit = audit;
         }
 
         [HttpGet]
@@ -97,6 +102,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _db.ComparatifYears.Add(entity);
             await _db.SaveChangesAsync();
 
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifYear.Create",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    entity.Id,
+                    entity.Annee
+                });
+
             var resultDto = _mapper.Map<ComparatifYearDto>(entity);
             return CreatedAtAction(nameof(GetComparatifYear), new { id = entity.Id }, resultDto);
         }
@@ -115,6 +130,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (entity == null) return NotFound($"No comparatif found. id={id}");
 
+            var before = new
+            {
+                entity.Id,
+                entity.Annee,
+                LineCount = entity.Lines.Count
+            };
+
             entity.Annee = dto.Annee;
 
             // FIX: ignore Id=0 in keep set, otherwise you delete everything when adding new lines
@@ -128,6 +150,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             {
                 _db.ProductComparisons.Remove(line);
             }
+
+            var addedCount = 0;
+            var updatedCount = 0;
 
             foreach (var dtoLine in dto.Lines)
             {
@@ -143,6 +168,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     existing.PoidsValeur = dtoLine.PoidsValeur;
                     existing.PoidsUnite = dtoLine.PoidsUnite;
                     existing.Magasin = dtoLine.Magasin;
+                    updatedCount++;
                 }
                 else
                 {
@@ -156,10 +182,30 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                         PoidsUnite = dtoLine.PoidsUnite,
                         Magasin = dtoLine.Magasin
                     });
+                    addedCount++;
                 }
             }
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifYear.Update",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    Before = before,
+                    After = new
+                    {
+                        entity.Id,
+                        entity.Annee,
+                        LineCount = entity.Lines.Count
+                    },
+                    RemovedLineCount = toRemove.Count,
+                    AddedLineCount = addedCount,
+                    UpdatedLineCount = updatedCount
+                });
+
             return NoContent();
         }
 
@@ -176,8 +222,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (year == null) return NotFound($"No comparatif found. id={id}");
 
+            var snapshot = new
+            {
+                year.Id,
+                year.Annee,
+                LineCount = year.Lines.Count
+            };
+
             _db.ComparatifYears.Remove(year);
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifYear.Delete",
+                target: year.Id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
 
@@ -197,8 +257,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (year == null)
                 return NotFound($"No comparatif found for user/year. annee={annee}");
 
+            var snapshot = new
+            {
+                year.Id,
+                year.Annee,
+                LineCount = year.Lines.Count
+            };
+
             _db.ComparatifYears.Remove(year);
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifYear.DeleteByYear",
+                target: year.Id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
 
@@ -223,6 +297,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _db.ProductComparisons.Add(entity);
             await _db.SaveChangesAsync();
 
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifLine.Create",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    YearId = year.Id,
+                    year.Annee,
+                    entity.TypeItem,
+                    entity.Marque,
+                    entity.Prix
+                });
+
             return _mapper.Map<ProductComparisonDto>(entity);
         }
 
@@ -242,6 +329,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (line == null) return NotFound($"No line found. yearId={yearId} lineId={lineId}");
 
+            var before = new
+            {
+                line.Id,
+                line.ComparatifYearId,
+                line.TypeItem,
+                line.Marque,
+                line.Prix,
+                line.PoidsValeur,
+                line.PoidsUnite,
+                line.Magasin
+            };
+
             line.TypeItem = dto.TypeItem;
             line.Marque = dto.Marque;
             line.Prix = dto.Prix;
@@ -250,6 +349,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             line.Magasin = dto.Magasin;
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifLine.Update",
+                target: line.Id.ToString(),
+                details: new
+                {
+                    Before = before,
+                    After = new
+                    {
+                        line.Id,
+                        line.ComparatifYearId,
+                        line.TypeItem,
+                        line.Marque,
+                        line.Prix,
+                        line.PoidsValeur,
+                        line.PoidsUnite,
+                        line.Magasin
+                    }
+                });
+
             return NoContent();
         }
 
@@ -269,8 +389,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (line == null) return NotFound($"No line found. yearId={yearId} lineId={lineId}");
 
+            var snapshot = new
+            {
+                line.Id,
+                line.ComparatifYearId,
+                line.TypeItem,
+                line.Marque,
+                line.Prix,
+                line.PoidsValeur,
+                line.PoidsUnite,
+                line.Magasin
+            };
+
             _db.ProductComparisons.Remove(line);
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifLine.Delete",
+                target: line.Id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
 

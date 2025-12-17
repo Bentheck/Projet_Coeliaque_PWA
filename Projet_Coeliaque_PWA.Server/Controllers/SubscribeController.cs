@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// PATH: Projet_Coeliaque_PWA.Server/Controllers/SubscribeController.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
@@ -6,6 +7,8 @@ using Stripe.Checkout;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
+using Projet_Coeliaque_PWA.Server.Services;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -15,27 +18,42 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
+    [ModuleGate("Membership")]
     public class SubscribeController : ControllerBase
     {
         private readonly IConfiguration _config;
         private readonly UserManager<IdentityUser> _userManager;
-        private readonly IWebHostEnvironment _env;
         private readonly string _frontendUrl;
+        private readonly IAuditLogService _audit;
 
         public SubscribeController(
             IConfiguration config,
             UserManager<IdentityUser> userManager,
-            IWebHostEnvironment env)
+            IAuditLogService audit)
         {
             _config = config;
             _userManager = userManager;
-            _env = env;
+            _audit = audit;
             _frontendUrl = _config["FrontendUrl"];
         }
 
         /// <summary>
+        /// Returns public Stripe config for the frontend (only publishable key).
+        /// </summary>
+        [HttpGet("config")]
+        public IActionResult GetConfig()
+        {
+            var pk = _config["Stripe:PublishableKey"];
+            // It's safe if this is null/empty; frontend can just hide the hint.
+            return Ok(new
+            {
+                publishableKey = string.IsNullOrWhiteSpace(pk) ? null : pk
+            });
+        }
+
+        /// <summary>
         /// Creates a Stripe Checkout Session to start a subscription.
-        /// In Development, supports ?test=1/true to use a test price, and ?customerId=cus_... to force a customer (handy for Test Clocks).
+        /// Uses the single configured price (Stripe:PriceId).
         /// </summary>
         [HttpPost("create-checkout-session")]
         public async Task<IActionResult> CreateCheckoutSession()
@@ -44,40 +62,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
-            bool useDailyTestPrice =
-                _env.IsDevelopment() &&
-                (Request.Query.TryGetValue("test", out var q) &&
-                 (q.ToString().Equals("1") || q.ToString().Equals("true", System.StringComparison.OrdinalIgnoreCase)));
-
-            var priceId = useDailyTestPrice
-                ? _config["Stripe:TestDailyPriceId"]
-                : _config["Stripe:PriceId"];
-
+            var priceId = _config["Stripe:PriceId"];
             if (string.IsNullOrWhiteSpace(priceId))
                 return BadRequest(new { error = "Stripe price not configured." });
-
-            string customerId = null;
-            if (_env.IsDevelopment() && Request.Query.TryGetValue("customerId", out var cq))
-                customerId = cq.ToString();
 
             var customerSvc = new CustomerService();
             Customer customer;
 
-            if (!string.IsNullOrWhiteSpace(customerId))
+            // Try to reuse an existing customer by email, otherwise create
+            var existing = (await customerSvc.ListAsync(new CustomerListOptions
             {
-                customer = await customerSvc.GetAsync(customerId);
-            }
-            else
-            {
-                var existing = (await customerSvc.ListAsync(new CustomerListOptions { Email = user.Email, Limit = 1 }))
-                               .FirstOrDefault();
+                Email = user.Email,
+                Limit = 1
+            })).FirstOrDefault();
 
-                customer = existing ?? await customerSvc.CreateAsync(new CustomerCreateOptions
-                {
-                    Email = user.Email,
-                    Metadata = new Dictionary<string, string> { ["user_id"] = user.Id }
-                });
-            }
+            customer = existing ?? await customerSvc.CreateAsync(new CustomerCreateOptions
+            {
+                Email = user.Email,
+                Metadata = new Dictionary<string, string> { ["user_id"] = user.Id }
+            });
 
             var options = new SessionCreateOptions
             {
@@ -85,9 +88,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 Mode = "subscription",
                 PaymentMethodTypes = new List<string> { "card" },
                 LineItems = new List<SessionLineItemOptions>
-        {
-            new SessionLineItemOptions { Price = priceId, Quantity = 1 }
-        },
+                {
+                    new SessionLineItemOptions { Price = priceId, Quantity = 1 }
+                },
                 SuccessUrl = $"{_frontendUrl}/subscribe/success?session_id={{CHECKOUT_SESSION_ID}}",
                 CancelUrl = $"{_frontendUrl}/subscribe/cancel",
                 Metadata = new Dictionary<string, string> { ["user_id"] = user.Id },
@@ -108,14 +111,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
 
-            // ✅ Return both sessionId and url
+            // Audit: user initiated a Stripe subscription checkout
+            await _audit.LogForUserIdAsync(
+                user.Id,
+                "Membership.Stripe.CheckoutSessionCreated",
+                target: session.Id,
+                details: new
+                {
+                    UserId = user.Id,
+                    CustomerId = customer.Id,
+                    PriceId = priceId,
+                    SessionId = session.Id,
+                    SessionUrl = session.Url
+                });
+
+            // Return both sessionId and url
             return Ok(new
             {
                 sessionId = session.Id,
                 url = session.Url
             });
         }
-
 
         /// <summary>
         /// Creates a Stripe Billing Portal session so the user can manage payment methods, invoices, and subscriptions.
@@ -128,8 +144,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (user == null) return Unauthorized();
 
             var customerSvc = new CustomerService();
-            var existing = (await customerSvc.ListAsync(new CustomerListOptions { Email = user.Email, Limit = 1 }))
-                            .FirstOrDefault();
+            var existing = (await customerSvc.ListAsync(new CustomerListOptions
+            {
+                Email = user.Email,
+                Limit = 1
+            })).FirstOrDefault();
+
             if (existing == null)
                 return BadRequest(new { error = "Aucun client Stripe trouvé pour cet utilisateur." });
 
@@ -139,6 +159,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 Customer = existing.Id,
                 ReturnUrl = $"{_frontendUrl}/membership"
             });
+
+            await _audit.LogForUserIdAsync(
+                user.Id,
+                "Membership.Stripe.PortalSessionCreated",
+                target: portalSession.Id,
+                details: new
+                {
+                    UserId = user.Id,
+                    CustomerId = existing.Id,
+                    PortalSessionId = portalSession.Id,
+                    portalSession.Url
+                });
 
             return Ok(new { url = portalSession.Url });
         }
@@ -167,7 +199,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         /// <summary>
         /// Returns basic info about a Checkout Session so the frontend can show a "receipt"-style page.
         /// </summary>
-        [AllowAnonymous] // optional: override [Authorize] so success page still works if user isn't logged in
+        [AllowAnonymous] // still ok, success page works even if user isn't logged in
         [HttpGet("session-status")]
         public async Task<IActionResult> GetSessionStatus([FromQuery(Name = "session_id")] string sessionId)
         {
@@ -197,14 +229,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             var isPaid =
-                string.Equals(session.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(session.Status, "complete", StringComparison.OrdinalIgnoreCase);
+                string.Equals(session.PaymentStatus, "paid", System.StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(session.Status, "complete", System.StringComparison.OrdinalIgnoreCase);
 
-            // 🔹 Normalize Created to Unix seconds
             long? createdUnix = null;
             if (session.Created != default)
             {
-                // ensure UTC
                 var dtUtc = session.Created.Kind == DateTimeKind.Utc
                     ? session.Created
                     : DateTime.SpecifyKind(session.Created, DateTimeKind.Utc);
@@ -212,7 +242,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 createdUnix = new DateTimeOffset(dtUtc).ToUnixTimeSeconds();
             }
 
-            // 🔹 See below for paymentId logic
             string? paymentId = ResolvePaymentId(session);
 
             var dtoOut = new
@@ -230,7 +259,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 customer_email = customer?.Email,
                 subscription = session.SubscriptionId,
                 payment_intent = paymentId,
-                created = createdUnix   // 👈 now a number (seconds)
+                created = createdUnix
             };
 
             return Ok(dtoOut);

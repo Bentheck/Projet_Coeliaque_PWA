@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
 
@@ -11,23 +12,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 {
     [ApiController]
     [Route("api/contact")]
+    [ModuleGate("Contact")]
     public class ContactController : ControllerBase
     {
         private readonly IEmailSender _emailSender;
         private readonly IConfiguration _config;
         private readonly ILogger<ContactController> _logger;
         private readonly ContactRateLimiter _rateLimiter;
+        private readonly IAuditLogService _audit;
 
         public ContactController(
             IEmailSender emailSender,
             IConfiguration config,
             ILogger<ContactController> logger,
-            ContactRateLimiter rateLimiter)
+            ContactRateLimiter rateLimiter,
+            IAuditLogService audit)
         {
             _emailSender = emailSender;
             _config = config;
             _logger = logger;
             _rateLimiter = rateLimiter;
+            _audit = audit;
         }
 
         public class ContactRequest
@@ -93,11 +98,26 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             // Rate limiting (email + IP)
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var ua = Request.Headers.UserAgent.ToString();
 
             if (!_rateLimiter.TryConsume(ip, req.Email, out var retryAfter, out var scope))
             {
                 var seconds = (int)Math.Ceiling(Math.Max(1, retryAfter.TotalSeconds));
                 Response.Headers["Retry-After"] = seconds.ToString();
+
+                await _audit.LogSystemAsync(
+                    action: "Contact.RateLimited",
+                    target: req.Email,
+                    details: new
+                    {
+                        Scope = scope, // "email" or "ip"
+                        RetryAfterSeconds = seconds,
+                        Ip = ip,
+                        UserAgent = ua,
+                        Kind = req.Kind,
+                        PageUrl = req.PageUrl,
+                        Lang = lang
+                    });
 
                 return StatusCode(429, new
                 {
@@ -196,7 +216,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             // Log diagnostics WITHOUT showing them in the email
-            var ua = Request.Headers.UserAgent.ToString();
             _logger.LogInformation(
                 "Contact received | Kind={Kind} | Email={Email} | Reason={Reason} | Page={Page} | IP={IP} | UA={UA} | Attachments={Attachments}",
                 kind, req.Email, req.Reason, req.PageUrl, ip, ua, attachments.Count
@@ -211,6 +230,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 replyToName: req.Email,
                 attachments: attachments.Count > 0 ? attachments : null
             );
+
+            await _audit.LogSystemAsync(
+                action: "Contact.Submitted",
+                target: req.Email,
+                details: new
+                {
+                    Kind = kind,
+                    Reason = req.Reason,
+                    PageUrl = req.PageUrl,
+                    Lang = lang,
+                    Ip = ip,
+                    UserAgent = ua,
+                    AttachmentCount = attachments.Count
+                });
 
             return Ok(new
             {

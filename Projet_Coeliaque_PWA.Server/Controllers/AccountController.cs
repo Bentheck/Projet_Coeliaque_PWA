@@ -1,5 +1,6 @@
-﻿// Controllers/AccountController.cs
+﻿// PATH: Projet_Coeliaque_PWA.Server/Controllers/AccountController.cs
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Projet_Coeliaque_PWA.Server.Data;
+using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
@@ -28,12 +30,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly string _frontendUrl;
         private readonly IConfiguration _config;
 
-        // Disclaimer options (current required version)
         private readonly DisclaimerOptions _disclaimerOpt;
-
-        // privacy + tos options
         private readonly PrivacyOptions _privacyOpt;
         private readonly TosOptions _tosOpt;
+
+        private readonly IAuditLogService _audit;
 
         public AccountController(
             SignInManager<IdentityUser> signInManager,
@@ -45,7 +46,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             IConfiguration config,
             IOptions<DisclaimerOptions> disclaimerOpt,
             IOptions<PrivacyOptions> privacyOpt,
-            IOptions<TosOptions> tosOpt)
+            IOptions<TosOptions> tosOpt,
+            IAuditLogService audit)
         {
             _signInManager = signInManager;
             _userManager = userManager;
@@ -59,9 +61,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _disclaimerOpt = disclaimerOpt.Value;
             _privacyOpt = privacyOpt.Value;
             _tosOpt = tosOpt.Value;
+
+            _audit = audit;
         }
 
         // ---------- DTOs ----------
+
         public class LoginRequest
         {
             public string Email { get; set; } = "";
@@ -76,15 +81,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             public string DisplayName { get; set; } = "";
             public string? Lang { get; set; }
 
-            // Disclaimer acceptance
+            public string? InviteToken { get; set; }
+
             public bool DisclaimerAccepted { get; set; }
             public string? DisclaimerVersion { get; set; }
 
-            // privacy acceptance
             public bool PrivacyAccepted { get; set; }
             public string? PrivacyVersion { get; set; }
 
-            // tos acceptance
             public bool TosAccepted { get; set; }
             public string? TosVersion { get; set; }
         }
@@ -98,7 +102,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public class ResetPasswordRequest
         {
             public string UserId { get; set; } = "";
-            public string Token { get; set; } = ""; // Base64Url token
+            public string Token { get; set; } = "";
             public string NewPassword { get; set; } = "";
             public string? Lang { get; set; }
         }
@@ -145,45 +149,37 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var requiredPrivacy = CurrentPrivacyVersion();
             var requiredTos = CurrentTosVersion();
 
-            // Disclaimer required
             if (!req.DisclaimerAccepted || string.IsNullOrWhiteSpace(req.DisclaimerVersion))
                 return BadRequest(new { errorCode = ErrorCodes.DisclaimerNotAccepted });
 
             if (!string.Equals(req.DisclaimerVersion.Trim(), requiredDisclaimer, StringComparison.OrdinalIgnoreCase))
                 return BadRequest(new { errorCode = ErrorCodes.DisclaimerVersionMismatch, requiredVersion = requiredDisclaimer });
 
-            // Privacy required
             if (!req.PrivacyAccepted || string.IsNullOrWhiteSpace(req.PrivacyVersion))
                 return BadRequest(new { errorCode = ErrorCodes.PrivacyNotAccepted });
 
             if (!string.Equals(req.PrivacyVersion.Trim(), requiredPrivacy, StringComparison.OrdinalIgnoreCase))
                 return BadRequest(new { errorCode = ErrorCodes.PrivacyVersionMismatch, requiredVersion = requiredPrivacy });
 
-            // TOS required
             if (!req.TosAccepted || string.IsNullOrWhiteSpace(req.TosVersion))
                 return BadRequest(new { errorCode = ErrorCodes.TosNotAccepted });
 
             if (!string.Equals(req.TosVersion.Trim(), requiredTos, StringComparison.OrdinalIgnoreCase))
                 return BadRequest(new { errorCode = ErrorCodes.TosVersionMismatch, requiredVersion = requiredTos });
 
-            // Normalize email (Identity treats UserName as unique; you currently use Email as UserName)
             var email = (req.Email ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest(new { errorCode = ErrorCodes.MissingEmailOrPassword });
 
-            // Optional but recommended: normalize casing to avoid "same email different casing" confusion
             var normalizedEmail = email.ToLowerInvariant();
 
-            // Normalize + validate display name
             var displayName = (req.DisplayName ?? string.Empty).Trim();
-
             if (string.IsNullOrWhiteSpace(displayName))
                 return BadRequest(new { errorCode = ErrorCodes.MissingDisplayName });
 
             if (displayName.Length < 3 || displayName.Length > 40)
                 return BadRequest(new { errorCode = ErrorCodes.IdentityValidationFailed });
 
-            // Enforce uniqueness (case-insensitive) against existing user profiles
             var lower = displayName.ToLower();
             var nameInUse = await _db.UserProfiles
                 .AsNoTracking()
@@ -192,8 +188,62 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (nameInUse)
                 return Conflict(new { errorCode = ErrorCodes.DisplayNameAlreadyTaken });
 
-            // Create Identity user
-            // IMPORTANT: Identity "DuplicateUserName" will be "email already used" because UserName == Email here.
+            // 👇 NEW: read appsettings and enforce invite requirement
+            var requireInviteToken =
+                _config.GetValue<bool>("Prelaunch:RequireInviteTokenForRegister");
+
+            TesterInvite? invite = null;
+
+            if (requireInviteToken)
+            {
+                if (string.IsNullOrWhiteSpace(req.InviteToken))
+                {
+                    // Invite is mandatory in pre-launch
+                    return BadRequest(new { errorCode = ErrorCodes.InviteRequired });
+                }
+
+                var rawToken = req.InviteToken.Trim();
+                var tokenHash = Sha256Hex(rawToken);
+                var nowForInvite = DateTime.UtcNow;
+
+                invite = await _db.TesterInvites
+                    .FirstOrDefaultAsync(x =>
+                        x.TokenHash == tokenHash &&
+                        x.Email == normalizedEmail &&
+                        x.AcceptedUtc == null &&
+                        x.RevokedUtc == null &&
+                        x.ExpiresUtc > nowForInvite);
+
+                if (invite == null)
+                {
+                    // Provided token is invalid
+                    return BadRequest(new { errorCode = ErrorCodes.InvalidInviteToken });
+                }
+            }
+            else
+            {
+                // Not required globally, but we still validate if provided
+                if (!string.IsNullOrWhiteSpace(req.InviteToken))
+                {
+                    var rawToken = req.InviteToken.Trim();
+                    var tokenHash = Sha256Hex(rawToken);
+                    var nowForInvite = DateTime.UtcNow;
+
+                    invite = await _db.TesterInvites
+                        .FirstOrDefaultAsync(x =>
+                            x.TokenHash == tokenHash &&
+                            x.Email == normalizedEmail &&
+                            x.AcceptedUtc == null &&
+                            x.RevokedUtc == null &&
+                            x.ExpiresUtc > nowForInvite);
+
+                    if (invite == null)
+                    {
+                        return BadRequest(new { errorCode = ErrorCodes.InvalidInviteToken });
+                    }
+                }
+            }
+
             var user = new IdentityUser
             {
                 UserName = normalizedEmail,
@@ -204,7 +254,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (!result.Succeeded)
             {
-                // Map identity duplicate to a clear API error code
                 if (HasIdentityError(result, "DuplicateEmail") || HasIdentityError(result, "DuplicateUserName"))
                 {
                     return Conflict(new
@@ -221,7 +270,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
             }
 
-            // Create UserProfile with legal acceptance
             var now = DateTime.UtcNow;
 
             var profile = new UserProfile
@@ -242,17 +290,48 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             };
 
             _db.UserProfiles.Add(profile);
+
+            if (invite != null)
+            {
+                var roleResult = await _userManager.AddToRoleAsync(user, "Tester");
+                if (!roleResult.Succeeded)
+                {
+                    await _userManager.DeleteAsync(user);
+                    return StatusCode(500, new { errorCode = ErrorCodes.TesterRoleGrantFailed });
+                }
+
+                invite.AcceptedUtc = now;
+                invite.AcceptedByUserId = user.Id;
+
+                await _audit.LogForUserIdAsync(
+                    user.Id,
+                    "TesterInvite.Accepted",
+                    target: invite.Id.ToString(),
+                    details: new
+                    {
+                        invite.Email,
+                        req.Lang
+                    });
+
+                await _audit.LogForUserIdAsync(
+                    user.Id,
+                    "Role.Tester.Granted",
+                    target: user.Email,
+                    details: new
+                    {
+                        Via = "TesterInvite",
+                        InviteId = invite.Id
+                    });
+            }
+
             await _db.SaveChangesAsync();
 
-            // Mirror display name to claim
             await _userManager.AddClaimAsync(user, new Claim("display_name", displayName));
 
-            // Language selection
             var lang = EmailTemplateService.NormalizeLang(
                 req.Lang ?? Request.Headers["Accept-Language"].ToString()
             );
 
-            // Email confirmation
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
             var confirmationUrl =
@@ -262,6 +341,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var html = _emailTemplates.BuildConfirmEmail(lang, confirmationUrl);
 
             await _emailSender.SendEmailAsync(user.Email!, subject, html);
+
+            await _audit.LogForUserIdAsync(
+                user.Id,
+                "Account.Register",
+                target: user.Email,
+                details: new
+                {
+                    DisplayName = displayName,
+                    Lang = lang,
+                    InviteUsed = invite != null,
+                    InviteId = invite?.Id
+                });
 
             return Ok(new { ok = true });
         }
@@ -286,7 +377,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
             if (result.Succeeded)
+            {
+                await _audit.LogForUserIdAsync(
+                    user.Id,
+                    "Account.EmailConfirmed",
+                    target: user.Email,
+                    details: new { Method = "EmailLink" });
+
                 return Redirect($"{_frontendUrl}/login?confirmed=1");
+            }
 
             return Redirect($"{_frontendUrl}/login?confirmederror=1");
         }
@@ -319,6 +418,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _emailSender.SendEmailAsync(user.Email!, subject, html);
 
+            await _audit.LogForUserIdAsync(
+                user.Id,
+                "Account.ResendConfirmation",
+                target: user.Email,
+                details: new { Lang = lang });
+
             return Ok(new { ok = true });
         }
 
@@ -337,7 +442,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 user.UserName!, req.Password, isPersistent: false, lockoutOnFailure: false);
 
             if (result.Succeeded)
+            {
+                await _audit.LogForUserIdAsync(
+                    user.Id,
+                    "Account.Login",
+                    target: user.Email,
+                    details: new
+                    {
+                        Method = "Password",
+                        req.Lang
+                    });
+
                 return Ok(new { ok = true });
+            }
 
             return Unauthorized(new { errorCode = ErrorCodes.InvalidCredentials });
         }
@@ -346,7 +463,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
             await _signInManager.SignOutAsync();
+
+            if (!string.IsNullOrWhiteSpace(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Account.Logout",
+                    target: uid,
+                    details: new { Via = "ManualLogout" });
+            }
+
             return Ok(new { ok = true });
         }
 
@@ -372,6 +501,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             profile.DisclaimerAcceptedUtc = now;
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                uid,
+                "Legal.AcceptDisclaimer",
+                target: uid,
+                details: new
+                {
+                    Version = required,
+                    AcceptedUtc = profile.DisclaimerAcceptedUtc
+                });
 
             return Ok(new
             {
@@ -403,6 +542,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _db.SaveChangesAsync();
 
+            await _audit.LogForUserIdAsync(
+                uid,
+                "Legal.AcceptPrivacy",
+                target: uid,
+                details: new
+                {
+                    Version = required,
+                    AcceptedUtc = profile.PrivacyAcceptedUtc
+                });
+
             return Ok(new
             {
                 ok = true,
@@ -433,6 +582,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _db.SaveChangesAsync();
 
+            await _audit.LogForUserIdAsync(
+                uid,
+                "Legal.AcceptTos",
+                target: uid,
+                details: new
+                {
+                    Version = required,
+                    AcceptedUtc = profile.TosAcceptedUtc
+                });
+
             return Ok(new
             {
                 ok = true,
@@ -440,6 +599,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 acceptedVersion = required,
                 acceptedUtc = profile.TosAcceptedUtc
             });
+        }
+
+        // ---------- Register config (invite-only flag from appsettings) ----------
+
+        /// <summary>
+        /// Returns frontend configuration for the register page.
+        /// Driven by appsettings key "Prelaunch:RequireInviteTokenForRegister".
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet("register-config")]
+        public ActionResult<RegisterConfigDto> GetRegisterConfig()
+        {
+            var requireToken =
+                _config.GetValue<bool>("Prelaunch:RequireInviteTokenForRegister");
+
+            return new RegisterConfigDto
+            {
+                RequireInviteToken = requireToken
+            };
         }
 
         // ---------- Status ----------
@@ -517,12 +695,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var hasActiveMembership = await _membershipService.HasActiveMembershipAsync(uid);
             var membershipStatus = hasActiveMembership ? "Active" : "Inactive";
 
-            // required versions
             var reqDisc = CurrentDisclaimerVersion();
             var reqPriv = CurrentPrivacyVersion();
             var reqTos = CurrentTosVersion();
 
-            // accepted versions
             var accDisc = (profile?.DisclaimerVersion ?? "").Trim();
             var accPriv = (profile?.PrivacyVersion ?? "").Trim();
             var accTos = (profile?.TosVersion ?? "").Trim();
@@ -607,6 +783,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _emailSender.SendEmailAsync(user.Email!, subject, html);
 
+            await _audit.LogForUserIdAsync(
+                user.Id,
+                "Account.ForgotPassword",
+                target: user.Email,
+                details: new
+                {
+                    Lang = lang
+                });
+
             return Ok(new { ok = true });
         }
 
@@ -639,7 +824,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var result = await _userManager.ResetPasswordAsync(user, decodedToken, req.NewPassword);
             if (result.Succeeded)
+            {
+                await _audit.LogForUserIdAsync(
+                    user.Id,
+                    "Account.ResetPassword",
+                    target: user.Email,
+                    details: new
+                    {
+                        Via = "ResetToken",
+                        req.Lang
+                    });
+
+
+
                 return Ok(new { ok = true });
+            }
 
             return BadRequest(new
             {
@@ -712,13 +911,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return new StripeCancelState(false, false, false, null, null);
             }
 
-            // Safe reads across Stripe.NET versions
             var status = GetStringProp(sub, "Status");
             var cancelAtPeriodEnd = GetBoolProp(sub, "CancelAtPeriodEnd");
 
-            // Some Stripe states may set CancelAt as well; treat as “scheduled to cancel”
             var cancelAt = GetDatePropUtc(sub, "CancelAt");
-
             var endedAt = GetDatePropUtc(sub, "EndedAt");
             var canceledAt = GetDatePropUtc(sub, "CanceledAt");
             var cpe = GetDatePropUtc(sub, "CurrentPeriodEnd");
@@ -756,7 +952,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (user == null)
                 return NotFound(new { errorCode = ErrorCodes.UserNotFound });
 
-            // Require password confirmation
             if (!await _userManager.CheckPasswordAsync(user, req.Password))
                 return Unauthorized(new { errorCode = ErrorCodes.DeleteInvalidPassword });
 
@@ -773,6 +968,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (membership != null && IsLifetimeEndDate(membership.EndDate))
             {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Account.DeleteBlocked.LifetimeSubscription",
+                    target: uid,
+                    details: new
+                    {
+                        MembershipEndDateUtc = membership.EndDate
+                    });
+
                 return BadRequest(new { errorCode = ErrorCodes.DeleteLifetimeSubscription });
             }
 
@@ -780,15 +984,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             {
                 var state = await GetStripeCancelStateAsync(membership.StripeSubscriptionId);
 
-                // Block ONLY when it exists AND active AND not scheduled to end.
                 if (state.SubscriptionExists && !state.IsCanceledNow && !state.IsCancelingAtPeriodEnd)
                 {
+                    await _audit.LogForUserIdAsync(
+                        uid,
+                        "Account.DeleteBlocked.SubscriptionActive",
+                        target: membership.StripeSubscriptionId,
+                        details: new
+                        {
+                            StripeStatus = state.Status,
+                            state.CurrentPeriodEndUtc
+                        });
+
                     return BadRequest(new { errorCode = ErrorCodes.DeleteSubscriptionStillActive });
                 }
 
-                // Optional stricter policy: also block when canceling at period end (user must wait)
-                // if (state.SubscriptionExists && state.IsCancelingAtPeriodEnd && !state.IsCanceledNow)
-                //     return BadRequest(new { errorCode = ErrorCodes.DeleteSubscriptionCancelingAtPeriodEnd });
+                // optional stricter: also block canceling-at-period-end
             }
 
             try
@@ -797,18 +1008,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 if (profile == null)
                     return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
 
-                // Idempotent guard
                 if (profile.DeletedUtc != null)
                 {
                     await _signInManager.SignOutAsync();
                     return Ok(new { ok = true });
                 }
 
-                // ============================
-                // 1) HARD DELETE USER DATA
-                // ============================
-
-                // ---------- Grocery lists ----------
                 var groceryListIds = await _db.Set<ListeEpicerie>()
                     .Where(x => x.UserId == uid)
                     .Select(x => x.Id)
@@ -825,7 +1030,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     );
                 }
 
-                // ---------- Factures ----------
                 var factureIds = await _db.Set<Facture>()
                     .Where(f => f.UserId == uid)
                     .Select(f => f.Id)
@@ -842,7 +1046,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     );
                 }
 
-                // ---------- Comparatif ----------
                 var comparatifYearIds = await _db.Set<ComparatifYear>()
                     .Where(y => y.UserId == uid)
                     .Select(y => y.Id)
@@ -859,69 +1062,44 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     );
                 }
 
-                // ---------- Saved reports ----------
                 _db.Set<SavedReport>().RemoveRange(
                     _db.Set<SavedReport>().Where(r => r.UserId == uid)
                 );
 
-                // ---------- Free items ----------
                 _db.Set<FreeItem>().RemoveRange(
                     _db.Set<FreeItem>().Where(x => x.UserId == uid)
                 );
 
-                // ============================
-                // FORUM — SCRUB USER REFERENCES
-                // ============================
-
-                // ---- Forum posts ----
                 var forumPosts = await _db.Set<ForumPost>()
                     .Where(p => p.CreatedByUserId == uid || p.EditedByUserId == uid)
                     .ToListAsync();
 
                 foreach (var post in forumPosts)
                 {
-                    // IMPORTANT:
-                    // Do NOT touch post.CreatedByUserId (required) and do NOT set post.CreatedBy = null
-                    // Your Identity scrub already anonymizes the user record.
-
                     if (post.EditedByUserId == uid)
                     {
-                        // EditedByUserId is nullable -> OK to null
                         post.EditedByUserId = null;
-
-                        // Optional: you can omit this too; setting it null is redundant once FK is null
                         post.EditedBy = null;
                     }
                 }
 
-                // ---- Forum threads ----
                 var forumThreads = await _db.Set<ForumThread>()
                     .Where(t => t.CreatedByUserId == uid || t.LastPostByUserId == uid)
                     .ToListAsync();
 
                 foreach (var thread in forumThreads)
                 {
-                    // IMPORTANT:
-                    // Do NOT touch thread.CreatedByUserId (required) and do NOT set thread.CreatedBy = null
-
                     if (thread.LastPostByUserId == uid)
                     {
-                        // nullable -> OK
                         thread.LastPostByUserId = null;
-                        thread.LastPostBy = null; // optional
+                        thread.LastPostBy = null;
                     }
                 }
 
-                // ============================
-                // 3) PROFILE: ANONYMIZE
-                // ============================
                 profile.DisplayName = $"deleted-{profile.Id.ToString("N")[..8]}";
                 profile.AvatarPath = null;
                 profile.DeletedUtc = DateTime.UtcNow;
 
-                // ============================
-                // 4) IDENTITY: LOCK & SCRUB
-                // ============================
                 var anon = $"deleted_{uid}@deleted.local";
 
                 user.Email = anon;
@@ -934,17 +1112,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 user.LockoutEnabled = true;
                 user.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
 
-                // Remove claims
-                var claims = await _userManager.GetClaimsAsync(user);
-                if (claims.Any())
-                    await _userManager.RemoveClaimsAsync(user, claims);
+                var claimsToRemove = await _userManager.GetClaimsAsync(user);
+                if (claimsToRemove.Any())
+                    await _userManager.RemoveClaimsAsync(user, claimsToRemove);
 
-                // Remove external logins
                 var logins = await _userManager.GetLoginsAsync(user);
                 foreach (var l in logins)
                     await _userManager.RemoveLoginAsync(user, l.LoginProvider, l.ProviderKey);
 
-                // Invalidate password
                 await _userManager.RemovePasswordAsync(user);
                 await _userManager.AddPasswordAsync(
                     user,
@@ -955,6 +1130,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
                 await _db.SaveChangesAsync();
                 await tx.CommitAsync();
+
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Account.Delete",
+                    target: user.Email,
+                    details: new
+                    {
+                        HadMembership = membership != null,
+                        MembershipEndDateUtc = membership?.EndDate,
+                        HadStripeSubscription = membership != null && !string.IsNullOrWhiteSpace(membership.StripeSubscriptionId)
+                    });
 
                 await _signInManager.SignOutAsync();
                 return Ok(new { ok = true });
@@ -978,6 +1164,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             return $"{scheme}://{host}{pathBase}/{normalized}";
         }
+
+        private static string Sha256Hex(string value)
+        {
+            var bytes = Encoding.UTF8.GetBytes(value);
+            var hash = SHA256.HashData(bytes);
+            return Convert.ToHexString(hash);
+        }
     }
 
     public static class ErrorCodes
@@ -989,10 +1182,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public const string InvalidCredentials = "InvalidCredentials";
         public const string IdentityValidationFailed = "IdentityValidationFailed";
 
-        // NEW: clear signal to client
         public const string EmailAlreadyTaken = "EmailAlreadyTaken";
 
         public const string MissingDisplayName = "MissingDisplayName";
+        public const string DisplayNameTooLong = "DisplayNameTooLong";
         public const string DisplayNameAlreadyTaken = "DisplayNameAlreadyTaken";
 
         public const string DisclaimerNotAccepted = "DisclaimerNotAccepted";
@@ -1010,16 +1203,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public const string ResetPasswordFailed = "ResetPasswordFailed";
         public const string ResetTokenInvalid = "ResetTokenInvalid";
 
-        // DELETE FLOW (NEW)
         public const string DeleteRequiresConfirm = "DeleteRequiresConfirm";
         public const string DeleteInvalidPassword = "InvalidPassword";
         public const string DeleteSubscriptionStillActive = "SubscriptionStillActive";
-        // public const string DeleteSubscriptionCancelingAtPeriodEnd = "SubscriptionCancelingAtPeriodEnd";
         public const string DeleteFailed = "DeleteFailed";
         public const string DeleteLifetimeSubscription = "LifetimeSubscription";
+
+        public const string InvalidInviteToken = "InvalidInviteToken";
+        public const string InviteRequired = "InviteRequired";        // NEW
+        public const string TesterRoleGrantFailed = "TesterRoleGrantFailed";
     }
 
-    // Options classes (keep here or move to /Options)
     public sealed class PrivacyOptions
     {
         public string CurrentVersion { get; set; } = "v1";

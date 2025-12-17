@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Controllers/RapportsController.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Services;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -13,15 +16,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     [Route("api/rapports")]
     [ApiController]
     [Authorize]
+    [ModuleGate("Rapports")]
     public class RapportsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly IAuditLogService _audit;
 
-        public RapportsController(ApplicationDbContext db, UserManager<IdentityUser> userManager)
+        public RapportsController(
+            ApplicationDbContext db,
+            UserManager<IdentityUser> userManager,
+            IAuditLogService audit)
         {
             _db = db;
             _userManager = userManager;
+            _audit = audit;
         }
 
         [HttpGet]
@@ -194,6 +203,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             await _db.SaveChangesAsync();
+
+            // Audit: user generated (or regenerated) a report for this year
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await _audit.LogForUserIdAsync(
+                    userId,
+                    "Rapports.Generate",
+                    target: annee.ToString(),
+                    details: new
+                    {
+                        Year = annee,
+                        FactureGroups = groupedFactureItems.Count,
+                        Comparisons = productComparisons.Count,
+                        RowCount = reportRows.Count,
+                        SavedReportId = savedReport.Id,
+                        savedReport.GeneratedAt
+                    });
+            }
+
             return Ok();
         }
     }

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Services;
 using Stripe;
 using Stripe.Checkout;
 using System.Diagnostics;
@@ -16,16 +17,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly IConfiguration _config;
         private readonly ApplicationDbContext _db;
         private readonly ILogger<StripeWebhookController> _logger;
+        private readonly IAuditLogService _audit;
 
         public StripeWebhookController(
             IConfiguration config,
             ApplicationDbContext db,
-            ILogger<StripeWebhookController> logger)
+            ILogger<StripeWebhookController> logger,
+            IAuditLogService audit)
         {
             _config = config;
             _db = db;
             _logger = logger;
-
+            _audit = audit;
         }
 
         [HttpPost]
@@ -145,14 +148,36 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                                 var now = DateTime.UtcNow;
                                 if (membership.EndDate > now)
                                 {
+                                    var oldEnd = membership.EndDate;
+
                                     membership.EndDate = now;
                                     await _db.SaveChangesAsync();
+
                                     Debug.WriteLine($">>> [StripeWebhook] Cancel sets EndDate -> {now:o}");
                                     _logger.LogInformation("[StripeWebhook] Canceled subscription {Sub}, EndDate -> now {End}", sub.Id, now);
+
+                                    if (!string.IsNullOrWhiteSpace(membership.UserId))
+                                    {
+                                        await _audit.LogForUserIdAsync(
+                                            membership.UserId,
+                                            "Membership.CancelByStripe",
+                                            target: sub.Id,
+                                            details: new
+                                            {
+                                                membership.Id,
+                                                membership.UserId,
+                                                membership.StripeCustomerId,
+                                                membership.StripeSubscriptionId,
+                                                OldEndDate = oldEnd,
+                                                NewEndDate = membership.EndDate,
+                                                CancelledAtUtc = now
+                                            });
+                                    }
                                 }
                             }
                             break;
                         }
+
                     case "customer.subscription.updated":
                         {
                             Debug.WriteLine(">>> [StripeWebhook] Handling customer.subscription.updated");
@@ -317,6 +342,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
                 if (newEndUtc > currentEnd)
                 {
+                    var oldEnd = currentEnd;
+
                     membership.EndDate = newEndUtc;
                     if (!string.IsNullOrWhiteSpace(customerId)) membership.StripeCustomerId = customerId;
                     membership.StripeSubscriptionId = subscriptionId;
@@ -324,6 +351,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
                     Debug.WriteLine(">>> [UpsertMembership] Extended membership");
                     _logger.LogInformation("[UpsertMembership] Extended");
+
+                    if (!string.IsNullOrWhiteSpace(membership.UserId))
+                    {
+                        await _audit.LogForUserIdAsync(
+                            membership.UserId,
+                            "Membership.ExtendByStripe",
+                            target: membership.Id.ToString(),
+                            details: new
+                            {
+                                membership.Id,
+                                membership.UserId,
+                                membership.StripeCustomerId,
+                                membership.StripeSubscriptionId,
+                                OldEndDate = oldEnd,
+                                NewEndDate = membership.EndDate,
+                                NewEndUtc = newEndUtc
+                            });
+                    }
                 }
                 else
                 {
@@ -333,18 +378,34 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
             else if (!string.IsNullOrWhiteSpace(userId))
             {
-                _db.Memberships.Add(new Membership
+                var newMembership = new Membership
                 {
                     UserId = userId,
                     StartDate = DateTime.UtcNow,
                     EndDate = newEndUtc,
                     StripeCustomerId = customerId,
                     StripeSubscriptionId = subscriptionId
-                });
+                };
+
+                _db.Memberships.Add(newMembership);
                 await _db.SaveChangesAsync();
 
                 Debug.WriteLine(">>> [UpsertMembership] Created membership");
                 _logger.LogInformation("[UpsertMembership] Created");
+
+                await _audit.LogForUserIdAsync(
+                    userId,
+                    "Membership.CreateByStripe",
+                    target: newMembership.Id.ToString(),
+                    details: new
+                    {
+                        newMembership.Id,
+                        newMembership.UserId,
+                        newMembership.StripeCustomerId,
+                        newMembership.StripeSubscriptionId,
+                        newMembership.StartDate,
+                        newMembership.EndDate
+                    });
             }
             else
             {

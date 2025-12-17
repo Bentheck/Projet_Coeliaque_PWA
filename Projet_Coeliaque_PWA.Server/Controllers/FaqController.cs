@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -8,25 +9,35 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Services;
 
 namespace Projet_coeliaque.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [ModuleGate("Faq")]
     public class FaqController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
+        private readonly IAuditLogService _audit;
 
-        public FaqController(ApplicationDbContext db, IMapper mapper)
+        public FaqController(
+            ApplicationDbContext db,
+            IMapper mapper,
+            IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
+            _audit = audit;
         }
 
         private static string NormalizeLang(string? lang)
             => lang?.StartsWith("en", StringComparison.OrdinalIgnoreCase) == true ? "en" : "fr";
+
+        private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         // ========== PUBLIC ==========
 
@@ -119,6 +130,25 @@ namespace Projet_coeliaque.Controllers
             await _db.SaveChangesAsync();
 
             var dto = await GetOneCategorySummary(entity.Id);
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Category.Create",
+                    target: entity.Id.ToString(),
+                    details: new
+                    {
+                        entity.Id,
+                        entity.Slug,
+                        entity.NameFr,
+                        entity.NameEn,
+                        entity.SortOrder,
+                        entity.IsActive
+                    });
+            }
+
             return dto;
         }
 
@@ -140,10 +170,45 @@ namespace Projet_coeliaque.Controllers
                 return Conflict(new { message = "Slug déjà utilisé" });
             }
 
+            var before = new
+            {
+                entity.Id,
+                entity.Slug,
+                entity.NameFr,
+                entity.NameEn,
+                entity.SortOrder,
+                entity.IsActive
+            };
+
             _mapper.Map(input, entity);
             await _db.SaveChangesAsync();
 
             var dto = await GetOneCategorySummary(entity.Id);
+
+            var after = new
+            {
+                entity.Id,
+                entity.Slug,
+                entity.NameFr,
+                entity.NameEn,
+                entity.SortOrder,
+                entity.IsActive
+            };
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Category.Update",
+                    target: entity.Id.ToString(),
+                    details: new
+                    {
+                        Before = before,
+                        After = after
+                    });
+            }
+
             return dto;
         }
 
@@ -159,8 +224,28 @@ namespace Projet_coeliaque.Controllers
 
             if (cat == null) return NotFound();
 
+            var snapshot = new
+            {
+                cat.Id,
+                cat.Slug,
+                cat.NameFr,
+                cat.NameEn,
+                QuestionCount = cat.Questions.Count
+            };
+
             _db.FaqCategories.Remove(cat);
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Category.Delete",
+                    target: id.ToString(),
+                    details: snapshot);
+            }
+
             return NoContent();
         }
 
@@ -181,6 +266,20 @@ namespace Projet_coeliaque.Controllers
                 c.SortOrder = orderMap[c.Id];
 
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Category.Reorder",
+                    target: "categories",
+                    details: new
+                    {
+                        OrderedIds = orderedIds
+                    });
+            }
+
             return NoContent();
         }
 
@@ -199,6 +298,25 @@ namespace Projet_coeliaque.Controllers
 
             // For admin we can default to FR view
             var dto = _mapper.Map<FaqQuestionDto>(entity, opt => opt.Items["lang"] = "fr");
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Question.Create",
+                    target: entity.Id.ToString(),
+                    details: new
+                    {
+                        entity.Id,
+                        entity.CategoryId,
+                        entity.QuestionFr,
+                        entity.QuestionEn,
+                        entity.IsActive,
+                        entity.SortOrder
+                    });
+            }
+
             return Ok(dto);
         }
 
@@ -213,12 +331,55 @@ namespace Projet_coeliaque.Controllers
             var entity = await _db.FaqQuestions.FindAsync(id);
             if (entity == null) return NotFound();
 
+            var before = new
+            {
+                entity.Id,
+                entity.CategoryId,
+                entity.QuestionFr,
+                entity.QuestionEn,
+                entity.AnswerHtmlFr,
+                entity.AnswerHtmlEn,
+                entity.TagsCsvFr,
+                entity.TagsCsvEn,
+                entity.SortOrder,
+                entity.IsActive
+            };
+
             _mapper.Map(input, entity);
             entity.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
 
             var dto = _mapper.Map<FaqQuestionDto>(entity, opt => opt.Items["lang"] = "fr");
+
+            var after = new
+            {
+                entity.Id,
+                entity.CategoryId,
+                entity.QuestionFr,
+                entity.QuestionEn,
+                entity.AnswerHtmlFr,
+                entity.AnswerHtmlEn,
+                entity.TagsCsvFr,
+                entity.TagsCsvEn,
+                entity.SortOrder,
+                entity.IsActive
+            };
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Question.Update",
+                    target: entity.Id.ToString(),
+                    details: new
+                    {
+                        Before = before,
+                        After = after
+                    });
+            }
+
             return Ok(dto);
         }
 
@@ -231,8 +392,28 @@ namespace Projet_coeliaque.Controllers
             var q = await _db.FaqQuestions.FindAsync(id);
             if (q == null) return NotFound();
 
+            var snapshot = new
+            {
+                q.Id,
+                q.CategoryId,
+                q.QuestionFr,
+                q.QuestionEn,
+                q.IsActive
+            };
+
             _db.FaqQuestions.Remove(q);
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Question.Delete",
+                    target: id.ToString(),
+                    details: snapshot);
+            }
+
             return NoContent();
         }
 
@@ -253,6 +434,21 @@ namespace Projet_coeliaque.Controllers
                 item.SortOrder = orderMap[item.Id];
 
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Question.Reorder",
+                    target: categoryId.ToString(),
+                    details: new
+                    {
+                        CategoryId = categoryId,
+                        OrderedIds = orderedIds
+                    });
+            }
+
             return NoContent();
         }
 

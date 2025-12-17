@@ -1,15 +1,34 @@
-﻿// src/components/Layout.tsx
+﻿// PATH: src/components/Layout.tsx
+import React from "react";
 import Navbar from "./Navbar";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+
+import { useAuth } from "./AuthContext";
+import { useSiteStatus } from "../hooks/useSiteStatus";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const { t } = useTranslation("components/layout");
     const year = new Date().getFullYear();
 
+    const { user } = useAuth();
+    const { status } = useSiteStatus();
+
+    const isLoggedIn = !!user;
+
+    const isNotLaunchedForCurrentUser =
+        status &&
+        status.closedReason === "NotLaunched" &&
+        status.isOpenForCurrentUser === false;
+
+    // Hide navbar only when:
+    //  - site is NotLaunched for this user
+    //  - user is not logged in (testers will see normal Layout once logged in)
+    const hideNavbar = isNotLaunchedForCurrentUser && !isLoggedIn;
+
     return (
         <div className="app-root d-flex flex-column min-vh-100">
-            <Navbar />
+            {!hideNavbar && <Navbar />}
 
             <main>{children}</main>
 

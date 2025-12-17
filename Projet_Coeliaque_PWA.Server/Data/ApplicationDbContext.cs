@@ -31,6 +31,14 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<FaqCategory> FaqCategories => Set<FaqCategory>();
         public DbSet<FaqQuestion> FaqQuestions => Set<FaqQuestion>();
 
+        // Tester Invites
+        public DbSet<TesterInvite> TesterInvites => Set<TesterInvite>();
+        public DbSet<AppSiteStatus> SiteStatuses { get; set; } = null!;
+        public DbSet<AppFeatureFlag> FeatureFlags { get; set; } = null!;
+        public DbSet<AdminAuditLog> AdminAuditLogs { get; set; } = null!;
+
+
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
 
@@ -218,6 +226,22 @@ namespace Projet_Coeliaque_PWA.Server.Data
             //     new ForumCategory { Id = 1, Slug = "general", Name = "Général", Description = "Discussions générales" },
             //     new ForumCategory { Id = 2, Slug = "recettes", Name = "Recettes", Description = "Idées et recettes" }
             // );
+
+            modelBuilder.Entity<TesterInvite>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.Property(x => x.Email)
+                    .IsRequired()
+                    .HasMaxLength(256);
+
+                b.Property(x => x.TokenHash)
+                    .IsRequired()
+                    .HasMaxLength(128);
+
+                b.HasIndex(x => x.Email);
+                b.HasIndex(x => x.TokenHash).IsUnique();
+            });
         }
     }
 }

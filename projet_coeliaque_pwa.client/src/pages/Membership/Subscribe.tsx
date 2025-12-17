@@ -1,4 +1,5 @@
-﻿import React from "react";
+﻿// PATH: src/pages/Membership/Subscribe.tsx
+import React from "react";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -47,7 +48,11 @@ const Subscribe: React.FC = () => {
             console.log("[Subscribe] status:", response.status);
 
             if (!response.ok) {
-                console.error("CreateCheckoutSession failed:", response.status, raw);
+                console.error(
+                    "CreateCheckoutSession failed:",
+                    response.status,
+                    raw
+                );
                 try {
                     const parsed = JSON.parse(raw);
                     if (parsed?.error) {
@@ -77,12 +82,17 @@ const Subscribe: React.FC = () => {
             // ✅ Simple, robust redirect
             window.location.assign(data.url);
         } catch (err) {
-            console.error("Erreur lors de la création de la session Stripe:", err);
+            console.error(
+                "Erreur lors de la création de la session Stripe:",
+                err
+            );
             alert(t("errors.startFailed"));
         } finally {
             setLoading(false);
         }
     };
+
+    const publishablePrefix = getPublishableKey().slice(0, 16);
 
     return (
         <div className="container py-4">
@@ -90,11 +100,37 @@ const Subscribe: React.FC = () => {
                 <div className="card-body">
                     <h1 className="h4 mb-3">{t("title")}</h1>
 
+                    {/* WHY THERE IS A FEE / PRICE BLOCK */}
+                    <p className="text-muted mb-2">
+                        {t(
+                            "intro.line1",
+                            "Les frais d’abonnement servent à couvrir l’hébergement, la maintenance et l’évolution de Services Cœliaque, ainsi que les frais des services tiers comme le traitement des paiements."
+                        )}
+                    </p>
+                    <p className="text-muted mb-3">
+                        {t(
+                            "intro.line2",
+                            "L’objectif est de garder le service simple, sans publicité, tout en assurant sa fiabilité à long terme."
+                        )}
+                    </p>
+
+                    <div className="alert alert-light border mt-2 mb-4">
+                        <strong>
+                            {t("price.label", "Tarif de l’abonnement")}
+                        </strong>
+                        <div className="mt-1">
+                            {t("price.value", "35 $ + taxes par année")}
+                        </div>
+                    </div>
+
                     {!isOnline && (
                         <div className="card card--tinted border-0 mb-3">
                             <div className="card-body py-2">
                                 <div className="d-flex align-items-center gap-2">
-                                    <i className="bi bi-wifi-off" aria-hidden="true" />
+                                    <i
+                                        className="bi bi-wifi-off"
+                                        aria-hidden="true"
+                                    />
                                     <span>{t("offlineBanner")}</span>
                                 </div>
                             </div>
@@ -108,13 +144,14 @@ const Subscribe: React.FC = () => {
                             disabled={loading || !isOnline}
                             onClick={startCheckout}
                         >
-                            {loading ? t("buttons.loading") : t("buttons.primary")}
+                            {loading
+                                ? t("buttons.loading")
+                                : t("buttons.primary")}
                         </button>
                     </div>
 
                     <div className="text-muted mt-3 subscribe-key-hint">
-                        {t("keyLabel")}{" "}
-                        <code>{getPublishableKey().slice(0, 16)}…</code>
+                        {t("keyLabel")} <code>{publishablePrefix}…</code>
                     </div>
                 </div>
             </div>

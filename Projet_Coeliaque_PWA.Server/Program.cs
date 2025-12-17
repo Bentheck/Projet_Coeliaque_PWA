@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// PATH: Projet_Coeliaque_PWA.Server/Program.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,7 @@ using Projet_Coeliaque_PWA.Server.Mapping;
 using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
 using Projet_Coeliaque_PWA.Server.Filters;
+using Projet_Coeliaque_PWA.Server.Infrastructure; // for ModuleFeatureFlagScanner
 
 namespace Projet_Coeliaque_PWA.Server
 {
@@ -59,6 +61,9 @@ namespace Projet_Coeliaque_PWA.Server
             builder.Services.AddScoped<IMembershipService, MembershipService>();
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
             builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ISiteStatusService, SiteStatusService>();
+            builder.Services.AddScoped<IFeatureFlagService, FeatureFlagService>();
+            builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
             // Authorization handlers / policies
             builder.Services.AddScoped<IAuthorizationHandler, IsForumAdminHandler>();
@@ -104,6 +109,11 @@ namespace Projet_Coeliaque_PWA.Server
                 SeedIdentityAsync(sp, app.Configuration).GetAwaiter().GetResult();
             }
 
+            // ---- Auto-create module feature flags from [ModuleGate("X")] ----
+            ModuleFeatureFlagScanner.EnsureModuleFlagsAsync(app.Services)
+                .GetAwaiter()
+                .GetResult();
+
             // Middleware
             if (app.Environment.IsDevelopment())
             {
@@ -135,7 +145,7 @@ namespace Projet_Coeliaque_PWA.Server
                 var roleMgr = services.GetRequiredService<RoleManager<IdentityRole>>();
                 var userMgr = services.GetRequiredService<UserManager<IdentityUser>>();
 
-                foreach (var role in new[] { "SuperAdmin", "Admin" })
+                foreach (var role in new[] { "SuperAdmin", "Admin", "Tester" })
                 {
                     if (!await roleMgr.RoleExistsAsync(role))
                         await roleMgr.CreateAsync(new IdentityRole(role));

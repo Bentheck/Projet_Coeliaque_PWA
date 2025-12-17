@@ -1,8 +1,10 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// PATH: src/components/Navbar.tsx
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "./ThemeContext"; // 👈 Theme
+import { useTheme } from "./ThemeContext";
+import { useSiteStatus } from "../hooks/useSiteStatus";
 
 /** Small hook to track connectivity */
 function useOnlineStatus() {
@@ -72,6 +74,7 @@ export default function Navbar() {
     const { user, membershipStatus, isForumAdmin, isSuperAdmin } = useAuth();
     const isOnline = useOnlineStatus();
     const { resolvedTheme, toggleTheme } = useTheme();
+    const { status } = useSiteStatus();
 
     const [atTop, setAtTop] = useState(true);
 
@@ -88,13 +91,13 @@ export default function Navbar() {
         }`;
 
     const displayLabel =
-        user?.displayName ??
-        user?.name ??
-        user?.email ??
+        (user as any)?.displayName ??
+        (user as any)?.name ??
+        (user as any)?.email ??
         t("userMenu.labelFallback");
 
-    const myProfileUrl = user?.id
-        ? `/u/${user.id}`
+    const myProfileUrl = user && (user as any).id
+        ? `/u/${(user as any).id}`
         : (user as any)?.userId
             ? `/u/${(user as any).userId}`
             : null;
@@ -115,165 +118,194 @@ export default function Navbar() {
             ? t("language.switchToEn")
             : t("language.switchToFr");
 
+    // --- Site / module status (for menu gating) ---
+    // Default to TRUE if status or module info is missing, to preserve old behaviour.
+    const canFactures =
+        status?.modules?.Factures?.canAccessCurrentUser ?? true;
+    const canComparatif =
+        status?.modules?.Comparatif?.canAccessCurrentUser ?? true;
+    const canRapports =
+        status?.modules?.Rapports?.canAccessCurrentUser ?? true;
+    const canListeEpicerie =
+        status?.modules?.ListeEpicerie?.canAccessCurrentUser ?? true;
+
+    const isLoggedIn = !!user;
+
     return (
         <nav className={navClassName}>
             {/* navbar-inner = actual pill that changes size/shape */}
             <div className="navbar-inner">
                 <div className="container">
-                <Link className="navbar-brand" to="/">
-                    {t("brand")}
-                </Link>
+                    <Link className="navbar-brand" to="/">
+                        {t("brand")}
+                    </Link>
 
-                <button
-                    className="navbar-toggler"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#mainNavbar"
-                    aria-controls="mainNavbar"
-                    aria-expanded="false"
-                    aria-label={t("aria.toggle")}
-                >
-                    <span className="navbar-toggler-icon" />
-                </button>
+                    <button
+                        className="navbar-toggler"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#mainNavbar"
+                        aria-controls="mainNavbar"
+                        aria-expanded="false"
+                        aria-label={t("aria.toggle")}
+                    >
+                        <span className="navbar-toggler-icon" />
+                    </button>
 
-                <div className="collapse navbar-collapse" id="mainNavbar">
-                    {/* Left side */}
-                    <ul className="navbar-nav me-auto">
-                        {/* Calculateur */}
-                        <li className="nav-item dropdown">
-                            <a
-                                className="nav-link dropdown-toggle"
-                                href="#"
-                                id="calculatorDropdown"
-                                role="button"
-                                data-bs-toggle="dropdown"
-                                aria-expanded="false"
-                            >
-                                <i className="bi bi-calculator"></i>{" "}
-                                {t("menu.calculator._")}
-                            </a>
-                            <ul
-                                className="dropdown-menu"
-                                aria-labelledby="calculatorDropdown"
-                            >
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/factures"
-                                    >
-                                        <i className="bi bi-receipt-cutoff me-2"></i>{" "}
-                                        {t("menu.calculator.invoices")}
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/comparatif"
-                                    >
-                                        <i className="bi bi-list-columns me-2"></i>{" "}
-                                        {t("menu.calculator.compare")}
-                                    </Link>
-                                </li>
-                                <li>
-                                    <hr className="dropdown-divider" />
-                                </li>
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/rapports"
-                                    >
-                                        <i className="bi bi-bar-chart-steps me-2"></i>{" "}
-                                        {t("menu.calculator.report")}
-                                    </Link>
-                                </li>
-                            </ul>
-                        </li>
+                    <div className="collapse navbar-collapse" id="mainNavbar">
+                        {/* Left side */}
+                        <ul className="navbar-nav me-auto">
+                            {/* Calculateur */}
+                            <li className="nav-item dropdown">
+                                <a
+                                    className="nav-link dropdown-toggle"
+                                    href="#"
+                                    id="calculatorDropdown"
+                                    role="button"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                >
+                                    <i className="bi bi-calculator"></i>{" "}
+                                    {t("menu.calculator._")}
+                                </a>
+                                <ul
+                                    className="dropdown-menu"
+                                    aria-labelledby="calculatorDropdown"
+                                >
+                                    {canFactures && (
+                                        <li>
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/factures"
+                                            >
+                                                <i className="bi bi-receipt-cutoff me-2"></i>{" "}
+                                                {t("menu.calculator.invoices")}
+                                            </Link>
+                                        </li>
+                                    )}
+                                    {canComparatif && (
+                                        <li>
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/comparatif"
+                                            >
+                                                <i className="bi bi-list-columns me-2"></i>{" "}
+                                                {t("menu.calculator.compare")}
+                                            </Link>
+                                        </li>
+                                    )}
+                                    {(canFactures || canComparatif) && (
+                                        <li>
+                                            <hr className="dropdown-divider" />
+                                        </li>
+                                    )}
+                                    {canRapports && (
+                                        <li>
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/rapports"
+                                            >
+                                                <i className="bi bi-bar-chart-steps me-2"></i>{" "}
+                                                {t("menu.calculator.report")}
+                                            </Link>
+                                        </li>
+                                    )}
+                                </ul>
+                            </li>
 
-                        {/* Épicerie */}
-                        <li className="nav-item dropdown">
-                            <a
-                                className="nav-link dropdown-toggle"
-                                href="#"
-                                id="groceryDropdown"
-                                role="button"
-                                data-bs-toggle="dropdown"
-                                aria-expanded="false"
-                            >
-                                <i className="bi bi-cart-check me-1"></i>{" "}
-                                {t("menu.grocery._")}
-                            </a>
-                            <ul
-                                className="dropdown-menu"
-                                aria-labelledby="groceryDropdown"
-                            >
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/liste-epicerie?status=active"
-                                    >
-                                        {t("menu.grocery.active")}
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/liste-epicerie?status=completed"
-                                    >
-                                        {t("menu.grocery.completed")}
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/liste-epicerie?status=all"
-                                    >
-                                        {t("menu.grocery.all")}
-                                    </Link>
-                                </li>
-                                <li>
-                                    <hr className="dropdown-divider" />
-                                </li>
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/liste-epicerie"
-                                    >
-                                        {t("menu.grocery.openIndex")}
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/liste-epicerie/edit"
-                                    >
-                                        {t("menu.grocery.newList")}
-                                    </Link>
-                                </li>
-                            </ul>
-                        </li>
-
-                        {/* Forum */}
-                        {isOnline ? (
-                            isForumAdmin ? (
-                                // Admin → dropdown with ONLY admin link
+                            {/* Épicerie */}
+                            {canListeEpicerie && (
                                 <li className="nav-item dropdown">
                                     <a
                                         className="nav-link dropdown-toggle"
                                         href="#"
-                                        id="forumDropdown"
+                                        id="groceryDropdown"
                                         role="button"
                                         data-bs-toggle="dropdown"
                                         aria-expanded="false"
                                     >
-                                        <i className="bi bi-chat-dots me-1"></i>{" "}
-                                        {t("menu.forum._")}
+                                        <i className="bi bi-cart-check me-1"></i>{" "}
+                                        {t("menu.grocery._")}
                                     </a>
-                                        <ul className="dropdown-menu" aria-labelledby="forumDropdown">
+                                    <ul
+                                        className="dropdown-menu"
+                                        aria-labelledby="groceryDropdown"
+                                    >
+                                        <li>
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/liste-epicerie?status=active"
+                                            >
+                                                {t("menu.grocery.active")}
+                                            </Link>
+                                        </li>
+                                        <li>
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/liste-epicerie?status=completed"
+                                            >
+                                                {t("menu.grocery.completed")}
+                                            </Link>
+                                        </li>
+                                        <li>
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/liste-epicerie?status=all"
+                                            >
+                                                {t("menu.grocery.all")}
+                                            </Link>
+                                        </li>
+                                        <li>
+                                            <hr className="dropdown-divider" />
+                                        </li>
+                                        <li>
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/liste-epicerie"
+                                            >
+                                                {t("menu.grocery.openIndex")}
+                                            </Link>
+                                        </li>
+                                        <li>
+                                            <Link
+                                                className="dropdown-item"
+                                                to="/liste-epicerie/edit"
+                                            >
+                                                {t("menu.grocery.newList")}
+                                            </Link>
+                                        </li>
+                                    </ul>
+                                </li>
+                            )}
+
+                            {/* Forum */}
+                            {isOnline ? (
+                                isForumAdmin ? (
+                                    // Admin → dropdown with ONLY admin link + language selector
+                                    <li className="nav-item dropdown">
+                                        <a
+                                            className="nav-link dropdown-toggle"
+                                            href="#"
+                                            id="forumDropdown"
+                                            role="button"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                        >
+                                            <i className="bi bi-chat-dots me-1"></i>{" "}
+                                            {t("menu.forum._")}
+                                        </a>
+                                        <ul
+                                            className="dropdown-menu"
+                                            aria-labelledby="forumDropdown"
+                                        >
                                             {/* Language selector (entry point) */}
                                             <li>
-                                                <Link className="dropdown-item" to="/forum">
+                                                <Link
+                                                    className="dropdown-item"
+                                                    to="/forum"
+                                                >
                                                     <i className="bi bi-translate me-2"></i>
-                                                    {t("menu.forum.language")} {/* add i18n key */}
+                                                    {t("menu.forum.language")}
                                                 </Link>
                                             </li>
 
@@ -283,273 +315,293 @@ export default function Navbar() {
 
                                             {/* Admin panel */}
                                             <li>
-                                                <Link className="dropdown-item" to="/admin/forum">
+                                                <Link
+                                                    className="dropdown-item"
+                                                    to="/admin/forum"
+                                                >
                                                     <i className="bi bi-shield-check me-2"></i>
                                                     {t("menu.forum.admin")}
                                                 </Link>
                                             </li>
                                         </ul>
-                                </li>
-                            ) : (
-                                // Normal user → simple link to /forum
-                                <li className="nav-item">
-                                    <Link className="nav-link" to="/forum">
-                                        <i className="bi bi-chat-dots me-1"></i>{" "}
-                                        {t("menu.forum._")}
-                                    </Link>
-                                </li>
-                            )
-                        ) : (
-                            // Offline → disabled link
-                            <li className="nav-item">
-                                <a
-                                    className="nav-link disabled"
-                                    href="#"
-                                    aria-disabled="true"
-                                    title={t("menu.forum.offlineTitle")}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        alert(t("menu.forum.offlineAlert"));
-                                    }}
-                                >
-                                    <i className="bi bi-chat-dots me-1"></i>{" "}
-                                    {t("menu.forum.offlineLabel")}
-                                </a>
-                            </li>
-                        )}
-
-                        {/* Aide */}
-                        <li className="nav-item dropdown">
-                            <a
-                                className="nav-link dropdown-toggle"
-                                href="#"
-                                id="helpDropdown"
-                                role="button"
-                                data-bs-toggle="dropdown"
-                                aria-expanded="false"
-                            >
-                                <i className="bi bi-life-preserver me-1"></i>{" "}
-                                {t("menu.help._")}
-                            </a>
-                            <ul
-                                className="dropdown-menu"
-                                aria-labelledby="helpDropdown"
-                            >
-                                <li>
-                                    <Link className="dropdown-item" to="/faq">
-                                        <i className="bi bi-journal-text me-2"></i>{" "}
-                                        {t("menu.help.faq")}
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link
-                                        className="dropdown-item"
-                                        to="/contact"
-                                    >
-                                        <i className="bi bi-envelope me-2"></i>{" "}
-                                        {t("menu.help.contact")}
-                                    </Link>
-                                </li>
-                                {isSuperAdmin && (
-                                    <>
-                                        <li>
-                                            <hr className="dropdown-divider" />
-                                        </li>
-                                        <li>
-                                            <Link
-                                                className="dropdown-item"
-                                                to="/super/faq"
-                                            >
-                                                <i className="bi bi-tools me-2"></i>{" "}
-                                                {t("menu.help.adminFaq")}
-                                            </Link>
-                                        </li>
-                                    </>
-                                )}
-                            </ul>
-                        </li>
-                    </ul>
-
-                    {/* Right side */}
-                    <ul className="navbar-nav ms-auto align-items-lg-center">
-                        {/* Dark / Light toggle */}
-                        <li className="nav-item my-2 my-lg-0 me-lg-2">
-                            <button
-                                type="button"
-                                className="btn btn-outline-secondary btn-sm"
-                                onClick={toggleTheme}
-                                title={
-                                    resolvedTheme === "dark"
-                                        ? t("theme.lightTitle")
-                                        : t("theme.darkTitle")
-                                }
-                            >
-                                <i
-                                    className={`bi ${resolvedTheme === "dark"
-                                            ? "bi-sun-fill"
-                                            : "bi-moon-stars-fill"
-                                        } me-1`}
-                                />
-                                {resolvedTheme === "dark"
-                                    ? t("theme.light")
-                                    : t("theme.dark")}
-                            </button>
-                        </li>
-
-                        {/* Language switcher */}
-                        <li className="nav-item my-2 my-lg-0 me-lg-2">
-                            <button
-                                type="button"
-                                className="btn btn-outline-secondary btn-sm"
-                                onClick={handleSwitchLanguage}
-                                title={languageTitle}
-                            >
-                                <i className="bi bi-translate me-1"></i>
-                                {currentLangLabel}
-                            </button>
-                        </li>
-
-                        {user ? (
-                            <>
-                                {/* Missing membership → show subscribe */}
-                                {!hasActiveMembership && (
-                                    <li className="nav-item my-2 my-lg-0">
-                                        <OfflineAwareLink
-                                            to="/subscribe"
-                                            isOnline={isOnline}
-                                            className={`btn ms-lg-2 text-white ${isOnline
-                                                    ? "btn-warning"
-                                                    : "btn-secondary"
-                                                }`}
-                                            disabledTitle={t(
-                                                "buttons.subscribe.offlineTitle"
-                                            )}
-                                            onBlockedClick={() =>
-                                                alert(
-                                                    t(
-                                                        "buttons.subscribe.offlineAlert"
-                                                    )
-                                                )
-                                            }
-                                        >
-                                            <i className="bi bi-exclamation-triangle me-1"></i>{" "}
-                                            {t("buttons.subscribe._")}
-                                        </OfflineAwareLink>
                                     </li>
-                                )}
-
-                                {isSuperAdmin && (
-                                    <li className="nav-item my-2 my-lg-0">
+                                ) : (
+                                    // Normal user → simple link to /forum
+                                    <li className="nav-item">
                                         <Link
-                                            to="/super/admins"
-                                            className="btn btn-outline-danger ms-lg-2"
-                                            title={t(
-                                                "buttons.superAdmin.title"
-                                            )}
+                                            className="nav-link"
+                                            to="/forum"
                                         >
-                                            <i className="bi bi-shield-lock me-1"></i>{" "}
-                                            {t("buttons.superAdmin._")}
+                                            <i className="bi bi-chat-dots me-1"></i>{" "}
+                                            {t("menu.forum._")}
                                         </Link>
                                     </li>
-                                )}
-
-                                {/* User menu */}
-                                <li className="nav-item dropdown my-2 my-lg-0 ms-lg-2">
+                                )
+                            ) : (
+                                // Offline → disabled link
+                                <li className="nav-item">
                                     <a
-                                        className="nav-link dropdown-toggle"
+                                        className="nav-link disabled"
                                         href="#"
-                                        id="userMenu"
-                                        role="button"
-                                        data-bs-toggle="dropdown"
-                                        aria-expanded="false"
+                                        aria-disabled="true"
+                                        title={t("menu.forum.offlineTitle")}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            alert(t("menu.forum.offlineAlert"));
+                                        }}
                                     >
-                                        <i className="bi bi-person-circle"></i>{" "}
-                                        {displayLabel}
+                                        <i className="bi bi-chat-dots me-1"></i>{" "}
+                                        {t("menu.forum.offlineLabel")}
                                     </a>
-                                    <ul
-                                        className="dropdown-menu dropdown-menu-end"
-                                        aria-labelledby="userMenu"
-                                    >
-                                        {myProfileUrl && (
+                                </li>
+                            )}
+
+                            {/* Aide */}
+                            <li className="nav-item dropdown">
+                                <a
+                                    className="nav-link dropdown-toggle"
+                                    href="#"
+                                    id="helpDropdown"
+                                    role="button"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                >
+                                    <i className="bi bi-life-preserver me-1"></i>{" "}
+                                    {t("menu.help._")}
+                                </a>
+                                <ul
+                                    className="dropdown-menu"
+                                    aria-labelledby="helpDropdown"
+                                >
+                                    <li>
+                                        <Link
+                                            className="dropdown-item"
+                                            to="/faq"
+                                        >
+                                            <i className="bi bi-journal-text me-2"></i>{" "}
+                                            {t("menu.help.faq")}
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link
+                                            className="dropdown-item"
+                                            to="/contact"
+                                        >
+                                            <i className="bi bi-envelope me-2"></i>{" "}
+                                            {t("menu.help.contact")}
+                                        </Link>
+                                    </li>
+                                    {isSuperAdmin && (
+                                        <>
+                                            <li>
+                                                <hr className="dropdown-divider" />
+                                            </li>
+                                            <li>
+                                                <Link
+                                                    className="dropdown-item"
+                                                    to="/super/faq"
+                                                >
+                                                    <i className="bi bi-tools me-2"></i>{" "}
+                                                    {t("menu.help.adminFaq")}
+                                                </Link>
+                                            </li>
+                                        </>
+                                    )}
+                                </ul>
+                            </li>
+                        </ul>
+
+                        {/* Right side */}
+                        <ul className="navbar-nav ms-auto align-items-lg-center">
+                            {/* Dark / Light toggle */}
+                            <li className="nav-item my-2 my-lg-0 me-lg-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary btn-sm"
+                                    onClick={toggleTheme}
+                                    title={
+                                        resolvedTheme === "dark"
+                                            ? t("theme.lightTitle")
+                                            : t("theme.darkTitle")
+                                    }
+                                >
+                                    <i
+                                        className={`bi ${resolvedTheme === "dark"
+                                                ? "bi-sun-fill"
+                                                : "bi-moon-stars-fill"
+                                            } me-1`}
+                                    />
+                                    {resolvedTheme === "dark"
+                                        ? t("theme.light")
+                                        : t("theme.dark")}
+                                </button>
+                            </li>
+
+                            {/* Language switcher */}
+                            <li className="nav-item my-2 my-lg-0 me-lg-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary btn-sm"
+                                    onClick={handleSwitchLanguage}
+                                    title={languageTitle}
+                                >
+                                    <i className="bi bi-translate me-1"></i>
+                                    {currentLangLabel}
+                                </button>
+                            </li>
+
+                            {isLoggedIn ? (
+                                <>
+                                    {/* Missing membership → show subscribe */}
+                                    {!hasActiveMembership && (
+                                        <li className="nav-item my-2 my-lg-0">
+                                            <OfflineAwareLink
+                                                to="/subscribe"
+                                                isOnline={isOnline}
+                                                className={`btn ms-lg-2 text-white ${isOnline
+                                                        ? "btn-warning"
+                                                        : "btn-secondary"
+                                                    }`}
+                                                disabledTitle={t(
+                                                    "buttons.subscribe.offlineTitle"
+                                                )}
+                                                onBlockedClick={() =>
+                                                    alert(
+                                                        t(
+                                                            "buttons.subscribe.offlineAlert"
+                                                        )
+                                                    )
+                                                }
+                                            >
+                                                <i className="bi bi-exclamation-triangle me-1"></i>{" "}
+                                                {t("buttons.subscribe._")}
+                                            </OfflineAwareLink>
+                                        </li>
+                                    )}
+
+                                    {isSuperAdmin && (
+                                        <li className="nav-item my-2 my-lg-0">
+                                            <Link
+                                                to="/super/admins"
+                                                className="btn btn-outline-danger ms-lg-2"
+                                                title={t(
+                                                    "buttons.superAdmin.title"
+                                                )}
+                                            >
+                                                <i className="bi bi-shield-lock me-1"></i>{" "}
+                                                {t("buttons.superAdmin._")}
+                                            </Link>
+                                        </li>
+                                    )}
+
+                                    {/* User menu */}
+                                    <li className="nav-item dropdown my-2 my-lg-0 ms-lg-2">
+                                        <a
+                                            className="nav-link dropdown-toggle"
+                                            href="#"
+                                            id="userMenu"
+                                            role="button"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                        >
+                                            <i className="bi bi-person-circle"></i>{" "}
+                                            {displayLabel}
+                                        </a>
+                                        <ul
+                                            className="dropdown-menu dropdown-menu-end"
+                                            aria-labelledby="userMenu"
+                                        >
+                                            {myProfileUrl && (
+                                                <li>
+                                                    <OfflineAwareLink
+                                                        to={myProfileUrl}
+                                                        isOnline={isOnline}
+                                                        className="dropdown-item"
+                                                        disabledTitle={t(
+                                                            "offline.unavailable"
+                                                        )}
+                                                    >
+                                                        <i className="bi bi-person-badge me-2"></i>{" "}
+                                                        {t(
+                                                            "userMenu.myProfile"
+                                                        )}
+                                                    </OfflineAwareLink>
+                                                </li>
+                                            )}
                                             <li>
                                                 <OfflineAwareLink
-                                                    to={myProfileUrl}
+                                                    to="/u/me/edit"
                                                     isOnline={isOnline}
                                                     className="dropdown-item"
                                                     disabledTitle={t(
                                                         "offline.unavailable"
                                                     )}
                                                 >
-                                                    <i className="bi bi-person-badge me-2"></i>{" "}
-                                                    {t("userMenu.myProfile")}
+                                                    <i className="bi bi-pencil-square me-2"></i>{" "}
+                                                    {t(
+                                                        "userMenu.editProfile"
+                                                    )}
                                                 </OfflineAwareLink>
                                             </li>
-                                        )}
-                                        <li>
-                                            <OfflineAwareLink
-                                                to="/u/me/edit"
-                                                isOnline={isOnline}
-                                                className="dropdown-item"
-                                                disabledTitle={t(
-                                                    "offline.unavailable"
-                                                )}
-                                            >
-                                                <i className="bi bi-pencil-square me-2"></i>{" "}
-                                                {t("userMenu.editProfile")}
-                                            </OfflineAwareLink>
-                                        </li>
-                                        <li>
-                                            <hr className="dropdown-divider" />
-                                        </li>
-                                        <li>
-                                            <OfflineAwareLink
-                                                to="/membership"
-                                                isOnline={isOnline}
-                                                className="dropdown-item"
-                                                disabledTitle={t(
-                                                    "offline.unavailable"
-                                                )}
-                                            >
-                                                <i className="bi bi-card-checklist me-2"></i>{" "}
-                                                {t("userMenu.membership")}
-                                            </OfflineAwareLink>
-                                        </li>
-                                        <li>
-                                            <OfflineAwareLink
-                                                to="/logout"
-                                                isOnline={isOnline}
-                                                className="dropdown-item"
-                                                disabledTitle={t(
-                                                    "offline.unavailable"
-                                                )}
-                                            >
-                                                <i className="bi bi-box-arrow-right me-2"></i>{" "}
-                                                {t("userMenu.logout")}
-                                            </OfflineAwareLink>
-                                        </li>
-                                    </ul>
-                                </li>
-                            </>
-                        ) : (
-                            <>
-                                {/* Login / Register only (demo removed) */}
-                                <li className="nav-item">
-                                    <Link className="nav-link" to="/login">
-                                        <i className="bi bi-door-open"></i>{" "}
-                                        {t("auth.login")}
-                                    </Link>
-                                </li>
+                                            <li>
+                                                <hr className="dropdown-divider" />
+                                            </li>
+                                            <li>
+                                                <OfflineAwareLink
+                                                    to="/membership"
+                                                    isOnline={isOnline}
+                                                    className="dropdown-item"
+                                                    disabledTitle={t(
+                                                        "offline.unavailable"
+                                                    )}
+                                                >
+                                                    <i className="bi bi-card-checklist me-2"></i>{" "}
+                                                    {t("userMenu.membership")}
+                                                </OfflineAwareLink>
+                                            </li>
+                                            <li>
+                                                <OfflineAwareLink
+                                                    to="/logout"
+                                                    isOnline={isOnline}
+                                                    className="dropdown-item"
+                                                    disabledTitle={t(
+                                                        "offline.unavailable"
+                                                    )}
+                                                >
+                                                    <i className="bi bi-box-arrow-right me-2"></i>{" "}
+                                                    {t("userMenu.logout")}
+                                                </OfflineAwareLink>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Login / Register only (demo removed) */}
+                                    <li className="nav-item">
+                                        <Link
+                                            className="nav-link"
+                                            to="/login"
+                                        >
+                                            <i className="bi bi-door-open"></i>{" "}
+                                            {t("auth.login")}
+                                        </Link>
+                                    </li>
 
-                                <li className="nav-item">
-                                    <Link className="nav-link" to="/register">
-                                        <i className="bi bi-person-plus"></i>{" "}
-                                        {t("auth.register")}
-                                    </Link>
-                                </li>
-                            </>
-                        )}
-                    </ul>
-                    </div></div>
+                                    <li className="nav-item">
+                                        <Link
+                                            className="nav-link"
+                                            to="/register"
+                                        >
+                                            <i className="bi bi-person-plus"></i>{" "}
+                                            {t("auth.register")}
+                                        </Link>
+                                    </li>
+                                </>
+                            )}
+                        </ul>
+                    </div>
+                </div>
             </div>
         </nav>
     );

@@ -11,6 +11,8 @@ using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 using Image = SixLabors.ImageSharp.Image;
 using SixSize = SixLabors.ImageSharp.Size;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
+using Projet_Coeliaque_PWA.Server.Services;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -26,6 +28,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     [ApiController]
     [Authorize]
     [Route("api/profile/avatar")]
+    [ModuleGate("Profile")]
     public class ProfileAvatarController : ControllerBase
     {
         private const int MaxBytes = 5 * 1024 * 1024; // 5 MB
@@ -38,12 +41,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _um;
         private readonly IWebHostEnvironment _env;
+        private readonly IAuditLogService _audit;
 
-        public ProfileAvatarController(ApplicationDbContext db, UserManager<IdentityUser> um, IWebHostEnvironment env)
+        public ProfileAvatarController(
+            ApplicationDbContext db,
+            UserManager<IdentityUser> um,
+            IWebHostEnvironment env,
+            IAuditLogService audit)
         {
             _db = db;
             _um = um;
             _env = env;
+            _audit = audit;
         }
 
         private string? UserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -126,9 +135,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 _db.UserProfiles.Add(profile);
             }
 
+            var oldAvatarPath = profile.AvatarPath;
+
             profile.AvatarPath = Path.Combine(relativeDir, fileName).Replace('\\', '/');
             profile.AvatarUpdatedUtc = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
+
+            await _audit.LogForUserIdAsync(
+                UserId!,
+                "Profile.Avatar.Upload",
+                target: UserId!,
+                details: new
+                {
+                    UserId,
+                    OldAvatarPath = oldAvatarPath,
+                    NewAvatarPath = profile.AvatarPath,
+                    profile.AvatarUpdatedUtc,
+                    FileLength = file.Length,
+                    file.ContentType
+                });
 
             var versionTicks = (profile.AvatarUpdatedUtc ?? DateTime.UtcNow).Ticks;
             var abs = AbsoluteContentUrl(profile.AvatarPath) + $"?v={versionTicks}";
@@ -150,6 +175,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (profile == null || string.IsNullOrWhiteSpace(profile.AvatarPath))
                 return NoContent();
 
+            var oldAvatarPath = profile.AvatarPath;
+
             var webRoot = _env.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot");
             var absPath = Path.Combine(webRoot, profile.AvatarPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
             if (System.IO.File.Exists(absPath))
@@ -160,6 +187,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             profile.AvatarPath = null;
             profile.AvatarUpdatedUtc = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
+
+            await _audit.LogForUserIdAsync(
+                UserId!,
+                "Profile.Avatar.Delete",
+                target: UserId!,
+                details: new
+                {
+                    UserId,
+                    OldAvatarPath = oldAvatarPath,
+                    profile.AvatarUpdatedUtc
+                });
 
             return NoContent();
         }

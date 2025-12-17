@@ -74,7 +74,7 @@
       "title": "Sur iPhone / iPad (Safari) :",
       "step1": "Ouvrez le site dans Safari.",
       "step2": "Touchez le bouton Partager (icône carré avec une flèche vers le haut).",
-      "step3": "Faites défiler puis touchez « Ajouter à l’écran d’accueil ».",
+      "step3": "Faites défiler puis touchez « Ajouter à l’écran d’accueil ». ",
       "step4": "Confirmez le nom si nécessaire, puis touchez « Ajouter »."
     },
     "android": {
@@ -88,21 +88,21 @@
       "title": "Sur ordinateur (Google Chrome) :",
       "step1": "Ouvrez le site dans Chrome.",
       "step2": "Si une icône « Installer » apparaît dans la barre d’adresse, cliquez dessus puis sur « Installer ».",
-      "step3": "Si vous ne voyez pas d’icône, ouvrez le menu (⋮) > « Diffuser, enregistrer et partager » > « Installer la page comme application ».",
+      "step3": "Si vous ne voyez pas d’icône, ouvrez le menu (⋮) > « Diffuser, enregistrer et partager » > « Installer la page comme application ». ",
       "step4": "L’application sera disponible dans le menu Démarrer et/ou le Dock, comme une application native."
     },
     "edgeDesktop": {
       "title": "Sur ordinateur (Microsoft Edge) :",
       "step1": "Ouvrez le site dans Microsoft Edge.",
       "step2": "Cliquez sur le menu (⋯) en haut à droite.",
-      "step3": "Allez dans « Outils supplémentaires » / « Extra tools » (si présent), puis « Applications ».",
+      "step3": "Allez dans « Outils supplémentaires » / « Extra tools » (si présent), puis « Applications ». ",
       "step4": "Choisissez « Installer ce site en tant qu’application » ou « Installer “Services Coeliaque” »."
     },
     "safariDesktop": {
       "title": "Sur macOS (Safari, macOS Sonoma ou plus récent) :",
       "step1": "Ouvrez le site dans Safari.",
-      "step2": "Dans la barre de menus, choisissez « Fichier » > « Ajouter au Dock ».",
-      "step3": "Ou utilisez le bouton Partager puis « Ajouter au Dock ».",
+      "step2": "Dans la barre de menus, choisissez « Fichier » > « Ajouter au Dock ». ",
+      "step3": "Ou utilisez le bouton Partager puis « Ajouter au Dock ». ",
       "step4": "L’icône apparaîtra dans le Dock comme une application dédiée."
     },
     "firefoxDesktop": {
@@ -118,5 +118,20 @@
       "title": "Sur mobile (autre navigateur) :",
       "body": "Sur de nombreux navigateurs mobiles, l’option « Ajouter à l’écran d’accueil » ou « Installer l’application » se trouve dans le menu (⋮ ou ☰) du navigateur."
     }
+  },
+  "prelaunch": {
+    "title": "Services Cœliaque arrive bientôt",
+    "subtitle": "Le site complet sera disponible à partir du 1er janvier 2026 à 15 h (heure de l’Est). En attendant, vous pouvez explorer la démo.",
+    "cta": {
+      "demo": "Essayer la démo guidée",
+      "testerLogin": "Connexion testeur"
+    },
+    "countdownLabel": "Lancement dans",
+    "launched": "C’est parti !",
+    "days": "jours",
+    "hours": "heures",
+    "minutes": "min",
+    "seconds": "sec",
+    "targetDateDescription": "Lancement prévu le 1er janvier 2026 à 15 h (heure de l’Est)"
   }
 }

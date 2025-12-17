@@ -1,4 +1,4 @@
-﻿// src/pages/Account/Register.tsx
+﻿// PATH: src/pages/Account/Register.tsx
 import React, {
     useEffect,
     useMemo,
@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import HelpBubble from "../../components/HelpBubble";
 import FieldErrorBubble from "../../components/FieldErrorBubble";
+import { getRegisterConfig } from "../../lib/api";
 
 type ApiRegisterError = {
     errorCode?: string;
@@ -23,6 +24,7 @@ type Strength = "weak" | "medium" | "strong" | null;
 
 type FieldErrors = {
     global?: string;
+    inviteToken?: string;
     email?: string;
     displayName?: string;
     password?: string;
@@ -39,7 +41,8 @@ function getPasswordStrength(password: string): Strength {
     const hasDigit = /\d/.test(pw);
     const hasSymbol = /[^a-zA-Z0-9]/.test(pw);
 
-    const categories = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
+    const categories = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean)
+        .length;
 
     if (length < 6 || categories <= 1) return "weak";
     if (length < 10 || categories === 2) return "medium";
@@ -67,29 +70,49 @@ export default function Register() {
     const tosBaseKey = `${TOS_VERSION}`;
 
     const disclaimerParagraphs = useMemo(() => {
-        const v = tDisc(`${disclaimerBaseKey}.paragraphs`, { returnObjects: true });
+        const v = tDisc(`${disclaimerBaseKey}.paragraphs`, {
+            returnObjects: true,
+        });
         return Array.isArray(v) ? (v as string[]) : [];
     }, [tDisc, disclaimerBaseKey]);
 
     const disclaimerLead = useMemo(() => {
-        return (tDisc(`${disclaimerBaseKey}.lead`, { defaultValue: "" }) as string) || "";
+        return (
+            (tDisc(`${disclaimerBaseKey}.lead`, {
+                defaultValue: "",
+            }) as string) || ""
+        );
     }, [tDisc, disclaimerBaseKey]);
 
     const disclaimerTitle = useMemo(() => {
-        return (tDisc(`${disclaimerBaseKey}.title`, { defaultValue: "" }) as string) || "";
+        return (
+            (tDisc(`${disclaimerBaseKey}.title`, {
+                defaultValue: "",
+            }) as string) || ""
+        );
     }, [tDisc, disclaimerBaseKey]);
 
     const privacyParagraphs = useMemo(() => {
-        const v = tPrivacy(`${privacyBaseKey}.paragraphs`, { returnObjects: true });
+        const v = tPrivacy(`${privacyBaseKey}.paragraphs`, {
+            returnObjects: true,
+        });
         return Array.isArray(v) ? (v as string[]) : [];
     }, [tPrivacy, privacyBaseKey]);
 
     const privacyLead = useMemo(() => {
-        return (tPrivacy(`${privacyBaseKey}.lead`, { defaultValue: "" }) as string) || "";
+        return (
+            (tPrivacy(`${privacyBaseKey}.lead`, {
+                defaultValue: "",
+            }) as string) || ""
+        );
     }, [tPrivacy, privacyBaseKey]);
 
     const privacyTitle = useMemo(() => {
-        return (tPrivacy(`${privacyBaseKey}.title`, { defaultValue: "" }) as string) || "";
+        return (
+            (tPrivacy(`${privacyBaseKey}.title`, {
+                defaultValue: "",
+            }) as string) || ""
+        );
     }, [tPrivacy, privacyBaseKey]);
 
     const tosParagraphs = useMemo(() => {
@@ -98,17 +121,24 @@ export default function Register() {
     }, [tTos, tosBaseKey]);
 
     const tosLead = useMemo(() => {
-        return (tTos(`${tosBaseKey}.lead`, { defaultValue: "" }) as string) || "";
+        return (
+            (tTos(`${tosBaseKey}.lead`, { defaultValue: "" }) as string) || ""
+        );
     }, [tTos, tosBaseKey]);
 
     const tosTitle = useMemo(() => {
-        return (tTos(`${tosBaseKey}.title`, { defaultValue: "" }) as string) || "";
+        return (
+            (tTos(`${tosBaseKey}.title`, { defaultValue: "" }) as string) ||
+            ""
+        );
     }, [tTos, tosBaseKey]);
 
     const [email, setEmail] = useState("");
     const [displayName, setDisplayName] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [inviteToken, setInviteToken] = useState("");
+
     const [registered, setRegistered] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
@@ -128,6 +158,10 @@ export default function Register() {
     const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
     const [privacyAccepted, setPrivacyAccepted] = useState(false);
     const [tosAccepted, setTosAccepted] = useState(false);
+
+    // Invite-token gating flag from backend config
+    const [requireInviteToken, setRequireInviteToken] =
+        useState<boolean>(false);
 
     // Used so Accept can continue same submit flow
     const pendingSubmitRef = useRef(false);
@@ -155,31 +189,83 @@ export default function Register() {
     };
 
     const acceptRequiredMsg =
-        (t("errors.disclaimerRequired", {
+        ((t("errors.disclaimerRequired", {
             defaultValue: "You must accept the disclaimer to create an account.",
-        }) as string) || "You must accept the disclaimer to create an account.";
+        }) as string) ||
+            "You must accept the disclaimer to create an account.");
 
     const acceptPrivacyMsg =
-        (t("errors.privacyRequired", {
-            defaultValue: "You must accept the Privacy Policy to create an account.",
-        }) as string) || "You must accept the Privacy Policy to create an account.";
+        ((t("errors.privacyRequired", {
+            defaultValue:
+                "You must accept the Privacy Policy to create an account.",
+        }) as string) ||
+            "You must accept the Privacy Policy to create an account.");
 
     const acceptTosMsg =
-        (t("errors.tosRequired", {
-            defaultValue: "You must accept the Terms of Service to create an account.",
-        }) as string) || "You must accept the Terms of Service to create an account.";
+        ((t("errors.tosRequired", {
+            defaultValue:
+                "You must accept the Terms of Service to create an account.",
+        }) as string) ||
+            "You must accept the Terms of Service to create an account.");
 
     const emailTakenMsg =
-        (t("errors.emailTaken", {
+        ((t("errors.emailTaken", {
             defaultValue: "This email is already in use.",
-        }) as string) || "This email is already in use.";
+        }) as string) || "This email is already in use.");
 
-    const recomputeAtBottom = (el: HTMLDivElement | null, set: (v: boolean) => void) => {
+    const inviteRequiredMsg =
+        ((t("errors.inviteRequired", {
+            defaultValue:
+                "An invite code is required to create an account at this time.",
+        }) as string) ||
+            "An invite code is required to create an account at this time.");
+
+    const inviteInvalidMsg =
+        ((t("errors.invalidInvite", {
+            defaultValue:
+                "The invite code is invalid, expired, or does not match this email.",
+        }) as string) ||
+            "The invite code is invalid, expired, or does not match this email.");
+
+    const testerRoleGrantFailedMsg =
+        ((t("errors.testerRoleGrantFailed", {
+            defaultValue:
+                "Your account could not be granted tester permissions. Please contact support.",
+        }) as string) ||
+            "Your account could not be granted tester permissions. Please contact support.");
+
+    const recomputeAtBottom = (
+        el: HTMLDivElement | null,
+        set: (v: boolean) => void
+    ) => {
         if (!el) return;
         const tolerancePx = 2;
-        const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - tolerancePx;
+        const atBottom =
+            el.scrollTop + el.clientHeight >= el.scrollHeight - tolerancePx;
         set(atBottom);
     };
+
+    // ---------------- Load register config (invite-only flag) ----------------
+    useEffect(() => {
+        let mounted = true;
+
+        const loadConfig = async () => {
+            try {
+                const cfg = await getRegisterConfig();
+                if (!mounted) return;
+                setRequireInviteToken(!!cfg.requireInviteToken);
+            } catch {
+                // If config fails, default to false (no invite required)
+                if (!mounted) return;
+                setRequireInviteToken(false);
+            }
+        };
+
+        void loadConfig();
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     // ---------------- Gate modal boot/reset on open ----------------
     useEffect(() => {
@@ -227,23 +313,34 @@ export default function Register() {
 
         const trimmedDisplayName = displayName.trim();
         const trimmedEmail = email.trim();
+        const trimmedInviteToken = inviteToken.trim();
 
         if (!trimmedEmail) newErrors.email = t("errors.missingFields") as string;
 
         if (!trimmedDisplayName) {
             newErrors.displayName = t("errors.missingDisplayName") as string;
         } else if (trimmedDisplayName.length > 40) {
-            newErrors.displayName = t("errors.displayNameTooLong") as string;
+            newErrors.displayName = t(
+                "errors.displayNameTooLong"
+            ) as string;
         }
 
         if (!password || !confirmPassword) {
             newErrors.password = t("errors.passwordRequired") as string;
-            newErrors.confirmPassword = t("errors.passwordRequired") as string;
+            newErrors.confirmPassword = t(
+                "errors.passwordRequired"
+            ) as string;
         } else if (password !== confirmPassword) {
-            newErrors.confirmPassword = t("errors.passwordMismatch") as string;
+            newErrors.confirmPassword = t(
+                "errors.passwordMismatch"
+            ) as string;
         }
 
-        return { trimmedEmail, trimmedDisplayName, newErrors };
+        if (requireInviteToken && !trimmedInviteToken) {
+            newErrors.inviteToken = inviteRequiredMsg;
+        }
+
+        return { trimmedEmail, trimmedDisplayName, trimmedInviteToken, newErrors };
     };
 
     const doRegister = async () => {
@@ -251,7 +348,12 @@ export default function Register() {
 
         setFieldErrors({});
 
-        const { trimmedEmail, trimmedDisplayName, newErrors } = validateFields();
+        const {
+            trimmedEmail,
+            trimmedDisplayName,
+            trimmedInviteToken,
+            newErrors,
+        } = validateFields();
 
         if (Object.keys(newErrors).length > 0) {
             setFieldErrors(newErrors);
@@ -259,8 +361,10 @@ export default function Register() {
         }
 
         // hard gates (should already be satisfied before calling doRegister)
-        if (!disclaimerAccepted) return setFieldErrors({ global: acceptRequiredMsg });
-        if (!privacyAccepted) return setFieldErrors({ global: acceptPrivacyMsg });
+        if (!disclaimerAccepted)
+            return setFieldErrors({ global: acceptRequiredMsg });
+        if (!privacyAccepted)
+            return setFieldErrors({ global: acceptPrivacyMsg });
         if (!tosAccepted) return setFieldErrors({ global: acceptTosMsg });
 
         setSubmitting(true);
@@ -274,6 +378,10 @@ export default function Register() {
                     email: trimmedEmail,
                     password,
                     displayName: trimmedDisplayName,
+
+                    inviteToken: requireInviteToken
+                        ? trimmedInviteToken
+                        : undefined,
 
                     disclaimerAccepted: true,
                     disclaimerVersion: DISCLAIMER_VERSION,
@@ -292,7 +400,8 @@ export default function Register() {
             }
 
             const serverFieldErrors: FieldErrors = {};
-            let globalMsg = (t("defaultError") as string) || "Error";
+            let globalMsg =
+                (t("defaultError") as string) || "Error";
 
             let data: ApiRegisterError | null = null;
             try {
@@ -305,27 +414,39 @@ export default function Register() {
 
             switch (code) {
                 case "MissingEmailOrPassword":
-                    serverFieldErrors.email = t("errors.missingFields") as string;
-                    serverFieldErrors.password = t("errors.missingFields") as string;
-                    serverFieldErrors.confirmPassword = t("errors.missingFields") as string;
+                    serverFieldErrors.email = t(
+                        "errors.missingFields"
+                    ) as string;
+                    serverFieldErrors.password = t(
+                        "errors.missingFields"
+                    ) as string;
+                    serverFieldErrors.confirmPassword = t(
+                        "errors.missingFields"
+                    ) as string;
                     break;
 
                 case "MissingDisplayName":
-                    serverFieldErrors.displayName = t("errors.missingDisplayName") as string;
+                    serverFieldErrors.displayName = t(
+                        "errors.missingDisplayName"
+                    ) as string;
                     break;
 
                 case "DisplayNameAlreadyTaken":
-                    serverFieldErrors.displayName = t("errors.displayNameTaken") as string;
+                    serverFieldErrors.displayName = t(
+                        "errors.displayNameTaken"
+                    ) as string;
                     break;
 
-                // NEW: backend explicit email-in-use code
+                // Email in use
                 case "EmailAlreadyTaken":
                     serverFieldErrors.email = emailTakenMsg;
                     break;
 
                 case "IdentityValidationFailed":
                     // keep generic, but we’ll try to show the underlying identityErrors below
-                    globalMsg = t("errors.identityValidationFailed") as string;
+                    globalMsg = t(
+                        "errors.identityValidationFailed"
+                    ) as string;
                     break;
 
                 case "DisclaimerNotAccepted":
@@ -343,60 +464,77 @@ export default function Register() {
                     globalMsg = acceptTosMsg;
                     break;
 
+                case "InvalidInviteToken":
+                    serverFieldErrors.inviteToken = inviteInvalidMsg;
+                    break;
+
+                case "InviteRequired":  // NEW
+                    serverFieldErrors.inviteToken = inviteRequiredMsg;
+                    break;
+
+                case "TesterRoleGrantFailed":
+                    globalMsg = testerRoleGrantFailedMsg;
+                    break;
+
                 default:
                     // fall through to identityErrors parsing / message
                     break;
             }
 
-            // Identity error codes (what you were missing in the UI)
+            // Identity error codes
             const identityCodes = [
-                ...(Array.isArray(data?.identityErrors) ? data!.identityErrors! : []),
+                ...(Array.isArray(data?.identityErrors)
+                    ? data!.identityErrors!
+                    : []),
                 ...(Array.isArray(data?.errors) ? data!.errors! : []),
             ]
                 .map((s) => (s ? String(s) : ""))
                 .filter(Boolean);
 
-            // If we got Identity codes, map the important ones to fields
             if (identityCodes.length) {
-                const set = new Set(identityCodes.map((c) => c.toLowerCase()));
+                const set = new Set(
+                    identityCodes.map((c) => c.toLowerCase())
+                );
 
                 const hasDuplicateEmail = set.has("duplicateemail");
                 const hasDuplicateUserName = set.has("duplicateusername");
 
-                // In your backend: UserName == Email, so DuplicateUserName is effectively “email already used”.
                 if (hasDuplicateEmail || hasDuplicateUserName) {
                     serverFieldErrors.email = emailTakenMsg;
                 }
 
-                // If after mapping we still have no visible field error, show the first raw code globally
                 if (
                     !serverFieldErrors.email &&
                     !serverFieldErrors.displayName &&
                     !serverFieldErrors.password &&
-                    !serverFieldErrors.confirmPassword
+                    !serverFieldErrors.confirmPassword &&
+                    !serverFieldErrors.inviteToken
                 ) {
-                    serverFieldErrors.global = identityCodes[0] || globalMsg;
+                    serverFieldErrors.global =
+                        identityCodes[0] || globalMsg;
                 }
             } else {
-                // message fallback
                 if (data?.message) globalMsg = String(data.message);
-                if (!serverFieldErrors.global) serverFieldErrors.global = globalMsg;
+                if (!serverFieldErrors.global)
+                    serverFieldErrors.global = globalMsg;
             }
 
-            // If nothing got set, still show something
             if (
                 !serverFieldErrors.global &&
                 !serverFieldErrors.email &&
                 !serverFieldErrors.displayName &&
                 !serverFieldErrors.password &&
-                !serverFieldErrors.confirmPassword
+                !serverFieldErrors.confirmPassword &&
+                !serverFieldErrors.inviteToken
             ) {
                 serverFieldErrors.global = globalMsg;
             }
 
             setFieldErrors(serverFieldErrors);
         } catch {
-            setFieldErrors({ global: (t("defaultError") as string) || "Error" });
+            setFieldErrors({
+                global: (t("defaultError") as string) || "Error",
+            });
         } finally {
             setSubmitting(false);
         }
@@ -424,7 +562,7 @@ export default function Register() {
         pendingSubmitRef.current = false;
         void doRegister();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [disclaimerAccepted, privacyAccepted, tosAccepted]);
+    }, [disclaimerAccepted, privacyAccepted, tosAccepted, requireInviteToken, inviteToken]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -531,21 +669,37 @@ export default function Register() {
 
     const currentAcceptLabel =
         gateStep === "disclaimer"
-            ? ((tDisc(`${disclaimerBaseKey}.accept`, { defaultValue: "Accept" }) as string) || "Accept")
+            ? ((tDisc(`${disclaimerBaseKey}.accept`, {
+                defaultValue: "Accept",
+            }) as string) || "Accept")
             : gateStep === "privacy"
-                ? ((tPrivacy(`${privacyBaseKey}.accept`, { defaultValue: "Accept" }) as string) || "Accept")
+                ? ((tPrivacy(`${privacyBaseKey}.accept`, {
+                    defaultValue: "Accept",
+                }) as string) || "Accept")
                 : gateStep === "tos"
-                    ? ((tTos(`${tosBaseKey}.accept`, { defaultValue: "Accept" }) as string) || "Accept")
-                    : ((t("legal.accept", { defaultValue: "Accept" }) as string) || "Accept");
+                    ? ((tTos(`${tosBaseKey}.accept`, {
+                        defaultValue: "Accept",
+                    }) as string) || "Accept")
+                    : ((t("legal.accept", {
+                        defaultValue: "Accept",
+                    }) as string) || "Accept");
 
     const currentDeclineLabel =
         gateStep === "disclaimer"
-            ? ((tDisc(`${disclaimerBaseKey}.decline`, { defaultValue: "Decline" }) as string) || "Decline")
+            ? ((tDisc(`${disclaimerBaseKey}.decline`, {
+                defaultValue: "Decline",
+            }) as string) || "Decline")
             : gateStep === "privacy"
-                ? ((tPrivacy(`${privacyBaseKey}.decline`, { defaultValue: "Decline" }) as string) || "Decline")
+                ? ((tPrivacy(`${privacyBaseKey}.decline`, {
+                    defaultValue: "Decline",
+                }) as string) || "Decline")
                 : gateStep === "tos"
-                    ? ((tTos(`${tosBaseKey}.decline`, { defaultValue: "Decline" }) as string) || "Decline")
-                    : ((t("legal.decline", { defaultValue: "Decline" }) as string) || "Decline");
+                    ? ((tTos(`${tosBaseKey}.decline`, {
+                        defaultValue: "Decline",
+                    }) as string) || "Decline")
+                    : ((t("legal.decline", {
+                        defaultValue: "Decline",
+                    }) as string) || "Decline");
 
     const currentViewFullHref =
         gateStep === "disclaimer"
@@ -556,16 +710,24 @@ export default function Register() {
 
     const currentViewFullLabel =
         gateStep === "disclaimer"
-            ? ((tDisc("actions.viewFull", { defaultValue: "View full disclaimer" }) as string) || "View full disclaimer")
+            ? ((tDisc("actions.viewFull", {
+                defaultValue: "View full disclaimer",
+            }) as string) || "View full disclaimer")
             : gateStep === "privacy"
-                ? ((tPrivacy("actions.viewFull", { defaultValue: "View full privacy policy" }) as string) || "View full privacy policy")
-                : ((tTos("actions.viewFull", { defaultValue: "View full terms of service" }) as string) || "View full terms of service");
+                ? ((tPrivacy("actions.viewFull", {
+                    defaultValue: "View full privacy policy",
+                }) as string) || "View full privacy policy")
+                : ((tTos("actions.viewFull", {
+                    defaultValue: "View full terms of service",
+                }) as string) || "View full terms of service");
 
     if (registered) {
         return (
             <div className="card p-4 mx-auto my-5 auth-card">
                 <h2 className="mb-2">{t("successTitle")}</h2>
-                <div className="alert alert-success mb-0">{t("successMsg")}</div>
+                <div className="alert alert-success mb-0">
+                    {t("successMsg")}
+                </div>
             </div>
         );
     }
@@ -580,7 +742,8 @@ export default function Register() {
                     : "";
 
     const confirmPasswordError =
-        fieldErrors.confirmPassword || (showMismatch ? (t("mismatch.error") as string) : undefined);
+        fieldErrors.confirmPassword ||
+        (showMismatch ? (t("mismatch.error") as string) : undefined);
 
     return (
         <>
@@ -607,16 +770,26 @@ export default function Register() {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="card-header">
-                                <h3 id="legal-step-title" className="h5 mb-0">
+                                <h3
+                                    id="legal-step-title"
+                                    className="h5 mb-0"
+                                >
                                     {currentTitle}
                                 </h3>
                             </div>
 
                             <div className="card-body">
-                                {currentLead ? <p className="text-muted mb-2">{currentLead}</p> : null}
+                                {currentLead ? (
+                                    <p className="text-muted mb-2">
+                                        {currentLead}
+                                    </p>
+                                ) : null}
 
                                 <div className="d-flex justify-content-end mb-2">
-                                    <Link to={currentViewFullHref} className="small">
+                                    <Link
+                                        to={currentViewFullHref}
+                                        className="small"
+                                    >
                                         {currentViewFullLabel}
                                     </Link>
                                 </div>
@@ -625,18 +798,28 @@ export default function Register() {
                                     ref={currentScrollRef as any}
                                     onScroll={() => {
                                         if (gateStep === "disclaimer") {
-                                            recomputeAtBottom(disclaimerScrollRef.current, setDisclaimerAtBottom);
+                                            recomputeAtBottom(
+                                                disclaimerScrollRef.current,
+                                                setDisclaimerAtBottom
+                                            );
                                         } else if (gateStep === "privacy") {
-                                            recomputeAtBottom(privacyScrollRef.current, setPrivacyAtBottom);
+                                            recomputeAtBottom(
+                                                privacyScrollRef.current,
+                                                setPrivacyAtBottom
+                                            );
                                         } else if (gateStep === "tos") {
-                                            recomputeAtBottom(tosScrollRef.current, setTosAtBottom);
+                                            recomputeAtBottom(
+                                                tosScrollRef.current,
+                                                setTosAtBottom
+                                            );
                                         }
                                     }}
                                     className="border rounded p-3"
                                     style={{
                                         maxHeight: 360,
                                         overflowY: "auto",
-                                        background: "var(--color-surface, #fff)",
+                                        background:
+                                            "var(--color-surface, #fff)",
                                     }}
                                 >
                                     {currentParagraphs.map((p, idx) => (
@@ -645,16 +828,34 @@ export default function Register() {
 
                                     <div className="text-muted small mt-3">
                                         {currentAtBottom
-                                            ? (gateStep === "disclaimer"
-                                                ? (tDisc(`${disclaimerBaseKey}.scrollOk`, { defaultValue: "" }) as string)
+                                            ? gateStep === "disclaimer"
+                                                ? (tDisc(
+                                                    `${disclaimerBaseKey}.scrollOk`,
+                                                    { defaultValue: "" }
+                                                ) as string)
                                                 : gateStep === "privacy"
-                                                    ? (tPrivacy(`${privacyBaseKey}.scrollOk`, { defaultValue: "" }) as string)
-                                                    : (tTos(`${tosBaseKey}.scrollOk`, { defaultValue: "" }) as string))
-                                            : (gateStep === "disclaimer"
-                                                ? (tDisc(`${disclaimerBaseKey}.scrollHint`, { defaultValue: "" }) as string)
+                                                    ? (tPrivacy(
+                                                        `${privacyBaseKey}.scrollOk`,
+                                                        { defaultValue: "" }
+                                                    ) as string)
+                                                    : (tTos(
+                                                        `${tosBaseKey}.scrollOk`,
+                                                        { defaultValue: "" }
+                                                    ) as string)
+                                            : gateStep === "disclaimer"
+                                                ? (tDisc(
+                                                    `${disclaimerBaseKey}.scrollHint`,
+                                                    { defaultValue: "" }
+                                                ) as string)
                                                 : gateStep === "privacy"
-                                                    ? (tPrivacy(`${privacyBaseKey}.scrollHint`, { defaultValue: "" }) as string)
-                                                    : (tTos(`${tosBaseKey}.scrollHint`, { defaultValue: "" }) as string))}
+                                                    ? (tPrivacy(
+                                                        `${privacyBaseKey}.scrollHint`,
+                                                        { defaultValue: "" }
+                                                    ) as string)
+                                                    : (tTos(
+                                                        `${tosBaseKey}.scrollHint`,
+                                                        { defaultValue: "" }
+                                                    ) as string)}
                                     </div>
                                 </div>
                             </div>
@@ -690,35 +891,101 @@ export default function Register() {
                 <div className="d-flex align-items-center justify-content-between mb-2">
                     <h2 className="mb-0">{t("title")}</h2>
                     <span className="field-label-anchor">
-                        <FieldErrorBubble id="err-global" message={fieldErrors.global || undefined} placement="left" />
+                        <FieldErrorBubble
+                            id="err-global"
+                            message={fieldErrors.global || undefined}
+                            placement="left"
+                        />
                     </span>
                 </div>
+
+                {requireInviteToken && (
+                    <div className="mb-3">
+                        <label
+                            htmlFor="reg-invite-token"
+                            className="form-label"
+                        >
+                            <span className="field-label-anchor">
+                                <span className="field-label-text">
+                                    {t("inviteTokenLabel")}
+                                </span>
+
+                                <HelpBubble
+                                    id="help-invite-token"
+                                    text={t("inviteTokenHelp")}
+                                    ariaLabel={t("help.inviteTokenAria")}
+                                    placement="right"
+                                />
+
+                                <FieldErrorBubble
+                                    id="err-invite-token"
+                                    message={fieldErrors.inviteToken}
+                                    placement="right"
+                                />
+                            </span>
+                        </label>
+                        <input
+                            id="reg-invite-token"
+                            type="text"
+                            className={
+                                "form-control" +
+                                (fieldErrors.inviteToken ? " is-invalid" : "")
+                            }
+                            value={inviteToken}
+                            onChange={(e) => setInviteToken(e.target.value)}
+                            autoComplete="off"
+                            required
+                            disabled={submitting}
+                            aria-describedby={
+                                fieldErrors.inviteToken
+                                    ? "err-invite-token"
+                                    : undefined
+                            }
+                        />
+                    </div>
+                )}
 
                 <div className="mb-3">
                     <label htmlFor="reg-email" className="form-label">
                         <span className="field-label-anchor">
-                            <span className="field-label-text">{t("emailLabel")}</span>
-                            <FieldErrorBubble id="err-email" message={fieldErrors.email} placement="right" />
+                            <span className="field-label-text">
+                                {t("emailLabel")}
+                            </span>
+                            <FieldErrorBubble
+                                id="err-email"
+                                message={fieldErrors.email}
+                                placement="right"
+                            />
                         </span>
                     </label>
                     <input
                         id="reg-email"
                         type="email"
-                        className={"form-control" + (fieldErrors.email ? " is-invalid" : "")}
+                        className={
+                            "form-control" +
+                            (fieldErrors.email ? " is-invalid" : "")
+                        }
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         autoComplete="email"
                         inputMode="email"
                         required
                         disabled={submitting}
-                        aria-describedby={fieldErrors.email ? "err-email" : undefined}
+                        aria-describedby={
+                            fieldErrors.email ? "err-email" : undefined
+                        }
                     />
                 </div>
 
                 <div className="mb-3">
-                    <label htmlFor="reg-display-name" className="form-label">
+                    <label
+                        htmlFor="reg-display-name"
+                        className="form-label"
+                    >
                         <span className="field-label-anchor">
-                            <span className="field-label-text">{t("displayNameLabel")}</span>
+                            <span className="field-label-text">
+                                {t("displayNameLabel")}
+                            </span>
 
                             <HelpBubble
                                 id="help-display-name"
@@ -727,27 +994,40 @@ export default function Register() {
                                 placement="right"
                             />
 
-                            <FieldErrorBubble id="err-display-name" message={fieldErrors.displayName} placement="right" />
+                            <FieldErrorBubble
+                                id="err-display-name"
+                                message={fieldErrors.displayName}
+                                placement="right"
+                            />
                         </span>
                     </label>
                     <input
                         id="reg-display-name"
                         type="text"
-                        className={"form-control" + (fieldErrors.displayName ? " is-invalid" : "")}
+                        className={
+                            "form-control" +
+                            (fieldErrors.displayName ? " is-invalid" : "")
+                        }
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         autoComplete="nickname"
                         maxLength={40}
                         required
                         disabled={submitting}
-                        aria-describedby={fieldErrors.displayName ? "err-display-name" : undefined}
+                        aria-describedby={
+                            fieldErrors.displayName
+                                ? "err-display-name"
+                                : undefined
+                        }
                     />
                 </div>
 
                 <div className="mb-3">
                     <label htmlFor="reg-password" className="form-label">
                         <span className="field-label-anchor">
-                            <span className="field-label-text">{t("passwordLabel")}</span>
+                            <span className="field-label-text">
+                                {t("passwordLabel")}
+                            </span>
 
                             <HelpBubble
                                 id="help-password"
@@ -756,13 +1036,20 @@ export default function Register() {
                                 placement="right"
                             />
 
-                            <FieldErrorBubble id="err-password" message={fieldErrors.password} placement="right" />
+                            <FieldErrorBubble
+                                id="err-password"
+                                message={fieldErrors.password}
+                                placement="right"
+                            />
                         </span>
                     </label>
                     <input
                         id="reg-password"
                         type="password"
-                        className={"form-control" + (fieldErrors.password ? " is-invalid" : "")}
+                        className={
+                            "form-control" +
+                            (fieldErrors.password ? " is-invalid" : "")
+                        }
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="new-password"
@@ -770,7 +1057,11 @@ export default function Register() {
                         disabled={submitting}
                         aria-describedby="password-strength err-password"
                     />
-                    <div id="password-strength" className={`form-text ${strengthClass}`} aria-live="polite">
+                    <div
+                        id="password-strength"
+                        className={`form-text ${strengthClass}`}
+                        aria-live="polite"
+                    >
                         {password
                             ? (t("strength.label", {
                                 level:
@@ -785,9 +1076,14 @@ export default function Register() {
                 </div>
 
                 <div className="mb-3">
-                    <label htmlFor="reg-password-confirm" className="form-label">
+                    <label
+                        htmlFor="reg-password-confirm"
+                        className="form-label"
+                    >
                         <span className="field-label-anchor">
-                            <span className="field-label-text">{t("confirmPasswordLabel")}</span>
+                            <span className="field-label-text">
+                                {t("confirmPasswordLabel")}
+                            </span>
 
                             <HelpBubble
                                 id="help-confirm-password"
@@ -796,13 +1092,20 @@ export default function Register() {
                                 placement="right"
                             />
 
-                            <FieldErrorBubble id="err-confirm-password" message={confirmPasswordError} placement="right" />
+                            <FieldErrorBubble
+                                id="err-confirm-password"
+                                message={confirmPasswordError}
+                                placement="right"
+                            />
                         </span>
                     </label>
                     <input
                         id="reg-password-confirm"
                         type="password"
-                        className={"form-control" + (confirmPasswordError ? " is-invalid" : "")}
+                        className={
+                            "form-control" +
+                            (confirmPasswordError ? " is-invalid" : "")
+                        }
                         value={confirmPassword}
                         onChange={(e) => {
                             setConfirmPassword(e.target.value);
@@ -819,7 +1122,11 @@ export default function Register() {
                         id="confirm-password-help"
                         className={
                             "form-text " +
-                            (showMismatch ? "text-danger" : passwordsMatch ? "text-success" : "")
+                            (showMismatch
+                                ? "text-danger"
+                                : passwordsMatch
+                                    ? "text-success"
+                                    : "")
                         }
                         aria-live="polite"
                     >
@@ -831,11 +1138,17 @@ export default function Register() {
                     </div>
 
                     {confirmPasteBlocked && (
-                        <div className="form-text text-muted">{t("confirmField.pasteNotAllowed")}</div>
+                        <div className="form-text text-muted">
+                            {t("confirmField.pasteNotAllowed")}
+                        </div>
                     )}
                 </div>
 
-                <button className="btn btn-primary w-100" type="submit" disabled={submitting}>
+                <button
+                    className="btn btn-primary w-100"
+                    type="submit"
+                    disabled={submitting}
+                >
                     {submitting ? t("submitting") : t("submit")}
                 </button>
             </form>

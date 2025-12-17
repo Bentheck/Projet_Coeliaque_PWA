@@ -5,6 +5,8 @@
   "confirmPasswordLabel": "Confirm password",
   "displayNameLabel": "Display name",
   "displayNameHelp": "This name will be visible to other users (e.g. in the forum).",
+  "inviteTokenLabel": "Invite code",
+  "inviteTokenHelp": "If you received an invite email, paste the code here. It is required while the site is in pre-launch.",
   "submit": "Create account",
   "submitting": "Creating…",
   "defaultError": "Could not create your account. Please try again.",
@@ -46,13 +48,17 @@
     "passwordMismatch": "The passwords do not match.",
     "passwordRequired": "Password and confirmation are required.",
     "disclaimerRequired": "You must accept the disclaimer to create an account.",
-    "emailTaken": "This email is already in use."
+    "emailTaken": "This email is already in use.",
+    "inviteRequired": "An invite code is required to create an account at this time.",
+    "invalidInvite": "The invite code is invalid, expired, or does not match this email.",
+    "testerRoleGrantFailed": "Your account could not be granted tester permissions. Please contact support."
   },
   "help": {
     "displayNameAria": "Help about the display name",
     "password": "Use a strong password with a mix of letters, numbers, and symbols.",
     "passwordAria": "Help about password requirements",
     "confirmPassword": "Retype the same password to confirm it.",
-    "confirmPasswordAria": "Help about confirming the password"
+    "confirmPasswordAria": "Help about confirming the password",
+    "inviteTokenAria": "Help about the invite code field"
   }
 }

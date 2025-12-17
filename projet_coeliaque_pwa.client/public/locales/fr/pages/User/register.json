@@ -5,6 +5,8 @@
   "confirmPasswordLabel": "Confirmer le mot de passe",
   "displayNameLabel": "Nom affiché",
   "displayNameHelp": "Ce nom sera visible par les autres utilisateurs (ex. dans le forum).",
+  "inviteTokenLabel": "Code d’invitation",
+  "inviteTokenHelp": "Si vous avez reçu un courriel d’invitation, copiez le code ici. Il est requis pendant la phase de pré-lancement.",
   "submit": "Créer le compte",
   "submitting": "Création…",
   "defaultError": "Impossible de créer votre compte. Réessayez.",
@@ -46,13 +48,17 @@
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "passwordRequired": "Le mot de passe et sa confirmation sont requis.",
     "disclaimerRequired": "Vous devez accepter l’avis de non-responsabilité pour créer un compte.",
-    "emailTaken": "Ce courriel est déjà utilisé."
+    "emailTaken": "Ce courriel est déjà utilisé.",
+    "inviteRequired": "Un code d’invitation est requis pour créer un compte pour le moment.",
+    "invalidInvite": "Le code d’invitation est invalide, expiré ou ne correspond pas à ce courriel.",
+    "testerRoleGrantFailed": "Votre compte n’a pas pu recevoir les permissions de testeur. Veuillez contacter le soutien."
   },
   "help": {
     "displayNameAria": "Aide sur le nom affiché",
     "password": "Utilisez un mot de passe difficile à deviner, avec un mélange de lettres, chiffres et symboles.",
     "passwordAria": "Aide sur les exigences du mot de passe",
     "confirmPassword": "Retapez le même mot de passe pour le confirmer.",
-    "confirmPasswordAria": "Aide sur la confirmation du mot de passe"
+    "confirmPasswordAria": "Aide sur la confirmation du mot de passe",
+    "inviteTokenAria": "Aide concernant le champ du code d’invitation"
   }
 }

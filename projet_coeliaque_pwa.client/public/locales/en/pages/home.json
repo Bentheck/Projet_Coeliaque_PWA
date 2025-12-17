@@ -118,5 +118,20 @@
       "title": "On mobile (other browsers):",
       "body": "In many mobile browsers, the option “Add to Home screen” or “Install app” is available in the browser menu (⋮ or ☰)."
     }
+  },
+  "prelaunch": {
+    "title": "Services Coeliaque is coming soon",
+    "subtitle": "The full site will be available starting January 1, 2026 at 3:00 p.m. Eastern Time. In the meantime, you can explore the demo.",
+    "cta": {
+      "demo": "Try the guided demo",
+      "testerLogin": "Tester login"
+    },
+    "countdownLabel": "Launch in",
+    "launched": "We’re live!",
+    "days": "days",
+    "hours": "hours",
+    "minutes": "min",
+    "seconds": "sec",
+    "targetDateDescription": "Launch planned for January 1, 2026 at 3:00 p.m. Eastern Time"
   }
 }

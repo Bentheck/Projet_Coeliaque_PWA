@@ -1,10 +1,11 @@
-﻿// src/App.tsx
+﻿// PATH: src/App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import "./styles/app-theme.css";
-import "./styles/bubbles.css"
+import "./styles/bubbles.css";
 
 import Layout from "./components/Layout";
-import Home from "./pages/Home";
+// OLD: import Home from "./pages/Home";
+import RootHome from "./pages/RootHome";
 
 import Factures from "./pages/Factures/Factures";
 import FactureEdit from "./pages/Factures/FactureEdit";
@@ -24,7 +25,7 @@ import ForumCategories from "./pages/Forum/ForumCategories";
 import ForumThreads from "./pages/Forum/ForumThreads";
 import ForumThreadView from "./pages/Forum/ForumThreadView";
 import ForumNewThread from "./pages/Forum/ForumNewThread";
-import ForumLanguageSelector from "./pages/Forum/ForumLanguageSelector"; // ⬅️ ADD THIS
+import ForumLanguageSelector from "./pages/Forum/ForumLanguageSelector";
 
 // Admin (forum)
 import ForumAdminPanel from "./pages/Forum/ForumAdminPanel";
@@ -55,7 +56,10 @@ import RequireForumAdmin from "./components/RequireForumAdmin";
 import GlobalOfflineGuard from "./components/GlobalOfflineGuard";
 
 // FAQ - contact
-import { FaqPage as FaqPublic, FaqAdmin as FaqAdminPage } from "./pages/FAQ/FaqModule";
+import {
+    FaqPage as FaqPublic,
+    FaqAdmin as FaqAdminPage,
+} from "./pages/FAQ/FaqModule";
 import ContactPage from "./pages/FAQ/contact";
 
 // DEMO (offline-only) pages
@@ -72,7 +76,10 @@ import DemoFactureEdit from "./demo/DemoFactureEdit";
 
 import DisclaimerPage from "./pages/Legal/Disclaimer";
 import TermsOfServicePage from "./pages/Legal/TermsOfService";
-import PrivacyPage from "./pages/Legal/Privacy"
+import PrivacyPage from "./pages/Legal/Privacy";
+
+// site-closed page
+import SiteClosed from "./pages/SiteClosed";
 
 export default function App() {
     return (
@@ -81,27 +88,58 @@ export default function App() {
                 <GlobalOfflineGuard />
                 <Layout>
                     <Routes>
-                        <Route path="/" element={<Home />} />
+                        {/* ROOT — runtime switch between PrelaunchHome and Home */}
+                        <Route path="/" element={<RootHome />} />
+
+                        {/* Site closed (global gate / 403 handler redirect) */}
+                        <Route path="/site-closed" element={<SiteClosed />} />
 
                         {/* ================= DEMO (offline Dexie-only) ================= */}
                         <Route path="/demo" element={<DemoHome />} />
 
                         {/* Demo Factures */}
-                        <Route path="/demo/factures" element={<DemoFactures />} />
-                        <Route path="/demo/factures/:id" element={<DemoFactureEdit />} />
+                        <Route
+                            path="/demo/factures"
+                            element={<DemoFactures />}
+                        />
+                        <Route
+                            path="/demo/factures/:id"
+                            element={<DemoFactureEdit />}
+                        />
 
                         {/* Demo Comparatif (index + edit) */}
-                        <Route path="/demo/comparatif" element={<DemoComparatifIndex />} />
-                        <Route path="/demo/comparatif/:id" element={<DemoComparatifEdit />} />
+                        <Route
+                            path="/demo/comparatif"
+                            element={<DemoComparatifIndex />}
+                        />
+                        <Route
+                            path="/demo/comparatif/:id"
+                            element={<DemoComparatifEdit />}
+                        />
 
                         {/* Demo Rapports */}
-                        <Route path="/demo/rapports" element={<DemoRapports />} />
-                        <Route path="/demo/rapports/:annee" element={<DemoRapportsDisplay />} />
+                        <Route
+                            path="/demo/rapports"
+                            element={<DemoRapports />}
+                        />
+                        <Route
+                            path="/demo/rapports/:annee"
+                            element={<DemoRapportsDisplay />}
+                        />
 
                         {/* Demo Liste d’épicerie */}
-                        <Route path="/demo/liste-epicerie" element={<DemoListesEpicerieIndex />} />
-                        <Route path="/demo/liste-epicerie/edit/:id?" element={<DemoListeEpicerieEdit />} />
-                        <Route path="/demo/liste-epicerie/view/:id" element={<DemoListeEpicerieView />} />
+                        <Route
+                            path="/demo/liste-epicerie"
+                            element={<DemoListesEpicerieIndex />}
+                        />
+                        <Route
+                            path="/demo/liste-epicerie/edit/:id?"
+                            element={<DemoListeEpicerieEdit />}
+                        />
+                        <Route
+                            path="/demo/liste-epicerie/view/:id"
+                            element={<DemoListeEpicerieView />}
+                        />
 
                         {/* ================= REAL APP (API + membership) ================ */}
                         <Route
@@ -284,7 +322,10 @@ export default function App() {
 
                         {/* FAQ - contact */}
                         <Route path="/faq" element={<FaqPublic />} />
-                        <Route path="/faq/calculateur" element={<FaqPublic />} />
+                        <Route
+                            path="/faq/calculateur"
+                            element={<FaqPublic />}
+                        />
                         <Route path="/contact" element={<ContactPage />} />
 
                         {/* User */}
@@ -301,8 +342,14 @@ export default function App() {
                         {/* Auth */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/reset-password" element={<ResetPassword />} />
+                        <Route
+                            path="/forgot-password"
+                            element={<ForgotPassword />}
+                        />
+                        <Route
+                            path="/reset-password"
+                            element={<ResetPassword />}
+                        />
                         <Route path="/logout" element={<Logout />} />
 
                         {/* Membership */}
@@ -342,11 +389,23 @@ export default function App() {
                         />
 
                         {/* Legal */}
-                        <Route path="/legal/disclaimer" element={<DisclaimerPage />} />
-                        <Route path="/legal/tos" element={<TermsOfServicePage />} />
-                        <Route path="/legal/privacy" element={<PrivacyPage />} />
+                        <Route
+                            path="/legal/disclaimer"
+                            element={<DisclaimerPage />}
+                        />
+                        <Route
+                            path="/legal/tos"
+                            element={<TermsOfServicePage />}
+                        />
+                        <Route
+                            path="/legal/privacy"
+                            element={<PrivacyPage />}
+                        />
 
-                        <Route path="/disclaimer" element={<DisclaimerPage />} />
+                        <Route
+                            path="/disclaimer"
+                            element={<DisclaimerPage />}
+                        />
                         <Route path="/terms" element={<TermsOfServicePage />} />
                         <Route path="/privacy" element={<PrivacyPage />} />
 
