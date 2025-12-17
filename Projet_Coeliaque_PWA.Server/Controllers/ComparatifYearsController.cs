@@ -13,24 +13,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 {
     [ApiController]
     [Route("api/comparatifyears")]
-    [Authorize]
+    [Authorize(Policy = "ActiveMembership")]
     [ModuleGate("Comparatif")]
     public class ComparatifYearsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
-        private readonly IMembershipService _membershipService;
         private readonly IAuditLogService _audit;
 
         public ComparatifYearsController(
             ApplicationDbContext db,
             IMapper mapper,
-            IMembershipService membershipService,
             IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
-            _membershipService = membershipService;
             _audit = audit;
         }
 
@@ -39,7 +36,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var years = await _db.ComparatifYears
                 .AsNoTracking()
@@ -56,7 +52,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var year = await _db.ComparatifYears
                 .AsNoTracking()
@@ -75,7 +70,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var year = await _db.ComparatifYears
                 .AsNoTracking()
@@ -92,7 +86,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var entity = _mapper.Map<ComparatifYear>(dto);
             entity.Id = 0;
@@ -121,8 +114,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
-            if (id != dto.Id) return BadRequest("Mismatched id.");
+            if (id != dto.Id) return BadRequest("Mismatched id between route and payload.");
 
             var entity = await _db.ComparatifYears
                 .Include(y => y.Lines)
@@ -139,38 +131,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             entity.Annee = dto.Annee;
 
-            // FIX: ignore Id=0 in keep set, otherwise you delete everything when adding new lines
-            var dtoLineIds = dto.Lines
-                .Where(l => l.Id > 0)
-                .Select(l => l.Id)
-                .ToHashSet();
+            var toRemove = entity.Lines
+                .Where(line => dto.Lines.All(d => d.Id != line.Id))
+                .ToList();
 
-            var toRemove = entity.Lines.Where(l => !dtoLineIds.Contains(l.Id)).ToList();
-            foreach (var line in toRemove)
-            {
-                _db.ProductComparisons.Remove(line);
-            }
+            foreach (var remove in toRemove)
+                entity.Lines.Remove(remove);
 
-            var addedCount = 0;
-            var updatedCount = 0;
+            int addedCount = 0;
+            int updatedCount = 0;
 
             foreach (var dtoLine in dto.Lines)
             {
-                var existing = dtoLine.Id > 0
-                    ? entity.Lines.FirstOrDefault(l => l.Id == dtoLine.Id)
-                    : null;
-
-                if (existing != null)
-                {
-                    existing.TypeItem = dtoLine.TypeItem;
-                    existing.Marque = dtoLine.Marque;
-                    existing.Prix = dtoLine.Prix;
-                    existing.PoidsValeur = dtoLine.PoidsValeur;
-                    existing.PoidsUnite = dtoLine.PoidsUnite;
-                    existing.Magasin = dtoLine.Magasin;
-                    updatedCount++;
-                }
-                else
+                if (dtoLine.Id == 0)
                 {
                     entity.Lines.Add(new ProductComparison
                     {
@@ -183,6 +156,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                         Magasin = dtoLine.Magasin
                     });
                     addedCount++;
+                }
+                else
+                {
+                    var existing = entity.Lines.FirstOrDefault(l => l.Id == dtoLine.Id);
+                    if (existing != null)
+                    {
+                        existing.TypeItem = dtoLine.TypeItem;
+                        existing.Marque = dtoLine.Marque;
+                        existing.Prix = dtoLine.Prix;
+                        existing.PoidsValeur = dtoLine.PoidsValeur;
+                        existing.PoidsUnite = dtoLine.PoidsUnite;
+                        existing.Magasin = dtoLine.Magasin;
+                        updatedCount++;
+                    }
                 }
             }
 
@@ -214,7 +201,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var year = await _db.ComparatifYears
                 .Include(y => y.Lines)
@@ -248,7 +234,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var year = await _db.ComparatifYears
                 .Include(y => y.Lines)
@@ -283,7 +268,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var year = await _db.ComparatifYears
                 .FirstOrDefaultAsync(y => y.Id == id && y.UserId == userId);
@@ -318,7 +302,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var line = await _db.ProductComparisons
                 .Include(l => l.ComparatifYear)
@@ -378,7 +361,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var line = await _db.ProductComparisons
                 .Include(l => l.ComparatifYear)
@@ -418,7 +400,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var types = await _db.FactureItems
                 .AsNoTracking()

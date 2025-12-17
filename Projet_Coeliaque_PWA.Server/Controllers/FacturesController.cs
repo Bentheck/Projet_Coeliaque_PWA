@@ -19,7 +19,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     /// CRUD for user invoices (Factures) and their items.
     /// All data is scoped to the authenticated user (Facture.UserId).
     /// </summary>
-    [Authorize]
+    [Authorize(Policy = "ActiveMembership")]
     [ApiController]
     [Route("api/[controller]")]
     [ModuleGate("Factures")]
@@ -27,18 +27,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
-        private readonly IMembershipService _membershipService;
         private readonly IAuditLogService _audit;
 
         public FacturesController(
             ApplicationDbContext db,
             IMapper mapper,
-            IMembershipService membershipService,
             IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
-            _membershipService = membershipService;
             _audit = audit;
         }
 
@@ -52,7 +49,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<ActionResult<List<FactureDto>>> GetAll()
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var factures = await _db.Factures
                 .AsNoTracking()
@@ -73,7 +69,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<ActionResult<FactureDto>> GetById(int id)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var facture = await _db.Factures
                 .AsNoTracking()
@@ -93,7 +88,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<ActionResult<FactureDto>> Create([FromBody] FactureDto dto)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var facture = _mapper.Map<Facture>(dto);
             facture.Id = 0;                 // ensure EF inserts
@@ -142,7 +136,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] FactureDto dto)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
             if (id != dto.Id) return BadRequest("Mismatched id between route and payload.");
 
             var facture = await _db.Factures
@@ -160,12 +153,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 ItemCount = facture.Items.Count
             };
 
-            // ----- Top-level fields -----
-            facture.Annee = dto.Annee;
             facture.FactureId = dto.FactureId;
-            facture.Date = DateTime.SpecifyKind(dto.Date.Date, DateTimeKind.Utc);
             facture.Magasin = dto.Magasin;
+            facture.Date = DateTime.SpecifyKind(dto.Date.Date, DateTimeKind.Utc);
 
+            // Sync items
             var dtoItems = dto.Items ?? new List<FactureItemDto>(); // adjust type name if needed
 
             // Build quick lookup of DTO items by Id (only existing ones)
@@ -257,7 +249,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
-            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var facture = await _db.Factures
                 .Include(f => f.Items)
