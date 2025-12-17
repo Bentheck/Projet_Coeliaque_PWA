@@ -1,5 +1,8 @@
 ﻿// PATH: Projet_Coeliaque_PWA.Server/Program.cs
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +42,36 @@ namespace Projet_Coeliaque_PWA.Server
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
 
+            // --- IMPORTANT: API-friendly cookie auth behavior (no redirects under /api) ---
+            builder.Services.ConfigureApplicationCookie(options =>
+            {
+                options.Events ??= new CookieAuthenticationEvents();
+
+                options.Events.OnRedirectToLogin = ctx =>
+                {
+                    if (ctx.Request.Path.StartsWithSegments("/api"))
+                    {
+                        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    }
+
+                    ctx.Response.Redirect(ctx.RedirectUri);
+                    return Task.CompletedTask;
+                };
+
+                options.Events.OnRedirectToAccessDenied = ctx =>
+                {
+                    if (ctx.Request.Path.StartsWithSegments("/api"))
+                    {
+                        ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return Task.CompletedTask;
+                    }
+
+                    ctx.Response.Redirect(ctx.RedirectUri);
+                    return Task.CompletedTask;
+                };
+            });
+
             builder.Services.Configure<SmtpEmailOptions>(builder.Configuration.GetSection("Email"));
 
             var emailOpt = builder.Configuration.GetSection("Email").Get<SmtpEmailOptions>() ?? new SmtpEmailOptions();
@@ -67,6 +100,7 @@ namespace Projet_Coeliaque_PWA.Server
 
             // Authorization handlers / policies
             builder.Services.AddScoped<IAuthorizationHandler, IsForumAdminHandler>();
+            builder.Services.AddScoped<IAuthorizationHandler, ActiveMembershipHandler>();
 
             builder.Services.AddAuthorization(options =>
             {
@@ -74,6 +108,13 @@ namespace Projet_Coeliaque_PWA.Server
                     policy.Requirements.Add(new IsForumAdminRequirement()));
 
                 options.AddPolicy("IsSuperAdmin", policy => policy.RequireRole("SuperAdmin"));
+
+                // Membership policy (proper, no controller-level Forbid("...") anywhere)
+                options.AddPolicy("ActiveMembership", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(new ActiveMembershipRequirement());
+                });
             });
 
             // Session
@@ -97,27 +138,25 @@ namespace Projet_Coeliaque_PWA.Server
             builder.Services.Configure<DisclaimerOptions>(builder.Configuration.GetSection("Disclaimer"));
             builder.Services.AddScoped<RequireDisclaimerFilter>();
 
-            builder.Services.AddScoped<IAuthorizationHandler, ActiveMembershipHandler>();
-
-            builder.Services.AddAuthorization(options =>
-            {
-                options.AddPolicy("IsForumAdmin", policy =>
-                    policy.Requirements.Add(new IsForumAdminRequirement()));
-
-                options.AddPolicy("IsSuperAdmin", policy => policy.RequireRole("SuperAdmin"));
-
-                // NEW
-                options.AddPolicy("ActiveMembership", policy =>
-                {
-                    policy.RequireAuthenticatedUser();
-                    policy.Requirements.Add(new ActiveMembershipRequirement());
-                });
-            });
-
             // Controllers
             builder.Services.AddControllers();
 
+            // --- IMPORTANT: forwarded headers (Cloudflare/nginx) so redirects stay HTTPS ---
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor |
+                    ForwardedHeaders.XForwardedProto;
+
+                // We are behind a reverse proxy; avoid strict KnownNetworks/KnownProxies blocking.
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+
             var app = builder.Build();
+
+            // Use forwarded headers VERY early (before auth, redirects, etc.)
+            app.UseForwardedHeaders();
 
             // ---- Seed roles + default SuperAdmin from configuration ----
             using (var scope = app.Services.CreateScope())
@@ -143,15 +182,17 @@ namespace Projet_Coeliaque_PWA.Server
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles();
+
             app.UseRouting();
             app.UseSession();
+
             app.UseAuthentication();
             app.UseAuthorization();
 
             // API endpoints
             app.MapIdentityApi<IdentityUser>();
             app.MapControllers();
-            app.UseStaticFiles();
 
             app.Run();
 
