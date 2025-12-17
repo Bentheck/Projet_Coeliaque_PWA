@@ -1,4 +1,5 @@
-﻿// PATH: Projet_Coeliaque_PWA.Server/Controllers/SubscribeController.cs
+﻿// Controllers/SubscribeController.cs
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

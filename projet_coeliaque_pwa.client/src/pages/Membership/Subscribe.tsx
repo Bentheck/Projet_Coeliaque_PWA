@@ -6,8 +6,6 @@ import { useTranslation } from "react-i18next";
  * We no longer need stripe.js for redirect; we use session.url directly.
  * Keep this if you want to show which key you’re using, but it’s not required for redirect.
  */
-const getPublishableKey = () =>
-    "pk_test_51SaeLyGfa6g13U0VYpkL7c6wakhz9zfDixa7ZuHkIBqb2vqzYUAyPa5riOhPGu33LJFUwGaNNqxfQR3fDM8bb15G00AyuuqNrA";
 
 const Subscribe: React.FC = () => {
     const { t } = useTranslation("pages/Membership/subscribe");
@@ -92,8 +90,6 @@ const Subscribe: React.FC = () => {
         }
     };
 
-    const publishablePrefix = getPublishableKey().slice(0, 16);
-
     return (
         <div className="container py-4">
             <div className="card card--accent shadow-sm border-accent-primary">
@@ -148,10 +144,6 @@ const Subscribe: React.FC = () => {
                                 ? t("buttons.loading")
                                 : t("buttons.primary")}
                         </button>
-                    </div>
-
-                    <div className="text-muted mt-3 subscribe-key-hint">
-                        {t("keyLabel")} <code>{publishablePrefix}…</code>
                     </div>
                 </div>
             </div>

@@ -126,7 +126,6 @@ namespace Projet_Coeliaque_PWA.Server
             }
 
             app.UseHttpsRedirection();
-            app.UseStaticFiles();
             app.UseRouting();
             app.UseSession();
             app.UseAuthentication();
@@ -135,7 +134,7 @@ namespace Projet_Coeliaque_PWA.Server
             // API endpoints
             app.MapIdentityApi<IdentityUser>();
             app.MapControllers();
-            app.MapStaticAssets();
+            app.UseStaticFiles();
 
             app.Run();
 

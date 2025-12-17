@@ -1,4 +1,6 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// \src\pages\Membership\SubscribeSuccess.tsx
+
+import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../components/AuthContext";
 import { useTranslation } from "react-i18next";

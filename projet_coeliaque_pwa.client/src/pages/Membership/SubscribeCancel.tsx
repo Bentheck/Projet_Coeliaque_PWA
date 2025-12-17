@@ -1,4 +1,6 @@
-﻿import React from "react";
+﻿// \src\pages\Membership\SubscribeCancel.tsx
+
+import React from "react";
 import { useTranslation } from "react-i18next";
 
 const SubscribeCancel: React.FC = () => {
