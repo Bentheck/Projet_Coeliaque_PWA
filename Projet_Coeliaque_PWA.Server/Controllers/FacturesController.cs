@@ -11,6 +11,7 @@ using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -21,20 +22,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
+    [ModuleGate("Factures")]
     public class FacturesController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
         private readonly IMembershipService _membershipService;
+        private readonly IAuditLogService _audit;
 
         public FacturesController(
             ApplicationDbContext db,
             IMapper mapper,
-            IMembershipService membershipService)
+            IMembershipService membershipService,
+            IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
             _membershipService = membershipService;
+            _audit = audit;
         }
 
         private string? UserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -94,6 +99,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             facture.Id = 0;                 // ensure EF inserts
             facture.UserId = UserId;
 
+            // Normalize invoice date to UTC, date-only (this line was already there in your version)
+            facture.Date = DateTime.SpecifyKind(dto.Date.Date, DateTimeKind.Utc);
+
             // Ensure FK from items to parent
             if (facture.Items != null)
             {
@@ -106,6 +114,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             _db.Factures.Add(facture);
             await _db.SaveChangesAsync();
+
+            var itemCount = facture.Items?.Count ?? 0;
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "Facture.Create",
+                target: facture.Id.ToString(),
+                details: new
+                {
+                    facture.Id,
+                    facture.FactureId,
+                    facture.Date,
+                    facture.Magasin,
+                    ItemCount = itemCount
+                });
 
             var createdDto = _mapper.Map<FactureDto>(facture);
             return CreatedAtAction(nameof(GetById), new { id = facture.Id }, createdDto);
@@ -128,10 +151,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (facture == null) return NotFound();
 
+            var before = new
+            {
+                facture.Id,
+                facture.FactureId,
+                facture.Date,
+                facture.Magasin,
+                ItemCount = facture.Items.Count
+            };
+
             // ----- Top-level fields -----
             facture.Annee = dto.Annee;
             facture.FactureId = dto.FactureId;
-            facture.Date = dto.Date;
+            facture.Date = DateTime.SpecifyKind(dto.Date.Date, DateTimeKind.Utc);
             facture.Magasin = dto.Magasin;
 
             var dtoItems = dto.Items ?? new List<FactureItemDto>(); // adjust type name if needed
@@ -194,6 +226,26 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             await _db.SaveChangesAsync();
+
+            var after = new
+            {
+                facture.Id,
+                facture.FactureId,
+                facture.Date,
+                facture.Magasin,
+                ItemCount = facture.Items.Count
+            };
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "Facture.Update",
+                target: facture.Id.ToString(),
+                details: new
+                {
+                    Before = before,
+                    After = after
+                });
+
             return NoContent();
         }
 
@@ -213,8 +265,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (facture == null) return NotFound();
 
+            var snapshot = new
+            {
+                facture.Id,
+                facture.FactureId,
+                facture.Date,
+                facture.Magasin,
+                ItemCount = facture.Items.Count
+            };
+
             _db.Factures.Remove(facture);
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "Facture.Delete",
+                target: facture.Id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
     }

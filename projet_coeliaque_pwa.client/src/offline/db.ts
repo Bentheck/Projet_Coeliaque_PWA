@@ -69,9 +69,11 @@ export type FaqCategoryDto = {
 };
 export type FaqCategorySummaryDto = {
     id: number;
-    name: string;
+    nameFr: string;
+    nameEn?: string | null;
     slug: string;
-    description?: string | null;
+    descriptionFr?: string | null;
+    descriptionEn?: string | null;
     sortOrder: number;
     isActive: boolean;
     activeQuestions: number;

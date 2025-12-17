@@ -1,0 +1,92 @@
+﻿{
+  "currentVersion": "v1",
+  "v1": {
+    "title": "Conditions d’utilisation — Service Coeliaque",
+    "subtitle": "En vigueur dès l’acceptation",
+    "sections": [
+      {
+        "title": "Identification du service",
+        "paragraphs": [
+          "Service Coeliaque est une application logicielle opérée et maintenue par Solutions BenSoft.",
+          "Toute référence à « Service Coeliaque », « le service », « l’application » ou « la plateforme » désigne un produit fourni par Solutions BenSoft."
+        ]
+      },
+      {
+        "title": "Acceptation des conditions",
+        "paragraphs": [
+          "En créant un compte, en accédant ou en utilisant Service Coeliaque, vous reconnaissez avoir lu, compris et accepté les présentes conditions d’utilisation.",
+          "Si vous n’acceptez pas ces conditions, vous ne devez pas utiliser le service."
+        ]
+      },
+      {
+        "title": "Nature du service",
+        "paragraphs": [
+          "Service Coeliaque est un outil de gestion personnelle permettant notamment la saisie, l’organisation et la consultation de données.",
+          "Le service est fourni à titre informatif uniquement et ne constitue en aucun cas un avis professionnel."
+        ]
+      },
+      {
+        "title": "Compte utilisateur et informations",
+        "paragraphs": [
+          "Les seules informations requises pour créer un compte sont une adresse courriel valide et un nom d’utilisateur (nom affiché).",
+          "Toute information fournie volontairement par l’utilisateur relève de sa responsabilité exclusive."
+        ]
+      },
+      {
+        "title": "Responsabilités de l’utilisateur",
+        "paragraphs": [
+          "Vous êtes responsable de l’exactitude, de la légalité et de la pertinence des données que vous saisissez ou téléversez.",
+          "Vous êtes responsable de la protection de vos identifiants et de toute activité effectuée via votre compte."
+        ]
+      },
+      {
+        "title": "Modération du contenu",
+        "paragraphs": [
+          "Les utilisateurs peuvent publier du contenu via des fonctionnalités communautaires telles que des forums ou des commentaires.",
+          "Solutions BenSoft se réserve le droit, sans obligation, de modérer, modifier, restreindre ou supprimer tout contenu qui enfreint les présentes conditions, les lois applicables ou les règles de la communauté, ou qui est jugé inapproprié, abusif, illégal ou nuisible.",
+          "Solutions BenSoft n’est pas responsable du contenu généré par les utilisateurs et ne garantit ni son exactitude, ni sa légalité, ni sa fiabilité."
+        ]
+      },
+      {
+        "title": "Abonnements et remboursements",
+        "paragraphs": [
+          "Les abonnements payants peuvent être remboursables dans un délai limité, selon les conditions applicables au moment de l’achat.",
+          "Au-delà de ce délai, aucun remboursement ne sera accordé."
+        ]
+      },
+      {
+        "title": "Litiges de paiement",
+        "paragraphs": [
+          "En cas de problème de facturation, vous devez contacter Solutions BenSoft dans un délai raisonnable avant d’initier un litige auprès de votre fournisseur de paiement.",
+          "Le fait d’initier un litige sans contact préalable avec le support peut entraîner la suspension ou la résiliation du compte."
+        ]
+      },
+      {
+        "title": "Rétrofacturations (chargebacks)",
+        "paragraphs": [
+          "L’initiation d’une rétrofacturation sans contact préalable avec Solutions BenSoft peut constituer une violation des présentes conditions.",
+          "Solutions BenSoft se réserve le droit de suspendre ou de résilier les comptes associés à des rétrofacturations abusives ou répétées."
+        ]
+      },
+      {
+        "title": "Disponibilité et modifications",
+        "paragraphs": [
+          "Solutions BenSoft se réserve le droit de modifier, suspendre ou interrompre le service ou toute partie de celui-ci, avec ou sans préavis.",
+          "Le service est fourni « tel quel » et « selon disponibilité », sans garantie."
+        ]
+      },
+      {
+        "title": "Limitation de responsabilité",
+        "paragraphs": [
+          "Dans toute la mesure permise par la loi, Solutions BenSoft ne pourra être tenue responsable des dommages directs ou indirects découlant de l’utilisation ou de l’impossibilité d’utiliser Service Coeliaque."
+        ]
+      },
+      {
+        "title": "Droit applicable",
+        "paragraphs": [
+          "Les présentes conditions d’utilisation sont régies et interprétées conformément aux lois de la province de Québec et aux lois fédérales du Canada applicables."
+        ]
+      }
+    ]
+  }
+}

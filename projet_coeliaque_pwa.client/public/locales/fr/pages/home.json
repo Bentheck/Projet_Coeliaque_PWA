@@ -1,18 +1,137 @@
 ﻿{
   "welcome": {
-    "title": "Bienvenue",
-    "subtitle": "Bienvenue sur le site Cœliaque (PWA/SPA) !"
+    "title": "Services Coeliaque : vos outils sans gluten en ligne.",
+    "subtitle": "Calculez votre crédit d’impôt, planifiez vos listes d’épicerie et échangez avec la communauté — même sans connexion Internet.",
+    "loggedInTitle": "Re-bienvenue sur Services Coeliaque, {{name}} !",
+    "loggedInSubtitle": "Vos factures, listes d’épicerie et discussions communautaires sont à votre disposition dès que vous l’êtes.",
+    "loggedInNoMembershipTitle": "Bienvenue sur Services Coeliaque, {{name}} !",
+    "loggedInNoMembershipSubtitle": "Pour accéder aux rapports d’impôts, listes d’épicerie et à toutes les fonctionnalités, vous devez d’abord activer votre abonnement."
+  },
+  "hero": {
+    "cta": {
+      "demo": "Essayer la démo guidée",
+      "register": "Créer mon compte",
+      "login": "J’ai déjà un compte",
+      "invoices": "Aller à mes factures",
+      "grocery": "Ouvrir mes listes d’épicerie",
+      "subscribe": "Activer mon abonnement",
+      "learnMore": "En savoir plus"
+    },
+    "offlineHint": "Fonctionne hors ligne : continuez d’utiliser vos factures, comparatifs, listes d’épicerie et plus encore même sans Internet."
+  },
+  "features": {
+    "calculator": {
+      "title": "Calculer votre crédit d’impôt",
+      "body": "Centralisez vos factures sans gluten, classez vos achats admissibles et générez des rapports pensés pour votre comptable."
+    },
+    "grocery": {
+      "title": "Gérer vos listes d’épicerie",
+      "body": "Créez et réutilisez vos listes, cochez les items directement en magasin et évitez les oublis."
+    },
+    "community": {
+      "title": "Participer au forum communautaire",
+      "body": "Posez vos questions, partagez vos astuces et échangez avec d’autres personnes vivant avec la maladie coeliaque."
+    }
+  },
+  "story": {
+    "title": "Pourquoi ce site existe",
+    "intro": "Ce projet est né d’une situation très simple : quelqu’un de mon entourage m’a expliqué à quel point préparer les comparatifs et rapports nécessaires pour les remboursements d’impôts liés à la maladie coeliaque pouvait être long, répétitif et frustrant.",
+    "points": {
+      "personal": "On m’a demandé si je pouvais créer un petit outil pour simplifier les choses — quelque chose qui éviterait de passer des heures à trier des factures et à refaire les mêmes calculs.",
+      "paperwork": "J’ai donc monté un premier programme, et il a rapidement fait gagner beaucoup de temps. C’est là que j’ai réalisé que cette personne n’était probablement pas la seule à trouver ce processus lourd et énergivore.",
+      "prototype": "Je me suis alors dit qu’un outil accessible en ligne pourrait aider bien plus de monde. J’ai transformé le programme en site web, puis j’ai amélioré l’interface, ajouté des comparatifs plus rapides et rendu la préparation des rapports beaucoup plus simple.",
+      "today": "Au fil du temps, de nouvelles idées se sont ajoutées : une version adaptée au mobile, des listes d’épicerie, le mode hors-ligne pour continuer à utiliser vos données même sans connexion, et d’autres fonctionnalités pratiques. Aujourd’hui, ce site existe pour rendre la vie plus simple à toutes les personnes vivant avec la maladie coeliaque."
+    },
+    "cta": {
+      "learnMore": "En savoir plus dans la FAQ",
+      "shareStory": "Partager votre expérience sur le forum"
+    },
+    "sideCard": {
+      "title": "Un outil pensé pour la vraie vie",
+      "body": "L’objectif est simple : vous faire gagner du temps, réduire la paperasse et vous offrir un espace moderne, accessible et utilisable même hors-ligne pour gérer vos factures et vos listes d’achats sans gluten.",
+      "cta": "Créer un compte gratuit",
+      "ctaLoggedIn": "Voir mon abonnement"
+    }
   },
   "offline": {
-    "card": { "title": "Disponibilité hors ligne" },
+    "card": {
+      "title": "Accès hors ligne en cours"
+    },
     "badge": "Hors ligne",
     "status": {
-      "available": "Disponible hors ligne",
-      "expired": "Session hors ligne expirée — veuillez vous reconnecter"
+      "available": "Vous pouvez continuer d’utiliser vos données même hors ligne.",
+      "expired": "L’accès hors ligne est expiré. Reconnectez-vous pour rafraîchir vos données."
     },
     "footer": {
-      "ttl": "Fenêtre TTL : {{hours}} h",
-      "cached": "Éléments mis en cache : {{count}}"
+      "ttl": "L’accès hors ligne reste valide environ {{hours}} heures après votre dernière connexion.",
+      "cached": "{{count}} éléments actuellement enregistrés sur cet appareil."
     }
+  },
+  "installCard": {
+    "title": "Installez Services Coeliaque sur votre appareil",
+    "intro": "Ajoutez le site à votre écran d’accueil ou à votre menu d’applications pour un accès plus rapide et une expérience optimisée.",
+    "ios": {
+      "title": "Sur iPhone / iPad (Safari) :",
+      "step1": "Ouvrez le site dans Safari.",
+      "step2": "Touchez le bouton Partager (icône carré avec une flèche vers le haut).",
+      "step3": "Faites défiler puis touchez « Ajouter à l’écran d’accueil ». ",
+      "step4": "Confirmez le nom si nécessaire, puis touchez « Ajouter »."
+    },
+    "android": {
+      "title": "Sur Android (Chrome) :",
+      "step1": "Ouvrez le site dans Google Chrome.",
+      "step2": "Touchez le menu (⋮) en haut à droite.",
+      "step3": "Choisissez « Ajouter à l’écran d’accueil », puis « Installer » si demandé.",
+      "step4": "L’icône apparaîtra sur votre écran d’accueil comme une application."
+    },
+    "chromeDesktop": {
+      "title": "Sur ordinateur (Google Chrome) :",
+      "step1": "Ouvrez le site dans Chrome.",
+      "step2": "Si une icône « Installer » apparaît dans la barre d’adresse, cliquez dessus puis sur « Installer ».",
+      "step3": "Si vous ne voyez pas d’icône, ouvrez le menu (⋮) > « Diffuser, enregistrer et partager » > « Installer la page comme application ». ",
+      "step4": "L’application sera disponible dans le menu Démarrer et/ou le Dock, comme une application native."
+    },
+    "edgeDesktop": {
+      "title": "Sur ordinateur (Microsoft Edge) :",
+      "step1": "Ouvrez le site dans Microsoft Edge.",
+      "step2": "Cliquez sur le menu (⋯) en haut à droite.",
+      "step3": "Allez dans « Outils supplémentaires » / « Extra tools » (si présent), puis « Applications ». ",
+      "step4": "Choisissez « Installer ce site en tant qu’application » ou « Installer “Services Coeliaque” »."
+    },
+    "safariDesktop": {
+      "title": "Sur macOS (Safari, macOS Sonoma ou plus récent) :",
+      "step1": "Ouvrez le site dans Safari.",
+      "step2": "Dans la barre de menus, choisissez « Fichier » > « Ajouter au Dock ». ",
+      "step3": "Ou utilisez le bouton Partager puis « Ajouter au Dock ». ",
+      "step4": "L’icône apparaîtra dans le Dock comme une application dédiée."
+    },
+    "firefoxDesktop": {
+      "title": "Sur ordinateur (Firefox) :",
+      "body1": "Firefox prend en charge certaines fonctionnalités PWA, mais ne propose pas toujours une installation complète comme Chrome ou Edge.",
+      "body2": "Vous pouvez créer un raccourci vers le site (par exemple dans votre Dock ou votre barre des tâches) via les outils de votre système ou les favoris du navigateur."
+    },
+    "otherDesktop": {
+      "title": "Sur ordinateur (autre navigateur) :",
+      "body": "Sur la plupart des navigateurs de bureau récents, un bouton d’installation peut apparaître dans la barre d’adresse, ou une option « Installer » / « Applications » peut être disponible dans le menu du navigateur."
+    },
+    "otherMobile": {
+      "title": "Sur mobile (autre navigateur) :",
+      "body": "Sur de nombreux navigateurs mobiles, l’option « Ajouter à l’écran d’accueil » ou « Installer l’application » se trouve dans le menu (⋮ ou ☰) du navigateur."
+    }
+  },
+  "prelaunch": {
+    "title": "Services Cœliaque arrive bientôt",
+    "subtitle": "Le site complet sera disponible à partir du 1er janvier 2026 à 15 h (heure de l’Est). En attendant, vous pouvez explorer la démo.",
+    "cta": {
+      "demo": "Essayer la démo guidée",
+      "testerLogin": "Connexion testeur"
+    },
+    "countdownLabel": "Lancement dans",
+    "launched": "C’est parti !",
+    "days": "jours",
+    "hours": "heures",
+    "minutes": "min",
+    "seconds": "sec",
+    "targetDateDescription": "Lancement prévu le 1er janvier 2026 à 15 h (heure de l’Est)"
   }
 }

@@ -25,7 +25,8 @@
     "removeAvatar": "Remove avatar",
     "save": "Save",
     "cancel": "Cancel",
-    "chooseFile": "Choose file"
+    "chooseFile": "Choose file",
+    "resetPassword": "Reset password"
   },
   "messages": {
     "avatarUpdated": "Avatar updated.",
@@ -43,5 +44,34 @@
     "deletion": "Failed to delete.",
     "save": "Save failed.",
     "generic": "Error"
+  },
+  "delete": {
+    "title": "Delete account",
+    "description": "This action is irreversible. Your personal data will be deleted and your forum contributions will be anonymized.",
+    "openButton": "Delete my account",
+    "modal": {
+      "title": "Confirm account deletion",
+      "close": "Close",
+      "lead": "Before deleting your account, please read the following:",
+      "bullets": {
+        "data": "Your data (invoices, lists, comparisons, reports, etc.) will be deleted.",
+        "forum": "Your forum posts will remain visible, but will be anonymized.",
+        "irreversible": "This action is permanent and cannot be undone."
+      },
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "confirmLabel": "I understand and confirm the permanent deletion of my account.",
+      "note": "If you have an active subscription, you must cancel it (or wait until it ends) before deleting your account.",
+      "cancel": "Cancel",
+      "deleteButton": "Delete permanently",
+      "deleting": "Deleting…"
+    },
+    "errors": {
+      "invalidPassword": "Invalid password.",
+      "requiresConfirm": "You must check the confirmation box.",
+      "subscriptionStillActive": "Your subscription is still active. Please cancel it before deleting your account.",
+      "generic": "Unable to delete the account.",
+      "lifetimeSubscription": "A lifetime subscription was detected. Please contact an administrator to delete your account."
+    }
   }
 }

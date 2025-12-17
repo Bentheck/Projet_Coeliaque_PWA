@@ -1,0 +1,100 @@
+﻿{
+  "currentVersion": "v1",
+  "v1": {
+    "title": "Avertissement légal — Service Coeliaque",
+    "subtitle": "Service Coeliaque est une solution opérée par Solutions BenSoft.",
+    "sections": [
+      {
+        "title": "1) Identification du service",
+        "paragraphs": [
+          "Service Coeliaque est une application logicielle opérée et maintenue par Solutions BenSoft (l’« Opérateur »).",
+          "Toute référence à « Service Coeliaque », « le service », « l’application » ou « la plateforme » désigne un produit fourni par Solutions BenSoft."
+        ]
+      },
+      {
+        "title": "2) Nature du service – absence de conseils professionnels",
+        "paragraphs": [
+          "Service Coeliaque est un outil de gestion personnelle permettant notamment la saisie, l’organisation et la consultation de données (factures/reçus, listes d’épicerie, comparatifs, rapports et contenu communautaire).",
+          "Le service est fourni à titre informatif uniquement et ne constitue en aucun cas un avis professionnel, notamment comptable, fiscal, juridique, médical ou financier."
+        ]
+      },
+      {
+        "title": "3) Données personnelles et informations fournies par l’utilisateur",
+        "paragraphs": [
+          "À aucun moment, Service Coeliaque n’exige ni ne demande d’informations personnelles sensibles ou confidentielles telles que, sans s’y limiter : nom légal, adresse postale, date de naissance, numéro d’assurance sociale, informations bancaires ou médicales.",
+          "Les seules informations obligatoires requises pour la création d’un compte sont : (1) une adresse courriel valide (utilisée à des fins d’authentification et de communication), et (2) un nom d’utilisateur (nom affiché) choisi par l’utilisateur.",
+          "Toute information ajoutée ultérieurement par l’utilisateur dans son profil ou dans l’application (texte libre, données, documents, commentaires, contenus du forum ou autres) est fournie volontairement, sous sa responsabilité exclusive.",
+          "Solutions BenSoft ne valide pas l’exactitude de ces informations et ne peut être tenue responsable des conséquences liées à la divulgation volontaire d’informations par l’utilisateur."
+        ]
+      },
+      {
+        "title": "4) Responsabilité de l’utilisateur (données saisies et résultats)",
+        "paragraphs": [
+          "Vous reconnaissez que l’exactitude des résultats, rapports, calculs, totaux, comparaisons et listes dépend exclusivement des informations que vous saisissez, importez ou téléversez.",
+          "Vous êtes entièrement responsable de la validation, de la vérification et de l’utilisation des données et résultats produits par l’application, notamment avant toute déclaration fiscale, demande de remboursement, transmission à un professionnel ou à une autorité."
+        ]
+      },
+      {
+        "title": "5) Aucune garantie de conformité ou d’admissibilité",
+        "paragraphs": [
+          "Les lois, règlements, programmes fiscaux, politiques de remboursement et exigences de preuve varient selon la juridiction et peuvent être modifiés sans préavis.",
+          "Solutions BenSoft ne garantit pas que les rapports, catégories, calculs ou fonctionnalités de Service Coeliaque répondent aux exigences légales, fiscales ou administratives applicables à votre situation."
+        ]
+      },
+      {
+        "title": "6) Conservation des documents et preuves",
+        "paragraphs": [
+          "Vous êtes responsable de conserver vos documents originaux (factures, reçus, relevés, confirmations, courriels ou autres preuves).",
+          "Les copies numériques, données stockées ou rapports générés par Service Coeliaque peuvent ne pas constituer une preuve suffisante auprès des autorités gouvernementales, fiscales ou de tout tiers."
+        ]
+      },
+      {
+        "title": "7) Stockage des données, fonctionnement hors ligne et sécurité",
+        "paragraphs": [
+          "Service Coeliaque peut stocker certaines données localement sur votre appareil (notamment via le navigateur et des mécanismes de stockage local) et fonctionner partiellement hors ligne.",
+          "Vous reconnaissez que la suppression du stockage local, la réinstallation de l’application, le changement d’appareil, la perte ou le vol de l’appareil peuvent entraîner une perte de données irréversible.",
+          "Vous êtes responsable de la sécurité de vos appareils, de la confidentialité de vos identifiants et de toute sauvegarde que vous jugez nécessaire."
+        ]
+      },
+      {
+        "title": "8) Disponibilité du service – fourniture « tel quel »",
+        "paragraphs": [
+          "Service Coeliaque est fourni « tel quel » et « selon disponibilité », sans garantie expresse ou implicite, incluant notamment l’exactitude des résultats, la disponibilité continue, l’absence d’erreurs ou l’adéquation à un usage particulier."
+        ]
+      },
+      {
+        "title": "9) Limitation de responsabilité",
+        "paragraphs": [
+          "Dans toute la mesure permise par la loi, Solutions BenSoft (incluant ses dirigeants, employés, développeurs, sous-traitants et partenaires) ne pourra être tenue responsable de tout dommage direct ou indirect, incluant notamment : pertes de données, pertes financières, pénalités ou intérêts, erreurs de déclaration, refus d’admissibilité à un programme, interruptions de service, résultant de l’utilisation ou de l’impossibilité d’utiliser Service Coeliaque."
+        ]
+      },
+      {
+        "title": "10) Contenu communautaire",
+        "paragraphs": [
+          "Les contenus publiés par les utilisateurs (forum, commentaires, messages) reflètent uniquement l’opinion de leurs auteurs.",
+          "Solutions BenSoft n’endosse pas, ne vérifie pas et ne garantit pas l’exactitude, la légalité ou la pertinence de ces contenus."
+        ]
+      },
+      {
+        "title": "11) Modifications et acceptation continue",
+        "paragraphs": [
+          "Solutions BenSoft se réserve le droit de modifier Service Coeliaque, ses fonctionnalités et le présent avertissement à tout moment.",
+          "Une nouvelle acceptation peut être exigée pour continuer à accéder à tout ou partie du service."
+        ]
+      },
+      {
+        "title": "12) Remboursements (délai limité)",
+        "paragraphs": [
+          "Les abonnements sont remboursables uniquement dans un délai limité, selon les conditions en vigueur au moment de l’achat.",
+          "Au-delà de ce délai, aucun remboursement ne sera accordé."
+        ]
+      },
+      {
+        "title": "13) Droit applicable",
+        "paragraphs": [
+          "Le présent avertissement est régi et interprété conformément aux lois de la province de Québec et aux lois fédérales du Canada applicables."
+        ]
+      }
+    ]
+  }
+}

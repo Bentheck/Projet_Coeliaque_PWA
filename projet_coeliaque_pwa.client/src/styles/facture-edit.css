@@ -1,0 +1,241 @@
+﻿/* ===================================================================== */
+/* FACTURE EDIT                                                          */
+/* ===================================================================== */
+
+.facture-edit-card {
+    max-width: 1200px;
+}
+
+@media (min-width: 1200px) {
+    .invoice-col-type {
+        min-width: 180px;
+        width: 220px;
+    }
+
+    .invoice-col-brand {
+        min-width: 280px;
+        width: 340px;
+    }
+
+    .invoice-col-price,
+    .invoice-col-weight,
+    .invoice-col-qty,
+    .invoice-col-onsale {
+        width: 110px;
+    }
+
+    .invoice-col-unit {
+        width: 90px;
+    }
+
+    .invoice-col-actions {
+        width: 70px;
+    }
+}
+
+.invoice-onsale-label {
+    white-space: nowrap;
+}
+
+.invoice-remove-btn {
+    line-height: 1;
+}
+
+/* React-Select (Facture type) – refined styles */
+
+.facture-type__control,
+.facture-type-mobile__control,
+.facture-type-modal__control {
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+    border-color: var(--color-border);
+    min-height: 30px;
+    border-radius: 0.375rem;
+    box-shadow: none;
+    font-size: 0.9rem;
+}
+
+.facture-type__control--is-focused,
+.facture-type-mobile__control--is-focused,
+.facture-type-modal__control--is-focused {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(16,110,190,0.35);
+}
+
+.facture-type__value-container,
+.facture-type-mobile__value-container,
+.facture-type-modal__value-container {
+    padding: 0 8px;
+}
+
+.facture-type__single-value,
+.facture-type-mobile__single-value,
+.facture-type-modal__single-value {
+    color: var(--color-text);
+}
+
+.facture-type__placeholder,
+.facture-type-mobile__placeholder,
+.facture-type-modal__placeholder {
+    color: var(--color-text-muted);
+}
+
+/* The text input used for CreatableSelect – keep it flat/transparent */
+.facture-type__input,
+.facture-type-mobile__input,
+.facture-type-modal__input {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--color-text) !important;
+    padding: 0;
+    margin: 0;
+}
+
+/* Make sure table-embedded react-select inputs stay flat too */
+.table .facture-type__input {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Indicators (dropdown arrow, clear button, etc.) */
+.facture-type__indicators,
+.facture-type-mobile__indicators,
+.facture-type-modal__indicators {
+    padding: 0 4px;
+}
+
+.facture-type__indicator,
+.facture-type-mobile__indicator,
+.facture-type-modal__indicator {
+    color: var(--color-text-muted);
+}
+
+.facture-type__indicator-separator,
+.facture-type-mobile__indicator-separator,
+.facture-type-modal__indicator-separator {
+    background-color: var(--color-border);
+}
+
+/* The dropdown menu itself */
+.facture-type__menu,
+.facture-type-mobile__menu,
+.facture-type-modal__menu {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-elevated);
+    z-index: 9999;
+}
+
+/* Options */
+.facture-type__option,
+.facture-type-mobile__option,
+.facture-type-modal__option {
+    background-color: transparent;
+    color: var(--color-text);
+}
+
+.facture-type__option--is-focused,
+.facture-type-mobile__option--is-focused,
+.facture-type-modal__option--is-focused {
+    background-color: var(--color-hover);
+}
+
+.facture-type__option--is-selected,
+.facture-type-mobile__option--is-selected,
+.facture-type-modal__option--is-selected {
+    background-color: var(--color-primary);
+    color: var(--color-primary-text);
+}
+
+/* Mobile-specific tweaks */
+.facture-type-mobile__control {
+    min-height: 28px;
+    font-size: 14px;
+}
+
+.facture-type-mobile__value-container {
+    padding: 0 6px;
+}
+
+.facture-type-mobile__input-container {
+    margin: 0;
+    padding: 0;
+}
+
+.facture-type-mobile__indicators {
+    height: 22px;
+}
+
+/* DARK MODE */
+
+html[data-theme="dark"] .facture-type__control,
+html[data-theme="dark"] .facture-type-mobile__control,
+html[data-theme="dark"] .facture-type-modal__control {
+    background-color: #1e293b !important;
+    color: #e5e7eb !important;
+    border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .facture-type__menu,
+html[data-theme="dark"] .facture-type-mobile__menu,
+html[data-theme="dark"] .facture-type-modal__menu {
+    background-color: #020617 !important;
+    color: #e5e7eb !important;
+    border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .facture-type__single-value,
+html[data-theme="dark"] .facture-type-mobile__single-value,
+html[data-theme="dark"] .facture-type-modal__single-value {
+    color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .facture-type__placeholder,
+html[data-theme="dark"] .facture-type-mobile__placeholder,
+html[data-theme="dark"] .facture-type-modal__placeholder {
+    color: #9ca3af !important;
+}
+
+html[data-theme="dark"] .facture-type__option,
+html[data-theme="dark"] .facture-type-mobile__option,
+html[data-theme="dark"] .facture-type-modal__option {
+    color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .facture-type__option--is-focused,
+html[data-theme="dark"] .facture-type-mobile__option--is-focused,
+html[data-theme="dark"] .facture-type-modal__option--is-focused {
+    background-color: #334155 !important;
+}
+
+html[data-theme="dark"] .facture-type__option--is-selected,
+html[data-theme="dark"] .facture-type-mobile__option--is-selected,
+html[data-theme="dark"] .facture-type-modal__option--is-selected {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .facture-type__indicator,
+html[data-theme="dark"] .facture-type-mobile__indicator,
+html[data-theme="dark"] .facture-type-modal__indicator {
+    color: #9ca3af !important;
+}
+
+html[data-theme="dark"] .facture-type__indicator-separator,
+html[data-theme="dark"] .facture-type-mobile__indicator-separator,
+html[data-theme="dark"] .facture-type-modal__indicator-separator {
+    background-color: #334155 !important;
+}
+
+/* Dark mode – keep CreatableSelect input transparent & flat */
+html[data-theme="dark"] .facture-type__input,
+html[data-theme="dark"] .facture-type-mobile__input,
+html[data-theme="dark"] .facture-type-modal__input {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #e5e7eb !important;
+}

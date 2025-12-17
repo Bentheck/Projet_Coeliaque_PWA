@@ -3,19 +3,21 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
- * Detect platform / installability
+ * Detect platform / installability helpers
  */
 function isIOS() {
     // iOS Safari/Chrome have no beforeinstallprompt; we show instructions banner
     return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
 }
+
 function isInStandaloneMode() {
-    // iOS standalone: navigator.standalone === true
     // Other platforms: CSS media query 'display-mode'
-    // (some browsers support both; consider either true as installed)
     const mq = window.matchMedia("(display-mode: standalone)").matches;
-    // @ts-ignore - Safari iOS property
-    const iosStandalone = typeof window.navigator.standalone !== "undefined" && (window.navigator as any).standalone;
+
+    // iOS Safari: non-standard `navigator.standalone`
+    const iosStandalone =
+        "standalone" in navigator && Boolean((navigator as any).standalone);
+
     return mq || iosStandalone;
 }
 
@@ -26,10 +28,11 @@ type BeforeInstallPromptEvent = Event & {
 
 export default function InstallPWA() {
     const { t } = useTranslation("components/installPwa");
-    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+    const [deferredPrompt, setDeferredPrompt] =
+        useState<BeforeInstallPromptEvent | null>(null);
     const [installed, setInstalled] = useState<boolean>(isInStandaloneMode());
     const [showIosHelp, setShowIosHelp] = useState<boolean>(false);
-    const [eligible, setEligible] = useState<boolean>(false);
 
     /**
      * Listen for 'beforeinstallprompt' (Android/desktop). iOS never fires it.
@@ -40,7 +43,6 @@ export default function InstallPWA() {
             // Chrome-specific event but typed loosely
             (e as any).preventDefault?.();
             setDeferredPrompt(e as BeforeInstallPromptEvent);
-            setEligible(true);
         };
         window.addEventListener("beforeinstallprompt", handler as any);
 
@@ -48,17 +50,12 @@ export default function InstallPWA() {
         const onInstalled = () => {
             setInstalled(true);
             setDeferredPrompt(null);
-            setEligible(false);
         };
         window.addEventListener("appinstalled", onInstalled);
 
         // If already standalone (installed), ensure it's hidden
         if (isInStandaloneMode()) {
             setInstalled(true);
-            setEligible(false);
-        } else if (isIOS()) {
-            // iOS won't have 'beforeinstallprompt'; we can still show instructions on demand
-            setEligible(true);
         }
 
         return () => {
@@ -70,38 +67,39 @@ export default function InstallPWA() {
     const onClickInstall = useCallback(async () => {
         if (installed) return;
 
+        // iOS → show instructions overlay
         if (isIOS()) {
-            // Show the instructions banner for iOS
             setShowIosHelp(true);
             return;
         }
 
+        // Non-iOS: we *prefer* to use beforeinstallprompt,
+        // but some browsers only expose the URL-bar install UI.
         if (!deferredPrompt) {
-            // Not eligible yet (maybe SW/manifest not ready) — small UX nudge
+            // Suggestion for alerts.notReady text:
+            // "Votre navigateur ne permet pas l’installation via ce bouton.
+            //  Utilisez plutôt l’option « Installer l’application » dans la barre d’adresse."
             alert(t("alerts.notReady"));
             return;
         }
 
         try {
             await deferredPrompt.prompt();
-            // Some browsers expose userChoice; if present, read it
             if (deferredPrompt.userChoice) {
                 const choice = await deferredPrompt.userChoice;
                 if (choice.outcome === "accepted") {
-                    // Installed — the 'appinstalled' event should also fire
                     setInstalled(true);
                 }
             }
             // Once used, the event can’t be reused
             setDeferredPrompt(null);
-            setEligible(false);
         } catch {
-            // Swallow; user may have dismissed
+            // User dismissed or prompt failed → nothing special to do
         }
     }, [deferredPrompt, installed, t]);
 
-    // If installed or not eligible, render nothing
-    if (installed || !eligible) return null;
+    // If already installed (standalone), render nothing
+    if (installed) return null;
 
     const btnTitle = isIOS() ? t("button.titleIos") : t("button.titleOther");
     const btnLabel = isIOS() ? t("button.labelIos") : t("button.labelOther");
@@ -151,8 +149,12 @@ export default function InstallPWA() {
 
                         <ol className="mb-3 ps-3">
                             <li className="mb-2">
-                                {t("ios.step1.prefix")} <b>{t("ios.shareText")}</b>{" "}
-                                <span aria-label={t("ios.shareIconAria")} title={t("ios.shareText")}>
+                                {t("ios.step1.prefix")}{" "}
+                                <b>{t("ios.shareText")}</b>{" "}
+                                <span
+                                    aria-label={t("ios.shareIconAria")}
+                                    title={t("ios.shareText")}
+                                >
                                     {t("ios.shareIconHint")}
                                 </span>
                                 .

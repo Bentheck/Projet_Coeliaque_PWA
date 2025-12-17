@@ -4,16 +4,7 @@ import { fetchJSON } from "../../lib/api";
 import type { ForumCategoryDto } from "../../lib/types";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthContext";
-
-/** Accent stripes for cards (cycled by index) */
-const PALETTE = [
-    "linear-gradient(90deg,#a18cd1 0%,#fbc2eb 100%)",
-    "linear-gradient(90deg,#f6d365 0%,#fda085 100%)",
-    "linear-gradient(90deg,#96e6a1 0%,#d4fc79 100%)",
-    "linear-gradient(90deg,#84fab0 0%,#8fd3f4 100%)",
-    "linear-gradient(90deg,#cfd9df 0%,#e2ebf0 100%)",
-    "linear-gradient(90deg,#fbc2eb 0%,#a6c1ee 100%)",
-];
+import "../../styles/forum.css";
 
 const ForumCategories: React.FC = () => {
     const { t } = useTranslation("pages/Forum/forumCategories");
@@ -41,11 +32,13 @@ const ForumCategories: React.FC = () => {
             try {
                 setLoading(true);
                 setErr(null);
-                const data = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
+                const data = await fetchJSON<ForumCategoryDto[]>(
+                    "/api/forum/categories"
+                );
 
                 // Filter by language from backend
-                const filtered = data.filter(
-                    (c) => (c.language || "fr").toLowerCase().startsWith(safeLang)
+                const filtered = data.filter((c) =>
+                    (c.language || "fr").toLowerCase().startsWith(safeLang)
                 );
 
                 if (alive) setCats(filtered);
@@ -64,7 +57,7 @@ const ForumCategories: React.FC = () => {
 
     const deleteCategory = async (id: number) => {
         if (!isAdmin) return;
-        if (!confirm(t("mod.deleteCategoryConfirm"))) return; // i18n key in forumCategories
+        if (!confirm(t("mod.deleteCategoryConfirm"))) return;
         try {
             await fetchJSON(`/api/forum/admin/categories/${id}`, {
                 method: "DELETE",
@@ -72,22 +65,29 @@ const ForumCategories: React.FC = () => {
             setCats((prev) => prev.filter((c) => c.id !== id));
         } catch (e) {
             console.error(e);
-            alert(t("mod.deleteCategoryFailed")); // i18n key in forumCategories
+            alert(t("mod.deleteCategoryFailed"));
         }
     };
 
     return (
         <div className="container py-3">
-            {/* Header / context */}
-            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <div className="rounded-4 p-4 p-md-5 border bg-light flex-grow-1 me-3">
-                    <h1 className="h3 mb-1">{t("title")}</h1>
-                    <div className="text-muted">{t("subtitle")}</div>
+            {/* Header / context with primary highlight + border */}
+            <div className="d-flex justify-content-between align-items-stretch mb-3 flex-wrap gap-2">
+                <div className="card card--accent section-highlight-primary section-border-primary shadow-sm flex-grow-1">
+                    <div className="card-body">
+                        <h1 className="h3 mb-2">{t("title")}</h1>
+                        <div className="text-muted">{t("subtitle")}</div>
+                    </div>
                 </div>
-                <Link to="/forum" className="btn btn-outline-secondary">
-                    <i className="bi bi-arrow-left me-2" />
-                    {t("buttons.backToLanguage")}
-                </Link>
+                <div className="d-flex align-items-center">
+                    <Link
+                        to="/forum"
+                        className="btn btn-outline-secondary ms-lg-3 mt-2 mt-lg-0"
+                    >
+                        <i className="bi bi-arrow-left me-2" />
+                        {t("buttons.backToLanguage")}
+                    </Link>
+                </div>
             </div>
 
             {err && <div className="alert alert-danger">{err}</div>}
@@ -97,14 +97,7 @@ const ForumCategories: React.FC = () => {
                 <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div className="col" key={i}>
-                            <div className="card h-100 shadow-sm border-0">
-                                <div
-                                    className="rounded-top forum-categories-stripe"
-                                    style={{
-                                        background:
-                                            PALETTE[i % PALETTE.length],
-                                    }}
-                                />
+                            <div className="card card--tinted h-100 hl-soft shadow-sm border-0">
                                 <div className="card-body">
                                     <h5 className="card-title placeholder-glow">
                                         <span className="placeholder col-7" />
@@ -119,22 +112,21 @@ const ForumCategories: React.FC = () => {
                     ))}
                 </div>
             ) : cats.length === 0 ? (
-                <div className="alert alert-info">{t("empty")}</div>
+                <div className="card card--tinted section-highlight-mint shadow-sm border-0">
+                    <div className="card-body">
+                        <div className="alert alert-info mb-0">
+                            {t("empty")}
+                        </div>
+                    </div>
+                </div>
             ) : (
                 // Categories grid
                 <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
-                    {cats.map((c, idx) => (
+                    {cats.map((c) => (
                         <div className="col" key={c.id}>
-                            <div className="card h-100 shadow-sm border-0 position-relative">
-                                <div
-                                    className="rounded-top forum-categories-stripe"
-                                    style={{
-                                        background:
-                                            PALETTE[idx % PALETTE.length],
-                                    }}
-                                />
+                            <div className="card card--tinted h-100 hl-hover position-relative shadow-sm border-0">
                                 <div className="card-body d-flex flex-column">
-                                    <h5 className="card-title mb-1 d-flex justify-content-between align-items-start">
+                                    <h5 className="card-title mb-2 d-flex justify-content-between align-items-start">
                                         <span>{c.name}</span>
                                         {isAdmin && (
                                             <button
@@ -148,18 +140,28 @@ const ForumCategories: React.FC = () => {
                                             </button>
                                         )}
                                     </h5>
-                                    <p className="card-text text-muted flex-grow-1 mb-2">
+
+                                    <p className="card-text text-muted flex-grow-1 mb-3">
                                         {c.description || "—"}
                                     </p>
+
                                     <div className="d-flex justify-content-between align-items-center">
-                                        <span className="badge text-bg-secondary">
+                                        {/* Highlight thread count as pill */}
+                                        <span
+                                            className={
+                                                c.threadCount > 0
+                                                    ? "pill-highlight-primary"
+                                                    : "pill-highlight-mint"
+                                            }
+                                        >
                                             {t("badges.threads", {
                                                 count: c.threadCount,
                                             })}
                                         </span>
+
                                         <Link
                                             to={`/forum/${safeLang}/c/${c.id}`}
-                                            className="stretched-link btn btn-outline-primary btn-sm"
+                                            className="btn btn-outline-primary btn-sm"
                                         >
                                             {t("buttons.open")}
                                         </Link>

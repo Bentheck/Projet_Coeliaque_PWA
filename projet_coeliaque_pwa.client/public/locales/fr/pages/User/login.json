@@ -4,7 +4,8 @@
     "emailConfirmed": "Votre adresse courriel a été confirmée. Vous pouvez maintenant vous connecter.",
     "badUser": "Utilisateur introuvable pour la confirmation de courriel.",
     "confirmErrorLine1": "Une erreur est survenue lors de la confirmation de votre courriel.",
-    "confirmErrorLine2": "Le lien est peut-être expiré ou déjà utilisé."
+    "confirmErrorLine2": "Le lien est peut-être expiré ou déjà utilisé.",
+    "passwordReset": "Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter."
   },
   "unconfirmed": {
     "text": "Votre adresse courriel n'est pas confirmée.",
@@ -12,6 +13,9 @@
     "resendSuccess": "Un nouveau lien de confirmation a été envoyé à votre adresse courriel.",
     "resendFail": "Impossible d'envoyer le lien. Réessayez plus tard.",
     "resendError": "Une erreur est survenue. Réessayez plus tard."
+  },
+  "links": {
+    "forgotPassword": "Mot de passe oublié ?"
   },
   "fields": {
     "email": "Courriel",

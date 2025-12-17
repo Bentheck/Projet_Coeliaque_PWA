@@ -1,0 +1,263 @@
+﻿/* ===================================================================== */
+/* LISTE ÉPICERIE (edit / view / index)                                  */
+/* ===================================================================== */
+
+/* EDIT PAGE SCOPE HOOK */
+
+.liste-edit-page {
+    /* hook for scoping */
+}
+
+/* Estimated total badge – mint & primary */
+.liste-badge-total {
+    background: var(--color-accent-mint-soft);
+    border: 1px solid var(--color-accent-mint-border);
+    color: #045e3e; /* AAA vs soft mint */
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+}
+
+/* Card for quick free-item creation – blue + mint outline */
+.card--accent-outline {
+    background: var(--color-primary-soft);
+    border: 1px solid var(--color-primary-border);
+    box-shadow: 0 0 0 1px var(--color-accent-mint-border);
+}
+
+/* Selects for types – make them look “active” */
+.liste-edit-page .liste-edit-select-narrow {
+    background-color: var(--color-surface-2);
+    border-color: var(--color-primary-border);
+}
+
+/* Filters: "Hide on sale" toggles – highlight when active */
+.liste-filter-toggle {
+    padding: 0.1rem 0.3rem;
+    border-radius: 999px;
+}
+
+    .liste-filter-toggle .form-check-input {
+        margin-right: 0.35rem;
+    }
+
+        .liste-filter-toggle .form-check-input:checked + .form-check-label {
+            background-color: var(--color-primary-soft);
+            color: var(--color-primary-border);
+            border-radius: 999px;
+            padding: 0.1rem 0.65rem;
+        }
+
+/* Table headers and row hover – use soft blue + hover color */
+.liste-edit-page .table thead th {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-border);
+}
+
+.liste-edit-page table.table tbody tr:hover {
+    background-color: var(--color-hover);
+}
+
+/* Row-level highlights */
+.liste-row--onsale {
+    background-color: var(--color-accent-mint-soft);
+}
+
+.liste-row--selected {
+    box-shadow: inset 3px 0 0 var(--color-primary-border);
+}
+
+/* Keep hover readable on special rows */
+.liste-edit-page .liste-row--onsale:hover {
+    background-color: var(--color-accent-mint-soft);
+}
+
+/* Outline buttons in Liste-Épicerie edit */
+
+.liste-edit-page .btn-outline-primary {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-primary-border);
+    color: var(--color-primary-border);
+}
+
+    .liste-edit-page .btn-outline-primary:hover {
+        background-color: var(--color-primary);
+        border-color: var(--color-primary-border);
+        color: var(--color-primary-text);
+    }
+
+/* AAA mint outline button here too */
+.liste-edit-page .btn-outline-success {
+    background-color: var(--color-accent-mint-soft);
+    border-color: var(--color-accent-mint-border);
+    color: #045e3e; /* AAA vs soft mint */
+}
+
+    .liste-edit-page .btn-outline-success:hover {
+        background-color: var(--color-accent-mint);
+        border-color: var(--color-accent-mint-border);
+        color: #022c22;
+    }
+
+.liste-edit-page .btn-outline-secondary {
+    background-color: var(--color-surface-2);
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+    .liste-edit-page .btn-outline-secondary:hover {
+        background-color: var(--color-hover);
+    }
+
+/* Input focus – use primary + soft blue background */
+.liste-edit-page input.form-control:focus,
+.liste-edit-page select.form-select:focus {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(16, 110, 190, 0.25);
+}
+
+/* Header name input: avoid taking full width on desktop */
+.liste-edit-header-name-input {
+    max-width: 380px;
+}
+
+/* Narrow selects in modals */
+.liste-edit-select-narrow {
+    max-width: 260px;
+}
+
+/* Sticky-ish scroll zones inside modals */
+.modal-scroll-60vh {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-scroll-40vh {
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+/* Table rows for list items */
+.liste-row {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Mint-y hint for on-sale */
+.liste-row--onsale {
+    background-color: rgba(16, 185, 129, 0.06);
+}
+
+/* Selected row stronger left border */
+.liste-row--selected {
+    background-color: var(--color-surface-2);
+    box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* Little sale dot */
+.sale-dot {
+    width: 0.7rem;
+    height: 0.7rem;
+}
+
+/* Filter toggle area in modals */
+.liste-filter-toggle .form-check-input {
+    cursor: pointer;
+}
+
+/* VIEW PAGE */
+
+.liste-view-col-done {
+    width: 80px;
+}
+
+.liste-view-col-product {
+    width: 28%;
+}
+
+.liste-view-col-qty {
+    width: 110px;
+}
+
+.liste-view-check-cell {
+    position: relative;
+    height: 40px;
+}
+
+.liste-view-check-input {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 26px;
+    height: 26px;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+/* Checkbox visual */
+.liste-view-check-box {
+    width: 26px;
+    height: 26px;
+    border: 3px solid var(--color-text);
+    border-radius: 4px;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+/* Checked → menthe douce */
+.liste-view-check-box--checked {
+    background-color: var(--color-accent-mint-soft);
+}
+
+/* INDEX PAGE */
+
+.liste-index-container {
+}
+
+.liste-index-empty-card {
+    min-height: 220px;
+}
+
+/* Search icon box in Liste Épicerie index */
+.liste-search-addon {
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+    border-color: var(--color-border);
+    border-right: 0;
+}
+
+/* Dark mode override */
+html[data-theme="dark"] .liste-search-addon {
+    background-color: #020617;
+    color: #e5e7eb;
+    border-color: #334155;
+}
+
+/* Total row in Liste Épicerie table */
+.liste-total-row th,
+.liste-total-row td {
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    border-top: 2px solid var(--color-border);
+    font-weight: 600;
+}
+
+/* Ensure it also looks good in dark mode */
+html[data-theme="dark"] .liste-total-row th,
+html[data-theme="dark"] .liste-total-row td {
+    background: var(--color-surface-2) !important;
+    color: var(--color-text) !important;
+    border-top-color: var(--color-border) !important;
+}

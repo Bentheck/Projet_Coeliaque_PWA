@@ -2,13 +2,63 @@
   "title": "Create account",
   "emailLabel": "Email",
   "passwordLabel": "Password",
+  "confirmPasswordLabel": "Confirm password",
+  "displayNameLabel": "Display name",
+  "displayNameHelp": "This name will be visible to other users (e.g. in the forum).",
+  "inviteTokenLabel": "Invite code",
+  "inviteTokenHelp": "If you received an invite email, paste the code here. It is required while the site is in pre-launch.",
   "submit": "Create account",
   "submitting": "Creating…",
   "defaultError": "Could not create your account. Please try again.",
   "successTitle": "Almost there!",
   "successMsg": "We’ve sent you a confirmation link. Please check your inbox.",
+  "strength": {
+    "label": "Password strength: {{level}}",
+    "weak": "Weak",
+    "medium": "Medium",
+    "strong": "Strong",
+    "hint": "Use at least 8 characters with a mix of letters, numbers and symbols."
+  },
+  "passwordToggle": {
+    "show": "Show password",
+    "hide": "Hide password",
+    "showShort": "Show",
+    "hideShort": "Hide"
+  },
+  "confirmPasswordToggle": {
+    "show": "Show confirmation",
+    "hide": "Hide confirmation",
+    "showShort": "Show",
+    "hideShort": "Hide"
+  },
+  "mismatch": {
+    "hint": "Type the same password again for confirmation.",
+    "ok": "Passwords match.",
+    "error": "The passwords do not match."
+  },
+  "confirmField": {
+    "pasteNotAllowed": "For security, pasting is disabled in the confirmation field. Please type the password again."
+  },
   "errors": {
     "missingFields": "Email and password are required.",
-    "identityValidationFailed": "Some fields are invalid. Please review your input."
+    "identityValidationFailed": "Some fields are invalid. Please review your input.",
+    "missingDisplayName": "Display name is required.",
+    "displayNameTooLong": "Display name must be at most 40 characters.",
+    "displayNameTaken": "This display name is already taken.",
+    "passwordMismatch": "The passwords do not match.",
+    "passwordRequired": "Password and confirmation are required.",
+    "disclaimerRequired": "You must accept the disclaimer to create an account.",
+    "emailTaken": "This email is already in use.",
+    "inviteRequired": "An invite code is required to create an account at this time.",
+    "invalidInvite": "The invite code is invalid, expired, or does not match this email.",
+    "testerRoleGrantFailed": "Your account could not be granted tester permissions. Please contact support."
+  },
+  "help": {
+    "displayNameAria": "Help about the display name",
+    "password": "Use a strong password with a mix of letters, numbers, and symbols.",
+    "passwordAria": "Help about password requirements",
+    "confirmPassword": "Retype the same password to confirm it.",
+    "confirmPasswordAria": "Help about confirming the password",
+    "inviteTokenAria": "Help about the invite code field"
   }
 }

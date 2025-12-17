@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
+using Projet_Coeliaque_PWA.Server.Services;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading;
@@ -13,14 +15,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     /// <summary>
     /// Read-only endpoints for a user's invoice items (FactureItems).
     /// All data is scoped to the authenticated user via Facture.UserId.
+    /// Membership is required (same as invoice module).
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [ModuleGate("Factures")]
     public class FactureItemsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
-        public FactureItemsController(ApplicationDbContext db) => _db = db;
+        private readonly IMembershipService _membershipService;
+
+        public FactureItemsController(
+            ApplicationDbContext db,
+            IMembershipService membershipService)
+        {
+            _db = db;
+            _membershipService = membershipService;
+        }
 
         private string? UserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -33,6 +45,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<ActionResult<object>> GetTypes([FromQuery] string? q, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var query = _db.FactureItems
                 .AsNoTracking()
@@ -67,6 +80,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var items = _db.FactureItems
                 .AsNoTracking()
@@ -108,6 +122,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<ActionResult<object>> GetOne(int id, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            if (!await _membershipService.HasActiveMembershipAsync(UserId)) return Forbid("Membership required.");
 
             var dto = await _db.FactureItems
                 .AsNoTracking()

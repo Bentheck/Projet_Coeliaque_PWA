@@ -107,7 +107,7 @@ export default function Login() {
     return (
         <form
             onSubmit={handleSubmit}
-            className="card p-4 mx-auto my-5 auth-card"
+            className="card border-accent-primary p-4 mx-auto my-5 auth-card"
             noValidate
         >
             <h2 className="mb-3">{t("title")}</h2>
@@ -181,6 +181,12 @@ export default function Login() {
                     autoComplete="current-password"
                     required
                 />
+            </div>
+
+            <div className="mt-3 text-center">
+                <a href="/forgot-password" className="btn btn-link px-0">
+                    {t("links.forgotPassword")}
+                </a>
             </div>
 
             <button className="btn btn-primary w-100" type="submit" disabled={loading}>

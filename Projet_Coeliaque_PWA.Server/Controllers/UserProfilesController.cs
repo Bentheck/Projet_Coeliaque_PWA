@@ -1,12 +1,18 @@
-﻿using AutoMapper;
+﻿using System;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
-using System.Security.Claims;
+using Projet_Coeliaque_PWA.Server.Services;
 
 /// <summary>
 /// User profile endpoints: fetch by userId or name, get/update current user's profile,
@@ -14,18 +20,27 @@ using System.Security.Claims;
 /// </summary>
 [ApiController]
 [Route("api/users")]
+[ModuleGate("Profile")]
 public class UserProfilesController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly IMapper _mapper;
     private readonly UserManager<IdentityUser> _um;
+    private readonly IAuditLogService _audit;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="UserProfilesController"/>.
     /// </summary>
-    public UserProfilesController(ApplicationDbContext db, IMapper mapper, UserManager<IdentityUser> um)
+    public UserProfilesController(
+        ApplicationDbContext db,
+        IMapper mapper,
+        UserManager<IdentityUser> um,
+        IAuditLogService audit)
     {
-        _db = db; _mapper = mapper; _um = um;
+        _db = db;
+        _mapper = mapper;
+        _um = um;
+        _audit = audit;
     }
 
     private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -46,7 +61,12 @@ public class UserProfilesController : ControllerBase
         {
             var user = await _um.FindByIdAsync(userId);
             if (user == null) return NotFound();
-            source = new UserProfile { UserId = userId, DisplayName = user.UserName ?? "Utilisateur", JoinedUtc = DateTime.UtcNow };
+            source = new UserProfile
+            {
+                UserId = userId,
+                DisplayName = user.UserName ?? "Utilisateur",
+                JoinedUtc = DateTime.UtcNow
+            };
         }
         else
         {
@@ -107,7 +127,12 @@ public class UserProfilesController : ControllerBase
         if (profile == null)
         {
             var user = await _um.FindByIdAsync(uid);
-            profile = new UserProfile { UserId = uid, DisplayName = user?.UserName ?? "Moi", JoinedUtc = DateTime.UtcNow };
+            profile = new UserProfile
+            {
+                UserId = uid,
+                DisplayName = user?.UserName ?? "Moi",
+                JoinedUtc = DateTime.UtcNow
+            };
             _db.UserProfiles.Add(profile);
             await _db.SaveChangesAsync(ct);
         }
@@ -138,9 +163,23 @@ public class UserProfilesController : ControllerBase
         var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid, ct);
         if (profile == null)
         {
-            profile = new UserProfile { Id = Guid.NewGuid(), UserId = uid, JoinedUtc = DateTime.UtcNow };
+            profile = new UserProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = uid,
+                JoinedUtc = DateTime.UtcNow
+            };
             _db.UserProfiles.Add(profile);
         }
+
+        // Snapshot BEFORE changes for audit
+        var before = new
+        {
+            profile.DisplayName,
+            profile.Bio,
+            profile.Location,
+            profile.Website
+        };
 
         // Validate & enforce unique display name (case-insensitive)
         var newDisplay = input.DisplayName?.Trim();
@@ -170,6 +209,23 @@ public class UserProfilesController : ControllerBase
 
         // DO NOT accept AvatarPath here (avatar is managed by /api/profile/avatar)
         await _db.SaveChangesAsync(ct);
+
+        // Audit AFTER changes
+        await _audit.LogForUserIdAsync(
+            uid,
+            "Profile.Update",
+            target: uid,
+            details: new
+            {
+                Before = before,
+                After = new
+                {
+                    profile.DisplayName,
+                    profile.Bio,
+                    profile.Location,
+                    profile.Website
+                }
+            });
 
         // Also mirror to claim so navbar uses display name immediately (optional)
         var user = await _um.FindByIdAsync(uid);

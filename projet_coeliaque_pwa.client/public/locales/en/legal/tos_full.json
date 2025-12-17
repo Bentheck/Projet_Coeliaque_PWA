@@ -1,0 +1,92 @@
+﻿{
+  "currentVersion": "v1",
+  "v1": {
+    "title": "Terms of Service — Service Coeliaque",
+    "subtitle": "Effective upon acceptance",
+    "sections": [
+      {
+        "title": "Service identification",
+        "paragraphs": [
+          "Service Coeliaque is a software application operated and maintained by Solutions BenSoft.",
+          "Any reference to “Service Coeliaque”, “the service”, “the application” or “the platform” refers to a product provided by Solutions BenSoft."
+        ]
+      },
+      {
+        "title": "Acceptance of the terms",
+        "paragraphs": [
+          "By creating an account, accessing, or using Service Coeliaque, you acknowledge that you have read, understood, and agreed to these Terms of Service.",
+          "If you do not agree with these terms, you must not use the service."
+        ]
+      },
+      {
+        "title": "Nature of the service",
+        "paragraphs": [
+          "Service Coeliaque is a personal management tool allowing users to record, organize, and consult data such as invoices, grocery lists, comparisons, reports, and community content.",
+          "The service is provided for informational purposes only and does not constitute professional advice of any kind."
+        ]
+      },
+      {
+        "title": "User account and information",
+        "paragraphs": [
+          "The only information required to create an account is a valid email address and a username (display name).",
+          "Any additional information voluntarily provided by the user is submitted under the user’s sole responsibility."
+        ]
+      },
+      {
+        "title": "User responsibilities",
+        "paragraphs": [
+          "You are responsible for the accuracy, legality, and relevance of all data you enter or upload into the service.",
+          "You are responsible for safeguarding your login credentials and for all activities conducted under your account."
+        ]
+      },
+      {
+        "title": "Content moderation",
+        "paragraphs": [
+          "Users may publish content through community features such as forums or comments.",
+          "Solutions BenSoft reserves the right, but not the obligation, to moderate, edit, restrict, or remove any content that violates these Terms, applicable laws, or community standards, or that is deemed inappropriate, abusive, unlawful, or harmful.",
+          "Solutions BenSoft is not responsible for user-generated content and does not guarantee its accuracy, legality, or reliability."
+        ]
+      },
+      {
+        "title": "Subscriptions and refunds",
+        "paragraphs": [
+          "Paid subscriptions may be refundable within a limited time period, under the conditions applicable at the time of purchase.",
+          "After this period, no refunds will be issued."
+        ]
+      },
+      {
+        "title": "Payment disputes",
+        "paragraphs": [
+          "If you believe a billing error has occurred, you must contact Solutions BenSoft within a reasonable time before initiating a payment dispute with your payment provider.",
+          "Failure to contact support prior to initiating a dispute may result in suspension or termination of your account."
+        ]
+      },
+      {
+        "title": "Chargebacks",
+        "paragraphs": [
+          "Initiating a chargeback without prior contact with Solutions BenSoft may be considered a breach of these Terms.",
+          "Solutions BenSoft reserves the right to suspend or terminate accounts associated with excessive or abusive chargebacks."
+        ]
+      },
+      {
+        "title": "Availability and modifications",
+        "paragraphs": [
+          "Solutions BenSoft reserves the right to modify, suspend, or discontinue the service or any part of it at any time, with or without notice.",
+          "The service is provided “as is” and “as available”, without any warranty."
+        ]
+      },
+      {
+        "title": "Limitation of liability",
+        "paragraphs": [
+          "To the fullest extent permitted by law, Solutions BenSoft shall not be liable for any direct or indirect damages arising from the use or inability to use Service Coeliaque."
+        ]
+      },
+      {
+        "title": "Governing law",
+        "paragraphs": [
+          "These Terms of Service are governed by and construed in accordance with the laws of the Province of Québec and the applicable federal laws of Canada."
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,140 @@
+﻿/* ========================================================================= */
+/* FAQ PUBLIC PAGE                                                           */
+/* ========================================================================= */
+
+.faq-page {
+    max-width: 900px;
+    margin: 0 auto 2.5rem;
+}
+
+/* Header card */
+.faq-header-card {
+    border: 1px solid var(--color-primary-border);
+}
+
+/* Category container (details) */
+.faq-category {
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+    margin: 0;
+}
+
+    /* Remove default marker and make clickable area nice */
+    .faq-category summary {
+        list-style: none;
+        outline: none;
+    }
+
+        .faq-category summary::-webkit-details-marker {
+            display: none;
+        }
+
+.faq-category-summary {
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+/* Slight accent when open */
+.faq-category[open] {
+    border-left: 4px solid var(--color-primary-border);
+}
+
+/* Question nested accordions */
+.faq-question {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    margin: 0;
+}
+
+    /* Space between questions inside same category */
+    .faq-question + .faq-question {
+        margin-top: 0.35rem;
+    }
+
+/* Disclaimer uses alert-warning as base; just tighten spacing if needed */
+.faq-disclaimer {
+    border-radius: 0.9rem;
+}
+
+/* Dark mode tweaks */
+html[data-theme="dark"] .faq-category {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+html[data-theme="dark"] .faq-category-summary {
+    border-bottom-color: #334155;
+}
+
+html[data-theme="dark"] .faq-question {
+    background: #020617;
+    border-color: #334155;
+}
+
+/* ========================================================================= */
+/* FAQ ADMIN PAGE                                                            */
+/* ========================================================================= */
+
+.faq-admin-page {
+    max-width: 1100px;
+    margin: 0 auto 2.5rem;
+}
+
+/* Shared admin cards (forms) */
+.faq-admin-card {
+    border-radius: 1rem;
+}
+
+/* Admin category tree */
+.faq-admin-category {
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+    margin: 0;
+}
+
+    .faq-admin-category summary {
+        list-style: none;
+        outline: none;
+    }
+
+        .faq-admin-category summary::-webkit-details-marker {
+            display: none;
+        }
+
+.faq-admin-category-summary {
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+/* Highlight open admin category */
+.faq-admin-category[open] {
+    border-left: 4px solid var(--color-primary-border);
+}
+
+/* Admin questions */
+.faq-admin-question {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    margin: 0;
+}
+
+    .faq-admin-question + .faq-admin-question {
+        margin-top: 0.35rem;
+    }
+
+/* Dark mode */
+html[data-theme="dark"] .faq-admin-category {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+html[data-theme="dark"] .faq-admin-category-summary {
+    border-bottom-color: #334155;
+}
+
+html[data-theme="dark"] .faq-admin-question {
+    background: #020617;
+    border-color: #334155;
+}

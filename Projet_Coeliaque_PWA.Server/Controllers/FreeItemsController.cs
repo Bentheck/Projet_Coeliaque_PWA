@@ -5,10 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
+using Projet_Coeliaque_PWA.Server.Services;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -21,13 +24,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     [ApiController]
     [Route("api/freeitems")]
     [Authorize]
+    [ModuleGate("FreeItems")]
     public class FreeItemsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
+        private readonly IAuditLogService _audit;
 
-        public FreeItemsController(ApplicationDbContext db)
+        public FreeItemsController(ApplicationDbContext db, IAuditLogService audit)
         {
             _db = db;
+            _audit = audit;
         }
 
         private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -146,6 +152,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _db.FreeItems.Add(entity);
             await _db.SaveChangesAsync(ct);
 
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "FreeItem.Create",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    entity.Id,
+                    entity.Item,
+                    entity.TypeItem,
+                    entity.Magasin,
+                    entity.IsFavorite,
+                    entity.WasOnSale
+                });
+
             var createdDto = ToDto(entity);
             return CreatedAtAction(nameof(GetItem), new { id = entity.Id }, createdDto);
         }
@@ -169,6 +189,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (string.IsNullOrWhiteSpace(dto.Item) || string.IsNullOrWhiteSpace(dto.TypeItem))
                 return BadRequest("Item and TypeItem are required.");
 
+            var before = new
+            {
+                f.Id,
+                f.Item,
+                f.TypeItem,
+                f.DefaultQuantite,
+                f.DefaultPrix,
+                f.PoidsValeur,
+                f.PoidsUnite,
+                f.IsFavorite,
+                f.WasOnSale,
+                f.Magasin
+            };
+
             f.Item = dto.Item.Trim();
             f.TypeItem = dto.TypeItem.Trim();
             f.DefaultQuantite = dto.DefaultQuantite;
@@ -180,6 +214,31 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             f.Magasin = string.IsNullOrWhiteSpace(dto.Magasin) ? null : dto.Magasin.Trim();
 
             await _db.SaveChangesAsync(ct);
+
+            var after = new
+            {
+                f.Id,
+                f.Item,
+                f.TypeItem,
+                f.DefaultQuantite,
+                f.DefaultPrix,
+                f.PoidsValeur,
+                f.PoidsUnite,
+                f.IsFavorite,
+                f.WasOnSale,
+                f.Magasin
+            };
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "FreeItem.Update",
+                target: f.Id.ToString(),
+                details: new
+                {
+                    Before = before,
+                    After = after
+                });
+
             return NoContent();
         }
 
@@ -197,8 +256,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var f = await _db.FreeItems.FirstOrDefaultAsync(x => x.Id == id && x.UserId == UserId, ct);
             if (f == null) return NotFound();
 
+            var snapshot = new
+            {
+                f.Id,
+                f.Item,
+                f.TypeItem,
+                f.Magasin,
+                f.IsFavorite,
+                f.WasOnSale
+            };
+
             _db.FreeItems.Remove(f);
             await _db.SaveChangesAsync(ct);
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "FreeItem.Delete",
+                target: id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
 

@@ -2,13 +2,63 @@
   "title": "Créer un compte",
   "emailLabel": "Courriel",
   "passwordLabel": "Mot de passe",
+  "confirmPasswordLabel": "Confirmer le mot de passe",
+  "displayNameLabel": "Nom affiché",
+  "displayNameHelp": "Ce nom sera visible par les autres utilisateurs (ex. dans le forum).",
+  "inviteTokenLabel": "Code d’invitation",
+  "inviteTokenHelp": "Si vous avez reçu un courriel d’invitation, copiez le code ici. Il est requis pendant la phase de pré-lancement.",
   "submit": "Créer le compte",
   "submitting": "Création…",
   "defaultError": "Impossible de créer votre compte. Réessayez.",
   "successTitle": "Encore une étape !",
   "successMsg": "Nous vous avons envoyé un lien de confirmation. Vérifiez votre boîte de réception.",
+  "strength": {
+    "label": "Solidité du mot de passe : {{level}}",
+    "weak": "Faible",
+    "medium": "Moyenne",
+    "strong": "Forte",
+    "hint": "Utilisez au moins 8 caractères avec un mélange de lettres, chiffres et symboles."
+  },
+  "passwordToggle": {
+    "show": "Afficher le mot de passe",
+    "hide": "Masquer le mot de passe",
+    "showShort": "Afficher",
+    "hideShort": "Masquer"
+  },
+  "confirmPasswordToggle": {
+    "show": "Afficher la confirmation",
+    "hide": "Masquer la confirmation",
+    "showShort": "Afficher",
+    "hideShort": "Masquer"
+  },
+  "mismatch": {
+    "hint": "Retapez le même mot de passe pour le confirmer.",
+    "ok": "Les mots de passe correspondent.",
+    "error": "Les mots de passe ne correspondent pas."
+  },
+  "confirmField": {
+    "pasteNotAllowed": "Par sécurité, le collage est désactivé dans le champ de confirmation. Veuillez retaper le mot de passe."
+  },
   "errors": {
     "missingFields": "Le courriel et le mot de passe sont requis.",
-    "identityValidationFailed": "Certains champs sont invalides. Veuillez vérifier."
+    "identityValidationFailed": "Certains champs sont invalides. Veuillez vérifier.",
+    "missingDisplayName": "Le nom affiché est requis.",
+    "displayNameTooLong": "Le nom affiché doit contenir au plus 40 caractères.",
+    "displayNameTaken": "Ce nom affiché est déjà utilisé.",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "passwordRequired": "Le mot de passe et sa confirmation sont requis.",
+    "disclaimerRequired": "Vous devez accepter l’avis de non-responsabilité pour créer un compte.",
+    "emailTaken": "Ce courriel est déjà utilisé.",
+    "inviteRequired": "Un code d’invitation est requis pour créer un compte pour le moment.",
+    "invalidInvite": "Le code d’invitation est invalide, expiré ou ne correspond pas à ce courriel.",
+    "testerRoleGrantFailed": "Votre compte n’a pas pu recevoir les permissions de testeur. Veuillez contacter le soutien."
+  },
+  "help": {
+    "displayNameAria": "Aide sur le nom affiché",
+    "password": "Utilisez un mot de passe difficile à deviner, avec un mélange de lettres, chiffres et symboles.",
+    "passwordAria": "Aide sur les exigences du mot de passe",
+    "confirmPassword": "Retapez le même mot de passe pour le confirmer.",
+    "confirmPasswordAria": "Aide sur la confirmation du mot de passe",
+    "inviteTokenAria": "Aide concernant le champ du code d’invitation"
   }
 }

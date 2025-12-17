@@ -1,0 +1,15 @@
+﻿{
+  "title": "FAQ",
+  "subtitle": "Frequently asked questions about the calculator, grocery list, etc.",
+  "searchPlaceholder": "Search for a question…",
+  "searchAria": "Search",
+  "clear": "Clear",
+  "syncing": "Updating…",
+  "resultsCount": "{{count}} result(s)",
+  "noQuestionsInCategory": "No questions in this category.",
+  "noResults": "No results.",
+  "disclaimer": {
+    "title": "Disclaimer:",
+    "body": "The information in this FAQ is provided for guidance only. Always verify the official requirements (CRA/Revenu Québec) for your situation."
+  }
+}

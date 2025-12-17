@@ -1,0 +1,59 @@
+﻿{
+  "title": "Nous contacter",
+  "intro": "Envoyez-nous votre demande. Nous vous répondrons par courriel dès que possible.",
+  "success": "Merci. Votre message a été envoyé.",
+  "fields": {
+    "type": {
+      "label": "Type de demande",
+      "support": "Support",
+      "info": "Information",
+      "suggestion": "Suggestion / amélioration",
+      "help": "Support : problème technique ou compte. Information : question générale. Suggestion / amélioration : idées et commentaires."
+    },
+    "email": "Votre courriel",
+    "reason": "Raison",
+    "reasonSuggestions": {
+      "support": [
+        "Problème de connexion",
+        "Réinitialisation du mot de passe",
+        "Bug ou erreur technique",
+        "Problème de paiement ou d’abonnement",
+        "Autre"
+      ],
+      "info": [
+        "Fonctionnement de l’application",
+        "Abonnement / tarifs",
+        "Confidentialité et données",
+        "Compatibilité / appareils",
+        "Autre"
+      ],
+      "feedback": [
+        "Suggestion d’amélioration",
+        "Nouvelle fonctionnalité",
+        "Commentaire général",
+        "Problème d’ergonomie",
+        "Autre"
+      ]
+    },
+    "details": "Description",
+    "attachments": "Pièces jointes (optionnel)"
+  },
+  "helpers": {
+    "replyTo": "Nous utiliserons cette adresse pour vous répondre (Reply-To).",
+    "detailsHint": "Ajoutez le plus de détails possible (étapes, contexte, message d’erreur, etc.).",
+    "reasonHint": "Choisissez une suggestion ou précisez votre propre raison.",
+    "attachmentsHint": "Jusqu’à {{maxFiles}} images, {{maxMb}} Mo chacune ({{totalMb}} Mo au total).",
+    "removeAttachmentAria": "Retirer la pièce jointe",
+    "attachmentsTotal": "Total : {{count}} fichier(s), {{kb}} Ko"
+  },
+  "buttons": {
+    "submit": "Envoyer",
+    "loading": "Envoi…",
+    "remove": "Retirer"
+  },
+  "errors": {
+    "failed": "Impossible d’envoyer votre message. Réessayez plus tard.",
+    "network": "Impossible de contacter le serveur. Vérifiez votre réseau et réessayez.",
+    "rateLimited": "Trop de demandes. Veuillez attendre {{seconds}} s et réessayer."
+  }
+}

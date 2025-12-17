@@ -10,7 +10,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Services;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -21,16 +23,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     [ApiController]
     [Route("api/forum/admin")]
     [Authorize(Policy = "IsForumAdmin")]
+    [ModuleGate("Forum")]
     public class ForumAdminController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _um;
+        private readonly IAuditLogService _audit;
 
-        public ForumAdminController(ApplicationDbContext db, UserManager<IdentityUser> um)
+        public ForumAdminController(
+            ApplicationDbContext db,
+            UserManager<IdentityUser> um,
+            IAuditLogService audit)
         {
             _db = db;
             _um = um;
+            _audit = audit;
         }
+
+        private string? CurrentUserId => _um.GetUserId(User);
 
         // -------- Categories --------
 
@@ -67,6 +77,23 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             _db.ForumCategories.Add(cat);
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Forum.Category.Create",
+                    target: cat.Id.ToString(),
+                    details: new
+                    {
+                        cat.Id,
+                        cat.Slug,
+                        cat.Name,
+                        cat.Description,
+                        cat.Language
+                    });
+            }
 
             // Keep signature/route; return the location of the new resource.
             return CreatedAtAction(nameof(GetCategory), new { id = cat.Id }, new { id = cat.Id });
@@ -119,6 +146,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             cat.Language = nextLang;
 
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Forum.Category.Update",
+                    target: cat.Id.ToString(),
+                    details: new
+                    {
+                        cat.Id,
+                        cat.Slug,
+                        cat.Name,
+                        cat.Description,
+                        cat.Language
+                    });
+            }
+
             return NoContent();
         }
 
@@ -141,8 +186,29 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (!force && (cat.Threads?.Any() ?? false))
                 return Conflict("La catégorie contient des fils. Utilisez force=true pour supprimer (cascade).");
 
+            var snapshot = new
+            {
+                cat.Id,
+                cat.Slug,
+                cat.Name,
+                cat.Description,
+                cat.Language,
+                ThreadCount = cat.Threads?.Count ?? 0
+            };
+
             _db.ForumCategories.Remove(cat);
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Forum.Category.Delete",
+                    target: id.ToString(),
+                    details: snapshot);
+            }
+
             return NoContent();
         }
 
@@ -161,6 +227,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             t.IsPinned = input?.Pinned ?? false;
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Forum.Thread.SetPinned",
+                    target: id.ToString(),
+                    details: new
+                    {
+                        ThreadId = id,
+                        t.IsPinned
+                    });
+            }
+
             return NoContent();
         }
 
@@ -177,6 +258,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             t.IsLocked = input?.Locked ?? false;
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Forum.Thread.SetLocked",
+                    target: id.ToString(),
+                    details: new
+                    {
+                        ThreadId = id,
+                        t.IsLocked
+                    });
+            }
+
             return NoContent();
         }
 
@@ -250,6 +346,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .ToList();
 
             await _db.SaveChangesAsync();
+
+            var adminId = CurrentUserId;
+            if (!string.IsNullOrEmpty(adminId))
+            {
+                await _audit.LogForUserIdAsync(
+                    adminId,
+                    "Forum.Thread.SetModerators",
+                    target: id.ToString(),
+                    details: new
+                    {
+                        ThreadId = id,
+                        UserIds = found
+                    });
+            }
+
             return NoContent();
         }
 
@@ -270,6 +381,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             await _db.SaveChangesAsync();
 
             await RecomputeThreadLastActivity(p.ThreadId);
+
+            var adminId = CurrentUserId;
+            if (!string.IsNullOrEmpty(adminId))
+            {
+                await _audit.LogForUserIdAsync(
+                    adminId,
+                    "Forum.Post.SetDeleted",
+                    target: id.ToString(),
+                    details: new
+                    {
+                        PostId = id,
+                        ThreadId = p.ThreadId,
+                        p.IsDeleted
+                    });
+            }
+
             return NoContent();
         }
 
@@ -373,6 +500,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     AddedUtc = DateTime.UtcNow
                 });
                 await _db.SaveChangesAsync();
+
+                var adminId = CurrentUserId;
+                if (!string.IsNullOrEmpty(adminId))
+                {
+                    await _audit.LogForUserIdAsync(
+                        adminId,
+                        "Forum.GlobalModerator.Add",
+                        target: user.Id,
+                        details: new
+                        {
+                            user.Id,
+                            user.UserName,
+                            user.Email
+                        });
+                }
             }
 
             return NoContent();
@@ -398,6 +540,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             _db.ForumAdmins.Remove(admin);
             await _db.SaveChangesAsync();
+
+            var currentAdminId = CurrentUserId;
+            if (!string.IsNullOrEmpty(currentAdminId))
+            {
+                await _audit.LogForUserIdAsync(
+                    currentAdminId,
+                    "Forum.GlobalModerator.Remove",
+                    target: userId,
+                    details: new
+                    {
+                        RemovedUserId = userId,
+                        RemovedUserName = admin.User?.UserName ?? admin.User?.Email
+                    });
+            }
+
             return NoContent();
         }
     }

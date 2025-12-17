@@ -117,34 +117,87 @@ namespace Projet_Coeliaque_PWA.Server.Mapping
                 .ForCtorParam("Email", o => o.MapFrom(s => s.Email ?? string.Empty))
                 .ForCtorParam("DisplayName", o => o.MapFrom(s => s.UserName ?? s.Email ?? "Utilisateur"));
 
-            // ---------- FAQ ----------
-            CreateMap<FaqQuestion, FaqQuestionDto>();
+            // ---------- FAQ (bilingual) ----------
+
+            // Language-aware mapping helper: expects ctx.Items["lang"] = "fr" or "en"
+            string ResolveLang(ResolutionContext ctx)
+            {
+                var raw = ctx.Items.ContainsKey("lang") ? ctx.Items["lang"]?.ToString() : "fr";
+                return !string.IsNullOrEmpty(raw) && raw.StartsWith("en", StringComparison.OrdinalIgnoreCase)
+                    ? "en"
+                    : "fr";
+            }
+
+            CreateMap<FaqQuestion, FaqQuestionDto>()
+                .ForMember(d => d.Question, o => o.MapFrom((src, dest, _, ctx) =>
+                {
+                    var lang = ResolveLang(ctx);
+                    return lang == "en"
+                        ? (string.IsNullOrWhiteSpace(src.QuestionEn) ? src.QuestionFr : src.QuestionEn!)
+                        : src.QuestionFr;
+                }))
+                .ForMember(d => d.AnswerHtml, o => o.MapFrom((src, dest, _, ctx) =>
+                {
+                    var lang = ResolveLang(ctx);
+                    return lang == "en"
+                        ? (string.IsNullOrWhiteSpace(src.AnswerHtmlEn) ? src.AnswerHtmlFr : src.AnswerHtmlEn!)
+                        : src.AnswerHtmlFr;
+                }))
+                .ForMember(d => d.TagsCsv, o => o.MapFrom((src, dest, _, ctx) =>
+                {
+                    var lang = ResolveLang(ctx);
+                    return lang == "en"
+                        ? (string.IsNullOrWhiteSpace(src.TagsCsvEn) ? src.TagsCsvFr : src.TagsCsvEn)
+                        : src.TagsCsvFr;
+                }));
 
             CreateMap<FaqCategory, FaqCategoryDto>()
+                .ForMember(d => d.Name, o => o.MapFrom((src, dest, _, ctx) =>
+                {
+                    var lang = ResolveLang(ctx);
+                    return lang == "en"
+                        ? (string.IsNullOrWhiteSpace(src.NameEn) ? src.NameFr : src.NameEn!)
+                        : src.NameFr;
+                }))
+                .ForMember(d => d.Description, o => o.MapFrom((src, dest, _, ctx) =>
+                {
+                    var lang = ResolveLang(ctx);
+                    return lang == "en"
+                        ? (string.IsNullOrWhiteSpace(src.DescriptionEn) ? src.DescriptionFr : src.DescriptionEn)
+                        : src.DescriptionFr;
+                }))
                 // only active questions, sorted
                 .ForMember(d => d.Questions, o => o.MapFrom(s =>
                     s.Questions.Where(q => q.IsActive).OrderBy(q => q.SortOrder)));
 
             CreateMap<FaqCategory, FaqCategorySummaryDto>()
+                .ForMember(d => d.NameFr, o => o.MapFrom(s => s.NameFr))
+                .ForMember(d => d.NameEn, o => o.MapFrom(s => s.NameEn))
+                .ForMember(d => d.DescriptionFr, o => o.MapFrom(s => s.DescriptionFr))
+                .ForMember(d => d.DescriptionEn, o => o.MapFrom(s => s.DescriptionEn))
                 .ForMember(d => d.ActiveQuestions, o => o.MapFrom(s => s.Questions.Count(q => q.IsActive)));
 
-            // Admin inputs → entities (FAQ)
             CreateMap<UpsertCategoryInput, FaqCategory>()
                 .ForMember(d => d.Slug, o => o.MapFrom(s => s.Slug.Trim().ToLowerInvariant()))
-                .ForMember(d => d.Name, o => o.MapFrom(s => s.Name.Trim()))
-                .ForMember(d => d.Description, o => o.MapFrom(s =>
-                    string.IsNullOrWhiteSpace(s.Description) ? null : s.Description!.Trim()))
-                .ForMember(d => d.SortOrder, o => o.MapFrom(s => s.SortOrder))
-                .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive))
-                .ForMember(d => d.Questions, o => o.Ignore()); // never overwrite navigation here
+                .ForMember(d => d.NameFr, o => o.MapFrom(s => s.NameFr.Trim()))
+                .ForMember(d => d.NameEn, o => o.MapFrom(s =>
+                    string.IsNullOrWhiteSpace(s.NameEn) ? null : s.NameEn.Trim()))
+                .ForMember(d => d.DescriptionFr, o => o.MapFrom(s =>
+                    string.IsNullOrWhiteSpace(s.DescriptionFr) ? null : s.DescriptionFr))
+                .ForMember(d => d.DescriptionEn, o => o.MapFrom(s =>
+                    string.IsNullOrWhiteSpace(s.DescriptionEn) ? null : s.DescriptionEn))
+                .ForMember(d => d.Questions, o => o.Ignore()); // never overwrite navs here
 
             CreateMap<UpsertQuestionInput, FaqQuestion>()
-                .ForMember(d => d.Question, o => o.MapFrom(s => s.Question.Trim()))
-                .ForMember(d => d.AnswerHtml, o => o.MapFrom(s => s.AnswerHtml))
-                .ForMember(d => d.TagsCsv, o => o.MapFrom(s =>
-                    string.IsNullOrWhiteSpace(s.TagsCsv) ? null : s.TagsCsv!.Trim()))
-                .ForMember(d => d.SortOrder, o => o.MapFrom(s => s.SortOrder))
-                .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive))
+                .ForMember(d => d.QuestionFr, o => o.MapFrom(s => s.QuestionFr.Trim()))
+                .ForMember(d => d.QuestionEn, o => o.MapFrom(s =>
+                    string.IsNullOrWhiteSpace(s.QuestionEn) ? null : s.QuestionEn.Trim()))
+                .ForMember(d => d.AnswerHtmlFr, o => o.MapFrom(s => s.AnswerHtmlFr))
+                .ForMember(d => d.AnswerHtmlEn, o => o.MapFrom(s => s.AnswerHtmlEn))
+                .ForMember(d => d.TagsCsvFr, o => o.MapFrom(s =>
+                    string.IsNullOrWhiteSpace(s.TagsCsvFr) ? null : s.TagsCsvFr.Trim()))
+                .ForMember(d => d.TagsCsvEn, o => o.MapFrom(s =>
+                    string.IsNullOrWhiteSpace(s.TagsCsvEn) ? null : s.TagsCsvEn.Trim()))
                 .ForMember(d => d.CreatedAt, o => o.Ignore())
                 .ForMember(d => d.UpdatedAt, o => o.Ignore());
         }

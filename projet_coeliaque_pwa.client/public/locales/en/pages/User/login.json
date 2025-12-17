@@ -4,7 +4,8 @@
     "emailConfirmed": "Your email has been confirmed. You can now sign in.",
     "badUser": "User not found for email confirmation.",
     "confirmErrorLine1": "An error occurred while confirming your email.",
-    "confirmErrorLine2": "The link may be expired or already used."
+    "confirmErrorLine2": "The link may be expired or already used.",
+    "passwordReset": "Your password has been reset. You can now sign in."
   },
   "unconfirmed": {
     "text": "Your email is not confirmed.",
@@ -12,6 +13,9 @@
     "resendSuccess": "A new confirmation link has been sent to your email address.",
     "resendFail": "Could not send the link. Please try again later.",
     "resendError": "An error occurred. Please try again later."
+  },
+  "links": {
+    "forgotPassword": "Forgot password?"
   },
   "fields": {
     "email": "Email",

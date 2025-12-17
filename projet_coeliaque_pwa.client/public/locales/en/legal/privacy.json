@@ -1,0 +1,28 @@
+﻿{
+  "currentVersion": "v1",
+  "actions": {
+    "viewFull": "View full privacy policy"
+  },
+  "v1": {
+    "title": "Privacy Policy — Service Coeliaque",
+    "lead": "Please read the policy below carefully. You must scroll to the end to enable acceptance.",
+    "scrollHint": "Scroll to the bottom to enable Accept.",
+    "scrollOk": "You have reached the end. You may accept.",
+    "accept": "Accept",
+    "accepting": "Accepting…",
+    "decline": "Decline",
+    "loginHint": "Log in to accept and continue using restricted features.",
+    "acceptRequiresLogin": "Please log in to accept.",
+    "acceptedOk": "Accepted. Thank you.",
+    "paragraphs": [
+      "1. Service Coeliaque is a software application operated by Solutions BenSoft. This Privacy Policy describes how information is handled when using the service.",
+      "2. The only information required to create an account is a valid email address and a username (display name). No sensitive personal information such as legal name, postal address, date of birth, banking information, or medical data is required.",
+      "3. Any content voluntarily entered by the user (data, text, documents, comments, forum content, or otherwise) is provided under the user’s sole responsibility. Solutions BenSoft does not verify or validate user-provided content.",
+      "4. Service Coeliaque may store certain data locally on your device to enable offline functionality. Clearing browser data, reinstalling the application, changing devices, or device loss may result in irreversible data loss.",
+      "5. Payments and subscriptions are processed by third-party providers. Solutions BenSoft does not store or process payment card information.",
+      "6. Information is used solely for authentication, service functionality, and service-related communications. No personal information is sold or shared for advertising purposes.",
+      "7. We implement reasonable technical measures to protect information; however, no system can guarantee absolute security, and use of the service is at your own risk.",
+      "8. This Privacy Policy may be updated from time to time. Continued use of the service may require acceptance of the updated policy."
+    ]
+  }
+}

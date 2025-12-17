@@ -8,7 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,18 +25,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     /// </summary>
     [ApiController]
     [Route("api/forum")]
+    [ModuleGate("Forum")]
     public class ForumController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
         private readonly UserManager<IdentityUser> _um;
         private readonly HtmlSanitizer _sanitizer;
+        private readonly IAuditLogService _audit;
 
-        public ForumController(ApplicationDbContext db, IMapper mapper, UserManager<IdentityUser> um)
+        public ForumController(
+            ApplicationDbContext db,
+            IMapper mapper,
+            UserManager<IdentityUser> um,
+            IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
             _um = um;
+            _audit = audit;
 
             // Server-side HTML sanitizer (align with client allowlist)
             _sanitizer = new HtmlSanitizer();
@@ -95,27 +104,77 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         /// </summary>
         [HttpGet("threads")]
         [ProducesResponseType(typeof(PagedResult<ForumThreadListItemDto>), 200)]
-        public async Task<ActionResult> GetThreads([FromQuery] int categoryId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<ActionResult> GetThreads(
+            [FromQuery] int categoryId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
         {
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 20;
 
+            // Count
             var baseQ = _db.ForumThreads
                 .AsNoTracking()
                 .Where(t => t.CategoryId == categoryId);
 
             var total = await baseQ.CountAsync();
 
-            var items = await baseQ
-                .OrderByDescending(t => t.IsPinned)
-                .ThenByDescending(t => t.LastPostUtc)
+            // Query with profile joins
+            var items = await (
+                from t in _db.ForumThreads
+                    .AsNoTracking()
+                    .Where(t => t.CategoryId == categoryId)
+
+                join upCreated in _db.UserProfiles.AsNoTracking()
+                    on t.CreatedByUserId equals upCreated.UserId into upCreatedGroup
+                from upCreated in upCreatedGroup.DefaultIfEmpty()
+
+                join upLast in _db.UserProfiles.AsNoTracking()
+                    on t.LastPostByUserId equals upLast.UserId into upLastGroup
+                from upLast in upLastGroup.DefaultIfEmpty()
+
+                orderby t.IsPinned descending, t.LastPostUtc descending
+                select new ForumThreadListItemDto
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    CreatedUtc = t.CreatedUtc,
+
+                    CreatedBy =
+                        !string.IsNullOrWhiteSpace(upCreated.DisplayName)
+                            ? upCreated.DisplayName
+                            : (t.CreatedBy != null
+                                ? (t.CreatedBy.UserName ?? t.CreatedBy.Email ?? "Utilisateur")
+                                : "Utilisateur"),
+
+                    LastPostUtc = t.LastPostUtc,
+
+                    LastBy =
+                        !string.IsNullOrWhiteSpace(upLast.DisplayName)
+                            ? upLast.DisplayName
+                            : (t.LastPostBy != null
+                                ? (t.LastPostBy.UserName ?? t.LastPostBy.Email ?? "—")
+                                : "—"),
+
+                    PostCount = t.Posts.Count(p => !p.IsDeleted),
+                    IsLocked = t.IsLocked,
+                    IsPinned = t.IsPinned
+                })
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ProjectTo<ForumThreadListItemDto>(_mapper.ConfigurationProvider)
                 .ToListAsync();
 
-            return Ok(new PagedResult<ForumThreadListItemDto>(items, page, pageSize, total, (int)Math.Ceiling(total / (double)pageSize)));
+            var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+
+            return Ok(new PagedResult<ForumThreadListItemDto>(
+                items,
+                page,
+                pageSize,
+                total,
+                totalPages
+            ));
         }
+
 
         // --------------------- Thread (enriched with Score/MyVote/ownership) ---------------------
 
@@ -129,19 +188,39 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             var userId = _um.GetUserId(User); // can be null
 
-            var dto = await _db.ForumThreads
-                .AsNoTracking()
-                .Where(t => t.Id == id)
-                .Select(t => new ForumThreadDto
+            var dto = await (
+                from t in _db.ForumThreads.AsNoTracking().Where(t => t.Id == id)
+                join upCreated in _db.UserProfiles.AsNoTracking()
+                    on t.CreatedByUserId equals upCreated.UserId into upCreatedGroup
+                from upCreated in upCreatedGroup.DefaultIfEmpty()
+                join upLast in _db.UserProfiles.AsNoTracking()
+                    on t.LastPostByUserId equals upLast.UserId into upLastGroup
+                from upLast in upLastGroup.DefaultIfEmpty()
+                select new ForumThreadDto
                 {
                     Id = t.Id,
                     CategoryId = t.CategoryId,
                     Title = t.Title,
                     CreatedUtc = t.CreatedUtc,
-                    CreatedBy = t.CreatedBy != null ? (t.CreatedBy.UserName ?? t.CreatedBy.Email ?? "Utilisateur") : "Utilisateur",
+
+                    // Prefer profile.DisplayName, fall back to Identity name/email, then default
+                    CreatedBy =
+                        !string.IsNullOrWhiteSpace(upCreated.DisplayName)
+                            ? upCreated.DisplayName
+                            : (t.CreatedBy != null
+                                ? (t.CreatedBy.UserName ?? t.CreatedBy.Email ?? "Utilisateur")
+                                : "Utilisateur"),
+
                     CreatedByUserId = t.CreatedByUserId,
                     LastPostUtc = t.LastPostUtc,
-                    LastBy = t.LastPostBy != null ? (t.LastPostBy.UserName ?? t.LastPostBy.Email ?? "—") : "—",
+
+                    LastBy =
+                        !string.IsNullOrWhiteSpace(upLast.DisplayName)
+                            ? upLast.DisplayName
+                            : (t.LastPostBy != null
+                                ? (t.LastPostBy.UserName ?? t.LastPostBy.Email ?? "—")
+                                : "—"),
+
                     IsLocked = t.IsLocked,
                     IsPinned = t.IsPinned,
                     PostCount = t.Posts.Count(p => !p.IsDeleted),
@@ -186,7 +265,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         /// </summary>
         [HttpGet("threads/{id:int}/posts")]
         [ProducesResponseType(typeof(PagedResult<ForumPostTreeDto>), 200)]
-        public async Task<ActionResult> GetPosts(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string sort = "top")
+        public async Task<ActionResult> GetPosts(
+            int id,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string sort = "top")
         {
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 20;
@@ -204,6 +287,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .Include(p => p.EditedBy)
                 .OrderBy(p => p.CreatedUtc) // base order; we'll re-order below
                 .ToListAsync();
+
+            // Collect all user IDs that appear as creators or editors
+            var userIdSet = all
+                .SelectMany(p => new[] { p.CreatedByUserId, p.EditedByUserId })
+                .Where(uid => uid != null)
+                .Distinct()
+                .ToList();
+
+            // Map UserId -> DisplayName
+            var displayNameMap = await _db.UserProfiles
+                .AsNoTracking()
+                .Where(up => userIdSet.Contains(up.UserId))
+                .ToDictionaryAsync(up => up.UserId!, up => up.DisplayName);
 
             var allIds = all.Select(p => p.Id).ToList();
 
@@ -224,21 +320,50 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             // Build nodes
-            var nodes = all.Select(p => new ForumPostTreeDto
+            var nodes = all.Select(p =>
             {
-                Id = p.Id,
-                Body = p.Body,
-                CreatedUtc = p.CreatedUtc,
-                CreatedBy = p.CreatedBy?.UserName ?? "—",
-                CreatedByUserId = p.CreatedByUserId,
-                EditedUtc = p.EditedUtc,
-                EditedBy = p.EditedBy?.UserName,
-                ParentPostId = p.ParentPostId,
-                Score = scoreMap.TryGetValue(p.Id, out var s) ? s : 0,
-                MyVote = myVotes.TryGetValue(p.Id, out var mv) ? mv : 0,
-                RepliesCount = 0,
-                Replies = new List<ForumPostTreeDto>(),
-                CanEdit = IsOwner(userId, p.CreatedByUserId) || isAdmin || isMod
+                string createdName;
+                if (!string.IsNullOrEmpty(p.CreatedByUserId) &&
+                    displayNameMap.TryGetValue(p.CreatedByUserId!, out var dnCreated) &&
+                    !string.IsNullOrWhiteSpace(dnCreated))
+                {
+                    createdName = dnCreated!;
+                }
+                else
+                {
+                    createdName = p.CreatedBy?.UserName
+                                  ?? p.CreatedBy?.Email
+                                  ?? "—";
+                }
+
+                string? editedName = null;
+                if (!string.IsNullOrEmpty(p.EditedByUserId) &&
+                    displayNameMap.TryGetValue(p.EditedByUserId!, out var dnEdited) &&
+                    !string.IsNullOrWhiteSpace(dnEdited))
+                {
+                    editedName = dnEdited!;
+                }
+                else if (p.EditedBy != null)
+                {
+                    editedName = p.EditedBy.UserName ?? p.EditedBy.Email;
+                }
+
+                return new ForumPostTreeDto
+                {
+                    Id = p.Id,
+                    Body = p.Body,
+                    CreatedUtc = p.CreatedUtc,
+                    CreatedBy = createdName,
+                    CreatedByUserId = p.CreatedByUserId,
+                    EditedUtc = p.EditedUtc,
+                    EditedBy = editedName,
+                    ParentPostId = p.ParentPostId,
+                    Score = scoreMap.TryGetValue(p.Id, out var s) ? s : 0,
+                    MyVote = myVotes.TryGetValue(p.Id, out var mv) ? mv : 0,
+                    RepliesCount = 0,
+                    Replies = new List<ForumPostTreeDto>(),
+                    CanEdit = IsOwner(userId, p.CreatedByUserId) || isAdmin || isMod
+                };
             }).ToList();
 
             // Pre-group direct replies by parent id
@@ -329,6 +454,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _db.ForumPosts.Add(p);
             await _db.SaveChangesAsync();
 
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Forum.Thread.Create",
+                target: t.Id.ToString(),
+                details: new
+                {
+                    t.Id,
+                    t.CategoryId,
+                    t.Title,
+                    t.CreatedUtc
+                });
+
             return CreatedAtAction(nameof(GetThread), new { id = t.Id }, new { id = t.Id });
         }
 
@@ -375,6 +512,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             thread.LastPostByUserId = userId;
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Forum.Post.Reply",
+                target: post.Id.ToString(),
+                details: new
+                {
+                    ThreadId = id,
+                    PostId = post.Id,
+                    ParentPostId = post.ParentPostId,
+                    post.CreatedUtc
+                });
+
             return NoContent();
         }
 
@@ -400,6 +550,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var userId = _um.GetUserId(User)!;
             var vote = await _db.ForumThreadVotes.FirstOrDefaultAsync(v => v.ThreadId == id && v.UserId == userId);
+            var previous = vote?.Value ?? 0;
 
             if (input.Value == 0)
             {
@@ -421,7 +572,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _db.SaveChangesAsync();
 
-            var score = await _db.ForumThreadVotes.Where(v => v.ThreadId == id).SumAsync(v => (int?)v.Value) ?? 0;
+            var score = await _db.ForumThreadVotes
+                .Where(v => v.ThreadId == id)
+                .SumAsync(v => (int?)v.Value) ?? 0;
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Forum.Thread.Vote",
+                target: id.ToString(),
+                details: new
+                {
+                    ThreadId = id,
+                    Previous = (int)previous,
+                    New = input.Value,
+                    Score = score
+                });
+
             return Ok(new { score, myVote = input.Value });
         }
 
@@ -443,6 +609,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var userId = _um.GetUserId(User)!;
             var vote = await _db.ForumPostVotes.FirstOrDefaultAsync(v => v.PostId == postId && v.UserId == userId);
+            var previous = vote?.Value ?? 0;
 
             if (input.Value == 0)
             {
@@ -464,7 +631,23 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _db.SaveChangesAsync();
 
-            var score = await _db.ForumPostVotes.Where(v => v.PostId == postId).SumAsync(v => (int?)v.Value) ?? 0;
+            var score = await _db.ForumPostVotes
+                .Where(v => v.PostId == postId)
+                .SumAsync(v => (int?)v.Value) ?? 0;
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Forum.Post.Vote",
+                target: postId.ToString(),
+                details: new
+                {
+                    PostId = postId,
+                    ThreadId = post.ThreadId,
+                    Previous = (int)previous,
+                    New = input.Value,
+                    Score = score
+                });
+
             return Ok(new { score, myVote = input.Value });
         }
 
@@ -487,7 +670,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (input == null || string.IsNullOrWhiteSpace(input.Body))
                 return BadRequest("Contenu requis.");
 
-            var post = await _db.ForumPosts.Include(p => p.Thread).FirstOrDefaultAsync(p => p.Id == postId);
+            var post = await _db.ForumPosts
+                .Include(p => p.Thread)
+                .FirstOrDefaultAsync(p => p.Id == postId);
             if (post == null || post.IsDeleted) return NotFound();
 
             var userId = _um.GetUserId(User)!;
@@ -497,11 +682,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (!canEdit) return Forbid();
 
+            var beforeBody = post.Body;
+
             post.Body = _sanitizer.Sanitize(input.Body.Trim());
             post.EditedByUserId = userId;
             post.EditedUtc = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Forum.Post.Edit",
+                target: post.Id.ToString(),
+                details: new
+                {
+                    ThreadId = post.ThreadId,
+                    PostId = post.Id,
+                    BeforeBody = beforeBody,
+                    AfterBody = post.Body,
+                    post.EditedUtc
+                });
+
             return NoContent();
         }
 
@@ -525,12 +726,28 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (!canDelete) return Forbid();
 
+            var snapshot = new
+            {
+                ThreadId = post.ThreadId,
+                PostId = post.Id,
+                Body = post.Body,
+                post.CreatedUtc,
+                post.CreatedByUserId
+            };
+
             post.IsDeleted = true;
             post.Body = "[supprimé]";
             post.EditedByUserId = userId;
             post.EditedUtc = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Forum.Post.Delete",
+                target: post.Id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
 
@@ -558,8 +775,21 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (!canEdit) return Forbid();
 
+            var beforeTitle = thread.Title;
+
             thread.Title = input.Title.Trim();
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Forum.Thread.EditTitle",
+                target: thread.Id.ToString(),
+                details: new
+                {
+                    ThreadId = thread.Id,
+                    BeforeTitle = beforeTitle,
+                    AfterTitle = thread.Title
+                });
 
             return NoContent();
         }

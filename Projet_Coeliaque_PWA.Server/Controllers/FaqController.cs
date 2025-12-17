@@ -1,162 +1,217 @@
-﻿// Controllers/FaqController.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Services;
 
 namespace Projet_coeliaque.Controllers
 {
-    /// <summary>
-    /// Public FAQ endpoints (read) and SuperAdmin endpoints (manage).
-    /// Routes and method signatures kept intact; added XML docs and minor guard rails.
-    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [ModuleGate("Faq")]
     public class FaqController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
+        private readonly IAuditLogService _audit;
 
-        public FaqController(ApplicationDbContext db, IMapper mapper)
+        public FaqController(
+            ApplicationDbContext db,
+            IMapper mapper,
+            IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
+            _audit = audit;
         }
+
+        private static string NormalizeLang(string? lang)
+            => lang?.StartsWith("en", StringComparison.OrdinalIgnoreCase) == true ? "en" : "fr";
+
+        private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         // ========== PUBLIC ==========
 
         /// <summary>
-        /// Returns active categories with their active questions.
-        /// Optional <c>q</c> filters in-memory (case-insensitive) across:
-        /// category name, question, answerHtml, and tags.
+        /// Returns active categories with their active questions, in the requested language.
         /// </summary>
-        /// <param name="q">Optional search term used to filter questions inside categories.</param>
-        /// <returns>List of active categories with (possibly filtered) active questions.</returns>
+        /// <param name="q">Optional search term.</param>
+        /// <param name="lang">"fr" or "en". Defaults to "fr".</param>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<FaqCategoryDto>), 200)]
-        public async Task<ActionResult<IEnumerable<FaqCategoryDto>>> GetTree([FromQuery] string? q)
+        public async Task<ActionResult<IEnumerable<FaqCategoryDto>>> GetTree(
+            [FromQuery] string? q,
+            [FromQuery] string? lang = "fr")
         {
-            var cats = await _db.FaqCategories
+            var language = NormalizeLang(lang);
+
+            var entities = await _db.FaqCategories
                 .AsNoTracking()
                 .Where(c => c.IsActive)
+                .Include(c => c.Questions.Where(qq => qq.IsActive))
                 .OrderBy(c => c.SortOrder)
-                .ProjectTo<FaqCategoryDto>(_mapper.ConfigurationProvider)
                 .ToListAsync();
+
+            // Mapping uses AutoMapper with lang passed via Items["lang"]
+            var dtoCats = _mapper.Map<List<FaqCategoryDto>>(entities, opt =>
+            {
+                opt.Items["lang"] = language;
+            });
 
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
 
-                // Filter questions within each category, then keep categories that still have matches
-                cats = cats
+                dtoCats = dtoCats
                     .Select(c =>
                     {
                         var filteredQuestions = c.Questions.Where(x =>
-                            (!string.IsNullOrEmpty(x.Question) && x.Question.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
-                            (!string.IsNullOrEmpty(x.AnswerHtml) && x.AnswerHtml.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
-                            (!string.IsNullOrEmpty(x.TagsCsv) && x.TagsCsv.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
-                            (!string.IsNullOrEmpty(c.Name) && c.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+                            (!string.IsNullOrEmpty(x.Question) &&
+                             x.Question.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(x.AnswerHtml) &&
+                             x.AnswerHtml.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(x.TagsCsv) &&
+                             x.TagsCsv.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(c.Name) &&
+                             c.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
                         ).ToList();
 
-                        return new FaqCategoryDto
-                        {
-                            Id = c.Id,
-                            Name = c.Name,
-                            Slug = c.Slug,
-                            Description = c.Description,
-                            SortOrder = c.SortOrder,
-                            Questions = filteredQuestions
-                        };
+                        c.Questions = filteredQuestions;
+                        return c;
                     })
                     .Where(c => c.Questions.Any())
                     .ToList();
             }
 
-            return Ok(cats);
-        }
-
-        /// <summary>
-        /// Returns all FAQ categories (active and inactive) with their active question counts.
-        /// Useful for admin dashboards.
-        /// </summary>
-        /// <returns>List of category summaries including <c>IsActive</c> and question count.</returns>
-        [HttpGet("categories")]
-        [ProducesResponseType(typeof(IEnumerable<FaqCategorySummaryDto>), 200)]
-        public async Task<ActionResult<IEnumerable<FaqCategorySummaryDto>>> GetCategories()
-        {
-            var cats = await _db.FaqCategories
-                .AsNoTracking()
-                .OrderBy(c => c.SortOrder)
-                .ProjectTo<FaqCategorySummaryDto>(_mapper.ConfigurationProvider)
-                .ToListAsync();
-
-            return Ok(cats);
+            return Ok(dtoCats);
         }
 
         // ========== ADMIN (SuperAdmin) ==========
 
         /// <summary>
-        /// Creates a new FAQ category.
+        /// Returns all FAQ categories (admin summary).
         /// </summary>
-        /// <param name="input">Category payload (name, slug, description, etc.).</param>
-        /// <returns>The created category as DTO.</returns>
+        [HttpGet("categories")]
+        [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(typeof(IEnumerable<FaqCategorySummaryDto>), 200)]
+        public async Task<ActionResult<IEnumerable<FaqCategorySummaryDto>>> GetCategories()
+        {
+            var entities = await _db.FaqCategories
+                .AsNoTracking()
+                .Include(c => c.Questions)
+                .OrderBy(c => c.SortOrder)
+                .ToListAsync();
+
+            var cats = _mapper.Map<List<FaqCategorySummaryDto>>(entities);
+            return Ok(cats);
+        }
+
         [HttpPost("categories")]
         [Authorize(Roles = "SuperAdmin")]
-        [ProducesResponseType(typeof(FaqCategoryDto), 200)]
+        [ProducesResponseType(typeof(FaqCategorySummaryDto), 200)]
         [ProducesResponseType(409)]
-        public async Task<ActionResult<FaqCategoryDto>> CreateCategory([FromBody] UpsertCategoryInput input)
+        public async Task<ActionResult<FaqCategorySummaryDto>> CreateCategory([FromBody] UpsertCategoryInput input)
         {
             if (await _db.FaqCategories.AnyAsync(c => c.Slug == input.Slug))
                 return Conflict(new { message = "Slug déjà utilisé" });
 
             var entity = _mapper.Map<FaqCategory>(input);
+
             _db.FaqCategories.Add(entity);
             await _db.SaveChangesAsync();
 
-            return await GetOneCategory(entity.Id);
+            var dto = await GetOneCategorySummary(entity.Id);
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Category.Create",
+                    target: entity.Id.ToString(),
+                    details: new
+                    {
+                        entity.Id,
+                        entity.Slug,
+                        entity.NameFr,
+                        entity.NameEn,
+                        entity.SortOrder,
+                        entity.IsActive
+                    });
+            }
+
+            return dto;
         }
 
-        /// <summary>
-        /// Updates an existing FAQ category.
-        /// </summary>
-        /// <param name="id">Category id.</param>
-        /// <param name="input">Updated category payload.</param>
-        /// <returns>The updated category as DTO.</returns>
         [HttpPut("categories/{id:int}")]
         [Authorize(Roles = "SuperAdmin")]
-        [ProducesResponseType(typeof(FaqCategoryDto), 200)]
+        [ProducesResponseType(typeof(FaqCategorySummaryDto), 200)]
         [ProducesResponseType(404)]
         [ProducesResponseType(409)]
-        public async Task<ActionResult<FaqCategoryDto>> UpdateCategory(int id, [FromBody] UpsertCategoryInput input)
+        public async Task<ActionResult<FaqCategorySummaryDto>> UpdateCategory(
+            int id,
+            [FromBody] UpsertCategoryInput input)
         {
             var entity = await _db.FaqCategories.FindAsync(id);
             if (entity == null) return NotFound();
 
-            // Unique slug check if changed
             if (!string.Equals(entity.Slug, input.Slug, StringComparison.OrdinalIgnoreCase) &&
                 await _db.FaqCategories.AnyAsync(c => c.Slug == input.Slug && c.Id != id))
             {
                 return Conflict(new { message = "Slug déjà utilisé" });
             }
 
+            var before = new
+            {
+                entity.Id,
+                entity.Slug,
+                entity.NameFr,
+                entity.NameEn,
+                entity.SortOrder,
+                entity.IsActive
+            };
+
             _mapper.Map(input, entity);
             await _db.SaveChangesAsync();
 
-            return await GetOneCategory(entity.Id);
+            var dto = await GetOneCategorySummary(entity.Id);
+
+            var after = new
+            {
+                entity.Id,
+                entity.Slug,
+                entity.NameFr,
+                entity.NameEn,
+                entity.SortOrder,
+                entity.IsActive
+            };
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Category.Update",
+                    target: entity.Id.ToString(),
+                    details: new
+                    {
+                        Before = before,
+                        After = after
+                    });
+            }
+
+            return dto;
         }
 
-        /// <summary>
-        /// Deletes a category and its questions (cascade).
-        /// </summary>
-        /// <param name="id">Category id.</param>
         [HttpDelete("categories/{id:int}")]
         [Authorize(Roles = "SuperAdmin")]
         [ProducesResponseType(204)]
@@ -169,15 +224,31 @@ namespace Projet_coeliaque.Controllers
 
             if (cat == null) return NotFound();
 
-            _db.FaqCategories.Remove(cat); // cascades to questions
+            var snapshot = new
+            {
+                cat.Id,
+                cat.Slug,
+                cat.NameFr,
+                cat.NameEn,
+                QuestionCount = cat.Questions.Count
+            };
+
+            _db.FaqCategories.Remove(cat);
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Category.Delete",
+                    target: id.ToString(),
+                    details: snapshot);
+            }
+
             return NoContent();
         }
 
-        /// <summary>
-        /// Reorders categories according to the provided id list (0-based order).
-        /// </summary>
-        /// <param name="orderedIds">Array of category ids in the desired order.</param>
         [HttpPost("categories/reorder")]
         [Authorize(Roles = "SuperAdmin")]
         [ProducesResponseType(204)]
@@ -188,21 +259,30 @@ namespace Projet_coeliaque.Controllers
                 .ToListAsync();
 
             var orderMap = orderedIds
-                .Select((id, i) => new { id, i })
-                .ToDictionary(x => x.id, x => x.i);
+                .Select((catId, index) => new { catId, index })
+                .ToDictionary(x => x.catId, x => x.index);
 
             foreach (var c in cats)
                 c.SortOrder = orderMap[c.Id];
 
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Category.Reorder",
+                    target: "categories",
+                    details: new
+                    {
+                        OrderedIds = orderedIds
+                    });
+            }
+
             return NoContent();
         }
 
-        /// <summary>
-        /// Creates a new FAQ question.
-        /// </summary>
-        /// <param name="input">Question payload.</param>
-        /// <returns>The created question DTO.</returns>
         [HttpPost("questions")]
         [Authorize(Roles = "SuperAdmin")]
         [ProducesResponseType(typeof(FaqQuestionDto), 200)]
@@ -216,35 +296,93 @@ namespace Projet_coeliaque.Controllers
             _db.FaqQuestions.Add(entity);
             await _db.SaveChangesAsync();
 
-            return Ok(_mapper.Map<FaqQuestionDto>(entity));
+            // For admin we can default to FR view
+            var dto = _mapper.Map<FaqQuestionDto>(entity, opt => opt.Items["lang"] = "fr");
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Question.Create",
+                    target: entity.Id.ToString(),
+                    details: new
+                    {
+                        entity.Id,
+                        entity.CategoryId,
+                        entity.QuestionFr,
+                        entity.QuestionEn,
+                        entity.IsActive,
+                        entity.SortOrder
+                    });
+            }
+
+            return Ok(dto);
         }
 
-        /// <summary>
-        /// Updates an existing FAQ question.
-        /// </summary>
-        /// <param name="id">Question id.</param>
-        /// <param name="input">Updated question payload.</param>
-        /// <returns>The updated question DTO.</returns>
         [HttpPut("questions/{id:int}")]
         [Authorize(Roles = "SuperAdmin")]
         [ProducesResponseType(typeof(FaqQuestionDto), 200)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<FaqQuestionDto>> UpdateQuestion(int id, [FromBody] UpsertQuestionInput input)
+        public async Task<ActionResult<FaqQuestionDto>> UpdateQuestion(
+            int id,
+            [FromBody] UpsertQuestionInput input)
         {
             var entity = await _db.FaqQuestions.FindAsync(id);
             if (entity == null) return NotFound();
 
+            var before = new
+            {
+                entity.Id,
+                entity.CategoryId,
+                entity.QuestionFr,
+                entity.QuestionEn,
+                entity.AnswerHtmlFr,
+                entity.AnswerHtmlEn,
+                entity.TagsCsvFr,
+                entity.TagsCsvEn,
+                entity.SortOrder,
+                entity.IsActive
+            };
+
             _mapper.Map(input, entity);
             entity.UpdatedAt = DateTime.UtcNow;
+
             await _db.SaveChangesAsync();
 
-            return Ok(_mapper.Map<FaqQuestionDto>(entity));
+            var dto = _mapper.Map<FaqQuestionDto>(entity, opt => opt.Items["lang"] = "fr");
+
+            var after = new
+            {
+                entity.Id,
+                entity.CategoryId,
+                entity.QuestionFr,
+                entity.QuestionEn,
+                entity.AnswerHtmlFr,
+                entity.AnswerHtmlEn,
+                entity.TagsCsvFr,
+                entity.TagsCsvEn,
+                entity.SortOrder,
+                entity.IsActive
+            };
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Question.Update",
+                    target: entity.Id.ToString(),
+                    details: new
+                    {
+                        Before = before,
+                        After = after
+                    });
+            }
+
+            return Ok(dto);
         }
 
-        /// <summary>
-        /// Deletes a FAQ question.
-        /// </summary>
-        /// <param name="id">Question id.</param>
         [HttpDelete("questions/{id:int}")]
         [Authorize(Roles = "SuperAdmin")]
         [ProducesResponseType(204)]
@@ -254,16 +392,31 @@ namespace Projet_coeliaque.Controllers
             var q = await _db.FaqQuestions.FindAsync(id);
             if (q == null) return NotFound();
 
+            var snapshot = new
+            {
+                q.Id,
+                q.CategoryId,
+                q.QuestionFr,
+                q.QuestionEn,
+                q.IsActive
+            };
+
             _db.FaqQuestions.Remove(q);
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Question.Delete",
+                    target: id.ToString(),
+                    details: snapshot);
+            }
+
             return NoContent();
         }
 
-        /// <summary>
-        /// Reorders questions within a specific category based on the provided id list.
-        /// </summary>
-        /// <param name="categoryId">Target category id.</param>
-        /// <param name="orderedIds">Array of question ids in the desired order.</param>
         [HttpPost("questions/reorder/{categoryId:int}")]
         [Authorize(Roles = "SuperAdmin")]
         [ProducesResponseType(204)]
@@ -274,33 +427,88 @@ namespace Projet_coeliaque.Controllers
                 .ToListAsync();
 
             var orderMap = orderedIds
-                .Select((id, i) => new { id, i })
-                .ToDictionary(x => x.id, x => x.i);
+                .Select((questionId, index) => new { questionId, index })
+                .ToDictionary(x => x.questionId, x => x.index);
 
             foreach (var item in qs)
                 item.SortOrder = orderMap[item.Id];
 
             await _db.SaveChangesAsync();
+
+            var uid = CurrentUserId;
+            if (!string.IsNullOrEmpty(uid))
+            {
+                await _audit.LogForUserIdAsync(
+                    uid,
+                    "Faq.Question.Reorder",
+                    target: categoryId.ToString(),
+                    details: new
+                    {
+                        CategoryId = categoryId,
+                        OrderedIds = orderedIds
+                    });
+            }
+
             return NoContent();
         }
 
-        // ---------- helper ----------
+        // ---------- Helper: admin summary for a single category ----------
 
-        /// <summary>
-        /// Loads a single category by id, projected to <see cref="FaqCategoryDto"/>.
-        /// </summary>
-        /// <param name="id">Category id.</param>
-        /// <returns>Category DTO or 404.</returns>
-        private async Task<ActionResult<FaqCategoryDto>> GetOneCategory(int id)
+        private async Task<ActionResult<FaqCategorySummaryDto>> GetOneCategorySummary(int id)
         {
-            var dto = await _db.FaqCategories
+            var entity = await _db.FaqCategories
                 .AsNoTracking()
-                .Where(c => c.Id == id)
-                .ProjectTo<FaqCategoryDto>(_mapper.ConfigurationProvider)
-                .FirstOrDefaultAsync();
+                .Include(x => x.Questions)
+                .FirstOrDefaultAsync(x => x.Id == id);
 
-            if (dto == null) return NotFound();
+            if (entity == null) return NotFound();
+
+            var dto = _mapper.Map<FaqCategorySummaryDto>(entity);
             return Ok(dto);
+        }
+
+        // ---------- Full bilingual payloads for admin editing ----------
+
+        [HttpGet("questions/full/{id:int}")]
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<ActionResult<object>> GetFullQuestion(int id)
+        {
+            var q = await _db.FaqQuestions.FirstOrDefaultAsync(x => x.Id == id);
+            if (q == null) return NotFound();
+
+            return Ok(new
+            {
+                q.Id,
+                q.CategoryId,
+                QuestionFr = q.QuestionFr,
+                QuestionEn = q.QuestionEn,
+                AnswerHtmlFr = q.AnswerHtmlFr,
+                AnswerHtmlEn = q.AnswerHtmlEn,
+                TagsCsvFr = q.TagsCsvFr,
+                TagsCsvEn = q.TagsCsvEn,
+                q.SortOrder,
+                q.IsActive
+            });
+        }
+
+        [HttpGet("categories/full/{id:int}")]
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<ActionResult<object>> GetFullCategory(int id)
+        {
+            var c = await _db.FaqCategories.FirstOrDefaultAsync(x => x.Id == id);
+            if (c == null) return NotFound();
+
+            return Ok(new
+            {
+                c.Id,
+                NameFr = c.NameFr,
+                NameEn = c.NameEn,
+                c.Slug,
+                DescriptionFr = c.DescriptionFr,
+                DescriptionEn = c.DescriptionEn,
+                c.SortOrder,
+                c.IsActive
+            });
         }
     }
 }

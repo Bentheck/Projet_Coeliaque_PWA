@@ -1,5 +1,9 @@
 ﻿{
   "footer": {
+    "disclaimer": "Disclaimer",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "poweredBy": "Powered by",
     "copyright": "© {{year}} Service Coeliaque"
   }
 }

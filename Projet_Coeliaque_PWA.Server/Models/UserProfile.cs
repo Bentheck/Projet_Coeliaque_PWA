@@ -18,8 +18,23 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public DateTime JoinedUtc { get; set; } = DateTime.UtcNow;
         public DateTime? LastSeenUtc { get; set; }
 
-        // denormalized counters (optional, maintained by posts controller / jobs)
+        // Disclaimer acceptance
+        public DateTime? DisclaimerAcceptedUtc { get; set; }
+        public string? DisclaimerVersion { get; set; }
+
+        // NEW: privacy acceptance
+        public DateTime? PrivacyAcceptedUtc { get; set; }
+        public string? PrivacyVersion { get; set; }
+
+        // NEW: tos acceptance
+        public DateTime? TosAcceptedUtc { get; set; }
+        public string? TosVersion { get; set; }
+
+        // denormalized counters (optional)
         public int ThreadCount { get; set; }
         public int PostCount { get; set; }
+
+        public DateTime? DeletedUtc { get; set; }
+        public bool IsDeleted => DeletedUtc != null;
     }
 }

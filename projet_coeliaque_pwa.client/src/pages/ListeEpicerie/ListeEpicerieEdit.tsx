@@ -13,6 +13,7 @@ import {
     type ListeEpicerieDto,
 } from "../../offline/db";
 import { syncDown } from "../../offline/sync";
+import "../../styles/liste-epicerie.css";
 
 /** Valid weight/volume units shown in selects. */
 const UNIT_OPTIONS = ["g", "kg", "mg", "lb", "oz", "ml", "l", "fl oz", "un", "dozen"];
@@ -305,14 +306,20 @@ const ListeEpicerieEdit: React.FC = () => {
         if (usedCount > 0) {
             const ok = confirm(t("confirms.deleteUsed", { count: usedCount }) as string);
             if (!ok) return;
-            setListe((prev) => ({ ...prev, items: prev.items.filter((x) => x.freeItemId !== fid) }));
+            setListe((prev) => ({
+                ...prev,
+                items: prev.items.filter((x) => x.freeItemId !== fid),
+            }));
         } else {
             const ok = confirm(t("confirms.deleteFreeProduct") as string);
             if (!ok) return;
         }
 
         try {
-            const res = await fetch(`/api/freeitems/${fid}`, { method: "DELETE", credentials: "include" });
+            const res = await fetch(`/api/freeitems/${fid}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
 
             if (res.status === 202 || res.ok) {
                 await db.freeItems.delete(fid);
@@ -329,12 +336,17 @@ const ListeEpicerieEdit: React.FC = () => {
     const updateQtyAtIndex = (idx: number, quantity: number) => {
         setListe((prev) => ({
             ...prev,
-            items: prev.items.map((it, i) => (i === idx ? { ...it, quantity: Math.max(1, quantity) } : it)),
+            items: prev.items.map((it, i) =>
+                i === idx ? { ...it, quantity: Math.max(1, quantity) } : it
+            ),
         }));
     };
 
     const removeAtIndex = (idx: number) => {
-        setListe((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
+        setListe((prev) => ({
+            ...prev,
+            items: prev.items.filter((_, i) => i !== idx),
+        }));
     };
 
     /* --------------------------------- Persist list -------------------------------- */
@@ -437,7 +449,10 @@ const ListeEpicerieEdit: React.FC = () => {
                 setEditFreeOpen(false);
                 if (navigator.onLine) void syncDown(false);
             } else {
-                console.error("Update free item failed:", await res.text().catch(() => ""));
+                console.error(
+                    "Update free item failed:",
+                    await res.text().catch(() => "")
+                );
             }
         } catch (e) {
             console.error(e);
@@ -475,7 +490,9 @@ const ListeEpicerieEdit: React.FC = () => {
             if (selectedFactureType) setSelectedFactureType("");
             return;
         }
-        const stillExists = availableFactureTypes.some((tpe) => tpe.type === selectedFactureType);
+        const stillExists = availableFactureTypes.some(
+            (tpe) => tpe.type === selectedFactureType
+        );
         if (!stillExists) {
             setSelectedFactureType(availableFactureTypes[0].type);
         }
@@ -496,11 +513,17 @@ const ListeEpicerieEdit: React.FC = () => {
     }, [factureItemsForSelectedType, hideFactureOnSale, liste.items]);
 
     const factureRows = useMemo(
-        () => liste.items.map((it, idx) => ({ it, idx })).filter((x) => !!x.it.factureItemId),
+        () =>
+            liste.items
+                .map((it, idx) => ({ it, idx }))
+                .filter((x) => !!x.it.factureItemId),
         [liste.items]
     );
     const freeRows = useMemo(
-        () => liste.items.map((it, idx) => ({ it, idx })).filter((x) => !!x.it.freeItemId),
+        () =>
+            liste.items
+                .map((it, idx) => ({ it, idx }))
+                .filter((x) => !!x.it.freeItemId),
         [liste.items]
     );
 
@@ -530,51 +553,342 @@ const ListeEpicerieEdit: React.FC = () => {
 
     /* ------------------------------------ UI ------------------------------------ */
     return (
-        <div className="container my-3">
-            {/* Header: name + save + back */}
-            <div className="d-flex align-items-center gap-2 mb-3">
-                <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    onClick={() => navigate(-1)}
-                    title={t("header.back")}
-                >
-                    ← {t("header.back")}
-                </button>
+        <div className="container my-3 liste-edit-page">
+            {/* MAIN WRAPPER CARD */}
+            <div className="card card--accent shadow-sm border-accent-primary">
+                <div className="card-body">
+                    {/* Header: name + save + back */}
+                    <div className="d-flex align-items-center gap-2 mb-3">
+                        <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() => navigate(-1)}
+                            title={t("header.back")}
+                        >
+                            ← {t("header.back")}
+                        </button>
 
-                <input
-                    className="form-control liste-edit-header-name-input"
-                    value={liste.name}
-                    onChange={(e) => setListe({ ...liste, name: e.target.value })}
-                    placeholder={t("header.namePlaceholder") as string}
-                />
-                <button className="btn btn-primary" onClick={save}>
-                    {t("header.save")}
-                </button>
-            </div>
+                        <input
+                            className="form-control liste-edit-header-name-input"
+                            value={liste.name}
+                            onChange={(e) =>
+                                setListe({ ...liste, name: e.target.value })
+                            }
+                            placeholder={t(
+                                "header.namePlaceholder"
+                            ) as string}
+                        />
+                        <button className="btn btn-primary" onClick={save}>
+                            {t("header.save")}
+                        </button>
+                    </div>
 
-            {/* Estimated total (CAD) */}
-            <div className="mb-3">
-                <span className="badge text-bg-info">
-                    {t("totals.estimated")}{" "}
-                    {totalPrice.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}
-                </span>
-            </div>
+                    {/* Estimated total (CAD) */}
+                    <div className="mb-3">
+                        <span className="badge liste-badge-total">
+                            {t("totals.estimated")}{" "}
+                            {totalPrice.toLocaleString("fr-CA", {
+                                style: "currency",
+                                currency: "CAD",
+                            })}
+                        </span>
+                    </div>
 
-            {/* Add sources */}
-            <div className="mb-3">
-                <button
-                    className="btn btn-outline-success me-2"
-                    onClick={() => setShowFactureModal(true)}
-                >
-                    {t("addButtons.fromInvoices")}
-                </button>
-                <button
-                    className="btn btn-outline-primary"
-                    onClick={() => setShowFreeModal(true)}
-                >
-                    {t("addButtons.fromFree")}
-                </button>
+                    {/* Add sources */}
+                    <div className="mb-3">
+                        <button
+                            className="btn btn-outline-success me-2"
+                            onClick={() => setShowFactureModal(true)}
+                        >
+                            {t("addButtons.fromInvoices")}
+                        </button>
+                        <button
+                            className="btn btn-outline-primary"
+                            onClick={() => setShowFreeModal(true)}
+                        >
+                            {t("addButtons.fromFree")}
+                        </button>
+                    </div>
+
+                    {/* ------------------------------- List section ------------------------------- */}
+                    <h4 className="mt-4">
+                        {t("sections.itemsInList")}
+                    </h4>
+
+                    {/* Items originating from invoices */}
+                    <h5 className="mt-3">{t("sections.fromInvoices")}</h5>
+                    {factureRows.length === 0 ? (
+                        <div className="text-muted">
+                            {t("sections.noInvoiceItems")}
+                        </div>
+                    ) : (
+                        <div className="table-responsive">
+                            <table className="table align-middle">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th className="table-col-min-180">
+                                            {t("table.product")}
+                                        </th>
+                                        <th>{t("table.type")}</th>
+                                        <th>{t("table.store")}</th>
+                                        <th>{t("table.addedDate")}</th>
+                                        <th className="text-end">
+                                            {t("table.price")}
+                                        </th>
+                                        <th>{t("table.weight")}</th>
+                                        <th className="text-center">
+                                            {t("table.special")}
+                                        </th>
+                                        <th>
+                                            {t("table.quantity")}
+                                        </th>
+                                        <th className="text-end table-col-min-120">
+                                            {t("table.action")}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {factureRows.map(({ it, idx }) => {
+                                        const src = it.factureItemId
+                                            ? allFactureItems.find(
+                                                (f) => f.id === it.factureItemId
+                                            )
+                                            : undefined;
+                                        const poids =
+                                            (src?.poidsValeur != null
+                                                ? `${src.poidsValeur}`
+                                                : "") +
+                                            (src?.poidsUnite
+                                                ? ` ${src.poidsUnite}`
+                                                : src?.poidsValeur != null
+                                                    ? ""
+                                                    : "—");
+
+                                        const rowClass = src?.wasOnSale
+                                            ? "liste-row liste-row--onsale"
+                                            : "liste-row";
+
+                                        return (
+                                            <tr
+                                                key={it.id ?? `fact-${idx}`}
+                                                className={rowClass}
+                                            >
+                                                <td>
+                                                    <strong>
+                                                        {src?.item ?? "—"}
+                                                    </strong>
+                                                </td>
+                                                <td>
+                                                    <small className="text-muted">
+                                                        {src?.typeItem ?? "—"}
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    {src?.magasin ?? "—"}
+                                                </td>
+                                                <td>
+                                                    {src?.date
+                                                        ? new Date(
+                                                            src.date
+                                                        ).toLocaleDateString()
+                                                        : "—"}
+                                                </td>
+                                                <td className="text-end">
+                                                    {typeof src?.prix === "number"
+                                                        ? `${src.prix.toFixed(2)}$`
+                                                        : "—"}
+                                                </td>
+                                                <td>{poids}</td>
+                                                <td className="text-center">
+                                                    <span
+                                                        className={`d-inline-block rounded-circle sale-dot ${src?.wasOnSale
+                                                                ? "bg-success"
+                                                                : "bg-danger"
+                                                            }`}
+                                                    />
+                                                </td>
+                                                <td className="table-col-max-140">
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        className="form-control"
+                                                        value={it.quantity}
+                                                        onChange={(e) =>
+                                                            updateQtyAtIndex(
+                                                                idx,
+                                                                parseFloat(
+                                                                    e.target
+                                                                        .value
+                                                                ) || 1
+                                                            )
+                                                        }
+                                                    />
+                                                </td>
+                                                <td className="text-end">
+                                                    <button
+                                                        className="btn btn-sm btn-outline-danger"
+                                                        onClick={() =>
+                                                            removeAtIndex(idx)
+                                                        }
+                                                    >
+                                                        {t("actions.delete")}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Items created as “free” products */}
+                    <h5 className="mt-4">
+                        {t("sections.freeProducts")}
+                    </h5>
+                    {freeRows.length === 0 ? (
+                        <div className="text-muted">
+                            {t("sections.noFreeProducts")}
+                        </div>
+                    ) : (
+                        <div className="table-responsive">
+                            <table className="table align-middle">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th className="table-col-min-180">
+                                            {t("table.product")}
+                                        </th>
+                                        <th>{t("table.type")}</th>
+                                        <th>{t("table.store")}</th>
+                                        <th className="text-end">
+                                            {t("table.defaultPrice")}
+                                        </th>
+                                        <th>{t("table.weight")}</th>
+                                        <th className="text-center">
+                                            {t("table.special")}
+                                        </th>
+                                        <th>
+                                            {t("table.quantity")}
+                                        </th>
+                                        <th className="text-end table-col-min-200">
+                                            {t("table.action")}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {freeRows.map(({ it, idx }) => {
+                                        const src = it.freeItemId
+                                            ? allFreeItems.find(
+                                                (f) => f.id === it.freeItemId
+                                            )
+                                            : undefined;
+                                        const poids =
+                                            (src?.poidsValeur != null
+                                                ? `${src.poidsValeur}`
+                                                : "") +
+                                            (src?.poidsUnite
+                                                ? ` ${src?.poidsUnite}`
+                                                : src?.poidsValeur != null
+                                                    ? ""
+                                                    : "—");
+
+                                        const rowClass = src?.wasOnSale
+                                            ? "liste-row liste-row--onsale"
+                                            : "liste-row";
+
+                                        return (
+                                            <tr
+                                                key={it.id ?? `free-${idx}`}
+                                                className={rowClass}
+                                            >
+                                                <td>
+                                                    <strong>
+                                                        {src?.item ?? "—"}
+                                                    </strong>
+                                                </td>
+                                                <td>
+                                                    <small className="text-muted">
+                                                        {src?.typeItem ?? "—"}
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    {src?.magasin ?? "—"}
+                                                </td>
+                                                <td className="text-end">
+                                                    {typeof src?.defaultPrix ===
+                                                        "number"
+                                                        ? `${Number(
+                                                            src.defaultPrix
+                                                        ).toFixed(2)}$`
+                                                        : "—"}
+                                                </td>
+                                                <td>{poids}</td>
+                                                <td className="text-center">
+                                                    <span
+                                                        className={`d-inline-block rounded-circle sale-dot ${src?.wasOnSale
+                                                                ? "bg-success"
+                                                                : "bg-danger"
+                                                            }`}
+                                                    />
+                                                </td>
+                                                <td className="table-col-max-140">
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        className="form-control"
+                                                        value={it.quantity}
+                                                        onChange={(e) =>
+                                                            updateQtyAtIndex(
+                                                                idx,
+                                                                parseFloat(
+                                                                    e.target
+                                                                        .value
+                                                                ) || 1
+                                                            )
+                                                        }
+                                                    />
+                                                </td>
+                                                <td className="text-end">
+                                                    <div className="d-flex justify-content-end gap-2">
+                                                        <button
+                                                            className="btn btn-sm btn-outline-secondary"
+                                                            onClick={() =>
+                                                                it.freeItemId &&
+                                                                openEditFree(
+                                                                    it.freeItemId
+                                                                )
+                                                            }
+                                                            disabled={!it.freeItemId}
+                                                        >
+                                                            {t("actions.edit")}
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-sm btn-outline-danger"
+                                                            onClick={() =>
+                                                                removeAtIndex(
+                                                                    idx
+                                                                )
+                                                            }
+                                                        >
+                                                            {t("actions.delete")}
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Shared datalist for store autocomplete */}
+                    <datalist id="stores">
+                        {knownStores.map((s) => (
+                            <option key={s} value={s} />
+                        ))}
+                    </datalist>
+                </div>
             </div>
 
             {/* --------------------------- Modal: invoice items --------------------------- */}
@@ -598,7 +912,9 @@ const ListeEpicerieEdit: React.FC = () => {
                             onChange={(e) => setSelectedFactureType(e.target.value)}
                         >
                             {availableFactureTypes.length === 0 && (
-                                <option value="">{t("modals.facture.noType")}</option>
+                                <option value="">
+                                    {t("modals.facture.noType")}
+                                </option>
                             )}
                             {availableFactureTypes.map((tpe) => (
                                 <option key={tpe.type} value={tpe.type}>
@@ -607,7 +923,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             ))}
                         </select>
 
-                        <div className="form-check ms-auto">
+                        <div className="form-check ms-auto liste-filter-toggle">
                             <input
                                 id="hideFactureOnSale"
                                 type="checkbox"
@@ -615,7 +931,10 @@ const ListeEpicerieEdit: React.FC = () => {
                                 checked={hideFactureOnSale}
                                 onChange={(e) => setHideFactureOnSale(e.target.checked)}
                             />
-                            <label htmlFor="hideFactureOnSale" className="form-check-label">
+                            <label
+                                htmlFor="hideFactureOnSale"
+                                className="form-check-label"
+                            >
                                 {t("common.hideOnSale")}
                             </label>
                         </div>
@@ -625,75 +944,94 @@ const ListeEpicerieEdit: React.FC = () => {
                         <table className="table table-hover align-middle mb-0">
                             <thead className="table-light">
                                 <tr>
-                                    <th className="table-col-min-180">{t("table.product")}</th>
+                                    <th className="table-col-min-180">
+                                        {t("table.product")}
+                                    </th>
                                     <th>{t("table.type")}</th>
                                     <th>{t("table.store")}</th>
                                     <th>{t("table.date")}</th>
-                                    <th className="text-end">{t("table.price")}</th>
+                                    <th className="text-end">
+                                        {t("table.price")}
+                                    </th>
                                     <th>{t("table.special")}</th>
-                                    <th className="text-end">{t("table.action")}</th>
+                                    <th className="text-end">
+                                        {t("table.action")}
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {factureListState.all.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="text-muted text-center py-4">
+                                        <td
+                                            colSpan={7}
+                                            className="text-muted text-center py-4"
+                                        >
                                             {t("modals.facture.emptyForType")}
                                         </td>
                                     </tr>
                                 ) : factureListState.available.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="text-muted text-center py-4">
+                                        <td
+                                            colSpan={7}
+                                            className="text-muted text-center py-4"
+                                        >
                                             {factureListState.afterSale.length === 0
                                                 ? t("modals.facture.noneWithFilter")
                                                 : t("modals.facture.allAlreadyInList")}
                                         </td>
                                     </tr>
                                 ) : (
-                                    factureListState.available.map((i) => (
-                                        <tr key={i.id}>
-                                            <td>
-                                                <strong>{i.item}</strong>
-                                            </td>
-                                            <td>
-                                                <small className="text-muted">
-                                                    {i.typeItem}
-                                                </small>
-                                            </td>
-                                            <td>{i.magasin ?? "—"}</td>
-                                            <td>
-                                                {i.date
-                                                    ? new Date(i.date).toLocaleDateString(
-                                                        undefined,
-                                                        {
-                                                            year: "numeric",
-                                                            month: "short",
-                                                            day: "2-digit",
+                                    factureListState.available.map((i) => {
+                                        const rowClass = i.wasOnSale
+                                            ? "liste-row liste-row--onsale"
+                                            : "liste-row";
+                                        return (
+                                            <tr key={i.id} className={rowClass}>
+                                                <td>
+                                                    <strong>{i.item}</strong>
+                                                </td>
+                                                <td>
+                                                    <small className="text-muted">
+                                                        {i.typeItem}
+                                                    </small>
+                                                </td>
+                                                <td>{i.magasin ?? "—"}</td>
+                                                <td>
+                                                    {i.date
+                                                        ? new Date(i.date).toLocaleDateString(
+                                                            undefined,
+                                                            {
+                                                                year: "numeric",
+                                                                month: "short",
+                                                                day: "2-digit",
+                                                            }
+                                                        )
+                                                        : "—"}
+                                                </td>
+                                                <td className="text-end">
+                                                    {i.prix.toFixed(2)}$
+                                                </td>
+                                                <td className="text-center">
+                                                    <span
+                                                        className={`d-inline-block rounded-circle sale-dot ${i.wasOnSale
+                                                                ? "bg-success"
+                                                                : "bg-danger"
+                                                            }`}
+                                                    />
+                                                </td>
+                                                <td className="text-end">
+                                                    <button
+                                                        className="btn btn-sm btn-success"
+                                                        onClick={() =>
+                                                            addFromFacture(i.id)
                                                         }
-                                                    )
-                                                    : "—"}
-                                            </td>
-                                            <td className="text-end">
-                                                {i.prix.toFixed(2)}$
-                                            </td>
-                                            <td className="text-center">
-                                                <span
-                                                    className={`d-inline-block rounded-circle sale-dot ${i.wasOnSale
-                                                            ? "bg-success"
-                                                            : "bg-danger"
-                                                        }`}
-                                                />
-                                            </td>
-                                            <td className="text-end">
-                                                <button
-                                                    className="btn btn-sm btn-success"
-                                                    onClick={() => addFromFacture(i.id)}
-                                                >
-                                                    {t("actions.addToList")}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                    >
+                                                        {t("actions.addToList")}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -722,7 +1060,7 @@ const ListeEpicerieEdit: React.FC = () => {
                 <Modal.Body>
                     {/* Quick creation block (card) */}
                     <h6 className="mb-2">{t("modals.free.createTitle")}</h6>
-                    <div className="card border-info mb-3">
+                    <div className="card card--accent-outline mb-3">
                         <div className="card-body">
                             {/* Quick search header row */}
                             <div className="d-flex flex-wrap align-items-center mb-2 gap-3">
@@ -752,7 +1090,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                 type="button"
                                 className="btn btn-outline-primary btn-sm rounded-pill px-3"
                                 onClick={() => handleQuickSearchClick("walmart")}
-                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                                disabled={
+                                    !newFreeItemType.trim() && !newFreeItemName.trim()
+                                }
                             >
                                 Walmart
                             </button>
@@ -761,7 +1101,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                 type="button"
                                 className="btn btn-outline-primary btn-sm rounded-pill px-3"
                                 onClick={() => handleQuickSearchClick("maxi")}
-                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                                disabled={
+                                    !newFreeItemType.trim() && !newFreeItemName.trim()
+                                }
                             >
                                 Maxi
                             </button>
@@ -770,7 +1112,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                 type="button"
                                 className="btn btn-outline-primary btn-sm rounded-pill px-3"
                                 onClick={() => handleQuickSearchClick("provigo")}
-                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                                disabled={
+                                    !newFreeItemType.trim() && !newFreeItemName.trim()
+                                }
                             >
                                 Provigo
                             </button>
@@ -779,7 +1123,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                 type="button"
                                 className="btn btn-outline-primary btn-sm rounded-pill px-3"
                                 onClick={() => handleQuickSearchClick("iga")}
-                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                                disabled={
+                                    !newFreeItemType.trim() && !newFreeItemName.trim()
+                                }
                             >
                                 IGA
                             </button>
@@ -788,7 +1134,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                 type="button"
                                 className="btn btn-outline-primary btn-sm rounded-pill px-3"
                                 onClick={() => handleQuickSearchClick("superc")}
-                                disabled={!newFreeItemType.trim() && !newFreeItemName.trim()}
+                                disabled={
+                                    !newFreeItemType.trim() && !newFreeItemName.trim()
+                                }
                             >
                                 Super C
                             </button>
@@ -807,7 +1155,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={newFreeItemName}
-                                        onChange={(e) => setNewFreeItemName(e.target.value)}
+                                        onChange={(e) =>
+                                            setNewFreeItemName(e.target.value)
+                                        }
                                         placeholder={
                                             t("placeholders.exampleProduct") as string
                                         }
@@ -820,7 +1170,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={newFreeItemType}
-                                        onChange={(e) => setNewFreeItemType(e.target.value)}
+                                        onChange={(e) =>
+                                            setNewFreeItemType(e.target.value)
+                                        }
                                         placeholder={
                                             t("placeholders.exampleType") as string
                                         }
@@ -839,7 +1191,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={newFreeItemStore}
-                                        onChange={(e) => setNewFreeItemStore(e.target.value)}
+                                        onChange={(e) =>
+                                            setNewFreeItemStore(e.target.value)
+                                        }
                                         list="stores"
                                         placeholder={
                                             t("placeholders.exampleStore") as string
@@ -854,7 +1208,9 @@ const ListeEpicerieEdit: React.FC = () => {
                                         className="form-control"
                                         inputMode="decimal"
                                         value={newFreeItemQty}
-                                        onChange={(e) => setNewFreeItemQty(e.target.value)}
+                                        onChange={(e) =>
+                                            setNewFreeItemQty(e.target.value)
+                                        }
                                         placeholder="1"
                                     />
                                 </div>
@@ -958,7 +1314,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             ))}
                         </select>
 
-                        <div className="form-check ms-auto">
+                        <div className="form-check ms-auto liste-filter-toggle">
                             <input
                                 id="hideFreeOnSale"
                                 type="checkbox"
@@ -1002,9 +1358,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                             </th>
                                             <th>{t("table.weight")}</th>
                                             <th>{t("table.special")}</th>
-                                            <th
-                                                className="text-end table-col-min-200"
-                                            >
+                                            <th className="text-end table-col-min-200">
                                                 {t("table.action")}
                                             </th>
                                         </tr>
@@ -1036,8 +1390,24 @@ const ListeEpicerieEdit: React.FC = () => {
                                                             ? ""
                                                             : "—");
 
+                                                const isInList = liste.items.some(
+                                                    (it) => it.freeItemId === fi.id
+                                                );
+
+                                                const rowClass = [
+                                                    "liste-row",
+                                                    fi.wasOnSale
+                                                        ? "liste-row--onsale"
+                                                        : "",
+                                                    isInList
+                                                        ? "liste-row--selected"
+                                                        : "",
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(" ");
+
                                                 return (
-                                                    <tr key={fi.id}>
+                                                    <tr key={fi.id} className={rowClass}>
                                                         <td>
                                                             <strong>
                                                                 {fi.item}
@@ -1049,8 +1419,7 @@ const ListeEpicerieEdit: React.FC = () => {
                                                             </small>
                                                         </td>
                                                         <td>
-                                                            {fi.magasin ??
-                                                                "—"}
+                                                            {fi.magasin ?? "—"}
                                                         </td>
                                                         <td className="text-end">
                                                             {hasQty
@@ -1138,263 +1507,6 @@ const ListeEpicerieEdit: React.FC = () => {
                     </Button>
                 </Modal.Footer>
             </Modal>
-
-            {/* ------------------------------- List section ------------------------------- */}
-            <h4 className="mt-4">{t("sections.itemsInList")}</h4>
-
-            {/* Items originating from invoices */}
-            <h5 className="mt-3">{t("sections.fromInvoices")}</h5>
-            {factureRows.length === 0 ? (
-                <div className="text-muted">
-                    {t("sections.noInvoiceItems")}
-                </div>
-            ) : (
-                <div className="table-responsive">
-                    <table className="table align-middle">
-                        <thead className="table-light">
-                            <tr>
-                                <th className="table-col-min-180">
-                                    {t("table.product")}
-                                </th>
-                                <th>{t("table.type")}</th>
-                                <th>{t("table.store")}</th>
-                                <th>{t("table.addedDate")}</th>
-                                <th className="text-end">
-                                    {t("table.price")}
-                                </th>
-                                <th>{t("table.weight")}</th>
-                                <th className="text-center">
-                                    {t("table.special")}
-                                </th>
-                                <th>
-                                    {t("table.quantity")}
-                                </th>
-                                <th
-                                    className="text-end table-col-min-120"
-                                >
-                                    {t("table.action")}
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {factureRows.map(({ it, idx }) => {
-                                const src = it.factureItemId
-                                    ? allFactureItems.find(
-                                        (f) => f.id === it.factureItemId
-                                    )
-                                    : undefined;
-                                const poids =
-                                    (src?.poidsValeur != null
-                                        ? `${src.poidsValeur}`
-                                        : "") +
-                                    (src?.poidsUnite
-                                        ? ` ${src.poidsUnite}`
-                                        : src?.poidsValeur != null
-                                            ? ""
-                                            : "—");
-
-                                return (
-                                    <tr key={it.id ?? `fact-${idx}`}>
-                                        <td>
-                                            <strong>
-                                                {src?.item ?? "—"}
-                                            </strong>
-                                        </td>
-                                        <td>
-                                            <small className="text-muted">
-                                                {src?.typeItem ?? "—"}
-                                            </small>
-                                        </td>
-                                        <td>{src?.magasin ?? "—"}</td>
-                                        <td>
-                                            {src?.date
-                                                ? new Date(
-                                                    src.date
-                                                ).toLocaleDateString()
-                                                : "—"}
-                                        </td>
-                                        <td className="text-end">
-                                            {typeof src?.prix === "number"
-                                                ? `${src.prix.toFixed(2)}$`
-                                                : "—"}
-                                        </td>
-                                        <td>{poids}</td>
-                                        <td className="text-center">
-                                            <span
-                                                className={`d-inline-block rounded-circle sale-dot ${src?.wasOnSale
-                                                        ? "bg-success"
-                                                        : "bg-danger"
-                                                    }`}
-                                            />
-                                        </td>
-                                        <td className="table-col-max-140">
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                className="form-control"
-                                                value={it.quantity}
-                                                onChange={(e) =>
-                                                    updateQtyAtIndex(
-                                                        idx,
-                                                        parseFloat(
-                                                            e.target.value
-                                                        ) || 1
-                                                    )
-                                                }
-                                            />
-                                        </td>
-                                        <td className="text-end">
-                                            <button
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() =>
-                                                    removeAtIndex(idx)
-                                                }
-                                            >
-                                                {t("actions.delete")}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {/* Items created as “free” products */}
-            <h5 className="mt-4">{t("sections.freeProducts")}</h5>
-            {freeRows.length === 0 ? (
-                <div className="text-muted">
-                    {t("sections.noFreeProducts")}
-                </div>
-            ) : (
-                <div className="table-responsive">
-                    <table className="table align-middle">
-                        <thead className="table-light">
-                            <tr>
-                                <th className="table-col-min-180">
-                                    {t("table.product")}
-                                </th>
-                                <th>{t("table.type")}</th>
-                                <th>{t("table.store")}</th>
-                                <th className="text-end">
-                                    {t("table.defaultPrice")}
-                                </th>
-                                <th>{t("table.weight")}</th>
-                                <th className="text-center">
-                                    {t("table.special")}
-                                </th>
-                                <th>
-                                    {t("table.quantity")}
-                                </th>
-                                <th
-                                    className="text-end table-col-min-200"
-                                >
-                                    {t("table.action")}
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {freeRows.map(({ it, idx }) => {
-                                const src = it.freeItemId
-                                    ? allFreeItems.find(
-                                        (f) => f.id === it.freeItemId
-                                    )
-                                    : undefined;
-                                const poids =
-                                    (src?.poidsValeur != null
-                                        ? `${src.poidsValeur}`
-                                        : "") +
-                                    (src?.poidsUnite
-                                        ? ` ${src?.poidsUnite}`
-                                        : src?.poidsValeur != null
-                                            ? ""
-                                            : "—");
-
-                                return (
-                                    <tr key={it.id ?? `free-${idx}`}>
-                                        <td>
-                                            <strong>
-                                                {src?.item ?? "—"}
-                                            </strong>
-                                        </td>
-                                        <td>
-                                            <small className="text-muted">
-                                                {src?.typeItem ?? "—"}
-                                            </small>
-                                        </td>
-                                        <td>{src?.magasin ?? "—"}</td>
-                                        <td className="text-end">
-                                            {typeof src?.defaultPrix ===
-                                                "number"
-                                                ? `${Number(
-                                                    src.defaultPrix
-                                                ).toFixed(2)}$`
-                                                : "—"}
-                                        </td>
-                                        <td>{poids}</td>
-                                        <td className="text-center">
-                                            <span
-                                                className={`d-inline-block rounded-circle sale-dot ${src?.wasOnSale
-                                                        ? "bg-success"
-                                                        : "bg-danger"
-                                                    }`}
-                                            />
-                                        </td>
-                                        <td className="table-col-max-140">
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                className="form-control"
-                                                value={it.quantity}
-                                                onChange={(e) =>
-                                                    updateQtyAtIndex(
-                                                        idx,
-                                                        parseFloat(
-                                                            e.target.value
-                                                        ) || 1
-                                                    )
-                                                }
-                                            />
-                                        </td>
-                                        <td className="text-end">
-                                            <div className="d-flex justify-content-end gap-2">
-                                                <button
-                                                    className="btn btn-sm btn-outline-secondary"
-                                                    onClick={() =>
-                                                        it.freeItemId &&
-                                                        openEditFree(
-                                                            it.freeItemId
-                                                        )
-                                                    }
-                                                    disabled={!it.freeItemId}
-                                                >
-                                                    {t("actions.edit")}
-                                                </button>
-                                                <button
-                                                    className="btn btn-sm btn-outline-danger"
-                                                    onClick={() =>
-                                                        removeAtIndex(idx)
-                                                    }
-                                                >
-                                                    {t("actions.delete")}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {/* Shared datalist for store autocomplete */}
-            <datalist id="stores">
-                {knownStores.map((s) => (
-                    <option key={s} value={s} />
-                ))}
-            </datalist>
 
             {/* ---------------------------- Modal: edit free item ---------------------------- */}
             <Modal

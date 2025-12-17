@@ -1,0 +1,32 @@
+﻿{
+  "generic": {
+    "title": "Site temporairement indisponible",
+    "message": "Le site n’est pas accessible pour le moment. Merci de réessayer plus tard."
+  },
+  "reasons": {
+    "notLaunched": {
+      "title": "Site non lancé",
+      "message": "Le site n’est pas encore ouvert au public. Si vous participez aux tests, connectez-vous avec votre compte testeur ou réessayez plus tard."
+    },
+    "maintenance": {
+      "title": "Maintenance en cours",
+      "message": "Le site est actuellement en maintenance. Nous travaillons à rétablir le service dans les plus brefs délais."
+    },
+    "restricted": {
+      "title": "Accès restreint",
+      "message": "L’accès est actuellement limité à certains utilisateurs. Si vous pensez devoir y avoir accès, connectez-vous ou contactez le support."
+    }
+  },
+  "loading": "Chargement du statut du site…",
+  "buttons": {
+    "retry": "Réessayer",
+    "home": "Retour à l’accueil",
+    "login": "Se connecter"
+  },
+  "technical": {
+    "summary": "Informations techniques (modules)"
+  },
+  "errors": {
+    "fetchStatus": "Erreur inconnue lors de la récupération du statut du site."
+  }
+}

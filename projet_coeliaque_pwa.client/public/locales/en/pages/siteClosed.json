@@ -1,0 +1,32 @@
+﻿{
+  "generic": {
+    "title": "Site temporarily unavailable",
+    "message": "The site is not accessible at the moment. Please try again later."
+  },
+  "reasons": {
+    "notLaunched": {
+      "title": "Site not launched",
+      "message": "The site is not yet open to the public. If you are part of the test group, please sign in with your tester account or try again later."
+    },
+    "maintenance": {
+      "title": "Maintenance in progress",
+      "message": "The site is currently under maintenance. We are working to restore the service as soon as possible."
+    },
+    "restricted": {
+      "title": "Restricted access",
+      "message": "Access is currently limited to certain users. If you believe you should have access, please sign in or contact support."
+    }
+  },
+  "loading": "Loading site status…",
+  "buttons": {
+    "retry": "Retry",
+    "home": "Back to home",
+    "login": "Sign in"
+  },
+  "technical": {
+    "summary": "Technical information (modules)"
+  },
+  "errors": {
+    "fetchStatus": "Unknown error while retrieving site status."
+  }
+}

@@ -12,5 +12,13 @@
     "missingSession": "Session Stripe manquante.",
     "stripeInit": "Stripe n'a pas pu être initialisé.",
     "startFailed": "Impossible de démarrer le processus d'abonnement."
+  },
+  "intro": {
+    "line1": "Les frais d’abonnement servent à couvrir l’hébergement, la maintenance et l’évolution de Services Cœliaque, ainsi que les frais des services tiers comme le traitement des paiements.",
+    "line2": "L’objectif est de garder le service simple, sans publicité, tout en assurant sa fiabilité à long terme."
+  },
+  "price": {
+    "label": "Tarif de l’abonnement",
+    "value": "35 $ + taxes par année"
   }
 }

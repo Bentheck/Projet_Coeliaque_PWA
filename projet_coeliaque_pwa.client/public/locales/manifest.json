@@ -87,6 +87,12 @@
     "/locales/en/components/requireForumAdmin.json",
     "/locales/fr/components/requireForumAdmin.json",
     "/locales/en/components/requireSuperAdmin.json",
-    "/locales/fr/components/requireSuperAdmin.json"
+    "/locales/fr/components/requireSuperAdmin.json",
+
+    "/locales/en/legal/disclaimer.json",
+    "/locales/fr/legal/disclaimer.json",
+
+    "/locales/en/pages/Legal/disclaimer.json",
+    "/locales/fr/pages/Legal/disclaimer.json"
   ]
 }

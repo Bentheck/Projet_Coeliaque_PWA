@@ -1,0 +1,15 @@
+﻿{
+  "title": "FAQ",
+  "subtitle": "Questions fréquentes sur le calculateur, la liste d’épicerie, etc.",
+  "searchPlaceholder": "Rechercher une question…",
+  "searchAria": "Rechercher",
+  "clear": "Effacer",
+  "syncing": "Mise à jour…",
+  "resultsCount": "{{count}} résultat(s)",
+  "noQuestionsInCategory": "Aucune question dans cette catégorie.",
+  "noResults": "Aucun résultat.",
+  "disclaimer": {
+    "title": "Avertissement :",
+    "body": "Les informations de cette FAQ sont fournies à titre indicatif. Vérifiez toujours les exigences officielles (ARC/Revenu Québec) selon votre situation."
+  }
+}

@@ -1,86 +1,70 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Controllers/RapportsController.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Services;
 using System.Security.Claims;
 using System.Text.Json;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
-    /// <summary>
-    /// Endpoints to list, generate, and retrieve yearly savings reports for the authenticated user.
-    /// </summary>
     [Route("api/rapports")]
     [ApiController]
     [Authorize]
+    [ModuleGate("Rapports")]
     public class RapportsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly IAuditLogService _audit;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RapportsController"/>.
-        /// </summary>
-        /// <param name="db">Application database context.</param>
-        /// <param name="userManager">ASP.NET Identity user manager.</param>
-        public RapportsController(ApplicationDbContext db, UserManager<IdentityUser> userManager)
+        public RapportsController(
+            ApplicationDbContext db,
+            UserManager<IdentityUser> userManager,
+            IAuditLogService audit)
         {
             _db = db;
             _userManager = userManager;
+            _audit = audit;
         }
 
-        /// <summary>
-        /// Lists available report years for the current user and indicates whether a report is generated for each year.
-        /// </summary>
-        /// <remarks>
-        /// Combines years from the user's <c>ComparatifYears</c> with years present in <c>SavedReports</c>.
-        /// </remarks>
-        /// <returns>
-        /// An ordered list (desc by year) of year descriptors including whether a report has been generated.
-        /// </returns>
-        /// <response code="200">Returns the list of years with generation flags.</response>
         [HttpGet]
         public async Task<ActionResult<List<RapportYearDto>>> GetAvailableReports()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // All years for which this user has a comparatif
-            var userYears = await _db.ComparatifYears
+            var comparatifYears = await _db.ComparatifYears
                 .Where(cy => cy.UserId == userId)
                 .Select(cy => cy.Annee)
                 .Distinct()
                 .ToListAsync();
 
-            // All years for which this user has a generated report
-            var generatedYears = await _db.SavedReports
+            var savedYears = await _db.SavedReports
                 .Where(r => r.UserId == userId)
                 .Select(r => r.Year)
+                .Distinct()
                 .ToListAsync();
 
-            var result = userYears
+            var savedSet = savedYears.ToHashSet();
+
+            var allYears = comparatifYears
+                .Union(savedYears)
+                .Distinct()
                 .OrderByDescending(y => y)
-                .Select(y => new RapportYearDto
-                {
-                    Year = y,
-                    ReportGenerated = generatedYears.Contains(y)
-                })
                 .ToList();
 
-            return result;
+            return allYears.Select(y => new RapportYearDto
+            {
+                Year = y,
+                ReportGenerated = savedSet.Contains(y)
+            }).ToList();
         }
 
-        /// <summary>
-        /// Retrieves a previously generated report for a given year for the current user.
-        /// </summary>
-        /// <param name="annee">Target year (e.g., 2025).</param>
-        /// <returns>
-        /// The report rows, the requesting user's display name, and the total of product subtotals.
-        /// </returns>
-        /// <response code="200">Returns the report for the specified year.</response>
-        /// <response code="404">No saved report was found for the specified year.</response>
         [HttpGet("{annee:int}")]
         public async Task<ActionResult<RapportDisplayDto>> GetReportByYear(int annee)
         {
@@ -106,27 +90,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             };
         }
 
-        /// <summary>
-        /// Generates (or regenerates) the report for a given year based on the user's invoices and product comparisons.
-        /// </summary>
-        /// <param name="annee">Target year to generate (e.g., 2025).</param>
-        /// <returns>HTTP 200 when the report has been persisted.</returns>
-        /// <remarks>
-        /// <para>
-        /// Aggregates invoice items for the year, aligns them with product comparisons, computes per-100 unit differences,
-        /// and saves the resulting rows as JSON in <c>SavedReports</c>.
-        /// </para>
-        /// <para>
-        /// Relies on <c>UnitConversionHelper.GetPricePer100</c> to normalize price per 100g or 100ml where applicable.
-        /// </para>
-        /// </remarks>
-        /// <response code="200">Report was generated and saved successfully.</response>
         [HttpPost("generate/{annee}")]
         public async Task<IActionResult> GenerateReport(int annee)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Fetch all the relevant facture items for the user & year
             var groupedFactureItems = await _db.FactureItems
                 .Include(fi => fi.Facture)
                 .Where(fi => fi.Facture.UserId == userId && fi.Facture.Annee == annee)
@@ -153,7 +121,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 var matchingComparison = productComparisons
                     .FirstOrDefault(pc => pc.TypeItem == factureGroup.TypeItem);
 
-                // Assume you have UnitConversionHelper.GetPricePer100 as in your code
                 var (sg100, unitLabel) = UnitConversionHelper.GetPricePer100(
                     factureGroup.Prix,
                     factureGroup.PoidsValeur,
@@ -237,8 +204,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _db.SaveChangesAsync();
 
+            // Audit: user generated (or regenerated) a report for this year
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await _audit.LogForUserIdAsync(
+                    userId,
+                    "Rapports.Generate",
+                    target: annee.ToString(),
+                    details: new
+                    {
+                        Year = annee,
+                        FactureGroups = groupedFactureItems.Count,
+                        Comparisons = productComparisons.Count,
+                        RowCount = reportRows.Count,
+                        SavedReportId = savedReport.Id,
+                        savedReport.GeneratedAt
+                    });
+            }
+
             return Ok();
         }
-
     }
 }

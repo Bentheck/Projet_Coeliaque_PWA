@@ -1,0 +1,59 @@
+﻿{
+  "title": "Contact us",
+  "intro": "Send us your request. We'll reply by email as soon as possible.",
+  "success": "Thank you. Your message has been sent.",
+  "fields": {
+    "type": {
+      "label": "Request type",
+      "support": "Support",
+      "info": "Information",
+      "suggestion": "Suggestion / improvement",
+      "help": "Support: technical/account issues. Information: general questions. Suggestion / improvement: ideas and feedback."
+    },
+    "email": "Your email",
+    "reason": "Reason",
+    "reasonSuggestions": {
+      "support": [
+        "Login issue",
+        "Password reset",
+        "Bug or technical error",
+        "Payment or subscription issue",
+        "Other"
+      ],
+      "info": [
+        "How the app works",
+        "Plans / pricing",
+        "Privacy and data",
+        "Compatibility / devices",
+        "Other"
+      ],
+      "feedback": [
+        "Improvement suggestion",
+        "Feature request",
+        "General feedback",
+        "Usability issue",
+        "Other"
+      ]
+    },
+    "details": "Description",
+    "attachments": "Attachments (optional)"
+  },
+  "helpers": {
+    "replyTo": "We'll use this address to reply to you (Reply-To).",
+    "detailsHint": "Include as many details as possible (steps, context, error message, etc.).",
+    "reasonHint": "Choose a suggestion or enter your own reason.",
+    "attachmentsHint": "Up to {{maxFiles}} images, {{maxMb}} MB each ({{totalMb}} MB total).",
+    "removeAttachmentAria": "Remove attachment",
+    "attachmentsTotal": "Total: {{count}} file(s), {{kb}} KB"
+  },
+  "buttons": {
+    "submit": "Send",
+    "loading": "Sending…",
+    "remove": "Remove"
+  },
+  "errors": {
+    "failed": "Unable to send your message. Please try again later.",
+    "network": "Unable to reach the server. Check your network and try again.",
+    "rateLimited": "Too many requests. Please wait {{seconds}}s and try again."
+  }
+}

@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 
 import { db, type ComparatifYearDto, type ReportYearDto } from "../../offline/db";
 import { syncDown } from "../../offline/sync";
+import "../../styles/comparatif.css";
 
 const REPORT_ROUTE = (annee: number) => `/rapports/${annee}`;
 
@@ -13,10 +14,15 @@ const Comparatif: React.FC = () => {
     const navigate = useNavigate();
 
     // Live data from Dexie
-    const years = useLiveQuery(() => db.comparatifYears.orderBy("annee").reverse().toArray(), []);
-    const reportYears = useLiveQuery(() => db.reportYears.toArray(), []) as
-        | ReportYearDto[]
-        | undefined;
+    const years = useLiveQuery(
+        () => db.comparatifYears.orderBy("annee").reverse().toArray(),
+        []
+    );
+
+    const reportYears = useLiveQuery(
+        () => db.reportYears.toArray(),
+        []
+    ) as ReportYearDto[] | undefined;
 
     // UI state
     const [showForm, setShowForm] = useState(false);
@@ -28,9 +34,10 @@ const Comparatif: React.FC = () => {
 
     const loading = years === undefined;
 
-    // warm db
+    // Warm db
     useEffect(() => {
         if (navigator.onLine) void syncDown(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const isReportGenerated = (annee: number) =>
@@ -49,9 +56,17 @@ const Comparatif: React.FC = () => {
                 body: JSON.stringify({ annee: newYear, lines: [] }),
             });
 
-            if (res.status === 202) {
+            // Server returns 201 Created with DTO (includes real id)
+            if (res.status === 201) {
+                const created: ComparatifYearDto = await res.json();
+                await db.comparatifYears.put(created);
+            } else if (res.status === 202) {
                 alert(t("alerts.yearQueued"));
-                const temp: ComparatifYearDto = { id: -Date.now(), annee: newYear, lines: [] };
+                const temp: ComparatifYearDto = {
+                    id: -Date.now(),
+                    annee: newYear,
+                    lines: [],
+                };
                 await db.comparatifYears.put(temp);
             } else if (!res.ok) {
                 throw new Error(await res.text());
@@ -60,38 +75,74 @@ const Comparatif: React.FC = () => {
             setShowForm(false);
             setNewYear(new Date().getFullYear());
             if (navigator.onLine) await syncDown(false);
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : t("errors.generic") ?? String(err);
+            setError(message);
         } finally {
             setSubmitting(false);
         }
     }
 
-    async function handleDelete(id: number, year?: number) {
+    async function deleteLocalByYear(year: number) {
+        await db.transaction("rw", db.comparatifYears, db.productComparisons, async () => {
+            const cy = await db.comparatifYears.where("annee").equals(year).first();
+            if (!cy) return;
+
+            await db.productComparisons.where("comparatifYearId").equals(cy.id).delete();
+            await db.comparatifYears.delete(cy.id);
+        });
+    }
+
+    async function handleDelete(localId: number, year: number) {
         if (!window.confirm(t("confirm.deleteYear", { year }))) return;
         setError(null);
 
         try {
-            const res = await fetch(`/api/comparatifyears/${id}`, {
+            // Offline: always local delete only
+            if (!navigator.onLine) {
+                await deleteLocalByYear(year);
+                return;
+            }
+
+            // Local-only (temp negative id): local delete only
+            if (localId < 0) {
+                await deleteLocalByYear(year);
+                return;
+            }
+
+            // Online: try delete on server by YEAR (robust)
+            const res = await fetch(`/api/comparatifyears/by-year/${year}`, {
                 method: "DELETE",
                 credentials: "include",
             });
 
-            if (res.status === 202) {
-                await db.comparatifYears.delete(id);
+            // If server doesn't have it, we still allow deleting locally (common with stale/unsynced local data)
+            if (res.status === 404) {
+                await deleteLocalByYear(year);
                 return;
             }
+
             if (!res.ok) throw new Error(await res.text());
-            if (navigator.onLine) await syncDown(false);
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+
+            // Always remove locally on success
+            await deleteLocalByYear(year);
+
+            // Refresh local cache
+            await syncDown(false);
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : t("errors.generic") ?? String(err);
+            setError(message);
         }
     }
 
     async function handleGenerateReport(annee: number) {
         try {
             if (isReportGenerated(annee)) {
-                const ok = window.confirm(t("confirm.regenExisting", { year: annee }));
+                const ok = window.confirm(
+                    t("confirm.regenExisting", { year: annee }) as string
+                );
                 if (!ok) return;
             }
 
@@ -111,51 +162,76 @@ const Comparatif: React.FC = () => {
 
             if (!res.ok) throw new Error(await res.text());
             navigate(REPORT_ROUTE(annee));
-        } catch (err: any) {
-            setGenError(err?.message ?? t("errors.generateFailed"));
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : t("errors.generateFailed") ?? String(err);
+            setGenError(message);
         } finally {
             setGenLoading(null);
         }
     }
 
     return (
-        <div className="container comparatif-container">
-            <div className="d-flex flex-column align-items-center mb-3">
-                <h2 className="mb-2">{t("header.title")}</h2>
-                <button
-                    className="btn btn-primary comparatif-new-btn"
-                    onClick={() => setShowForm((f) => !f)}
-                >
-                    <i className="bi bi-plus-circle me-1" />
-                    <span className="d-none d-sm-inline">{t("actions.new.long")}</span>
-                    <span className="d-sm-none">{t("actions.new.short")}</span>
-                </button>
+        <div className="container comparatif-container py-3">
+            <div className="card card--accent shadow-sm mb-3">
+                <div className="card-body d-flex flex-wrap align-items-center gap-3">
+                    <div className="flex-grow-1">
+                        <h2 className="h4 mb-1">
+                            <i className="bi bi-bar-chart-line me-2" />
+                            {t("header.title")}
+                        </h2>
+                    </div>
+
+                    <div className="ms-auto">
+                        <button
+                            className="btn btn-primary comparatif-new-btn"
+                            onClick={() => setShowForm((f) => !f)}
+                            type="button"
+                        >
+                            <i className="bi bi-plus-circle me-1" />
+                            <span className="d-none d-sm-inline">
+                                {t("actions.new.long")}
+                            </span>
+                            <span className="d-sm-none">
+                                {t("actions.new.short")}
+                            </span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {showForm && (
                 <form className="mb-3" onSubmit={handleCreate}>
-                    <div className="input-group">
-                        <input
-                            type="number"
-                            className="form-control"
-                            value={newYear}
-                            min={1990}
-                            max={2100}
-                            onChange={(e) => setNewYear(Number(e.target.value))}
-                            required
-                            disabled={submitting}
-                        />
-                        <button className="btn btn-success" type="submit" disabled={submitting}>
-                            {t("form.create")}
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            type="button"
-                            onClick={() => setShowForm(false)}
-                            disabled={submitting}
-                        >
-                            {t("form.cancel")}
-                        </button>
+                    <div className="card card--tinted shadow-sm">
+                        <div className="card-body">
+                            <div className="input-group">
+                                <input
+                                    type="number"
+                                    className="form-control"
+                                    value={newYear}
+                                    min={1990}
+                                    max={2100}
+                                    onChange={(e) => setNewYear(Number(e.target.value))}
+                                    required
+                                    disabled={submitting}
+                                />
+                                <button
+                                    className="btn btn-success"
+                                    type="submit"
+                                    disabled={submitting}
+                                >
+                                    {t("form.create")}
+                                </button>
+                                <button
+                                    className="btn btn-secondary"
+                                    type="button"
+                                    onClick={() => setShowForm(false)}
+                                    disabled={submitting}
+                                >
+                                    {t("form.cancel")}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             )}
@@ -164,17 +240,26 @@ const Comparatif: React.FC = () => {
             {genError && <div className="alert alert-danger">{genError}</div>}
 
             {loading ? (
-                <div>{t("loading")}</div>
+                <div className="card card--tinted shadow-sm">
+                    <div className="card-body">{t("loading")}</div>
+                </div>
             ) : !years || years.length === 0 ? (
-                <div className="alert alert-secondary text-center">{t("empty")}</div>
+                <div className="card card--tinted shadow-sm">
+                    <div className="card-body text-center text-muted">
+                        {t("empty")}
+                    </div>
+                </div>
             ) : (
-                <div>
+                <div className="vstack gap-2">
                     {years.map((y) => {
                         const generated = isReportGenerated(y.annee);
                         const busy = genLoading === y.annee;
 
                         return (
-                            <div key={y.id} className="card mb-2 border-0 shadow-sm">
+                            <div
+                                key={y.id}
+                                className="card card--tinted border-0 shadow-sm"
+                            >
                                 <div className="card-body d-flex align-items-start flex-wrap gap-2 comparatif-card-body">
                                     <div className="comparatif-year-main">
                                         <div className="fw-bold">
@@ -195,18 +280,14 @@ const Comparatif: React.FC = () => {
 
                                     <div className="d-flex gap-2 ms-auto">
                                         <button
-                                            className={`btn btn-sm rounded-pill px-3 ${generated ? "btn-warning" : "btn-success"
-                                                }`}
+                                            className="btn btn-sm rounded-pill px-3 btn-mint"
                                             onClick={() => handleGenerateReport(y.annee)}
                                             disabled={busy}
+                                            type="button"
                                             title={
                                                 generated
-                                                    ? (t(
-                                                        "buttons.generate.titleRegenerate"
-                                                    ) as string)
-                                                    : (t(
-                                                        "buttons.generate.titleGenerate"
-                                                    ) as string)
+                                                    ? (t("buttons.generate.titleRegenerate") as string)
+                                                    : (t("buttons.generate.titleGenerate") as string)
                                             }
                                         >
                                             {busy ? (
@@ -226,36 +307,29 @@ const Comparatif: React.FC = () => {
                                                 <>
                                                     <i className="bi bi-arrow-repeat me-1" />
                                                     <span className="d-none d-sm-inline">
-                                                        {t(
-                                                            "buttons.generate.regenerateLong"
-                                                        )}
+                                                        {t("buttons.generate.regenerateLong")}
                                                     </span>
                                                     <span className="d-sm-none">
-                                                        {t(
-                                                            "buttons.generate.regenerateShort"
-                                                        )}
+                                                        {t("buttons.generate.regenerateShort")}
                                                     </span>
                                                 </>
                                             ) : (
                                                 <>
                                                     <i className="bi bi-gear me-1" />
                                                     <span className="d-none d-sm-inline">
-                                                        {t(
-                                                            "buttons.generate.generateLong"
-                                                        )}
+                                                        {t("buttons.generate.generateLong")}
                                                     </span>
                                                     <span className="d-sm-none">
-                                                        {t(
-                                                            "buttons.generate.generateShort"
-                                                        )}
+                                                        {t("buttons.generate.generateShort")}
                                                     </span>
                                                 </>
                                             )}
                                         </button>
 
                                         <button
-                                            className="btn btn-outline-primary btn-sm"
+                                            className="btn btn-primary btn-sm rounded-pill px-3"
                                             onClick={() => navigate(`/comparatif/${y.id}`)}
+                                            type="button"
                                             title={t("buttons.view.title") as string}
                                         >
                                             <i className="bi bi-eye" />
@@ -265,8 +339,9 @@ const Comparatif: React.FC = () => {
                                         </button>
 
                                         <button
-                                            className="btn btn-outline-danger btn-sm"
+                                            className="btn btn-outline-danger btn-sm rounded-pill px-3"
                                             onClick={() => handleDelete(y.id, y.annee)}
+                                            type="button"
                                             title={t("buttons.delete.title") as string}
                                         >
                                             <i className="bi bi-trash" />

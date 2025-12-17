@@ -12,5 +12,13 @@
     "missingSession": "Missing Stripe session.",
     "stripeInit": "Stripe failed to initialize.",
     "startFailed": "Unable to start the subscription process."
+  },
+  "intro": {
+    "line1": "The subscription fee helps cover hosting, maintenance and ongoing improvements to Services Coeliaque, as well as third-party costs such as payment processing.",
+    "line2": "The goal is to keep the service simple and ad-free while ensuring its long-term reliability."
+  },
+  "price": {
+    "label": "Subscription price",
+    "value": "35 $ + taxes per year"
   }
 }

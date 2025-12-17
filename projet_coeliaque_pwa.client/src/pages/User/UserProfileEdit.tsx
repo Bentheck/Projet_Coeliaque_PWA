@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../components/AuthContext";
 import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
 
 const MAX_MB = 5;
 
@@ -13,9 +14,27 @@ type MyProfileDto = {
     avatarUrl?: string | null;
 };
 
+type ApiErrorPayload = {
+    errorCode?: string;
+};
+
+async function readPayload(
+    res: Response
+): Promise<{ ok: boolean; payload: any; rawText: string }> {
+    const rawText = await res.text(); // <-- read once
+    let payload: any = null;
+    try {
+        payload = rawText ? JSON.parse(rawText) : null;
+    } catch {
+        payload = null;
+    }
+    return { ok: res.ok, payload, rawText };
+}
+
 const ProfileEdit: React.FC = () => {
     const { t } = useTranslation("pages/User/UserProfileEdit");
     const { user, refresh } = useAuth() as any;
+    const navigate = useNavigate();
 
     // Avatar state
     const [preview, setPreview] = useState<string | null>(user?.avatarUrl || null);
@@ -32,6 +51,13 @@ const ProfileEdit: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
 
+    // Delete account UI state
+    const [showDelete, setShowDelete] = useState(false);
+    const [deletePassword, setDeletePassword] = useState("");
+    const [deleteConfirm, setDeleteConfirm] = useState(false);
+    const [deleteBusy, setDeleteBusy] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+
     // Load profile
     useEffect(() => {
         let alive = true;
@@ -39,7 +65,10 @@ const ProfileEdit: React.FC = () => {
             try {
                 setError(null);
                 const res = await fetch("/api/users/me/profile", { credentials: "include" });
-                if (!res.ok) throw new Error(await res.text());
+                if (!res.ok) {
+                    const { rawText } = await readPayload(res);
+                    throw new Error(rawText || t("errors.loadProfile"));
+                }
                 const data = (await res.json()) as MyProfileDto;
                 if (!alive) return;
                 setDisplayName(data.displayName ?? "");
@@ -94,10 +123,19 @@ const ProfileEdit: React.FC = () => {
                 body: fd,
                 credentials: "include",
             });
+
             if (!res.ok) {
-                throw new Error((await res.text()) || t("errors.upload"));
+                const { rawText } = await readPayload(res);
+                throw new Error(rawText || t("errors.upload"));
             }
-            await res.json();
+
+            // If your API returns JSON, keep it; if it returns empty, this is safe:
+            try {
+                await res.json();
+            } catch {
+                /* ignore */
+            }
+
             setOk(t("messages.avatarUpdated"));
             refresh();
         } catch (e: any) {
@@ -118,7 +156,10 @@ const ProfileEdit: React.FC = () => {
                 method: "DELETE",
                 credentials: "include",
             });
-            if (!res.ok && res.status !== 204) throw new Error(t("errors.deletion"));
+            if (!res.ok && res.status !== 204) {
+                const { rawText } = await readPayload(res);
+                throw new Error(rawText || t("errors.deletion"));
+            }
             setFile(null);
             setPreview(null);
             setOk(t("messages.avatarRemoved"));
@@ -144,19 +185,80 @@ const ProfileEdit: React.FC = () => {
                 body,
             });
             if (!res.ok) {
-                throw new Error((await res.text()) || t("errors.save"));
+                const { rawText } = await readPayload(res);
+                throw new Error(rawText || t("errors.save"));
             }
             setOk(t("messages.profileUpdated"));
             refresh();
         } catch (e: any) {
-            try {
-                const obj = JSON.parse(e.message);
-                setError(obj?.error || e.message);
-            } catch {
-                setError(e?.message || t("errors.generic"));
-            }
+            setError(e?.message || t("errors.generic"));
         } finally {
             setBusy(false);
+        }
+    };
+
+    const closeDeleteModal = () => {
+        setShowDelete(false);
+        setDeletePassword("");
+        setDeleteConfirm(false);
+        setDeleteBusy(false);
+        setDeleteError(null);
+    };
+
+    const deleteAccount = async () => {
+        setDeleteBusy(true);
+        setDeleteError(null);
+        setError(null);
+        setOk(null);
+
+        try {
+            const res = await fetch("/api/account/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    password: deletePassword,
+                    confirm: deleteConfirm,
+                }),
+            });
+
+            const { ok: okResp, payload, rawText } = await readPayload(res);
+
+            if (!okResp) {
+                const p = (payload || {}) as ApiErrorPayload;
+                const code = p.errorCode;
+
+                if (code === "InvalidPassword") {
+                    setDeleteError(t("delete.errors.invalidPassword"));
+                    return;
+                }
+                if (code === "DeleteRequiresConfirm") {
+                    setDeleteError(t("delete.errors.requiresConfirm"));
+                    return;
+                }
+                if (code === "SubscriptionStillActive") {
+                    setDeleteError(t("delete.errors.subscriptionStillActive"));
+                    return;
+                }
+
+                // NEW: Lifetime subscription block (DB EndDate == 9999-12-31)
+                if (code === "LifetimeSubscription") {
+                    setDeleteError(t("delete.errors.lifetimeSubscription"));
+                    return;
+                }
+
+                // fallback
+                setDeleteError(t("delete.errors.generic") + (rawText ? ` (${rawText})` : ""));
+                return;
+            }
+
+            closeDeleteModal();
+            await refresh();
+            navigate("/", { replace: true });
+        } catch (e: any) {
+            setDeleteError(e?.message || t("delete.errors.generic"));
+        } finally {
+            setDeleteBusy(false);
         }
     };
 
@@ -177,20 +279,15 @@ const ProfileEdit: React.FC = () => {
                             className="rounded-circle border profile-avatar-lg"
                         />
                     ) : (
-                            <div
-                                className="rounded-circle bg-light border d-flex align-items-center justify-content-center profile-avatar-placeholder"
-                            >
-                                <i className="bi bi-person profile-avatar-icon" />
-                            </div>
+                        <div className="rounded-circle bg-light border d-flex align-items-center justify-content-center profile-avatar-placeholder">
+                            <i className="bi bi-person profile-avatar-icon" />
+                        </div>
                     )}
                 </div>
 
                 <div className="col">
-                    <label className="form-label">
-                        {t("labels.avatarLabel", { maxMb: MAX_MB })}
-                    </label>
+                    <label className="form-label">{t("labels.avatarLabel", { maxMb: MAX_MB })}</label>
 
-                    {/* Hidden real input */}
                     <input
                         id="avatar-input"
                         type="file"
@@ -199,7 +296,6 @@ const ProfileEdit: React.FC = () => {
                         onChange={onPick}
                     />
 
-                    {/* Custom file picker */}
                     <div className="d-flex align-items-center gap-2">
                         <button
                             type="button"
@@ -209,7 +305,6 @@ const ProfileEdit: React.FC = () => {
                             {t("buttons.chooseFile")}
                         </button>
 
-                        {/* Show selected filename */}
                         {file && <span className="text-muted">{file.name}</span>}
                     </div>
 
@@ -278,7 +373,7 @@ const ProfileEdit: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="mt-3 d-flex gap-2">
+                    <div className="mt-3 d-flex flex-wrap gap-2">
                         <button className="btn btn-primary" onClick={saveProfile} disabled={busy}>
                             {t("buttons.save")}
                         </button>
@@ -289,9 +384,113 @@ const ProfileEdit: React.FC = () => {
                         >
                             {t("buttons.cancel")}
                         </button>
+
+                        <Link to="/forgot-password" className="btn btn-outline-primary ms-auto">
+                            {t("buttons.resetPassword", { defaultValue: "Reset password" })}
+                        </Link>
+                    </div>
+
+                    <hr className="my-4" />
+
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <div className="fw-semibold">{t("delete.title")}</div>
+                            <div className="text-muted small">{t("delete.description")}</div>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="btn btn-outline-danger"
+                            onClick={() => setShowDelete(true)}
+                            disabled={busy}
+                        >
+                            {t("delete.openButton")}
+                        </button>
                     </div>
                 </div>
             </div>
+
+            {/* Delete modal */}
+            {showDelete && (
+                <>
+                    <div className="modal-backdrop fade show" />
+
+                    <div className="modal fade show d-block" tabIndex={-1} role="dialog" aria-modal="true">
+                        <div className="modal-dialog modal-dialog-centered" role="document">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">{t("delete.modal.title")}</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        aria-label={t("delete.modal.close")}
+                                        onClick={closeDeleteModal}
+                                        disabled={deleteBusy}
+                                    />
+                                </div>
+
+                                <div className="modal-body">
+                                    <p className="mb-2">{t("delete.modal.lead")}</p>
+
+                                    <ul className="mb-3">
+                                        <li>{t("delete.modal.bullets.data")}</li>
+                                        <li>{t("delete.modal.bullets.forum")}</li>
+                                        <li>{t("delete.modal.bullets.irreversible")}</li>
+                                    </ul>
+
+                                    {deleteError && <div className="alert alert-danger mb-3">{deleteError}</div>}
+
+                                    <label className="form-label">{t("delete.modal.passwordLabel")}</label>
+                                    <input
+                                        type="password"
+                                        className="form-control"
+                                        value={deletePassword}
+                                        onChange={(e) => setDeletePassword(e.target.value)}
+                                        placeholder={t("delete.modal.passwordPlaceholder")}
+                                        disabled={deleteBusy}
+                                    />
+
+                                    <div className="form-check mt-3">
+                                        <input
+                                            id="delete-confirm"
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            checked={deleteConfirm}
+                                            onChange={(e) => setDeleteConfirm(e.target.checked)}
+                                            disabled={deleteBusy}
+                                        />
+                                        <label className="form-check-label" htmlFor="delete-confirm">
+                                            {t("delete.modal.confirmLabel")}
+                                        </label>
+                                    </div>
+
+                                    <div className="text-muted small mt-2">{t("delete.modal.note")}</div>
+                                </div>
+
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={closeDeleteModal}
+                                        disabled={deleteBusy}
+                                    >
+                                        {t("delete.modal.cancel")}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-danger"
+                                        onClick={deleteAccount}
+                                        disabled={deleteBusy || !deleteConfirm || deletePassword.trim().length === 0}
+                                    >
+                                        {deleteBusy ? t("delete.modal.deleting") : t("delete.modal.deleteButton")}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 };

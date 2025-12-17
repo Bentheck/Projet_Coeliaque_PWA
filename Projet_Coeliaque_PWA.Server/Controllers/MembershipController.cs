@@ -8,12 +8,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
     [Authorize]
     [ApiController]
     [Route("api/membership")]
+    [ModuleGate("Membership")]
     public class MembershipController : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager;

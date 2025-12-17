@@ -11,7 +11,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Services;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -24,20 +26,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [ModuleGate("ListeEpicerie")]
     public class ListeEpicerieController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IMapper _mapper;
+        private readonly IAuditLogService _audit;
 
         public ListeEpicerieController(
             ApplicationDbContext db,
             UserManager<IdentityUser> userManager,
-            IMapper mapper)
+            IMapper mapper,
+            IAuditLogService audit)
         {
             _db = db;
             _userManager = userManager;
             _mapper = mapper;
+            _audit = audit;
         }
 
         private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -165,6 +171,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _db.ListeEpicerie.Add(entity);
             await _db.SaveChangesAsync();
 
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "ListeEpicerie.Create",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    entity.Id,
+                    entity.Name,
+                    entity.Created,
+                    ItemCount = entity.Items.Count,
+                    entity.Completed
+                });
+
             var createdDto = _mapper.Map<ListeEpicerieDTO>(entity);
             return CreatedAtAction(nameof(GetListe), new { id = entity.Id }, createdDto);
         }
@@ -196,6 +215,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (entity.Completed)
                 return Conflict("Cette liste est complétée et ne peut pas être modifiée. Veuillez la décompléter d'abord.");
+
+            var before = new
+            {
+                entity.Id,
+                entity.Name,
+                entity.Created,
+                ItemCount = entity.Items.Count,
+                entity.Completed
+            };
 
             entity.Name = string.IsNullOrWhiteSpace(dto.Name) ? entity.Name : dto.Name.Trim();
 
@@ -266,6 +294,26 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             RecomputeCompleted(entity);
 
             await _db.SaveChangesAsync();
+
+            var after = new
+            {
+                entity.Id,
+                entity.Name,
+                entity.Created,
+                ItemCount = entity.Items.Count,
+                entity.Completed
+            };
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "ListeEpicerie.Update",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    Before = before,
+                    After = after
+                });
+
             return NoContent();
         }
 
@@ -290,6 +338,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (entity == null) return NotFound();
 
+            var before = new
+            {
+                entity.Id,
+                entity.Name,
+                entity.Completed,
+                ItemCount = entity.Items.Count
+            };
+
             if (patch?.Completed == true)
             {
                 foreach (var it in entity.Items) it.IsChecked = true;
@@ -301,6 +357,25 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             await _db.SaveChangesAsync();
+
+            var after = new
+            {
+                entity.Id,
+                entity.Name,
+                entity.Completed,
+                ItemCount = entity.Items.Count
+            };
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "ListeEpicerie.SetCompleted",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    Before = before,
+                    After = after
+                });
+
             return NoContent();
         }
 
@@ -331,10 +406,26 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var item = entity.Items.FirstOrDefault(x => x.Id == itemId);
             if (item == null) return NotFound();
 
+            var beforeChecked = item.IsChecked;
+
             item.IsChecked = patch?.Checked == true;
             RecomputeCompleted(entity);
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "ListeEpicerie.SetItemChecked",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    ListeId = entity.Id,
+                    ItemId = item.Id,
+                    BeforeChecked = beforeChecked,
+                    AfterChecked = item.IsChecked,
+                    entity.Completed
+                });
+
             return NoContent();
         }
 
@@ -355,8 +446,24 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (entity == null) return NotFound();
 
+            var snapshot = new
+            {
+                entity.Id,
+                entity.Name,
+                entity.Created,
+                ItemCount = entity.Items.Count,
+                entity.Completed
+            };
+
             _db.ListeEpicerie.Remove(entity);
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                UserId,
+                "ListeEpicerie.Delete",
+                target: id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
     }

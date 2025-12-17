@@ -15,7 +15,13 @@
     "generate": {
       "label": "Générer",
       "loading": "Génération…"
-    }
+    },
+    "refresh": {
+      "title": "Recharger la liste des rapports",
+      "label": "Recharger",
+      "loading": "Rechargement…"
+    },
+    "backToComparatif": "Retour au comparatif"
   },
   "status": {
     "ok": "OK"

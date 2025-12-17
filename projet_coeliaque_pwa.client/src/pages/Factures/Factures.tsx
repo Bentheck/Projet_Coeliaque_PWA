@@ -10,6 +10,7 @@ import {
     removeFacture,
     type Facture as IFacture,
 } from "../../offline/db";
+import "../../styles/factures-index.css";
 
 const LIST_KEY = "factures/all";
 
@@ -29,12 +30,15 @@ const Factures: React.FC = () => {
     // Live list from Dexie (generic store)
     const factures = useLiveQuery(() => getFacturesList(LIST_KEY), []);
     const [loading, setLoading] = useState(false);
-    const[error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     // Inline form state
     const [formMode, setFormMode] = useState<"none" | "create" | "edit">("none");
     const [current, setCurrent] = useState<Facture | null>(null);
     const [formData, setFormData] = useState(emptyFacture);
+
+    const list = (factures ?? []) as Facture[];
+    const totalCount = list.length;
 
     // Initial background refresh to populate Dexie if online
     const fetchFactures = async () => {
@@ -58,7 +62,8 @@ const Factures: React.FC = () => {
 
     // ----- Handlers -----
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const startCreate = () => {
@@ -96,7 +101,9 @@ const Factures: React.FC = () => {
                     const existing = (await getFacturesList(LIST_KEY)) ?? [];
                     await putFacturesList(
                         LIST_KEY,
-                        (existing as Facture[]).map((f) => (f.id === updated.id ? updated : f))
+                        (existing as Facture[]).map((f) =>
+                            f.id === updated.id ? updated : f
+                        )
                     );
                     await putFacture(updated);
                     alert(t("alerts.offlineEditSaved"));
@@ -104,9 +111,15 @@ const Factures: React.FC = () => {
                     return;
                 } else {
                     // create queued: phantom row
-                    const phantom: Facture = { id: -Date.now(), ...formData } as Facture;
+                    const phantom: Facture = {
+                        id: -Date.now(),
+                        ...formData,
+                    } as Facture;
                     const existing = (await getFacturesList(LIST_KEY)) ?? [];
-                    await putFacturesList(LIST_KEY, [phantom, ...(existing as Facture[])]);
+                    await putFacturesList(LIST_KEY, [
+                        phantom,
+                        ...(existing as Facture[]),
+                    ]);
                     alert(t("alerts.offlineCreateSaved"));
                     handleCancel();
                     return;
@@ -143,9 +156,10 @@ const Factures: React.FC = () => {
                 credentials: "include",
             });
 
+            const existing = (await getFacturesList(LIST_KEY)) ?? [];
+
             if (res.status === 202) {
                 // optimistic removal
-                const existing = (await getFacturesList(LIST_KEY)) ?? [];
                 await putFacturesList(
                     LIST_KEY,
                     (existing as Facture[]).filter((f) => f.id !== facture.id)
@@ -157,7 +171,6 @@ const Factures: React.FC = () => {
 
             if (!res.ok) throw new Error(await res.text());
 
-            const existing = (await getFacturesList(LIST_KEY)) ?? [];
             await putFacturesList(
                 LIST_KEY,
                 (existing as Facture[]).filter((f) => f.id !== facture.id)
@@ -169,123 +182,194 @@ const Factures: React.FC = () => {
     };
 
     // ----- Render -----
-    const list = (factures ?? []) as Facture[];
-
     return (
-        <div className="container factures-container">
-            <div className="d-flex flex-column align-items-center mb-3">
-                <h2 className="mb-2">{t("headings.title")}</h2>
-                <button
-                    className="btn btn-primary factures-new-btn"
-                    onClick={startCreate}
-                >
-                    {t("buttons.new")}
-                </button>
+        <div className="container factures-container py-3">
+            <div className="card card--accent shadow-sm mb-3">
+                <div className="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h1 className="h4 mb-0">
+                        {t("headings.title")}
+                    </h1>
+
+                    <button
+                        className="btn btn-primary factures-new-btn"
+                        onClick={startCreate}
+                        type="button"
+                    >
+                        <i className="bi bi-plus-circle me-2" />
+                        {t("buttons.new")}
+                    </button>
+                </div>
             </div>
 
-            {error && <div className="alert alert-danger">{error}</div>}
-
-            {formMode !== "none" && (
-                <form className="mb-4" onSubmit={handleSubmit}>
-                    <div className="mb-2">
-                        <label>{t("form.labels.year")}</label>
-                        <input
-                            name="annee"
-                            type="number"
-                            value={formData.annee}
-                            onChange={handleChange}
-                            className="form-control"
-                        />
-                    </div>
-                    <div className="mb-2">
-                        <label>{t("form.labels.invoiceId")}</label>
-                        <input
-                            name="factureId"
-                            value={formData.factureId}
-                            onChange={handleChange}
-                            className="form-control"
-                        />
-                    </div>
-                    <div className="mb-2">
-                        <label>{t("form.labels.date")}</label>
-                        <input
-                            name="date"
-                            type="date"
-                            value={formData.date}
-                            onChange={handleChange}
-                            className="form-control"
-                        />
-                    </div>
-                    <div className="mb-2">
-                        <label>{t("form.labels.store")}</label>
-                        <input
-                            name="magasin"
-                            value={formData.magasin}
-                            onChange={handleChange}
-                            className="form-control"
-                        />
-                    </div>
-                    <button type="submit" className="btn btn-success me-2">
-                        {formMode === "edit" ? t("buttons.save") : t("buttons.create")}
-                    </button>
-                    <button type="button" className="btn btn-secondary" onClick={handleCancel}>
-                        {t("buttons.cancel")}
-                    </button>
-                </form>
+            {error && (
+                <div className="alert alert-danger">
+                    {error}
+                </div>
             )}
 
-            {loading ? (
-                <div>{t("loading")}</div>
-            ) : list.length === 0 ? (
-                <div className="alert alert-secondary text-center">
-                    {t("empty.noneFound")}
-                </div>
-            ) : (
-                list.map((facture: Facture) => (
-                    <div key={facture.id} className="card mb-2 border-0 shadow-sm">
-                        <div className="card-body d-flex align-items-start factures-card-body">
-                            <span className="factures-card-main">
-                                <div>
-                                    <b>{t("list.idLabel")}</b>{" "}
-                                    {facture.factureId || t("pending")}
-                                </div>
-                                <div>
-                                    <b>{t("list.dateLabel")}</b>{" "}
-                                    {facture.date?.slice(0, 10)}
-                                </div>
-                                <div>
-                                    <b>{t("list.storeLabel")}</b> {facture.magasin}
-                                </div>
-                            </span>
+            {/* Inline create/edit form */}
+            {formMode !== "none" && (
+                <div className="card card--tinted shadow-sm mb-3">
+                    <div className="card-body">
+                        <h2 className="h6 mb-3">
+                            {formMode === "edit"
+                                ? t("form.headings.edit")
+                                : t("form.headings.create")}
+                        </h2>
 
-                            <div className="d-flex gap-2 only-icons-under-600">
-                                {facture.id > 0 && (
-                                    <button
-                                        className="btn btn-outline-primary btn-sm"
-                                        onClick={() => navigate(`/factures/${facture.id}`)}
-                                        aria-label={t("list.viewAria")}
-                                        title={t("list.viewTitle") as string}
-                                    >
-                                        <i className="bi bi-eye" aria-hidden="true"></i>{" "}
-                                        <span className="btn-text">{t("list.viewBtn")}</span>
-                                    </button>
-                                )}
+                        <form onSubmit={handleSubmit}>
+                            <div className="mb-2">
+                                <label htmlFor="facture-annee" className="form-label">
+                                    {t("form.labels.year")}
+                                </label>
+                                <input
+                                    id="facture-annee"
+                                    name="annee"
+                                    type="number"
+                                    value={formData.annee}
+                                    onChange={handleChange}
+                                    className="form-control"
+                                />
+                            </div>
+                            <div className="mb-2">
+                                <label htmlFor="facture-id" className="form-label">
+                                    {t("form.labels.invoiceId")}
+                                </label>
+                                <input
+                                    id="facture-id"
+                                    name="factureId"
+                                    value={formData.factureId}
+                                    onChange={handleChange}
+                                    className="form-control"
+                                />
+                            </div>
+                            <div className="mb-2">
+                                <label htmlFor="facture-date" className="form-label">
+                                    {t("form.labels.date")}
+                                </label>
+                                <input
+                                    id="facture-date"
+                                    name="date"
+                                    type="date"
+                                    value={formData.date}
+                                    onChange={handleChange}
+                                    className="form-control"
+                                />
+                            </div>
+                            <div className="mb-3">
+                                <label htmlFor="facture-magasin" className="form-label">
+                                    {t("form.labels.store")}
+                                </label>
+                                <input
+                                    id="facture-magasin"
+                                    name="magasin"
+                                    value={formData.magasin}
+                                    onChange={handleChange}
+                                    className="form-control"
+                                />
+                            </div>
 
+                            <div className="d-flex gap-2">
                                 <button
-                                    className="btn btn-outline-danger btn-sm"
-                                    onClick={() => handleDelete(facture)}
-                                    aria-label={t("list.deleteAria")}
-                                    title={t("list.deleteTitle") as string}
+                                    type="submit"
+                                    className="btn btn-success"
                                 >
-                                    <i className="bi bi-trash" aria-hidden="true"></i>{" "}
-                                    <span className="btn-text">
-                                        {t("list.deleteBtn")}
-                                    </span>
+                                    {formMode === "edit"
+                                        ? t("buttons.save")
+                                        : t("buttons.create")}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={handleCancel}
+                                >
+                                    {t("buttons.cancel")}
                                 </button>
                             </div>
-                        </div>
+                        </form>
                     </div>
-                ))
+                </div>
+            )}
+
+            {/* List */}
+            {loading ? (
+                <div className="card card--tinted shadow-sm">
+                    <div className="card-body">
+                        {t("loading")}
+                    </div>
+                </div>
+            ) : totalCount === 0 ? (
+                <div className="card card--tinted shadow-sm">
+                    <div className="card-body text-center">
+                        <span className="text-muted">
+                            {t("empty.noneFound")}
+                        </span>
+                    </div>
+                </div>
+            ) : (
+                <div className="vstack gap-2">
+                    {list.map((facture: Facture) => (
+                        <div
+                            key={facture.id}
+                            className="card card--tinted shadow-sm"
+                        >
+                            <div className="card-body d-flex align-items-start factures-card-body">
+                                <div className="factures-card-main">
+                                    <div>
+                                        <strong>{t("list.idLabel")}</strong>{" "}
+                                        {facture.factureId || t("pending")}
+                                    </div>
+                                    <div>
+                                        <strong>{t("list.dateLabel")}</strong>{" "}
+                                        {facture.date?.slice(0, 10)}
+                                    </div>
+                                    <div>
+                                        <strong>{t("list.storeLabel")}</strong>{" "}
+                                        {facture.magasin}
+                                    </div>
+                                </div>
+
+                                <div className="d-flex gap-2 ms-auto only-icons-under-600">
+                                    {facture.id > 0 && (
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-primary btn-sm"
+                                            onClick={() =>
+                                                navigate(`/factures/${facture.id}`)
+                                            }
+                                            aria-label={t("list.viewAria")}
+                                            title={t("list.viewTitle") as string}
+                                        >
+                                            <i
+                                                className="bi bi-eye"
+                                                aria-hidden="true"
+                                            />
+                                            <span className="btn-text ms-1">
+                                                {t("list.viewBtn")}
+                                            </span>
+                                        </button>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-danger btn-sm"
+                                        onClick={() => handleDelete(facture)}
+                                        aria-label={t("list.deleteAria")}
+                                        title={t("list.deleteTitle") as string}
+                                    >
+                                        <i
+                                            className="bi bi-trash"
+                                            aria-hidden="true"
+                                        />
+                                        <span className="btn-text ms-1">
+                                            {t("list.deleteBtn")}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             )}
         </div>
     );

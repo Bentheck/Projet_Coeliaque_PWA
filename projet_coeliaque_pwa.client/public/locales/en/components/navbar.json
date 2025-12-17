@@ -1,5 +1,5 @@
 ﻿{
-  "brand": "Service Coeliaque",
+  "brand": "Celiac Services",
   "aria": {
     "toggle": "Toggle navigation"
   },
@@ -29,7 +29,8 @@
       "admin": "Forum Admin",
       "offlineTitle": "Forum unavailable offline",
       "offlineAlert": "The forum is not available offline.",
-      "offlineLabel": "Forum (offline)"
+      "offlineLabel": "Forum (offline)",
+      "language": "Forum"
     },
     "help": {
       "_": "Help",
@@ -57,8 +58,8 @@
     "logout": "Logout"
   },
   "auth": {
-    "login": "Login",
-    "register": "Register"
+    "login": "Log in",
+    "register": "Create account"
   },
   "demo": {
     "button": "Demo"

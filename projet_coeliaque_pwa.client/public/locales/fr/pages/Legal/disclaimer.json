@@ -1,0 +1,28 @@
+﻿{
+  "page": {
+    "title": "Avertissement légal",
+    "fullVersionHint": "Ceci est la version complète de l’avertissement légal de Service Coeliaque (opéré par Solutions BenSoft).",
+    "tosComingSoon": "Une page de Conditions d’utilisation sera ajoutée séparément."
+  },
+  "messages": {
+    "accepted": "Accepté. Merci."
+  },
+  "errors": {
+    "defaultError": "Une erreur est survenue.",
+    "missingContent": "Le contenu de l’avertissement est manquant.",
+    "loginRequired": "Veuillez vous connecter pour accepter.",
+    "mustScroll": "Faites défiler jusqu’en bas pour activer l’acceptation."
+  },
+  "actions": {
+    "back": "Retour",
+    "accept": "Accepter",
+    "accepting": "Acceptation…",
+    "decline": "Refuser",
+    "loginHint": "Connectez-vous pour accepter (requis pour les fonctionnalités restreintes).",
+    "login": "Connexion",
+    "viewFull": "Voir l’avertissement complet"
+  },
+  "meta": {
+    "versionLabel": "Version actuelle :"
+  }
+}

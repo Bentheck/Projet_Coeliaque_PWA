@@ -1,0 +1,1348 @@
+﻿/* ========================================================================= */
+/* THEME VARIABLES                                                           */
+/* ========================================================================= */
+
+:root {
+    /* BACKGROUNDS AND SURFACES */
+    --color-bg: #f0f7ff; /* full-page soft blue */
+    --color-surface: #ffffff; /* clean white cards */
+    --color-surface-2: #e8f2ff; /* pale blue surfaces: headers, inputs */
+    --color-surface-3: #dbe9ff; /* stronger tint for sections */
+    /* TEXT (AAA vs all backgrounds above) */
+    --color-text: #0b1120;
+    --color-text-muted: #4b5563;
+    /* BORDERS + HOVER */
+    --color-border: #c3d2e8; /* blue-tinted border */
+    --color-hover: #e0edff; /* hover with blue */
+    /* PRIMARY BLUE (AAA vs white & light backgrounds) */
+    --color-primary: #084a96; /* darker blue for AAA */
+    --color-primary-border: #063264; /* even darker for AAA */
+    --color-primary-text: #ffffff;
+    /* SOFT PRIMARY VARIANTS */
+    --color-primary-soft: #bfdcff;
+    --color-primary-soft-alt: #93c5fd;
+    /* MINT ACCENTS */
+    --color-accent-mint: #0ffcbe;
+    /* approximate underlying solid for contrast math: #c3feee */
+    --color-accent-mint-soft: rgba(15, 252, 190, 0.25);
+    --color-accent-mint-border: rgba(15, 252, 190, 0.7);
+    /* SHADOWS */
+    --shadow-card: 0 4px 14px rgba(15, 23, 42, 0.12);
+    --shadow-elevated: 0 8px 24px rgba(15, 23, 42, 0.20);
+    /* TABLE HEADER DEFAULT */
+    --color-table-head: var(--color-surface-3);
+}
+
+/* Dark mode overrides */
+html[data-theme="dark"] {
+    --color-bg: #0f172a;
+    --color-surface: #020617;
+    --color-surface-2: #1e293b;
+    --color-text: #e5e7eb;
+    --color-text-muted: #9ca3af;
+    --color-border: #1f2937;
+    --color-hover: #334155;
+    /* Dark primary tuned for AAA vs white */
+    --color-primary: #1e40af; /* darker indigo */
+    --color-primary-border: #1d3fb5; /* slightly lighter border */
+    --color-primary-text: #ffffff;
+    --shadow-card: 0 2px 18px rgba(0,0,0,0.75);
+    --shadow-elevated: 0 2px 24px rgba(0,0,0,0.85);
+    --color-table-head: #1e293b;
+}
+
+/* ========================================================================= */
+/* GLOBAL / BASE                                                             */
+/* ========================================================================= */
+
+html,
+body,
+#root {
+    height: 100%;
+    min-height: 100vh;
+}
+
+body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.app-main-content {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Brand – keep it on one line by default */
+a.navbar-brand {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    font-size: 1.15rem;
+    color: var(--color-text) !important;
+    white-space: nowrap;
+    word-break: normal;
+    text-align: left;
+}
+
+/* On very small screens, allow wrapping on words */
+@media (max-width: 576px) {
+    a.navbar-brand {
+        white-space: normal;
+        word-break: break-word;
+        text-align: center;
+    }
+}
+
+/* Links */
+a {
+    color: var(--color-primary);
+}
+
+    a:hover,
+    a:focus {
+        color: var(--color-primary-border);
+    }
+
+.text-primary {
+    color: var(--color-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary-border) !important;
+    color: var(--color-primary-text) !important;
+}
+
+.badge.bg-primary {
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary-border) !important;
+    color: var(--color-primary-text) !important;
+}
+
+.text-muted {
+    color: var(--color-text-muted) !important;
+}
+
+.border-top {
+    border-top: 1px solid var(--color-border);
+}
+
+.border-bottom {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.box-shadow {
+    box-shadow: 0 .25rem .75rem rgba(0,0,0,.05);
+}
+
+button.accept-policy {
+    font-size: 1rem;
+    line-height: inherit;
+}
+
+.bg-white,
+.bg-light {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
+}
+
+/* ========================================================================= */
+/* NAVBAR + DROPDOWNS                                                        */
+/* ========================================================================= */
+
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    font-size: 1.07rem;
+    padding: 0;
+    margin: 0;
+}
+
+/* Pill wrapper */
+.navbar-inner {
+    background: #ffffff;
+    color: var(--color-text);
+    display: block;
+    transform-origin: center center;
+    transform: scale(1);
+    opacity: 1;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: border-radius 0.25s ease, margin 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease, max-width 0.25s ease, width 0.25s ease, transform 0.25s ease, opacity 0.25s ease, backdrop-filter 0.25s ease, background-color 0.25s ease;
+}
+
+    /* Inner Bootstrap container: flex row that can wrap by default */
+    .navbar-inner > .container {
+        width: 100%;
+        max-width: 100%;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap; /* “mobile” layout by default */
+    }
+
+/* Top state */
+.navbar--top .navbar-inner {
+    border-radius: 0;
+    margin: 0;
+    padding: 0.5rem 1rem;
+    box-shadow: none;
+    border-bottom: 1px solid var(--color-border);
+    max-width: 100%;
+    width: 100%;
+    background: #ffffff;
+    transform: scale(1);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* Floating state (scrolled) – pill always at least as wide as content */
+.navbar--floating .navbar-inner {
+    border-radius: 1rem;
+    margin: 0.75rem auto 1.5rem;
+    padding: 0.5rem 1.25rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
+    border: 1px solid var(--color-border);
+    width: 100%;
+    max-width: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    transform: scale(0.97);
+    opacity: 1;
+}
+
+/* Desktop “monitor” layout: from 1440px and up */
+@media (min-width: 1440px) {
+    .navbar--floating .navbar-inner {
+        width: calc(100% - 4rem); /* ~2rem margin each side */
+        max-width: none;
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+
+    .navbar-inner > .container {
+        flex-wrap: nowrap; /* keep everything on one line */
+        justify-content: flex-start;
+    }
+
+    .navbar-inner .navbar-brand {
+        margin-right: 1.5rem; /* gap between brand and “Calculateur” */
+    }
+
+    .navbar-inner .navbar-collapse {
+        flex: 1 1 auto;
+    }
+}
+
+/* Brand + links */
+.navbar-brand {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    font-size: 1.15rem;
+    color: var(--color-text) !important;
+}
+
+.navbar .nav-link {
+    color: var(--color-text) !important;
+}
+
+    .navbar .nav-link:hover,
+    .navbar .nav-link:focus {
+        color: var(--color-primary) !important;
+    }
+
+/* Dropdown menu base */
+.navbar .dropdown-menu,
+.navbar .dropdown-menu.show {
+    border: 1px solid var(--color-border);
+    background-color: #ffffff !important;
+    color: var(--color-text) !important;
+    box-shadow: var(--shadow-elevated);
+    border-radius: 0.75rem;
+}
+
+/* Dropdown items */
+.navbar .dropdown-item {
+    color: var(--color-text) !important;
+}
+
+    .navbar .dropdown-item:hover,
+    .navbar .dropdown-item:focus {
+        background-color: var(--color-hover) !important;
+        color: var(--color-text) !important;
+    }
+
+/* Fallback */
+.dropdown-item:active,
+.dropdown-item:focus {
+    background-color: var(--color-hover);
+    color: var(--color-text);
+}
+
+/* ========================================================================= */
+/* DARK MODE NAVBAR                                                          */
+/* ========================================================================= */
+
+html[data-theme="dark"] .navbar-inner {
+    background: #1e293b !important;
+    color: #e5e7eb;
+}
+
+html[data-theme="dark"] .navbar--top .navbar-inner {
+    border-bottom: 1px solid #334155;
+    box-shadow: none;
+}
+
+html[data-theme="dark"] .navbar--floating .navbar-inner {
+    border: 1px solid #334155;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+html[data-theme="dark"] .navbar .navbar-brand,
+html[data-theme="dark"] .navbar .nav-link {
+    color: #e5e7eb !important;
+}
+
+    html[data-theme="dark"] .navbar .nav-link:hover,
+    html[data-theme="dark"] .navbar .nav-link:focus {
+        color: #facc15 !important;
+    }
+
+html[data-theme="dark"] .navbar .dropdown-menu,
+html[data-theme="dark"] .navbar .dropdown-menu.show {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+    color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .navbar .dropdown-item {
+    color: #e5e7eb !important;
+}
+
+    html[data-theme="dark"] .navbar .dropdown-item:hover,
+    html[data-theme="dark"] .navbar .dropdown-item:focus {
+        background: #334155 !important;
+        color: #ffffff !important;
+    }
+
+/* ========================================================================= */
+/* MAIN CONTAINER + FOOTER                                                   */
+/* ========================================================================= */
+
+.app-shell {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+main.container {
+    background: var(--color-surface);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-card);
+    padding: 2rem 2.3rem;
+}
+
+footer {
+    font-size: 0.96rem;
+    opacity: 0.9;
+    background: var(--color-surface-2);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+}
+
+/* ========================================================================= */
+/* CARDS / TABLES / LIST GROUPS                                              */
+/* ========================================================================= */
+
+.card,
+.rounded-4 {
+    border-radius: 1rem !important;
+    box-shadow: var(--shadow-card) !important;
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.card--tinted {
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+}
+
+.card--accent {
+    background: var(--color-primary-soft);
+    border-color: var(--color-primary-border);
+}
+
+.card--mint {
+    background: var(--color-accent-mint-soft);
+    border-color: var(--color-accent-mint-border);
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .rounded-4 {
+    background: #1e293b !important;
+    color: #e5e7eb !important;
+    border: 1px solid #334155 !important;
+    box-shadow: var(--shadow-card) !important;
+}
+
+/* Tables */
+.table thead th {
+    background: var(--color-table-head);
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text);
+}
+
+.table td {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .table thead th {
+    background: #1e293b !important;
+    color: #e5e7eb !important;
+    border-bottom: 2px solid #334155 !important;
+}
+
+html[data-theme="dark"] .table td {
+    background: #020617;
+    color: #e5e7eb;
+    border-color: #334155;
+}
+
+/* List groups */
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    padding-top: 1.05rem;
+    padding-bottom: 1.05rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+}
+
+.list-group-flush > .list-group-item:last-child {
+    border-bottom: none;
+}
+
+html[data-theme="dark"] .list-group-item {
+    background: #020617 !important;
+    color: #e5e7eb !important;
+    border-bottom: 1px solid #334155 !important;
+}
+
+/* ========================================================================= */
+/* BUTTONS / INPUTS / MODALS                                                 */
+/* ========================================================================= */
+
+/* Base primary button (light) */
+.btn-primary {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary-border);
+    color: var(--color-primary-text);
+}
+
+    .btn-primary:hover,
+    .btn-primary:focus {
+        background-color: transparent;
+        color: var(--color-primary);
+        border-color: var(--color-primary-border);
+        border-width: 2px;
+    }
+
+/* Outline primary – inverse of solid primary (light) */
+.btn-outline-primary {
+    background-color: transparent;
+    border: 2px solid var(--color-primary);
+    color: var(--color-primary);
+}
+
+    .btn-outline-primary:hover,
+    .btn-outline-primary:focus {
+        background-color: var(--color-primary);
+        border-color: var(--color-primary-border);
+        color: var(--color-primary-text);
+    }
+
+/* Alias for typo'd class "btn success" */
+.btn.success {
+    color: var(--color-primary-text);
+    background-color: var(--color-primary);
+    border-color: var(--color-primary-border);
+}
+
+    .btn.success:hover,
+    .btn.success:focus {
+        background-color: var(--color-primary-border);
+        border-color: #08365f;
+    }
+
+/* Solid MINT button (light) */
+.btn-mint {
+    background-color: var(--color-accent-mint);
+    border-color: var(--color-accent-mint-border);
+    color: #022c22;
+}
+
+    .btn-mint:hover,
+    .btn-mint:focus {
+        background-color: #0fd9a4;
+        border-color: #0aa27d;
+        color: #022c22;
+    }
+
+    /* Active state tuned for AAA */
+    .btn-mint:active,
+    .btn-mint.active,
+    .show > .btn-mint.dropdown-toggle {
+        background-color: #0ac6ae;
+        border-color: #089573;
+        color: #022c22;
+    }
+
+    /* Disabled mint – AAA text vs soft mint */
+    .btn-mint:disabled,
+    .btn-mint.disabled {
+        background-color: var(--color-accent-mint-soft);
+        border-color: var(--color-accent-mint-border);
+        color: #374151;
+    }
+
+/* Global “lift” effect for all buttons */
+.btn {
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+    .btn:hover,
+    .btn:focus-visible {
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+        transform: translateY(1px);
+    }
+
+    .btn:active,
+    .btn.active,
+    .show > .btn.dropdown-toggle {
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.22);
+        transform: translateY(0);
+    }
+
+/* Dark mode variants – primary/“success” tuned to AAA vs white */
+html[data-theme="dark"] .btn.success {
+    background-color: #1e40af !important;
+    border-color: #1d3fb5 !important;
+}
+
+html[data-theme="dark"] .btn-primary {
+    background-color: #1e40af !important;
+    border-color: #1d3fb5 !important;
+}
+
+/* Dark mode MINT solid button – stays AAA vs text */
+html[data-theme="dark"] .btn-mint {
+    background-color: #0bbf95 !important;
+    border-color: #089573 !important;
+    color: #022c22 !important;
+}
+
+/* Pills / outlines */
+.nav-pills .nav-link.active,
+.nav-pills .show > .nav-link {
+    color: #fff;
+    background-color: var(--color-primary);
+    border-color: var(--color-primary-border);
+}
+
+.btn-outline-primary,
+.btn-outline-danger,
+.btn-outline-secondary {
+    border-width: 2px;
+}
+
+/* Dark mode outlines */
+html[data-theme="dark"] .btn-outline-primary,
+html[data-theme="dark"] .btn-outline-secondary,
+html[data-theme="dark"] .btn-outline-danger {
+    color: #e5e7eb !important;
+    border-color: #475569 !important;
+}
+
+    html[data-theme="dark"] .btn-outline-primary:hover,
+    html[data-theme="dark"] .btn-outline-secondary:hover,
+    html[data-theme="dark"] .btn-outline-danger:hover {
+        background-color: #1e293b !important;
+    }
+
+/* Inputs */
+input,
+select,
+textarea {
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 2px rgba(16,110,190,0.35);
+    }
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+    background: #020617 !important;
+    color: #e5e7eb !important;
+    border-color: #334155 !important;
+}
+
+    html[data-theme="dark"] input:focus,
+    html[data-theme="dark"] select:focus,
+    html[data-theme="dark"] textarea:focus {
+        border-color: var(--color-primary) !important;
+        box-shadow: 0 0 0 2px rgba(37,99,235,0.5) !important;
+    }
+
+/* Modals */
+.modal-header.bg-primary,
+.modal-header.text-white {
+    border-radius: 1rem 1rem 0 0;
+}
+
+html[data-theme="dark"] .modal-content {
+    background: #1e293b !important;
+    color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .modal-header {
+    border-bottom: 1px solid #334155 !important;
+}
+
+html[data-theme="dark"] .modal-footer {
+    border-top: 1px solid #334155 !important;
+}
+
+/* ========================================================================= */
+/* PRINTING – restrict to #print-section + force light theme                 */
+/* ========================================================================= */
+
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+
+    #print-section,
+    #print-section * {
+        visibility: visible !important;
+    }
+
+    #print-section {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: #ffffff !important;
+        color: #111827 !important;
+    }
+
+    nav,
+    footer,
+    .btn,
+    .no-print,
+    .d-print-none {
+        display: none !important;
+    }
+
+    :root,
+    html[data-theme="dark"] {
+        --color-bg: #ffffff;
+        --color-surface: #ffffff;
+        --color-surface-2: #f1f59;
+        --color-text: #111827;
+        --color-text-muted: #6b7280;
+        --color-border: #e5e7eb;
+        --color-hover: #e2e8f0;
+        --color-primary: #106ebe;
+        --color-primary-border: #0b4f8a;
+        --color-primary-text: #ffffff;
+        --color-table-head: #f6f8fa;
+    }
+
+    #print-section .text-muted {
+        color: #6b7280 !important;
+    }
+
+    /* Comparatif / tables in print (generic) */
+    #print-section .comparatif-table th,
+    #print-section .comparatif-table td {
+        background: #ffffff !important;
+        color: #111827 !important;
+        border-color: #d1d5db !important;
+    }
+
+    /* Receipt card in print */
+    #print-section .subscription-receipt-card {
+        background: #ffffff !important;
+        border-color: #d1d5db !important;
+        box-shadow: none !important;
+    }
+
+    @page {
+        size: A3 landscape;
+        margin: 10mm;
+    }
+}
+
+/* ========================================================================= */
+/* PAGE-SHARED STYLES (offline, auth, profile, membership, receipt, etc.)    */
+/* ========================================================================= */
+
+/* --- Offline countdown --- */
+
+.offline-countdown-box {
+    min-height: 110px;
+    display: grid;
+    place-items: center;
+}
+
+.offline-countdown-digits {
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Auth --- */
+
+.auth-card {
+    max-width: 400px;
+    width: 100%;
+}
+
+/* --- Profile --- */
+
+.profile-avatar-lg,
+.profile-avatar-placeholder {
+    width: 96px;
+    height: 96px;
+}
+
+.profile-avatar-icon {
+    font-size: 36px;
+}
+
+.profile-bio {
+    white-space: pre-wrap;
+}
+
+/* --- Membership --- */
+
+.membership-search-box {
+    max-width: 480px;
+}
+
+.membership-suggestions-dropdown {
+    z-index: 10;
+}
+
+.membership-page {
+    padding: 24px;
+}
+
+/* --- Stripe subscribe --- */
+
+.subscribe-key-hint {
+    font-size: 0.9rem;
+}
+
+/* --- Stripe subscription success / receipt --- */
+
+.subscription-success {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.subscription-success-header h1 {
+    font-size: 1.9rem;
+    font-weight: 700;
+}
+
+.subscription-success-header p {
+    font-size: 0.98rem;
+}
+
+.subscription-transaction {
+    font-size: 0.9rem;
+}
+
+.subscription-transaction-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.9rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    background-color: var(--color-surface-2);
+}
+
+/* Receipt card */
+
+.subscription-receipt-card {
+    border-radius: 0.9rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+    padding: 1.25rem 1.5rem;
+    font-size: 0.94rem;
+}
+
+.subscription-receipt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.subscription-brand-name {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+.subscription-brand-subtitle {
+    font-size: 0.86rem;
+}
+
+/* Badge payé → menthe calme (AAA tuned) */
+.subscription-badge-paid {
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background-color: var(--color-accent-mint-soft);
+    color: #045e3e; /* darker teal for AAA */
+    border: 1px solid var(--color-accent-mint-border);
+}
+
+.subscription-receipt-body {
+    border-top: 1px dashed var(--color-border);
+    border-bottom: 1px dashed var(--color-border);
+    padding: 0.75rem 0;
+}
+
+.subscription-receipt-row {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    padding: 0.3rem 0;
+    row-gap: 0.1rem;
+}
+
+.subscription-receipt-label {
+    font-weight: 600;
+    color: var(--color-text-muted);
+    font-size: 0.86rem;
+}
+
+.subscription-receipt-value {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    word-break: break-all;
+}
+
+.subscription-receipt-footer {
+    padding-top: 0.6rem;
+    font-size: 0.8rem;
+}
+
+/* Dark mode for receipt */
+
+html[data-theme="dark"] .subscription-receipt-card {
+    background: #020617;
+    border-color: #334155;
+    box-shadow: var(--shadow-card);
+}
+
+html[data-theme="dark"] .subscription-transaction-id {
+    background-color: #1e293b;
+}
+
+html[data-theme="dark"] .subscription-badge-paid {
+    background-color: rgba(16,185,129,0.2); /* soft mint on dark */
+    border-color: #0bbf95;
+    color: #6ee7b7; /* light mint text for contrast */
+}
+
+/* ========================================================================= */
+/* HIGHLIGHT UTILITIES                                                       */
+/* ========================================================================= */
+
+/* Section / card highlight – primary (blue) */
+.section-highlight-primary {
+    background: linear-gradient(135deg, var(--color-primary-soft-alt) 0%, #ffffff 45%, var(--color-primary-soft) 100%);
+    border-radius: 1rem;
+    border: 1px solid var(--color-primary-border);
+    box-shadow: var(--shadow-card);
+}
+
+/* Section / card highlight – mint (success / positive) */
+.section-highlight-mint {
+    background: radial-gradient(circle at top left, var(--color-accent-mint-soft) 0%, #ffffff 55%);
+    border-radius: 1rem;
+    border: 1px solid var(--color-accent-mint-border);
+    box-shadow: var(--shadow-card);
+}
+
+/* Subtle top border highlight (for inside cards) */
+.highlight-bar-primary {
+    border-top: 3px solid var(--color-primary-border);
+}
+
+.highlight-bar-mint {
+    border-top: 3px solid var(--color-accent-mint-border);
+}
+
+/* Small pill / tag highlight */
+.pill-highlight-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary-border);
+    border: 1px solid var(--color-primary-border);
+}
+
+.pill-highlight-mint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background-color: var(--color-accent-mint-soft);
+    color: #045e3e;
+    border: 1px solid var(--color-accent-mint-border);
+}
+
+/* Dark mode tweaks so highlights still pop */
+html[data-theme="dark"] .section-highlight-primary {
+    background: linear-gradient(135deg, rgba(37,99,235,0.35) 0%, #020617 50%, rgba(59,130,246,0.5) 100%);
+    border-color: #1d3fb5;
+}
+
+html[data-theme="dark"] .section-highlight-mint {
+    background: radial-gradient(circle at top left, rgba(34,197,94,0.35) 0%, #020617 55%);
+    border-color: var(--color-accent-mint-border);
+}
+
+html[data-theme="dark"] .pill-highlight-primary {
+    background-color: rgba(37,99,235,0.2);
+    color: #bfdbfe;
+}
+
+html[data-theme="dark"] .pill-highlight-mint {
+    background-color: rgba(16,185,129,0.2);
+    color: #6ee7b7;
+}
+
+/* GLOBAL HIGHLIGHTS & ACCENTS */
+
+/* Soft blue highlight */
+.hl-soft {
+    background: var(--color-primary-soft) !important;
+}
+
+/* Hover highlight (tables, rows, cards) */
+.hl-hover:hover {
+    background: var(--color-hover) !important;
+}
+
+/* Mint accent border (selected items, on-sale, active) */
+.hl-mint-border {
+    border: 2px solid var(--color-accent-mint) !important;
+}
+
+/* Mint accent background (lighter version) */
+.hl-mint-bg {
+    background: var(--color-accent-mint-soft) !important;
+}
+
+/* Blue border applied to cards or containers */
+.hl-blue-border {
+    border: 2px solid var(--color-primary-border) !important;
+}
+
+/* Section headers */
+.section-title-accent {
+    border-left: 6px solid var(--color-primary);
+    padding-left: 10px;
+}
+
+/* Table hover */
+.table-hover tbody tr:hover {
+    background-color: var(--color-hover) !important;
+}
+
+/* Price on-sale (mint highlight) */
+.price-onsale {
+    background: var(--color-accent-mint-soft);
+    border-left: 4px solid var(--color-accent-mint);
+}
+
+/* Inputs focused (generic override) */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.18rem rgba(11, 106, 203, 0.25);
+}
+
+/* Buttons upgraded with your colors (bottom overrides) 
+.btn-primary {
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary-border) !important;
+}
+
+.btn-outline-primary:hover {
+    background: var(--color-primary-soft) !important;
+    border-color: var(--color-primary-border) !important;
+}
+*/
+/* Mint outline button – AAA text vs white & soft mint */
+.btn-mint-outline {
+    border: 2px solid var(--color-accent-mint) !important;
+    color: #045e3e;
+}
+
+    .btn-mint-outline:hover {
+        background: var(--color-accent-mint-soft) !important;
+        color: #000000;
+    }
+
+/* Dark mode mint outline */
+html[data-theme="dark"] .btn-mint-outline {
+    border-color: #089573 !important;
+    color: #0bbf95 !important;
+}
+
+    html[data-theme="dark"] .btn-mint-outline:hover {
+        background-color: rgba(11,191,149,0.18) !important;
+    }
+
+/* ========================================================================= */
+/* FIELD HELP / BUBBLE SYSTEM                                                */
+/* ========================================================================= */
+
+.field-help-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.field-help-icon {
+    text-decoration: none;
+    font-weight: 600;
+    line-height: 1;
+}
+
+    .field-help-icon span {
+        display: inline-flex;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 999px;
+        border: 1px solid var(--color-border, #d1d5db);
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        background: var(--color-surface-2, #e5efff);
+        color: var(--color-text, #0f172a);
+    }
+
+/* The bubble itself */
+.field-help-bubble {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 260px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-3, #e5f0ff);
+    color: var(--color-text, #111827);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+    font-size: 0.8rem;
+    z-index: 10;
+    animation: bubbleFadeIn 0.15s ease-out;
+}
+
+/* Bubble alignment */
+.field-help-bubble-right {
+    left: 110%;
+    margin-left: 0.5rem;
+}
+
+.field-help-bubble-left {
+    right: 110%;
+    margin-right: 0.5rem;
+}
+
+/* Error bubble variant */
+.help-bubble.error-bubble {
+    background-color: #fef2f2;
+    border-color: #b91c1c;
+    color: #7f1d1d;
+}
+
+    .help-bubble.error-bubble .error-bubble-icon {
+        margin-right: 0.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9em;
+    }
+
+    /* Right / left arrow for error bubble */
+    .help-bubble.error-bubble.error-bubble--right::before {
+        border-right-color: #b91c1c;
+    }
+
+    .help-bubble.error-bubble.error-bubble--left::before {
+        border-left-color: #b91c1c;
+    }
+
+/* Bubble fade-in */
+@keyframes bubbleFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+    }
+}
+
+/* ========================================================================= */
+/* ALERTS – THEMED TO PALETTE                                               */
+/* ========================================================================= */
+
+.alert {
+    border-radius: 0.75rem;
+    border-width: 1px;
+}
+
+/* Success → mint theme */
+.alert-success {
+    background-color: var(--color-accent-mint-soft);
+    border-color: var(--color-accent-mint-border);
+    color: #045e3e;
+}
+
+/* Error / danger → same red family as error-bubble */
+.alert-danger {
+    background-color: #fef2f2;
+    border-color: #b91c1c;
+    color: #7f1d1d;
+}
+
+/* Warning → warm amber */
+.alert-warning {
+    background-color: #fffbeb;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+/* Informational */
+.alert-info {
+    background-color: var(--color-surface-2);
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+/* Dark mode tweaks for alerts */
+html[data-theme="dark"] .alert-success {
+    background-color: rgba(16,185,129,0.2);
+    border-color: #0bbf95;
+    color: #6ee7b7;
+}
+
+html[data-theme="dark"] .alert-danger {
+    background-color: rgba(248,113,113,0.15);
+    border-color: #fca5a5;
+    color: #fecaca;
+}
+
+html[data-theme="dark"] .alert-warning {
+    background-color: rgba(245,158,11,0.15);
+    border-color: #fbbf24;
+    color: #fde68a;
+}
+
+html[data-theme="dark"] .alert-info {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e5e7eb;
+}
+
+/* ========================================================================= */
+/* STATUS TEXT COLORS (success/danger/warning)                               */
+/* ========================================================================= */
+
+.text-success {
+    color: #045e3e !important; /* mint text */
+}
+
+.text-danger {
+    color: #b91c1c !important; /* error text */
+}
+
+.text-warning {
+    color: #92400e !important; /* warm amber, readable on light bg */
+}
+
+html[data-theme="dark"] .text-success {
+    color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .text-danger {
+    color: #fecaca !important;
+}
+
+html[data-theme="dark"] .text-warning {
+    color: #fde68a !important;
+}
+
+/* ========================================================================= */
+/* BADGES – SECONDARY + BOOTSTRAP text-bg variants                           */
+/* ========================================================================= */
+
+.badge.bg-secondary {
+    background-color: var(--color-surface-2) !important;
+    color: var(--color-text) !important;
+    border: 1px solid var(--color-border);
+    font-weight: 600;
+}
+
+html[data-theme="dark"] .badge.bg-secondary {
+    background-color: #1e293b !important;
+    color: #e5e7eb !important;
+    border-color: #334155;
+}
+
+/* Success → mint theme (for membership status) */
+.badge.text-bg-success {
+    background-color: var(--color-accent-mint-soft) !important;
+    border: 1px solid var(--color-accent-mint-border);
+    color: #045e3e !important;
+}
+
+/* Warning → amber (for "expired" state) */
+.badge.text-bg-warning {
+    background-color: #fffbeb !important;
+    border: 1px solid #f59e0b;
+    color: #92400e !important;
+}
+
+/* Neutral / none → soft surface + border */
+.badge.text-bg-secondary {
+    background-color: var(--color-surface-2) !important;
+    border: 1px solid var(--color-border);
+    color: var(--color-text) !important;
+}
+
+/* Dark mode tweaks */
+html[data-theme="dark"] .badge.text-bg-success {
+    background-color: rgba(16,185,129,0.2) !important;
+    border-color: #0bbf95;
+    color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .badge.text-bg-warning {
+    background-color: rgba(245,158,11,0.18) !important;
+    border-color: #fbbf24;
+    color: #fde68a !important;
+}
+
+html[data-theme="dark"] .badge.text-bg-secondary {
+    background-color: #1e293b !important;
+    border-color: #334155;
+    color: #e5e7eb !important;
+}
+
+/* ========================================================================= */
+/* SPINNER / BORDERS                                                         */
+/* ========================================================================= */
+
+.spinner-border {
+    color: var(--color-primary); /* Bootstrap uses `color` to tint border-top */
+}
+
+/* Primary border accent – subtle, reusable */
+.border-accent-primary {
+    border: 1px solid var(--color-primary-border) !important;
+}
+
+/* Slightly stronger version for emphasis */
+.border-accent-primary-strong {
+    border: 2px solid var(--color-primary-border) !important;
+}
+
+/* ========================================================================= */
+/* FORM HELP TEXT (Register, etc.)                                          */
+/* ========================================================================= */
+
+/* Default: use our muted color instead of Bootstrap's #6c757d */
+.form-text {
+    color: var(--color-text-muted) !important;
+}
+
+/* On auth cards we can be a bit brighter / more legible */
+.auth-card .form-text {
+    font-size: 0.88rem;
+}
+
+/* Dark mode – lift contrast more on the dark card */
+html[data-theme="dark"] .form-text {
+    color: #d1d5db !important; /* light grey, high contrast on #1e293b */
+}
+
+    /* Keep the “status” colors overriding this when present */
+    html[data-theme="dark"] .form-text.text-danger {
+        color: #fecaca !important;
+    }
+
+    html[data-theme="dark"] .form-text.text-success {
+        color: #6ee7b7 !important;
+    }
+
+    html[data-theme="dark"] .form-text.text-warning {
+        color: #fde68a !important;
+    }
+
+.test {
+    background: #101bef;
+}

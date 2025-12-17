@@ -1,0 +1,69 @@
+﻿/* ===================================================================== */
+/* FORUM                                                                 */
+/* ===================================================================== */
+
+/* Post body from editor */
+.post-body {
+    white-space: pre-wrap;
+}
+
+    .post-body a {
+        text-decoration: underline;
+    }
+
+/* Lexical GIFs */
+.lexical-image.lexical-gif {
+    width: min(100%, 480px);
+    height: auto;
+    display: inline-block;
+    border-radius: 8px;
+}
+
+/* Forum admin / avatars */
+
+.forum-admin-container {
+}
+
+.forum-categories-stripe {
+    height: 6px;
+    background: var(--color-primary);
+}
+
+.forum-avatar {
+    width: 40px;
+    height: 40px;
+    font-weight: 600;
+    background: var(--color-surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.forum-post-replies {
+    border-color: #dee2e6;
+    border-width: 2px;
+}
+
+.forum-controls-order-group {
+    width: 240px;
+    max-width: 100%;
+}
+
+.forum-thread-title-input {
+    max-width: 520px;
+}
+
+/* Alternate background for forum comments (used via .forum-post-alt) */
+.forum-post-alt {
+    background-color: var(--color-surface-2);
+}
+
+/* Optional: slightly adjust in dark mode if you want it a bit darker */
+html[data-theme="dark"] .forum-post-alt {
+    background-color: var(--color-surface-3);
+}
+
+/* Replies: softer, lighter border (all non-OP cards using .forum-post-card) */
+.forum-post-card:not(.forum-post-card-op) {
+    border-color: rgba(11, 106, 203, 0.25); /* primary @ 25% */
+}

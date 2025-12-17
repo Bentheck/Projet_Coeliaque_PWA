@@ -1,42 +1,39 @@
-﻿// Controllers/ComparatifYearsController.cs
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
-    /// <summary>
-    /// CRUD + line-item management for yearly product comparisons ("ComparatifYear").
-    /// All endpoints require an authenticated user with an active membership.
-    /// Data is always scoped to the current user.
-    /// </summary>
     [ApiController]
     [Route("api/comparatifyears")]
     [Authorize]
+    [ModuleGate("Comparatif")]
     public class ComparatifYearsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly IMapper _mapper;
         private readonly IMembershipService _membershipService;
+        private readonly IAuditLogService _audit;
 
         public ComparatifYearsController(
             ApplicationDbContext db,
             IMapper mapper,
-            IMembershipService membershipService)
+            IMembershipService membershipService,
+            IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
             _membershipService = membershipService;
+            _audit = audit;
         }
 
-        /// <summary>List all comparison years for the current user (newest first), including their lines.</summary>
-        // GET: api/comparatifyears
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ComparatifYearDto>>> GetComparatifYears()
         {
@@ -54,8 +51,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return _mapper.Map<List<ComparatifYearDto>>(years);
         }
 
-        /// <summary>Get a single comparison year by id for the current user, including its lines.</summary>
-        // GET: api/comparatifyears/{id}
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ComparatifYearDto>> GetComparatifYear(int id)
         {
@@ -68,13 +63,30 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .Include(y => y.Lines)
                 .FirstOrDefaultAsync(y => y.Id == id && y.UserId == userId);
 
-            if (year == null) return NotFound();
+            if (year == null) return NotFound($"No comparatif found. id={id}");
 
             return _mapper.Map<ComparatifYearDto>(year);
         }
 
-        /// <summary>Create a new comparison year for the current user. Lines are ignored on create.</summary>
-        // POST: api/comparatifyears
+        // Optional but very useful to debug existence on server
+        // GET: api/comparatifyears/by-year/2025
+        [HttpGet("by-year/{annee:int}")]
+        public async Task<ActionResult<ComparatifYearDto>> GetComparatifYearByYear(int annee)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
+
+            var year = await _db.ComparatifYears
+                .AsNoTracking()
+                .Include(y => y.Lines)
+                .FirstOrDefaultAsync(y => y.Annee == annee && y.UserId == userId);
+
+            if (year == null) return NotFound($"No comparatif found for user/year. annee={annee}");
+
+            return _mapper.Map<ComparatifYearDto>(year);
+        }
+
         [HttpPost]
         public async Task<ActionResult<ComparatifYearDto>> CreateComparatifYear([FromBody] ComparatifYearDto dto)
         {
@@ -83,19 +95,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
 
             var entity = _mapper.Map<ComparatifYear>(dto);
-            entity.Id = 0;                // ensure EF will create a new row
+            entity.Id = 0;
             entity.UserId = userId;
-            entity.Lines = new List<ProductComparison>(); // start empty; add lines via /lines endpoints
+            entity.Lines = new List<ProductComparison>();
 
             _db.ComparatifYears.Add(entity);
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifYear.Create",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    entity.Id,
+                    entity.Annee
+                });
 
             var resultDto = _mapper.Map<ComparatifYearDto>(entity);
             return CreatedAtAction(nameof(GetComparatifYear), new { id = entity.Id }, resultDto);
         }
 
-        /// <summary>Update year value and completely sync its lines with the provided DTO (upsert + delete).</summary>
-        // PUT: api/comparatifyears/{id}
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateComparatifYear(int id, [FromBody] ComparatifYearDto dto)
         {
@@ -108,25 +128,38 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .Include(y => y.Lines)
                 .FirstOrDefaultAsync(y => y.Id == id && y.UserId == userId);
 
-            if (entity == null) return NotFound();
+            if (entity == null) return NotFound($"No comparatif found. id={id}");
 
-            // Update scalar props
+            var before = new
+            {
+                entity.Id,
+                entity.Annee,
+                LineCount = entity.Lines.Count
+            };
+
             entity.Annee = dto.Annee;
 
-            // --- Sync lines (delete missing, update existing, add new) ---
-            var dtoLineIds = dto.Lines.Select(l => l.Id).ToHashSet();
+            // FIX: ignore Id=0 in keep set, otherwise you delete everything when adding new lines
+            var dtoLineIds = dto.Lines
+                .Where(l => l.Id > 0)
+                .Select(l => l.Id)
+                .ToHashSet();
 
-            // Delete lines removed in DTO
             var toRemove = entity.Lines.Where(l => !dtoLineIds.Contains(l.Id)).ToList();
             foreach (var line in toRemove)
             {
                 _db.ProductComparisons.Remove(line);
             }
 
-            // Upsert remaining lines
+            var addedCount = 0;
+            var updatedCount = 0;
+
             foreach (var dtoLine in dto.Lines)
             {
-                var existing = entity.Lines.FirstOrDefault(l => l.Id == dtoLine.Id);
+                var existing = dtoLine.Id > 0
+                    ? entity.Lines.FirstOrDefault(l => l.Id == dtoLine.Id)
+                    : null;
+
                 if (existing != null)
                 {
                     existing.TypeItem = dtoLine.TypeItem;
@@ -135,6 +168,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     existing.PoidsValeur = dtoLine.PoidsValeur;
                     existing.PoidsUnite = dtoLine.PoidsUnite;
                     existing.Magasin = dtoLine.Magasin;
+                    updatedCount++;
                 }
                 else
                 {
@@ -148,15 +182,33 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                         PoidsUnite = dtoLine.PoidsUnite,
                         Magasin = dtoLine.Magasin
                     });
+                    addedCount++;
                 }
             }
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifYear.Update",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    Before = before,
+                    After = new
+                    {
+                        entity.Id,
+                        entity.Annee,
+                        LineCount = entity.Lines.Count
+                    },
+                    RemovedLineCount = toRemove.Count,
+                    AddedLineCount = addedCount,
+                    UpdatedLineCount = updatedCount
+                });
+
             return NoContent();
         }
 
-        /// <summary>Delete a comparison year (and its lines) for the current user.</summary>
-        // DELETE: api/comparatifyears/{id}
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteComparatifYear(int id)
         {
@@ -168,17 +220,64 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .Include(y => y.Lines)
                 .FirstOrDefaultAsync(y => y.Id == id && y.UserId == userId);
 
-            if (year == null) return NotFound();
+            if (year == null) return NotFound($"No comparatif found. id={id}");
+
+            var snapshot = new
+            {
+                year.Id,
+                year.Annee,
+                LineCount = year.Lines.Count
+            };
 
             _db.ComparatifYears.Remove(year);
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifYear.Delete",
+                target: year.Id.ToString(),
+                details: snapshot);
+
+            return NoContent();
+        }
+
+        // DELETE by YEAR (robust)
+        // DELETE: api/comparatifyears/by-year/2025
+        [HttpDelete("by-year/{annee:int}")]
+        public async Task<IActionResult> DeleteComparatifYearByYear(int annee)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await _membershipService.HasActiveMembershipAsync(userId)) return Forbid("Membership required.");
+
+            var year = await _db.ComparatifYears
+                .Include(y => y.Lines)
+                .FirstOrDefaultAsync(y => y.Annee == annee && y.UserId == userId);
+
+            if (year == null)
+                return NotFound($"No comparatif found for user/year. annee={annee}");
+
+            var snapshot = new
+            {
+                year.Id,
+                year.Annee,
+                LineCount = year.Lines.Count
+            };
+
+            _db.ComparatifYears.Remove(year);
+            await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifYear.DeleteByYear",
+                target: year.Id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
 
         // ---------------- Lines (ProductComparison) ----------------
 
-        /// <summary>Add a new line to a given year (current user ownership enforced).</summary>
-        // POST: api/comparatifyears/{id}/lines
         [HttpPost("{id:int}/lines")]
         public async Task<ActionResult<ProductComparisonDto>> AddLine(int id, [FromBody] ProductComparisonDto dto)
         {
@@ -189,7 +288,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var year = await _db.ComparatifYears
                 .FirstOrDefaultAsync(y => y.Id == id && y.UserId == userId);
 
-            if (year == null) return NotFound();
+            if (year == null) return NotFound($"No comparatif found. id={id}");
 
             var entity = _mapper.Map<ProductComparison>(dto);
             entity.Id = 0;
@@ -198,11 +297,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _db.ProductComparisons.Add(entity);
             await _db.SaveChangesAsync();
 
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifLine.Create",
+                target: entity.Id.ToString(),
+                details: new
+                {
+                    YearId = year.Id,
+                    year.Annee,
+                    entity.TypeItem,
+                    entity.Marque,
+                    entity.Prix
+                });
+
             return _mapper.Map<ProductComparisonDto>(entity);
         }
 
-        /// <summary>Update a specific line that belongs to a given year (ownership enforced).</summary>
-        // PUT: api/comparatifyears/{yearId}/lines/{lineId}
         [HttpPut("{yearId:int}/lines/{lineId:int}")]
         public async Task<IActionResult> UpdateLine(int yearId, int lineId, [FromBody] ProductComparisonDto dto)
         {
@@ -217,7 +327,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     l.ComparatifYearId == yearId &&
                     l.ComparatifYear.UserId == userId);
 
-            if (line == null) return NotFound();
+            if (line == null) return NotFound($"No line found. yearId={yearId} lineId={lineId}");
+
+            var before = new
+            {
+                line.Id,
+                line.ComparatifYearId,
+                line.TypeItem,
+                line.Marque,
+                line.Prix,
+                line.PoidsValeur,
+                line.PoidsUnite,
+                line.Magasin
+            };
 
             line.TypeItem = dto.TypeItem;
             line.Marque = dto.Marque;
@@ -227,11 +349,30 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             line.Magasin = dto.Magasin;
 
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifLine.Update",
+                target: line.Id.ToString(),
+                details: new
+                {
+                    Before = before,
+                    After = new
+                    {
+                        line.Id,
+                        line.ComparatifYearId,
+                        line.TypeItem,
+                        line.Marque,
+                        line.Prix,
+                        line.PoidsValeur,
+                        line.PoidsUnite,
+                        line.Magasin
+                    }
+                });
+
             return NoContent();
         }
 
-        /// <summary>Delete a specific line from a given year (ownership enforced).</summary>
-        // DELETE: api/comparatifyears/{yearId}/lines/{lineId}
         [HttpDelete("{yearId:int}/lines/{lineId:int}")]
         public async Task<IActionResult> DeleteLine(int yearId, int lineId)
         {
@@ -246,15 +387,32 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     l.ComparatifYearId == yearId &&
                     l.ComparatifYear.UserId == userId);
 
-            if (line == null) return NotFound();
+            if (line == null) return NotFound($"No line found. yearId={yearId} lineId={lineId}");
+
+            var snapshot = new
+            {
+                line.Id,
+                line.ComparatifYearId,
+                line.TypeItem,
+                line.Marque,
+                line.Prix,
+                line.PoidsValeur,
+                line.PoidsUnite,
+                line.Magasin
+            };
 
             _db.ProductComparisons.Remove(line);
             await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "ComparatifLine.Delete",
+                target: line.Id.ToString(),
+                details: snapshot);
+
             return NoContent();
         }
 
-        /// <summary>Return distinct type names available for a given year from invoice items (current user).</summary>
-        // GET: api/comparatifyears/types?annee=YYYY
         [HttpGet("types")]
         public async Task<ActionResult<List<string>>> GetAvailableTypesForYear([FromQuery] int annee)
         {
