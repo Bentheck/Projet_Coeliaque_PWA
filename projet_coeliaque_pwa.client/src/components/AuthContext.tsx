@@ -235,89 +235,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [gateStep]);
 
     const requiredDisclaimerVersion =
-        (legal?.disclaimer?.requiredVersion ||
-            (tDisclaimer("currentVersion") as string) ||
-            "v1") as string;
+        (legal?.disclaimer?.requiredVersion || (tDisclaimer("currentVersion") as string) || "v1") as string;
     const requiredPrivacyVersion =
-        (legal?.privacy?.requiredVersion ||
-            (tPrivacy("currentVersion") as string) ||
-            "v1") as string;
+        (legal?.privacy?.requiredVersion || (tPrivacy("currentVersion") as string) || "v1") as string;
     const requiredTosVersion =
         (legal?.tos?.requiredVersion || (tTos("currentVersion") as string) || "v1") as string;
 
     const disclaimerTitle = useMemo(() => {
         return (
-            (tDisclaimer(`${requiredDisclaimerVersion}.title`, {
-                defaultValue: "Disclaimer",
-            }) as string) || "Disclaimer"
+            (tDisclaimer(`${requiredDisclaimerVersion}.title`, { defaultValue: "Disclaimer" }) as string) ||
+            "Disclaimer"
         );
     }, [tDisclaimer, requiredDisclaimerVersion]);
 
     const privacyTitle = useMemo(() => {
         return (
-            (tPrivacy(`${requiredPrivacyVersion}.title`, {
-                defaultValue: "Privacy Policy",
-            }) as string) || "Privacy Policy"
+            (tPrivacy(`${requiredPrivacyVersion}.title`, { defaultValue: "Privacy Policy" }) as string) ||
+            "Privacy Policy"
         );
     }, [tPrivacy, requiredPrivacyVersion]);
 
     const tosTitle = useMemo(() => {
         return (
-            (tTos(`${requiredTosVersion}.title`, {
-                defaultValue: "Terms of Service",
-            }) as string) || "Terms of Service"
+            (tTos(`${requiredTosVersion}.title`, { defaultValue: "Terms of Service" }) as string) ||
+            "Terms of Service"
         );
     }, [tTos, requiredTosVersion]);
 
     const disclaimerLead = useMemo(() => {
-        return (
-            (tDisclaimer(`${requiredDisclaimerVersion}.lead`, {
-                defaultValue: "",
-            }) as string) || ""
-        );
+        return (tDisclaimer(`${requiredDisclaimerVersion}.lead`, { defaultValue: "" }) as string) || "";
     }, [tDisclaimer, requiredDisclaimerVersion]);
 
     const privacyLead = useMemo(() => {
-        return (
-            (tPrivacy(`${requiredPrivacyVersion}.lead`, {
-                defaultValue: "",
-            }) as string) || ""
-        );
+        return (tPrivacy(`${requiredPrivacyVersion}.lead`, { defaultValue: "" }) as string) || "";
     }, [tPrivacy, requiredPrivacyVersion]);
 
     const tosLead = useMemo(() => {
-        return (
-            (tTos(`${requiredTosVersion}.lead`, {
-                defaultValue: "",
-            }) as string) || ""
-        );
+        return (tTos(`${requiredTosVersion}.lead`, { defaultValue: "" }) as string) || "";
     }, [tTos, requiredTosVersion]);
 
     const disclaimerParagraphs = useMemo(() => {
-        const v = tDisclaimer(`${requiredDisclaimerVersion}.paragraphs`, {
-            returnObjects: true,
-        }) as unknown;
+        const v = tDisclaimer(`${requiredDisclaimerVersion}.paragraphs`, { returnObjects: true }) as unknown;
         return Array.isArray(v) ? (v as string[]) : [];
     }, [tDisclaimer, requiredDisclaimerVersion]);
 
     const privacyParagraphs = useMemo(() => {
-        const v = tPrivacy(`${requiredPrivacyVersion}.paragraphs`, {
-            returnObjects: true,
-        }) as unknown;
+        const v = tPrivacy(`${requiredPrivacyVersion}.paragraphs`, { returnObjects: true }) as unknown;
         return Array.isArray(v) ? (v as string[]) : [];
     }, [tPrivacy, requiredPrivacyVersion]);
 
     const tosParagraphs = useMemo(() => {
-        const v = tTos(`${requiredTosVersion}.paragraphs`, {
-            returnObjects: true,
-        }) as unknown;
+        const v = tTos(`${requiredTosVersion}.paragraphs`, { returnObjects: true }) as unknown;
         return Array.isArray(v) ? (v as string[]) : [];
     }, [tTos, requiredTosVersion]);
 
     const mustScrollHint = useMemo(() => {
-        return tPage("errors.mustScroll", {
-            defaultValue: "Scroll to the bottom to enable Accept.",
-        }) as string;
+        return (
+            tPage("errors.mustScroll", { defaultValue: "Scroll to the bottom to enable Accept." }) as string
+        );
     }, [tPage]);
 
     const acceptLabel = useMemo(() => {
@@ -339,32 +314,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         gateStep === "disclaimer" ? disclaimerLead : gateStep === "privacy" ? privacyLead : tosLead;
 
     const currentParagraphs =
-        gateStep === "disclaimer"
-            ? disclaimerParagraphs
-            : gateStep === "privacy"
-                ? privacyParagraphs
-                : tosParagraphs;
+        gateStep === "disclaimer" ? disclaimerParagraphs : gateStep === "privacy" ? privacyParagraphs : tosParagraphs;
 
     const currentScrollRef =
-        gateStep === "disclaimer"
-            ? discScrollRef
-            : gateStep === "privacy"
-                ? privacyScrollRef
-                : tosScrollRef;
+        gateStep === "disclaimer" ? discScrollRef : gateStep === "privacy" ? privacyScrollRef : tosScrollRef;
 
     const currentAtBottom =
-        gateStep === "disclaimer"
-            ? discAtBottom
-            : gateStep === "privacy"
-                ? privacyAtBottom
-                : tosAtBottom;
+        gateStep === "disclaimer" ? discAtBottom : gateStep === "privacy" ? privacyAtBottom : tosAtBottom;
 
     const currentViewHref =
-        gateStep === "disclaimer"
-            ? "/legal/disclaimer"
-            : gateStep === "privacy"
-                ? "/legal/privacy"
-                : "/legal/tos";
+        gateStep === "disclaimer" ? "/legal/disclaimer" : gateStep === "privacy" ? "/legal/privacy" : "/legal/tos";
 
     // Accept enabled strictly for current modal only
     const canAccept =
@@ -389,10 +348,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         ? "/api/account/accept-privacy"
                         : "/api/account/accept-tos";
 
-            await fetch(endpoint, {
+            const res = await fetch(endpoint, {
                 method: "POST",
                 credentials: "include",
             });
+
+            // IMPORTANT: fetch() does not throw on 401/302; avoid infinite gate loops.
+            if (res.status === 401 || res.status === 302) {
+                applyStatus(null, { persist: true });
+                setGateStep(null);
+                return;
+            }
+
+            if (!res.ok) {
+                // keep gate open (caller catch)
+                throw new Error(`Accept failed: ${res.status}`);
+            }
 
             // After accepting one, refresh status; effect will open next required step (if any)
             refresh();
@@ -408,10 +379,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setGateBusy(true);
         try {
-            await fetch("/api/account/logout", {
+            const res = await fetch("/api/account/logout", {
                 method: "POST",
                 credentials: "include",
             }).catch(() => null);
+
+            // If session is already gone, treat as logged out anyway.
+            if (res && (res.status === 401 || res.status === 302)) {
+                // fall through to applyStatus(null)
+            }
         } finally {
             applyStatus(null, { persist: true });
             setGateBusy(false);
@@ -478,9 +454,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!userId) return;
         const ask = () => {
             const msg =
-                (tCommon("updateAvailable", {
-                    defaultValue: "A new version is available. Reload now?",
-                }) as string) || "A new version is available. Reload now?";
+                (tCommon("updateAvailable", { defaultValue: "A new version is available. Reload now?" }) as string) ||
+                "A new version is available. Reload now?";
             if (confirm(msg)) applyUpdate();
         };
         if (hasUpdate()) ask();
@@ -531,9 +506,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             <div className="card-body">
                                 <p className="text-muted mb-2">{mustScrollHint}</p>
 
-                                {currentLead ? (
-                                    <p className="text-muted small mb-2">{currentLead}</p>
-                                ) : null}
+                                {currentLead ? <p className="text-muted small mb-2">{currentLead}</p> : null}
 
                                 <div className="d-flex justify-content-end mb-2">
                                     <a href={currentViewHref} className="small">
@@ -567,7 +540,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                                     <div className="text-muted small mt-3">
                                         {currentAtBottom
-                                            ? (gateStep === "disclaimer"
+                                            ? gateStep === "disclaimer"
                                                 ? (tDisclaimer(`${requiredDisclaimerVersion}.scrollOk`, {
                                                     defaultValue: "You reached the end.",
                                                 }) as string)
@@ -577,8 +550,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                                     }) as string)
                                                     : (tTos(`${requiredTosVersion}.scrollOk`, {
                                                         defaultValue: "You reached the end.",
-                                                    }) as string))
-                                            : (gateStep === "disclaimer"
+                                                    }) as string)
+                                            : gateStep === "disclaimer"
                                                 ? (tDisclaimer(`${requiredDisclaimerVersion}.scrollHint`, {
                                                     defaultValue: "Scroll to enable Accept.",
                                                 }) as string)
@@ -588,7 +561,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                                     }) as string)
                                                     : (tTos(`${requiredTosVersion}.scrollHint`, {
                                                         defaultValue: "Scroll to enable Accept.",
-                                                    }) as string))}
+                                                    }) as string)}
                                     </div>
                                 </div>
                             </div>
