@@ -1409,6 +1409,14 @@ const SuperAdminPanel: React.FC = () => {
                                             </label>
                                         </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => setEndDate(LIFETIME_END_DATE)}
+                                        disabled={!selectedUser}
+                                    >
+                                        Lifetime
+                                    </button>
                                 </div>
 
                                 <div className="mb-2 small text-muted">
