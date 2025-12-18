@@ -3,7 +3,8 @@
     "ariaLabel": "Write your reply",
     "clear": "Clear",
     "publish": "Publish",
-    "sending": "Publishing…"
+    "sending": "Publishing…",
+    "cancel": "Cancel"
   },
   "vote": {
     "like": "Like",

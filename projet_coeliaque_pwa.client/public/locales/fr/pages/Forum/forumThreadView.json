@@ -3,7 +3,8 @@
     "ariaLabel": "Rédiger votre réponse",
     "clear": "Effacer",
     "publish": "Publier",
-    "sending": "Publication…"
+    "sending": "Publication…",
+    "cancel": "Annuler"
   },
   "vote": {
     "like": "Aimer",

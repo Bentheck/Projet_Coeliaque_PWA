@@ -6,7 +6,7 @@ import React, {
     useState,
     type ClipboardEvent,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import HelpBubble from "../../components/HelpBubble";
 import FieldErrorBubble from "../../components/FieldErrorBubble";
@@ -52,6 +52,8 @@ function getPasswordStrength(password: string): Strength {
 type GateStep = "disclaimer" | "privacy" | "tos" | null;
 
 export default function Register() {
+    const location = useLocation();
+
     // Register form strings
     const { t } = useTranslation("pages/User/register");
 
@@ -244,6 +246,21 @@ export default function Register() {
             el.scrollTop + el.clientHeight >= el.scrollHeight - tolerancePx;
         set(atBottom);
     };
+
+    // ---------- NEW: Prefill email and inviteToken from URL ----------
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const urlEmail = params.get("email");
+        const urlInvite = params.get("inviteToken");
+
+        if (urlEmail) {
+            setEmail((prev) => (prev ? prev : urlEmail));
+        }
+
+        if (urlInvite) {
+            setInviteToken((prev) => (prev ? prev : urlInvite));
+        }
+    }, [location.search]);
 
     // ---------------- Load register config (invite-only flag) ----------------
     useEffect(() => {

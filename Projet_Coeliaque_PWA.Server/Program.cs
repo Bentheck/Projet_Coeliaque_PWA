@@ -12,7 +12,7 @@ using Projet_Coeliaque_PWA.Server.Mapping;
 using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
 using Projet_Coeliaque_PWA.Server.Filters;
-using Projet_Coeliaque_PWA.Server.Infrastructure; // for ModuleFeatureFlagScanner
+using Projet_Coeliaque_PWA.Server.Infrastructure;
 
 namespace Projet_Coeliaque_PWA.Server
 {
