@@ -1,5 +1,5 @@
 ﻿// src/components/InstallPWA.tsx
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
