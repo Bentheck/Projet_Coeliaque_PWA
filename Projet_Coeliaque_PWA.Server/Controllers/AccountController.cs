@@ -491,21 +491,30 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var required = CurrentDisclaimerVersion();
 
-            // FIX: upsert profile instead of returning 404
             var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
             if (profile == null)
             {
+                var user = await _userManager.FindByIdAsync(uid);
+                if (user == null)
+                    return Unauthorized(new { errorCode = ErrorCodes.Unauthorized });
+
+                // Unique + stable default: email (fallback to username)
+                var uniqueDisplayName =
+                    !string.IsNullOrWhiteSpace(user.Email) ? user.Email! :
+                    !string.IsNullOrWhiteSpace(user.UserName) ? user.UserName! :
+                    uid;
+
                 profile = new UserProfile
                 {
                     Id = Guid.NewGuid(),
                     UserId = uid,
+                    DisplayName = uniqueDisplayName,
                     JoinedUtc = DateTime.UtcNow
                 };
                 _db.UserProfiles.Add(profile);
             }
 
             var now = DateTime.UtcNow;
-
             profile.DisclaimerVersion = required;
             profile.DisclaimerAcceptedUtc = now;
 
@@ -515,11 +524,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 uid,
                 "Legal.AcceptDisclaimer",
                 target: uid,
-                details: new
-                {
-                    Version = required,
-                    AcceptedUtc = profile.DisclaimerAcceptedUtc
-                });
+                details: new { Version = required, AcceptedUtc = profile.DisclaimerAcceptedUtc });
 
             return Ok(new
             {
@@ -540,21 +545,29 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var required = CurrentPrivacyVersion();
 
-            // FIX: upsert profile instead of returning 404
             var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
             if (profile == null)
             {
+                var user = await _userManager.FindByIdAsync(uid);
+                if (user == null)
+                    return Unauthorized(new { errorCode = ErrorCodes.Unauthorized });
+
+                var uniqueDisplayName =
+                    !string.IsNullOrWhiteSpace(user.Email) ? user.Email! :
+                    !string.IsNullOrWhiteSpace(user.UserName) ? user.UserName! :
+                    uid;
+
                 profile = new UserProfile
                 {
                     Id = Guid.NewGuid(),
                     UserId = uid,
+                    DisplayName = uniqueDisplayName,
                     JoinedUtc = DateTime.UtcNow
                 };
                 _db.UserProfiles.Add(profile);
             }
 
             var now = DateTime.UtcNow;
-
             profile.PrivacyVersion = required;
             profile.PrivacyAcceptedUtc = now;
 
@@ -564,11 +577,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 uid,
                 "Legal.AcceptPrivacy",
                 target: uid,
-                details: new
-                {
-                    Version = required,
-                    AcceptedUtc = profile.PrivacyAcceptedUtc
-                });
+                details: new { Version = required, AcceptedUtc = profile.PrivacyAcceptedUtc });
 
             return Ok(new
             {
@@ -589,21 +598,29 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var required = CurrentTosVersion();
 
-            // FIX: upsert profile instead of returning 404
             var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
             if (profile == null)
             {
+                var user = await _userManager.FindByIdAsync(uid);
+                if (user == null)
+                    return Unauthorized(new { errorCode = ErrorCodes.Unauthorized });
+
+                var uniqueDisplayName =
+                    !string.IsNullOrWhiteSpace(user.Email) ? user.Email! :
+                    !string.IsNullOrWhiteSpace(user.UserName) ? user.UserName! :
+                    uid;
+
                 profile = new UserProfile
                 {
                     Id = Guid.NewGuid(),
                     UserId = uid,
+                    DisplayName = uniqueDisplayName,
                     JoinedUtc = DateTime.UtcNow
                 };
                 _db.UserProfiles.Add(profile);
             }
 
             var now = DateTime.UtcNow;
-
             profile.TosVersion = required;
             profile.TosAcceptedUtc = now;
 
@@ -613,11 +630,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 uid,
                 "Legal.AcceptTos",
                 target: uid,
-                details: new
-                {
-                    Version = required,
-                    AcceptedUtc = profile.TosAcceptedUtc
-                });
+                details: new { Version = required, AcceptedUtc = profile.TosAcceptedUtc });
 
             return Ok(new
             {
