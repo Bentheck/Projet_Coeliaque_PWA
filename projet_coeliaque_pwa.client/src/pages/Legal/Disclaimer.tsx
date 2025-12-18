@@ -23,8 +23,6 @@ export default function DisclaimerPage() {
         (tFull(`${version}.title`) as string) ||
         (tPage("page.title") as string);
 
-    const subtitle =
-        (tFull(`${version}.subtitle`, { defaultValue: "" }) as string) || "";
 
     const sections = useMemo(() => {
         const v = tFull(`${version}.sections`, {
