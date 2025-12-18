@@ -22,6 +22,10 @@ import { useAuth } from "../../components/AuthContext";
 import PostEditor from "../../components/PostEditor";
 import DOMPurify from "dompurify";
 import { useTranslation } from "react-i18next";
+import {
+    HubConnectionBuilder,
+    LogLevel,
+} from "@microsoft/signalr";
 import "../../styles/forum.css";
 
 /** One of the two vote UIs will be active:
@@ -100,7 +104,7 @@ function findNodeById(
     return undefined;
 }
 
-/** Immutable update of a node within a tree by ID. */
+/** Immutable update of a node within a tree by ID (patch). */
 function updateNodeInTree(
     nodes: ForumPostTreeDto[],
     id: number,
@@ -114,6 +118,167 @@ function updateNodeInTree(
         }
         return n;
     });
+}
+
+/** Add a new post to the tree (used by live PostCreated). */
+function addPostToTree(
+    nodes: ForumPostTreeDto[],
+    newPost: ForumPostTreeDto
+): ForumPostTreeDto[] {
+    // ensure replies array exists
+    const normalizedNew: ForumPostTreeDto = {
+        ...newPost,
+        replies: newPost.replies ?? [],
+    };
+
+    // top-level post
+    if (normalizedNew.parentPostId == null) {
+        const exists = findNodeById(nodes, normalizedNew.id);
+        if (exists) return nodes;
+        return [...nodes, normalizedNew];
+    }
+
+    const parentId = normalizedNew.parentPostId;
+
+    const walk = (src: ForumPostTreeDto[]): [ForumPostTreeDto[], boolean] => {
+        let changed = false;
+        const out: ForumPostTreeDto[] = [];
+
+        for (const n of src) {
+            if (n.id === parentId) {
+                const replies = n.replies ?? [];
+                const already = replies.some((r) => r.id === normalizedNew.id);
+                if (!already) {
+                    const newReplies = [...replies, normalizedNew];
+                    out.push({
+                        ...n,
+                        replies: newReplies,
+                        repliesCount: (n.repliesCount ?? replies.length) + 1,
+                    });
+                    changed = true;
+                } else {
+                    out.push(n);
+                }
+            } else if (n.replies?.length) {
+                const [childReplies, childChanged] = walk(n.replies);
+                if (childChanged) {
+                    out.push({
+                        ...n,
+                        replies: childReplies,
+                        repliesCount: childReplies.length,
+                    });
+                    changed = true;
+                } else {
+                    out.push(n);
+                }
+            } else {
+                out.push(n);
+            }
+        }
+
+        return [out, changed];
+    };
+
+    const [result, changed] = walk(nodes);
+    return changed ? result : nodes;
+}
+
+/** Merge an updated post into the tree (preserving its existing replies). */
+function mergePostUpdate(
+    nodes: ForumPostTreeDto[],
+    updated: ForumPostTreeDto
+): ForumPostTreeDto[] {
+    const walk = (src: ForumPostTreeDto[]): [ForumPostTreeDto[], boolean] => {
+        let changed = false;
+        const out: ForumPostTreeDto[] = [];
+
+        for (const n of src) {
+            if (n.id === updated.id) {
+                const merged: ForumPostTreeDto = {
+                    ...n,
+                    body: updated.body,
+                    createdUtc: updated.createdUtc,
+                    createdBy: updated.createdBy,
+                    createdByUserId: updated.createdByUserId,
+                    editedUtc: updated.editedUtc,
+                    editedBy: updated.editedBy,
+                    score: (updated as any).score ?? (n as any).score ?? 0,
+                    myVote: (updated as any).myVote ?? (n as any).myVote ?? 0,
+                    canEdit:
+                        (updated as any).canEdit ?? (n as any).canEdit ?? false,
+                    // keep existing replies
+                    replies: n.replies ?? [],
+                    repliesCount: n.repliesCount ?? (n.replies?.length ?? 0),
+                };
+                out.push(merged);
+                changed = true;
+            } else {
+                let node = n;
+                if (n.replies?.length) {
+                    const [childReplies, childChanged] = walk(n.replies);
+                    if (childChanged) {
+                        node = {
+                            ...n,
+                            replies: childReplies,
+                            repliesCount:
+                                n.repliesCount ?? childReplies.length,
+                        };
+                        changed = true;
+                    }
+                }
+                out.push(node);
+            }
+        }
+
+        return [out, changed];
+    };
+
+    const [res] = walk(nodes);
+    return res;
+}
+
+/** Remove a node (and its subtree) from the tree. */
+function removeNodeFromTree(
+    nodes: ForumPostTreeDto[],
+    id: number
+): ForumPostTreeDto[] {
+    const walk = (src: ForumPostTreeDto[]): [ForumPostTreeDto[], boolean] => {
+        let removed = false;
+        const out: ForumPostTreeDto[] = [];
+
+        for (const n of src) {
+            if (n.id === id) {
+                removed = true;
+                continue;
+            }
+
+            let node = n;
+            let childRemoved = false;
+
+            if (n.replies?.length) {
+                const [childReplies, childRemovedFlag] = walk(n.replies);
+                if (childRemovedFlag) {
+                    node = {
+                        ...n,
+                        replies: childReplies,
+                        repliesCount: Math.max(
+                            0,
+                            (n.repliesCount ?? n.replies.length) - 1
+                        ),
+                    };
+                    childRemoved = true;
+                }
+            }
+
+            if (childRemoved) removed = true;
+            out.push(node);
+        }
+
+        return [out, removed];
+    };
+
+    const [res] = walk(nodes);
+    return res;
 }
 
 /* ---------- Safe HTML renderer (client-side sanitization) ---------- */
@@ -737,6 +902,139 @@ const ForumThreadView: React.FC = () => {
         load();
     }, [load]);
 
+    /** SignalR live updates for this thread. */
+    useEffect(() => {
+        if (!threadId || Number.isNaN(threadId)) return;
+
+        const connection = new HubConnectionBuilder()
+            .withUrl("/hubs/forum")
+            .withAutomaticReconnect()
+            .configureLogging(LogLevel.None)
+            .build();
+
+        const handlePostCreated = (post: ForumPostTreeDto) => {
+            setPosts((prev) => {
+                if (!prev) return prev;
+
+                const prevAny = prev as any;
+                const isTopLevel = post.parentPostId == null;
+
+                // Only inject the new top-level post into the list if we are on page 1.
+                const shouldAttachToItems =
+                    !isTopLevel || (isTopLevel && prev.page === 1);
+
+                const newItems = shouldAttachToItems
+                    ? addPostToTree(prev.items, post)
+                    : prev.items;
+
+                if (newItems === prev.items && !isTopLevel) return prev;
+
+                const currentTotal =
+                    typeof prevAny.totalCount === "number"
+                        ? prevAny.totalCount
+                        : prev.items.length;
+                const newTotal = isTopLevel
+                    ? currentTotal + 1
+                    : currentTotal;
+
+                return {
+                    ...(prev as any),
+                    items: newItems,
+                    totalCount: newTotal,
+                };
+            });
+
+            setThread((prev) => {
+                if (!prev) return prev;
+                const isTopLevel = post.parentPostId == null;
+                return {
+                    ...prev,
+                    postCount: isTopLevel
+                        ? prev.postCount + 1
+                        : prev.postCount,
+                    lastPostUtc: post.createdUtc,
+                    lastBy: post.createdBy,
+                };
+            });
+        };
+
+        const handlePostUpdated = (post: ForumPostTreeDto) => {
+            setPosts((prev) => {
+                if (!prev) return prev;
+                const newItems = mergePostUpdate(prev.items, post);
+                if (newItems === prev.items) return prev;
+                return {
+                    ...(prev as any),
+                    items: newItems,
+                };
+            });
+        };
+
+        const handlePostDeleted = (payload: { postId: number }) => {
+            const postId = payload?.postId;
+            if (!postId) return;
+
+            setPosts((prev) => {
+                if (!prev) return prev;
+                const newItems = removeNodeFromTree(prev.items, postId);
+                if (newItems === prev.items) return prev;
+                const prevAny = prev as any;
+                const currentTotal =
+                    typeof prevAny.totalCount === "number"
+                        ? prevAny.totalCount
+                        : prev.items.length;
+                const newTotal = Math.max(0, currentTotal - 1);
+                return {
+                    ...(prev as any),
+                    items: newItems,
+                    totalCount: newTotal,
+                };
+            });
+
+            setThread((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        postCount: Math.max(0, prev.postCount - 1),
+                    }
+                    : prev
+            );
+        };
+
+        connection.on("PostCreated", handlePostCreated);
+        connection.on("PostUpdated", handlePostUpdated);
+        connection.on("PostDeleted", handlePostDeleted);
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                await connection.start();
+                if (!cancelled) {
+                    await connection.invoke("JoinThread", threadId);
+                }
+            } catch (err) {
+                console.error("Failed to connect to ForumHub", err);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+            (async () => {
+                try {
+                    await connection.invoke("LeaveThread", threadId);
+                } catch {
+                    // ignore
+                }
+                try {
+                    await connection.stop();
+                } catch {
+                    // ignore
+                }
+            })();
+        };
+    }, [threadId, setPosts, setThread]);
+
     const setPage = (p: number) => setSearchParams({ page: String(p) });
 
     const canVote = !!user;
@@ -788,12 +1086,17 @@ const ForumThreadView: React.FC = () => {
         setReplyText((tState) => ({ ...tState, [postId]: v }));
     }, []);
 
-    /** Send a reply (parentPostId null for top-level reply). */
+    /** Send a reply (parentPostId null for top-level reply). No full reload; hub updates tree. */
     const doReply = useCallback(
         async (parentPostId?: number | null) => {
             const key = parentPostId ?? 0;
             const bodyHtml = (replyText[key] || "").trim();
             if (!bodyHtml) return;
+
+            const anchorId =
+                typeof parentPostId === "number"
+                    ? `post-${parentPostId}-body`
+                    : null;
 
             try {
                 setSending((s) => ({ ...s, [key]: true }));
@@ -809,7 +1112,19 @@ const ForumThreadView: React.FC = () => {
 
                 setReplyText((tState) => ({ ...tState, [key]: "" }));
                 setReplyOpen((o) => ({ ...o, [key]: false }));
-                await load();
+
+                // stay in place; optionally bring parent back into view
+                if (anchorId && typeof window !== "undefined") {
+                    window.requestAnimationFrame(() => {
+                        const el = document.getElementById(anchorId);
+                        if (el) {
+                            el.scrollIntoView({
+                                block: "start",
+                                behavior: "auto",
+                            });
+                        }
+                    });
+                }
             } catch (e) {
                 console.error(e);
                 alert(t("alerts.sendFailed"));
@@ -821,7 +1136,7 @@ const ForumThreadView: React.FC = () => {
                 });
             }
         },
-        [replyText, threadId, load, t]
+        [replyText, threadId, t]
     );
 
     /** Thread-level voting (active only in "thread" mode). */
@@ -970,6 +1285,7 @@ const ForumThreadView: React.FC = () => {
         });
     }, []);
 
+    /** Save edit without full reload; hub will broadcast PostUpdated. */
     const onSaveEdit = useCallback(
         async (postId: number) => {
             const html = (editText[postId] || "").trim();
@@ -981,7 +1297,6 @@ const ForumThreadView: React.FC = () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ body: html }),
                 });
-                await load();
                 onCancelEdit(postId);
             } catch (e) {
                 console.error(e);
@@ -994,9 +1309,10 @@ const ForumThreadView: React.FC = () => {
                 });
             }
         },
-        [editText, load, onCancelEdit, t]
+        [editText, onCancelEdit, t]
     );
 
+    /** Delete post without full reload; hub will broadcast PostDeleted. */
     const onDeletePost = useCallback(
         async (postId: number) => {
             if (!confirm(t("confirm.deletePost"))) return;
@@ -1004,13 +1320,12 @@ const ForumThreadView: React.FC = () => {
                 await fetchJSON(`/api/forum/posts/${postId}`, {
                     method: "DELETE",
                 });
-                await load();
             } catch (e) {
                 console.error(e);
                 alert(t("alerts.deleteFailed"));
             }
         },
-        [load, t]
+        [t]
     );
 
     // thread title edit

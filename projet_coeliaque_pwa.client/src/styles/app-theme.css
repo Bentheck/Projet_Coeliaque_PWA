@@ -575,6 +575,24 @@ html[data-theme="dark"] .btn-mint {
     border-width: 2px;
 }
 
+/* Dark mode – keep primary / success buttons readable on hover */
+html[data-theme="dark"] .btn-primary,
+html[data-theme="dark"] .btn.success {
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary-border) !important;
+    color: var(--color-primary-text) !important;
+}
+
+    html[data-theme="dark"] .btn-primary:hover,
+    html[data-theme="dark"] .btn-primary:focus,
+    html[data-theme="dark"] .btn.success:hover,
+    html[data-theme="dark"] .btn.success:focus {
+        /* slightly brighter indigo, still AAA vs white */
+        background-color: #1d4ed8 !important;
+        border-color: #2563eb !important;
+        color: #ffffff !important;
+    }
+
 /* Dark mode outlines */
 html[data-theme="dark"] .btn-outline-primary,
 html[data-theme="dark"] .btn-outline-secondary,
@@ -1343,6 +1361,15 @@ html[data-theme="dark"] .form-text {
         color: #fde68a !important;
     }
 
-.test {
-    background: #101bef;
+/* ========================================================================= */
+/* DARK MODE NAVBAR – TOGGLER ICON                                           */
+/* ========================================================================= */
+
+html[data-theme="dark"] .navbar-toggler {
+    border-color: #e5e7eb; /* light border so the button is visible */
+}
+
+html[data-theme="dark"] .navbar-toggler-icon {
+    /* 3 white bars, same geometry as Bootstrap's default */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(249,250,251,1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }

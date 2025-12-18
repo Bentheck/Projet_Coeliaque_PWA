@@ -1,6 +1,6 @@
 ﻿// src/components/PostEditor.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import * as LexicalErrorBoundaryPkg from "@lexical/react/LexicalErrorBoundary";
+import { LexicalErrorBoundary as LexicalErrorBoundaryComponent } from "@lexical/react/LexicalErrorBoundary";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -57,18 +57,22 @@ const theme = {
     text: { bold: "fw-bold", italic: "fst-italic", underline: "text-decoration-underline" },
 };
 
-/** LexicalErrorBoundary has a few export shapes; pick whatever exists. */
-const FallbackBoundary = ({ children }: any) => <>{children}</>;
-const ErrorBoundary: any =
-    (LexicalErrorBoundaryPkg as any).default ||
-    (LexicalErrorBoundaryPkg as any).LexicalErrorBoundary ||
-    FallbackBoundary;
+/** Error boundary used by Lexical; comes from @lexical/react. */
+const ErrorBoundary: any = LexicalErrorBoundaryComponent;
 
 /* ================== Placeholder ================== */
 function Placeholder() {
     const { t } = useTranslation("components/postEditor");
     return (
-        <div style={{ position: "absolute", pointerEvents: "none", top: 10, left: 12, opacity: 0.5 }}>
+        <div
+            style={{
+                position: "absolute",
+                pointerEvents: "none",
+                top: 10,
+                left: 12,
+                opacity: 0.5,
+            }}
+        >
             {t("placeholder")}
         </div>
     );
@@ -155,10 +159,15 @@ function CollapsedBar({
     onOpenGif: () => void;
     gifEnabled: boolean;
 }) {
-    const { t } = useTranslation("postEditor");
+    const { t } = useTranslation("components/postEditor");
     return (
         <div className="d-flex align-items-center gap-3 px-2 pb-2">
-            <button type="button" className="btn btn-sm btn-outline-secondary" title={t("toolbar.imageTitle")} onClick={onPickImage}>
+            <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                title={t("toolbar.imageTitle")}
+                onClick={onPickImage}
+            >
                 <i className="bi bi-image" />
             </button>
             <button
@@ -194,44 +203,86 @@ function RichToolbar({
     gifEnabled: boolean;
 }) {
     const [editor] = useLexicalComposerContext();
-    const { t } = useTranslation("postEditor");
+    const { t } = useTranslation("components/postEditor");
 
     const toggleLink = () => {
         const url = prompt(t("toolbar.linkPrompt"), "https://");
-        editor.dispatchCommand(TOGGLE_LINK_COMMAND, url && url.trim() ? url.trim() : null);
+        editor.dispatchCommand(
+            TOGGLE_LINK_COMMAND,
+            url && url.trim() ? url.trim() : null
+        );
     };
 
     return (
         <div className="d-flex flex-wrap gap-2 align-items-center px-2 pb-2">
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}
+            >
                 B
             </button>
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}
+            >
                 <i>i</i>
             </button>
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")}>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() =>
+                    editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")
+                }
+            >
                 <span style={{ textDecoration: "underline" }}>U</span>
             </button>
 
             <div className="vr mx-1" />
 
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() =>
+                    editor.dispatchCommand(
+                        INSERT_UNORDERED_LIST_COMMAND,
+                        undefined
+                    )
+                }
+            >
                 {t("toolbar.ul")}
             </button>
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() =>
+                    editor.dispatchCommand(
+                        INSERT_ORDERED_LIST_COMMAND,
+                        undefined
+                    )
+                }
+            >
                 {t("toolbar.ol")}
             </button>
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined)}>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() =>
+                    editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined)
+                }
+            >
                 {t("toolbar.removeList")}
             </button>
 
             <div className="vr mx-1" />
 
-            <button className="btn btn-sm btn-outline-secondary" onClick={toggleLink}>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={toggleLink}
+            >
                 🔗 {t("toolbar.link")}
             </button>
 
-            <button className="btn btn-sm btn-outline-secondary" title={t("toolbar.imageInsertTitle")} onClick={onPickImage}>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                title={t("toolbar.imageInsertTitle")}
+                onClick={onPickImage}
+            >
                 <i className="bi bi-image" /> {t("toolbar.image")}
             </button>
             <button
@@ -244,7 +295,11 @@ function RichToolbar({
             </button>
 
             <div className="ms-auto d-flex align-items-center gap-2">
-                <button className="btn btn-sm btn-outline-secondary" onClick={onCollapse} title={t("toolbar.collapseTitle")}>
+                <button
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={onCollapse}
+                    title={t("toolbar.collapseTitle")}
+                >
                     {t("toolbar.hide")}
                 </button>
             </div>
@@ -281,7 +336,8 @@ function bestGiphyVariantMax480(x: GiphyItem): GiphyImage | null {
         i.downsized,
         i.original,
     ];
-    const widthOf = (img?: GiphyImage) => (img?.width ? parseInt(img.width, 10) : Number.NaN);
+    const widthOf = (img?: GiphyImage) =>
+        img?.width ? parseInt(img.width, 10) : Number.NaN;
 
     let best: GiphyImage | null = null;
     let bestW = -1;
@@ -323,7 +379,7 @@ function GifPickerModalGiphy({
     onClose: () => void;
     onPick: (url: string, alt?: string, w?: number, h?: number) => void;
 }) {
-    const { t } = useTranslation("postEditor");
+    const { t } = useTranslation("components/postEditor");
     const [query, setQuery] = useState("");
     const [items, setItems] = useState<GiphyItem[]>([]);
     const [offset, setOffset] = useState(0);
@@ -336,7 +392,9 @@ function GifPickerModalGiphy({
     const url = (endpoint: "search" | "trending", q?: string, off = 0) => {
         const base =
             endpoint === "search"
-                ? `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(q || "")}`
+                ? `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(
+                    q || ""
+                )}`
                 : `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}`;
         const params = new URLSearchParams({
             limit: String(LIMIT),
@@ -347,11 +405,18 @@ function GifPickerModalGiphy({
         return `${base}&${params.toString()}`;
     };
 
-    const run = async (mode: "trending" | "search", off = 0, append = false) => {
+    const run = async (
+        mode: "trending" | "search",
+        off = 0,
+        append = false
+    ) => {
         try {
             setLoading(true);
             setErr(null);
-            const endpoint = mode === "search" ? url("search", query, off) : url("trending", undefined, off);
+            const endpoint =
+                mode === "search"
+                    ? url("search", query, off)
+                    : url("trending", undefined, off);
             const res = await fetch(endpoint);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -359,7 +424,11 @@ function GifPickerModalGiphy({
             const pagination = data.pagination || {};
             setItems((prev) => (append ? [...prev, ...list] : list));
             setOffset(pagination.offset + pagination.count || off + list.length);
-            setTotal(typeof pagination.total_count === "number" ? pagination.total_count : null);
+            setTotal(
+                typeof pagination.total_count === "number"
+                    ? pagination.total_count
+                    : null
+            );
         } catch (e: any) {
             console.error(e);
             setErr(t("errors.loadGifs"));
@@ -391,7 +460,11 @@ function GifPickerModalGiphy({
         >
             <div
                 className="bg-white rounded-3 shadow position-absolute top-50 start-50 translate-middle"
-                style={{ width: "min(960px, 95vw)", maxHeight: "85vh", overflow: "hidden" }}
+                style={{
+                    width: "min(960px, 95vw)",
+                    maxHeight: "85vh",
+                    overflow: "hidden",
+                }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="p-3 border-bottom d-flex align-items-center gap-2">
@@ -413,7 +486,10 @@ function GifPickerModalGiphy({
 
                 {err && <div className="alert alert-danger m-3">{err}</div>}
 
-                <div className="p-3" style={{ overflow: "auto", maxHeight: "calc(85vh - 120px)" }}>
+                <div
+                    className="p-3"
+                    style={{ overflow: "auto", maxHeight: "calc(85vh - 120px)" }}
+                >
                     {loading && items.length === 0 ? (
                         <div>{t("giphy.loading")}</div>
                     ) : items.length === 0 ? (
@@ -422,7 +498,8 @@ function GifPickerModalGiphy({
                         <div
                             className="d-grid"
                             style={{
-                                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                                gridTemplateColumns:
+                                    "repeat(auto-fill, minmax(140px, 1fr))",
                                 gap: 12,
                             }}
                         >
@@ -430,20 +507,28 @@ function GifPickerModalGiphy({
                                 const m = bestGiphyVariantMax480(it);
                                 if (!m) return null;
                                 const alt = it.title || t("gifAlt");
-                                const w = parseInt(m.width || "0", 10) || undefined;
-                                const h = parseInt(m.height || "0", 10) || undefined;
+                                const w =
+                                    parseInt(m.width || "0", 10) || undefined;
+                                const h =
+                                    parseInt(m.height || "0", 10) || undefined;
                                 return (
                                     <button
                                         key={it.id}
                                         className="btn p-0 border-0"
-                                        onClick={() => onPick(m.url, alt, w, h)}
+                                        onClick={() =>
+                                            onPick(m.url, alt, w, h)
+                                        }
                                         title={alt}
                                     >
                                         <img
                                             src={m.url}
                                             alt={alt}
                                             loading="lazy"
-                                            style={{ width: "100%", height: "auto", borderRadius: 8 }}
+                                            style={{
+                                                width: "100%",
+                                                height: "auto",
+                                                borderRadius: 8,
+                                            }}
                                         />
                                     </button>
                                 );
@@ -455,13 +540,23 @@ function GifPickerModalGiphy({
                             <button
                                 className="btn btn-outline-secondary"
                                 disabled={loading}
-                                onClick={() => run(query.trim() ? "search" : "trending", offset, true)}
+                                onClick={() =>
+                                    run(
+                                        query.trim() ? "search" : "trending",
+                                        offset,
+                                        true
+                                    )
+                                }
                             >
-                                {loading ? t("giphy.loading") : t("giphy.loadMore")}
+                                {loading
+                                    ? t("giphy.loading")
+                                    : t("giphy.loadMore")}
                             </button>
                         )}
                     </div>
-                    <div className="text-center text-muted small mt-2">{t("giphy.byline")}</div>
+                    <div className="text-center text-muted small mt-2">
+                        {t("giphy.byline")}
+                    </div>
                 </div>
             </div>
         </div>
@@ -480,7 +575,7 @@ export default function PostEditor({
     giphyLang = "fr",
     giphyRating = "g",
 }: PostEditorProps) {
-    const { t } = useTranslation("postEditor");
+    const { t } = useTranslation("components/postEditor");
     const [expanded, setExpanded] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const editorRef = useRef<LexicalEditor | null>(null);
@@ -494,7 +589,15 @@ export default function PostEditor({
             onError(error: unknown) {
                 console.error(error);
             },
-            nodes: [HeadingNode, QuoteNode, CodeNode, ListNode, ListItemNode, LinkNode, ImageNode],
+            nodes: [
+                HeadingNode,
+                QuoteNode,
+                CodeNode,
+                ListNode,
+                ListItemNode,
+                LinkNode,
+                ImageNode,
+            ],
         }),
         []
     );
@@ -511,7 +614,12 @@ export default function PostEditor({
         });
 
     /** Insert an image at the current selection and follow with an empty paragraph for smoother typing. */
-    const insertImageAtSelection = (src: string, alt = "", width?: number, height?: number) => {
+    const insertImageAtSelection = (
+        src: string,
+        alt = "",
+        width?: number,
+        height?: number
+    ) => {
         const editor = editorRef.current;
         if (!editor) return;
         editor.update(() => {
@@ -533,7 +641,9 @@ export default function PostEditor({
             return;
         }
         try {
-            const url = uploadImage ? await uploadImage(file) : await fileToDataURL(file);
+            const url = uploadImage
+                ? await uploadImage(file)
+                : await fileToDataURL(file);
             const alt = file.name.replace(/\.[^/.]+$/, "");
             insertImageAtSelection(url, alt);
         } catch (e) {
@@ -563,7 +673,9 @@ export default function PostEditor({
         e.preventDefault();
         const files = e.dataTransfer?.files;
         if (!files?.length) return;
-        const img = Array.from(files).find((f) => f.type.startsWith("image/"));
+        const img = Array.from(files).find((f) =>
+            f.type.startsWith("image/")
+        );
         if (img) await handleImageFile(img);
     };
 
@@ -619,7 +731,11 @@ export default function PostEditor({
 
             <div
                 className="border rounded-3 p-2"
-                style={{ position: "relative", minHeight: 160, lineHeight: 1.5 }}
+                style={{
+                    position: "relative",
+                    minHeight: 160,
+                    lineHeight: 1.5,
+                }}
                 onPaste={onPaste}
                 onDrop={onDrop}
                 onDragOver={(e) => e.preventDefault()}
@@ -630,7 +746,10 @@ export default function PostEditor({
                             aria-label={computedAriaLabel}
                             spellCheck
                             className="w-100"
-                            style={{ outline: "none", whiteSpace: "pre-wrap" }}
+                            style={{
+                                outline: "none",
+                                whiteSpace: "pre-wrap",
+                            }}
                         />
                     }
                     placeholder={<Placeholder />}

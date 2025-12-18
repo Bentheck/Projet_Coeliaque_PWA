@@ -6,11 +6,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
+using Projet_Coeliaque_PWA.Server.Hubs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,17 +35,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly UserManager<IdentityUser> _um;
         private readonly HtmlSanitizer _sanitizer;
         private readonly IAuditLogService _audit;
+        private readonly IHubContext<ForumHub> _forumHub;
 
         public ForumController(
             ApplicationDbContext db,
             IMapper mapper,
             UserManager<IdentityUser> um,
-            IAuditLogService audit)
+            IAuditLogService audit,
+            IHubContext<ForumHub> forumHub)
         {
             _db = db;
             _mapper = mapper;
             _um = um;
             _audit = audit;
+            _forumHub = forumHub;
 
             // Server-side HTML sanitizer (align with client allowlist)
             _sanitizer = new HtmlSanitizer();
@@ -62,6 +67,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         // ---------- helpers ----------
+
+        private string? CurrentUserId => _um.GetUserId(User);
+
         private async Task<bool> IsAdminAsync(string? userId)
             => !string.IsNullOrEmpty(userId) && await _db.ForumAdmins.AnyAsync(a => a.UserId == userId);
 
@@ -70,6 +78,101 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         private static bool IsOwner(string? userId, string? ownerId)
             => !string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(ownerId) && userId == ownerId;
+
+        /// <summary>
+        /// Build a single ForumPostTreeDto for a post, used for SignalR broadcasts.
+        /// Mirrors the mapping logic in GetPosts so the shape matches the regular API.
+        /// </summary>
+        private async Task<ForumPostTreeDto> BuildPostDtoAsync(ForumPost post, string? currentUserId)
+        {
+            // Load identity navigation properties if needed
+            if (post.CreatedBy == null)
+            {
+                await _db.Entry(post).Reference(p => p.CreatedBy).LoadAsync();
+            }
+            if (post.EditedByUserId != null && post.EditedBy == null)
+            {
+                await _db.Entry(post).Reference(p => p.EditedBy).LoadAsync();
+            }
+
+            // Collect display names
+            var userIds = new List<string?>();
+            if (!string.IsNullOrEmpty(post.CreatedByUserId))
+                userIds.Add(post.CreatedByUserId);
+            if (!string.IsNullOrEmpty(post.EditedByUserId))
+                userIds.Add(post.EditedByUserId);
+
+            var displayNameMap = await _db.UserProfiles
+                .AsNoTracking()
+                .Where(up => userIds.Contains(up.UserId))
+                .ToDictionaryAsync(up => up.UserId!, up => up.DisplayName);
+
+            string createdName;
+            if (!string.IsNullOrEmpty(post.CreatedByUserId) &&
+                displayNameMap.TryGetValue(post.CreatedByUserId!, out var dnCreated) &&
+                !string.IsNullOrWhiteSpace(dnCreated))
+            {
+                createdName = dnCreated!;
+            }
+            else
+            {
+                createdName = post.CreatedBy?.UserName
+                              ?? post.CreatedBy?.Email
+                              ?? "—";
+            }
+
+            string? editedName = null;
+            if (!string.IsNullOrEmpty(post.EditedByUserId) &&
+                displayNameMap.TryGetValue(post.EditedByUserId!, out var dnEdited) &&
+                !string.IsNullOrWhiteSpace(dnEdited))
+            {
+                editedName = dnEdited!;
+            }
+            else if (post.EditedBy != null)
+            {
+                editedName = post.EditedBy.UserName ?? post.EditedBy.Email;
+            }
+
+            // Score and my vote
+            var score = await _db.ForumPostVotes
+                .Where(v => v.PostId == post.Id)
+                .SumAsync(v => (int?)v.Value) ?? 0;
+
+            var myVote = 0;
+            if (!string.IsNullOrEmpty(currentUserId))
+            {
+                myVote = await _db.ForumPostVotes
+                    .Where(v => v.PostId == post.Id && v.UserId == currentUserId)
+                    .Select(v => (int)v.Value)
+                    .FirstOrDefaultAsync();
+            }
+
+            // Direct replies count
+            var repliesCount = await _db.ForumPosts
+                .Where(p => p.ParentPostId == post.Id && !p.IsDeleted)
+                .CountAsync();
+
+            var canEdit = IsOwner(currentUserId, post.CreatedByUserId)
+                          || await IsAdminAsync(currentUserId)
+                          || await IsModeratorAsync(post.ThreadId, currentUserId);
+
+            return new ForumPostTreeDto
+            {
+                Id = post.Id,
+                Body = post.Body,
+                CreatedUtc = post.CreatedUtc,
+                CreatedBy = createdName,
+                CreatedByUserId = post.CreatedByUserId,
+                EditedUtc = post.EditedUtc,
+                EditedBy = editedName,
+                ParentPostId = post.ParentPostId,
+                Score = score,
+                MyVote = myVote,
+                RepliesCount = repliesCount,
+                Replies = new List<ForumPostTreeDto>(),
+                CanEdit = canEdit
+            };
+        }
 
         // --------------------- Categories & thread list ---------------------
 
@@ -471,6 +574,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         /// <summary>
         /// Reply to a thread (optionally to a parent post). Body is sanitized server-side.
+        /// Also broadcasts PostCreated via SignalR so other clients update live.
         /// </summary>
         [Authorize]
         [HttpPost("threads/{id:int}/posts")]
@@ -524,6 +628,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     ParentPostId = post.ParentPostId,
                     post.CreatedUtc
                 });
+
+            // Build DTO and broadcast to all clients watching this thread
+            var dto = await BuildPostDtoAsync(post, userId);
+            await _forumHub.Clients.Group($"thread-{id}")
+                .SendAsync("PostCreated", dto);
 
             return NoContent();
         }
@@ -658,6 +767,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         /// <summary>
         /// Edit a post you own, or if you're a moderator/admin. Body is sanitized server-side.
+        /// Also broadcasts PostUpdated via SignalR.
         /// </summary>
         [Authorize]
         [HttpPut("posts/{postId:int}")]
@@ -703,11 +813,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     post.EditedUtc
                 });
 
+            // Broadcast updated post to clients
+            var dto = await BuildPostDtoAsync(post, userId);
+            await _forumHub.Clients.Group($"thread-{post.ThreadId}")
+                .SendAsync("PostUpdated", dto);
+
             return NoContent();
         }
 
         /// <summary>
         /// Soft-delete a post (or restore if you switch logic to allow). Requires owner/mod/admin.
+        /// Also broadcasts PostDeleted via SignalR.
         /// </summary>
         [Authorize]
         [HttpDelete("posts/{postId:int}")]
@@ -747,6 +863,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 "Forum.Post.Delete",
                 target: post.Id.ToString(),
                 details: snapshot);
+
+            // Broadcast deletion to clients (they'll remove the post locally)
+            await _forumHub.Clients.Group($"thread-{post.ThreadId}")
+                .SendAsync("PostDeleted", new { postId = post.Id });
 
             return NoContent();
         }

@@ -12,7 +12,8 @@ using Projet_Coeliaque_PWA.Server.Mapping;
 using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
 using Projet_Coeliaque_PWA.Server.Filters;
-using Projet_Coeliaque_PWA.Server.Infrastructure; // for ModuleFeatureFlagScanner
+using Projet_Coeliaque_PWA.Server.Infrastructure;
+using Projet_Coeliaque_PWA.Server.Hubs;
 
 namespace Projet_Coeliaque_PWA.Server
 {
@@ -141,6 +142,8 @@ namespace Projet_Coeliaque_PWA.Server
             // Controllers
             builder.Services.AddControllers();
 
+            builder.Services.AddSignalR();
+
             // --- IMPORTANT: forwarded headers (Cloudflare/nginx) so redirects stay HTTPS ---
             builder.Services.Configure<ForwardedHeadersOptions>(options =>
             {
@@ -189,6 +192,8 @@ namespace Projet_Coeliaque_PWA.Server
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.MapHub<ForumHub>("/hubs/forum");
 
             // API endpoints
             app.MapIdentityApi<IdentityUser>();
