@@ -628,6 +628,8 @@ const SuperAdminPanel: React.FC = () => {
         }
     };
 
+    const LIFETIME_END_DATE = "9999-12-31";
+
     const saveMembership = async () => {
         if (!selectedUser || !membership) return;
 
@@ -645,21 +647,22 @@ const SuperAdminPanel: React.FC = () => {
             return;
         }
 
-        const payload: MembershipUpdateInput = {
-            userId: selectedUser.userId,
-            startDateUtc: membership.isLifetime ? membership.startDateUtc : startIso,
-            endDateUtc: membership.isLifetime ? lifetimeEndDate : endIso,
-            isActive: active,
+        const payload = {
+            startDateUtc: startIso,
+            endDateUtc: endIso,
+            active: active,
         };
 
         setSavingM(true);
         try {
-            await fetchJSON("/api/super/admins/memberships", {
-                method: "POST",
+            await fetchJSON(`/api/super/admins/memberships/${selectedUser.userId}`, {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
+
             alert("Abonnement mis à jour.");
+
             const m = await fetchJSON<MembershipDto>(
                 `/api/super/admins/memberships/${selectedUser.userId}`
             );
