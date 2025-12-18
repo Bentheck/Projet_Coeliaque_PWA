@@ -6,13 +6,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.SignalR;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
-using Projet_Coeliaque_PWA.Server.Hubs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +21,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     /// <summary>
     /// Public forum endpoints: categories, thread listing, thread detail, posts tree,
     /// thread/post creation, voting, editing, soft-deleting, and title updates.
-    /// NOTE: Method signatures, routes, and HTTP verbs preserved exactly as requested.
     /// </summary>
     [ApiController]
     [Route("api/forum")]
@@ -35,22 +32,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly UserManager<IdentityUser> _um;
         private readonly HtmlSanitizer _sanitizer;
         private readonly IAuditLogService _audit;
-        private readonly IHubContext<ForumHub> _forumHub;
 
         public ForumController(
             ApplicationDbContext db,
             IMapper mapper,
             UserManager<IdentityUser> um,
-            IAuditLogService audit,
-            IHubContext<ForumHub> forumHub)
+            IAuditLogService audit)
         {
             _db = db;
             _mapper = mapper;
             _um = um;
             _audit = audit;
-            _forumHub = forumHub;
 
-            // Server-side HTML sanitizer (align with client allowlist)
             _sanitizer = new HtmlSanitizer();
             _sanitizer.AllowedTags.Clear();
             _sanitizer.AllowedTags.UnionWith(new[]
@@ -63,122 +56,26 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             {
                 "href","target","rel","class","dir","src","alt","width","height"
             });
-            _sanitizer.AllowedSchemes.Add("data"); // allow data: for pasted images if you use them
+            _sanitizer.AllowedSchemes.Add("data");
         }
 
         // ---------- helpers ----------
 
-        private string? CurrentUserId => _um.GetUserId(User);
-
         private async Task<bool> IsAdminAsync(string? userId)
-            => !string.IsNullOrEmpty(userId) && await _db.ForumAdmins.AnyAsync(a => a.UserId == userId);
+            => !string.IsNullOrEmpty(userId) &&
+               await _db.ForumAdmins.AnyAsync(a => a.UserId == userId);
 
         private async Task<bool> IsModeratorAsync(int threadId, string? userId)
-            => !string.IsNullOrEmpty(userId) && await _db.ForumThreadModerators.AnyAsync(m => m.ThreadId == threadId && m.UserId == userId);
+            => !string.IsNullOrEmpty(userId) &&
+               await _db.ForumThreadModerators.AnyAsync(m => m.ThreadId == threadId && m.UserId == userId);
 
         private static bool IsOwner(string? userId, string? ownerId)
-            => !string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(ownerId) && userId == ownerId;
-
-        /// <summary>
-        /// Build a single ForumPostTreeDto for a post, used for SignalR broadcasts.
-        /// Mirrors the mapping logic in GetPosts so the shape matches the regular API.
-        /// </summary>
-        private async Task<ForumPostTreeDto> BuildPostDtoAsync(ForumPost post, string? currentUserId)
-        {
-            // Load identity navigation properties if needed
-            if (post.CreatedBy == null)
-            {
-                await _db.Entry(post).Reference(p => p.CreatedBy).LoadAsync();
-            }
-            if (post.EditedByUserId != null && post.EditedBy == null)
-            {
-                await _db.Entry(post).Reference(p => p.EditedBy).LoadAsync();
-            }
-
-            // Collect display names
-            var userIds = new List<string?>();
-            if (!string.IsNullOrEmpty(post.CreatedByUserId))
-                userIds.Add(post.CreatedByUserId);
-            if (!string.IsNullOrEmpty(post.EditedByUserId))
-                userIds.Add(post.EditedByUserId);
-
-            var displayNameMap = await _db.UserProfiles
-                .AsNoTracking()
-                .Where(up => userIds.Contains(up.UserId))
-                .ToDictionaryAsync(up => up.UserId!, up => up.DisplayName);
-
-            string createdName;
-            if (!string.IsNullOrEmpty(post.CreatedByUserId) &&
-                displayNameMap.TryGetValue(post.CreatedByUserId!, out var dnCreated) &&
-                !string.IsNullOrWhiteSpace(dnCreated))
-            {
-                createdName = dnCreated!;
-            }
-            else
-            {
-                createdName = post.CreatedBy?.UserName
-                              ?? post.CreatedBy?.Email
-                              ?? "—";
-            }
-
-            string? editedName = null;
-            if (!string.IsNullOrEmpty(post.EditedByUserId) &&
-                displayNameMap.TryGetValue(post.EditedByUserId!, out var dnEdited) &&
-                !string.IsNullOrWhiteSpace(dnEdited))
-            {
-                editedName = dnEdited!;
-            }
-            else if (post.EditedBy != null)
-            {
-                editedName = post.EditedBy.UserName ?? post.EditedBy.Email;
-            }
-
-            // Score and my vote
-            var score = await _db.ForumPostVotes
-                .Where(v => v.PostId == post.Id)
-                .SumAsync(v => (int?)v.Value) ?? 0;
-
-            var myVote = 0;
-            if (!string.IsNullOrEmpty(currentUserId))
-            {
-                myVote = await _db.ForumPostVotes
-                    .Where(v => v.PostId == post.Id && v.UserId == currentUserId)
-                    .Select(v => (int)v.Value)
-                    .FirstOrDefaultAsync();
-            }
-
-            // Direct replies count
-            var repliesCount = await _db.ForumPosts
-                .Where(p => p.ParentPostId == post.Id && !p.IsDeleted)
-                .CountAsync();
-
-            var canEdit = IsOwner(currentUserId, post.CreatedByUserId)
-                          || await IsAdminAsync(currentUserId)
-                          || await IsModeratorAsync(post.ThreadId, currentUserId);
-
-            return new ForumPostTreeDto
-            {
-                Id = post.Id,
-                Body = post.Body,
-                CreatedUtc = post.CreatedUtc,
-                CreatedBy = createdName,
-                CreatedByUserId = post.CreatedByUserId,
-                EditedUtc = post.EditedUtc,
-                EditedBy = editedName,
-                ParentPostId = post.ParentPostId,
-                Score = score,
-                MyVote = myVote,
-                RepliesCount = repliesCount,
-                Replies = new List<ForumPostTreeDto>(),
-                CanEdit = canEdit
-            };
-        }
+            => !string.IsNullOrEmpty(userId) &&
+               !string.IsNullOrEmpty(ownerId) &&
+               userId == ownerId;
 
         // --------------------- Categories & thread list ---------------------
 
-        /// <summary>
-        /// Returns all forum categories, optionally filtered by language ("fr" or "en").
-        /// </summary>
         [HttpGet("categories")]
         [ProducesResponseType(typeof(IEnumerable<ForumCategoryDto>), 200)]
         public async Task<ActionResult> GetCategories([FromQuery] string? lang = null)
@@ -201,10 +98,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(list);
         }
 
-        /// <summary>
-        /// Paged list of threads for a category (pins first, then last activity). 
-        /// Default page = 1, default pageSize = 20 (max 100).
-        /// </summary>
         [HttpGet("threads")]
         [ProducesResponseType(typeof(PagedResult<ForumThreadListItemDto>), 200)]
         public async Task<ActionResult> GetThreads(
@@ -215,14 +108,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 20;
 
-            // Count
             var baseQ = _db.ForumThreads
                 .AsNoTracking()
                 .Where(t => t.CategoryId == categoryId);
 
             var total = await baseQ.CountAsync();
 
-            // Query with profile joins
             var items = await (
                 from t in _db.ForumThreads
                     .AsNoTracking()
@@ -278,18 +169,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             ));
         }
 
+        // --------------------- Thread detail ---------------------
 
-        // --------------------- Thread (enriched with Score/MyVote/ownership) ---------------------
-
-        /// <summary>
-        /// Returns a single thread with computed score, current user's vote, and edit capability for the title.
-        /// </summary>
         [HttpGet("threads/{id:int}")]
         [ProducesResponseType(typeof(ForumThreadDto), 200)]
         [ProducesResponseType(404)]
         public async Task<ActionResult> GetThread(int id)
         {
-            var userId = _um.GetUserId(User); // can be null
+            var userId = _um.GetUserId(User);
 
             var dto = await (
                 from t in _db.ForumThreads.AsNoTracking().Where(t => t.Id == id)
@@ -306,7 +193,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     Title = t.Title,
                     CreatedUtc = t.CreatedUtc,
 
-                    // Prefer profile.DisplayName, fall back to Identity name/email, then default
                     CreatedBy =
                         !string.IsNullOrWhiteSpace(upCreated.DisplayName)
                             ? upCreated.DisplayName
@@ -335,7 +221,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (dto == null) return NotFound();
 
-            // Compute score + my vote
             var score = await _db.ForumThreadVotes
                 .Where(v => v.ThreadId == id)
                 .SumAsync(v => (int?)v.Value) ?? 0;
@@ -357,15 +242,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(dto);
         }
 
-        // --------------------- Posts as TREE with sorting & voting ---------------------
+        // --------------------- Posts tree ---------------------
 
-        /// <summary>
-        /// Returns a paged tree of posts for a thread.
-        /// <list type="bullet">
-        /// <item><description><c>sort</c>: "top" (default) | "new" | "old"</description></item>
-        /// <item><description>Paging applies to top-level comments only; children are returned fully under each top-level item.</description></item>
-        /// </list>
-        /// </summary>
         [HttpGet("threads/{id:int}/posts")]
         [ProducesResponseType(typeof(PagedResult<ForumPostTreeDto>), 200)]
         public async Task<ActionResult> GetPosts(
@@ -388,17 +266,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .Where(p => p.ThreadId == id && !p.IsDeleted)
                 .Include(p => p.CreatedBy)
                 .Include(p => p.EditedBy)
-                .OrderBy(p => p.CreatedUtc) // base order; we'll re-order below
+                .OrderBy(p => p.CreatedUtc)
                 .ToListAsync();
 
-            // Collect all user IDs that appear as creators or editors
             var userIdSet = all
                 .SelectMany(p => new[] { p.CreatedByUserId, p.EditedByUserId })
                 .Where(uid => uid != null)
                 .Distinct()
                 .ToList();
 
-            // Map UserId -> DisplayName
             var displayNameMap = await _db.UserProfiles
                 .AsNoTracking()
                 .Where(up => userIdSet.Contains(up.UserId))
@@ -406,14 +282,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var allIds = all.Select(p => p.Id).ToList();
 
-            // scores for all posts in thread
             var scoreMap = await _db.ForumPostVotes
                 .Where(v => allIds.Contains(v.PostId))
                 .GroupBy(v => v.PostId)
                 .Select(g => new { PostId = g.Key, Score = g.Sum(x => (int)x.Value) })
                 .ToDictionaryAsync(x => x.PostId, x => x.Score);
 
-            // current user's votes
             Dictionary<int, int> myVotes = new();
             if (!string.IsNullOrEmpty(userId))
             {
@@ -422,7 +296,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     .ToDictionaryAsync(v => v.PostId, v => (int)v.Value);
             }
 
-            // Build nodes
             var nodes = all.Select(p =>
             {
                 string createdName;
@@ -469,29 +342,26 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 };
             }).ToList();
 
-            // Pre-group direct replies by parent id
             var byParent = nodes
                 .Where(n => n.ParentPostId != null)
                 .GroupBy(n => n.ParentPostId!.Value)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            // Fill RepliesCount (direct children count) for every node
             foreach (var n in nodes)
                 n.RepliesCount = byParent.TryGetValue(n.Id, out var kids) ? kids.Count : 0;
 
-            // Sorting helpers
-            static IOrderedEnumerable<ForumPostTreeDto> SortNodes(IEnumerable<ForumPostTreeDto> src, string kind)
+            static IOrderedEnumerable<ForumPostTreeDto> SortNodes(
+                IEnumerable<ForumPostTreeDto> src,
+                string kind)
                 => kind switch
                 {
                     "new" => src.OrderByDescending(x => x.CreatedUtc),
                     "old" => src.OrderBy(x => x.CreatedUtc),
-                    _ => src.OrderByDescending(x => x.Score).ThenByDescending(x => x.CreatedUtc) // top
+                    _ => src.OrderByDescending(x => x.Score).ThenByDescending(x => x.CreatedUtc)
                 };
 
-            // Top-level posts
             var topAll = SortNodes(nodes.Where(n => n.ParentPostId == null), sort).ToList();
 
-            // Pagination over top-level only
             var totalTop = topAll.Count;
             var totalPages = (int)Math.Ceiling(totalTop / (double)pageSize);
             var pageTop = topAll
@@ -499,7 +369,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .Take(pageSize)
                 .ToList();
 
-            // Recursively attach children (each level sorted with same rule)
             void Attach(ForumPostTreeDto parent)
             {
                 if (!byParent.TryGetValue(parent.Id, out var children)) return;
@@ -509,16 +378,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     Attach(c);
                 }
             }
+
             foreach (var n in pageTop) Attach(n);
 
             return Ok(new PagedResult<ForumPostTreeDto>(pageTop, page, pageSize, totalTop, totalPages));
         }
 
-        // --------------------- Create thread / reply (HTML sanitized) ---------------------
+        // --------------------- Create thread / reply ---------------------
 
-        /// <summary>
-        /// Create a new thread with its first post. Body is sanitized server-side.
-        /// </summary>
         [Authorize]
         [HttpPost("threads")]
         [ProducesResponseType(typeof(object), 201)]
@@ -572,17 +439,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return CreatedAtAction(nameof(GetThread), new { id = t.Id }, new { id = t.Id });
         }
 
-        /// <summary>
-        /// Reply to a thread (optionally to a parent post). Body is sanitized server-side.
-        /// Also broadcasts PostCreated via SignalR so other clients update live.
-        /// </summary>
         [Authorize]
         [HttpPost("threads/{id:int}/posts")]
-        [ProducesResponseType(204)]
+        [ProducesResponseType(typeof(ForumPostTreeDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(409)]
-        public async Task<IActionResult> Reply(int id, [FromBody] CreatePostInput input)
+        public async Task<ActionResult> Reply(int id, [FromBody] CreatePostInput input)
         {
             if (string.IsNullOrWhiteSpace(input.Body))
                 return BadRequest("Contenu requis.");
@@ -629,21 +492,31 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     post.CreatedUtc
                 });
 
-            // Build DTO and broadcast to all clients watching this thread
-            var dto = await BuildPostDtoAsync(post, userId);
-            await _forumHub.Clients.Group($"thread-{id}")
-                .SendAsync("PostCreated", dto);
+            // return the created post mapped to tree DTO (no children yet)
+            var dto = new ForumPostTreeDto
+            {
+                Id = post.Id,
+                Body = post.Body,
+                CreatedUtc = post.CreatedUtc,
+                CreatedByUserId = post.CreatedByUserId,
+                CreatedBy = User?.Identity?.Name ?? "—",
+                EditedUtc = post.EditedUtc,
+                EditedBy = null,
+                ParentPostId = post.ParentPostId,
+                Score = 0,
+                MyVote = 0,
+                RepliesCount = 0,
+                Replies = new List<ForumPostTreeDto>(),
+                CanEdit = true
+            };
 
-            return NoContent();
+            return Ok(dto);
         }
 
-        // --------------------- Voting endpoints ---------------------
+        // --------------------- Voting ---------------------
 
-        public record VoteInput(int Value); // -1, 0, or 1
+        public record VoteInput(int Value);
 
-        /// <summary>
-        /// Vote on a thread: -1 (down), 0 (clear), 1 (up). Returns new score and your vote.
-        /// </summary>
         [Authorize]
         [HttpPost("threads/{id:int}/vote")]
         [ProducesResponseType(typeof(object), 200)]
@@ -700,9 +573,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             return Ok(new { score, myVote = input.Value });
         }
 
-        /// <summary>
-        /// Vote on a post: -1 (down), 0 (clear), 1 (up). Returns new score and your vote.
-        /// </summary>
         [Authorize]
         [HttpPost("posts/{postId:int}/vote")]
         [ProducesResponseType(typeof(object), 200)]
@@ -765,10 +635,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public record UpdatePostInput(string Body);
         public record UpdateThreadTitleInput(string Title);
 
-        /// <summary>
-        /// Edit a post you own, or if you're a moderator/admin. Body is sanitized server-side.
-        /// Also broadcasts PostUpdated via SignalR.
-        /// </summary>
         [Authorize]
         [HttpPut("posts/{postId:int}")]
         [ProducesResponseType(204)]
@@ -813,18 +679,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     post.EditedUtc
                 });
 
-            // Broadcast updated post to clients
-            var dto = await BuildPostDtoAsync(post, userId);
-            await _forumHub.Clients.Group($"thread-{post.ThreadId}")
-                .SendAsync("PostUpdated", dto);
-
             return NoContent();
         }
 
-        /// <summary>
-        /// Soft-delete a post (or restore if you switch logic to allow). Requires owner/mod/admin.
-        /// Also broadcasts PostDeleted via SignalR.
-        /// </summary>
         [Authorize]
         [HttpDelete("posts/{postId:int}")]
         [ProducesResponseType(204)]
@@ -864,16 +721,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 target: post.Id.ToString(),
                 details: snapshot);
 
-            // Broadcast deletion to clients (they'll remove the post locally)
-            await _forumHub.Clients.Group($"thread-{post.ThreadId}")
-                .SendAsync("PostDeleted", new { postId = post.Id });
-
             return NoContent();
         }
 
-        /// <summary>
-        /// Edit a thread's title if you own it, or you're a moderator/admin.
-        /// </summary>
         [Authorize]
         [HttpPut("threads/{id:int}")]
         [ProducesResponseType(204)]

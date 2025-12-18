@@ -1,4 +1,5 @@
-﻿import React, {
+﻿// src/pages/Forum/ForumThreadView.tsx
+import React, {
     useCallback,
     useEffect,
     useMemo,
@@ -22,19 +23,9 @@ import { useAuth } from "../../components/AuthContext";
 import PostEditor from "../../components/PostEditor";
 import DOMPurify from "dompurify";
 import { useTranslation } from "react-i18next";
-import {
-    HubConnectionBuilder,
-    LogLevel,
-} from "@microsoft/signalr";
 import "../../styles/forum.css";
 
-/** One of the two vote UIs will be active:
- *  - "thread": vote on the whole thread via header bar (all comments, incl. OP, show no vote bar)
- *  - "op": vote on the OP post (other comments show their own vote bars)
- */
 const VOTE_MODE_DEFAULT: "thread" | "op" = "thread";
-
-/* ---------- Small helpers/components ---------- */
 
 const Avatar: React.FC<{ name: string }> = ({ name }) => {
     const letter = (name || "?").trim().charAt(0).toUpperCase();
@@ -56,7 +47,6 @@ const fmt = (iso: string) =>
 
 type Order = "recent" | "old";
 
-/** Sort a comment tree by created date, preserving structure. */
 function sortTree(nodes: ForumPostTreeDto[], order: Order): ForumPostTreeDto[] {
     const cmp =
         order === "recent"
@@ -76,7 +66,6 @@ function sortTree(nodes: ForumPostTreeDto[], order: Order): ForumPostTreeDto[] {
         }));
 }
 
-/** Collect all reply IDs (used by “collapse/expand all”). */
 function collectReplyIds(
     nodes: ForumPostTreeDto[],
     acc: number[] = []
@@ -104,7 +93,6 @@ function findNodeById(
     return undefined;
 }
 
-/** Immutable update of a node within a tree by ID (patch). */
 function updateNodeInTree(
     nodes: ForumPostTreeDto[],
     id: number,
@@ -120,21 +108,19 @@ function updateNodeInTree(
     });
 }
 
-/** Add a new post to the tree (used by live PostCreated). */
 function addPostToTree(
     nodes: ForumPostTreeDto[],
     newPost: ForumPostTreeDto
 ): ForumPostTreeDto[] {
-    // ensure replies array exists
     const normalizedNew: ForumPostTreeDto = {
         ...newPost,
         replies: newPost.replies ?? [],
     };
 
-    // top-level post
+    const existing = findNodeById(nodes, normalizedNew.id);
+    if (existing) return nodes;
+
     if (normalizedNew.parentPostId == null) {
-        const exists = findNodeById(nodes, normalizedNew.id);
-        if (exists) return nodes;
         return [...nodes, normalizedNew];
     }
 
@@ -147,25 +133,21 @@ function addPostToTree(
         for (const n of src) {
             if (n.id === parentId) {
                 const replies = n.replies ?? [];
-                const already = replies.some((r) => r.id === normalizedNew.id);
-                if (!already) {
-                    const newReplies = [...replies, normalizedNew];
-                    out.push({
-                        ...n,
-                        replies: newReplies,
-                        repliesCount: (n.repliesCount ?? replies.length) + 1,
-                    });
-                    changed = true;
-                } else {
-                    out.push(n);
-                }
+                const newReplies = [...replies, normalizedNew];
+                out.push({
+                    ...n,
+                    replies: newReplies,
+                    repliesCount: (n.repliesCount ?? replies.length) + 1,
+                });
+                changed = true;
             } else if (n.replies?.length) {
                 const [childReplies, childChanged] = walk(n.replies);
                 if (childChanged) {
                     out.push({
                         ...n,
                         replies: childReplies,
-                        repliesCount: childReplies.length,
+                        repliesCount:
+                            n.repliesCount ?? childReplies.length,
                     });
                     changed = true;
                 } else {
@@ -183,7 +165,6 @@ function addPostToTree(
     return changed ? result : nodes;
 }
 
-/** Merge an updated post into the tree (preserving its existing replies). */
 function mergePostUpdate(
     nodes: ForumPostTreeDto[],
     updated: ForumPostTreeDto
@@ -206,7 +187,6 @@ function mergePostUpdate(
                     myVote: (updated as any).myVote ?? (n as any).myVote ?? 0,
                     canEdit:
                         (updated as any).canEdit ?? (n as any).canEdit ?? false,
-                    // keep existing replies
                     replies: n.replies ?? [],
                     repliesCount: n.repliesCount ?? (n.replies?.length ?? 0),
                 };
@@ -237,7 +217,6 @@ function mergePostUpdate(
     return res;
 }
 
-/** Remove a node (and its subtree) from the tree. */
 function removeNodeFromTree(
     nodes: ForumPostTreeDto[],
     id: number
@@ -281,7 +260,6 @@ function removeNodeFromTree(
     return res;
 }
 
-/* ---------- Safe HTML renderer (client-side sanitization) ---------- */
 const SafeHtml = memo(function SafeHtml({
     html,
     className,
@@ -339,10 +317,9 @@ const SafeHtml = memo(function SafeHtml({
     );
 });
 
-/* ---------- Reply editor box (HTML) ---------- */
 type ReplyBoxProps = {
     value: string;
-    onChange: (v: string) => void; // receives HTML
+    onChange: (v: string) => void;
     onSubmit: () => void;
     onCancel: () => void;
     sending?: boolean;
@@ -361,7 +338,7 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
     const giphyLang = i18n.language?.startsWith("fr") ? "fr" : "en";
 
     return (
-        <div className="mt-2">
+        <div className="mt-2" id="reply-editor">
             <PostEditor
                 initialHTML={value}
                 onChange={onChange}
@@ -372,6 +349,7 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
             />
             <div className="d-flex justify-content-end gap-2 mt-2">
                 <button
+                    type="button"
                     className="btn btn-outline-secondary"
                     onClick={onCancel}
                     disabled={disabled || !!sending}
@@ -379,6 +357,7 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
                     {t("replyBox.cancel")}
                 </button>
                 <button
+                    type="button"
                     className="btn btn-outline-secondary"
                     onClick={() => onChange("")}
                     disabled={disabled || !!sending}
@@ -386,6 +365,7 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
                     {t("replyBox.clear")}
                 </button>
                 <button
+                    type="button"
                     className="btn btn-primary"
                     onClick={onSubmit}
                     disabled={disabled || !!sending || !value.trim()}
@@ -397,10 +377,9 @@ const ReplyBox: React.FC<ReplyBoxProps> = ({
     );
 };
 
-/* ---------- Voting UI ---------- */
 type VoteBarProps = {
     score: number;
-    myVote: number; // -1 | 0 | 1
+    myVote: number;
     onVote: (next: -1 | 0 | 1) => void;
     disabled?: boolean;
     size?: "sm" | "md";
@@ -420,6 +399,7 @@ const VoteBar: React.FC<VoteBarProps> = ({
     return (
         <div className="d-inline-flex align-items-center gap-2">
             <button
+                type="button"
                 className={`btn btn-outline-success ${btnSize} ${upActive ? "active" : ""
                     }`}
                 onClick={() => onVote(upActive ? 0 : 1)}
@@ -432,6 +412,7 @@ const VoteBar: React.FC<VoteBarProps> = ({
                 {score}
             </span>
             <button
+                type="button"
                 className={`btn btn-outline-danger ${btnSize} ${downActive ? "active" : ""
                     }`}
                 onClick={() => onVote(downActive ? 0 : -1)}
@@ -444,13 +425,11 @@ const VoteBar: React.FC<VoteBarProps> = ({
     );
 };
 
-/* ---------- Recursive Post Card ---------- */
 type PostCardProps = {
     p: ForumPostTreeDto;
     depth: number;
     canReply: boolean;
 
-    // reply state
     replyOpen: Record<number, boolean>;
     replyText: Record<number, string>;
     sending: Record<number, boolean>;
@@ -458,15 +437,12 @@ type PostCardProps = {
     onChangeReply: (id: number, v: string) => void;
     onSubmitReply: (id: number) => void;
 
-    // collapse state
     collapsed: Record<number, boolean>;
     onToggleCollapsed: (id: number) => void;
 
-    // voting
     showVoteOnThisCard: boolean;
     onVotePost: (postId: number, next: -1 | 0 | 1) => void;
 
-    // edit/delete
     onStartEdit: (id: number, currentHtml: string) => void;
     onCancelEdit: (id: number) => void;
     onSaveEdit: (id: number) => void;
@@ -476,16 +452,9 @@ type PostCardProps = {
     setEditText: React.Dispatch<React.SetStateAction<Record<number, string>>>;
     saving: Record<number, boolean>;
 
-    // moderator powers
     canModerate: boolean;
-
-    // extra UI placed right after the body/actions (e.g., sort & collapse controls under OP)
     extraUnderBody?: React.ReactNode;
-
-    // is this the OP card?
     isOp?: boolean;
-
-    /** When true, render without outer card wrapper (for OP embedded in header) */
     embedded?: boolean;
 };
 
@@ -521,7 +490,7 @@ const PostCard: React.FC<PostCardProps> = memo(
         const giphyLang = i18n.language?.startsWith("fr") ? "fr" : "en";
 
         const indentPx = Math.min(depth, 8) * 8;
-        const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false; // top-level comments stay open
+        const isCollapsed = depth >= 1 ? !!collapsed[p.id] : false;
         const directReplies = p.replies ? p.replies.length : 0;
 
         const score = (p as any).score ?? 0;
@@ -534,7 +503,6 @@ const PostCard: React.FC<PostCardProps> = memo(
         const editedBy = (p as any).editedBy as string | undefined;
         const editedUtc = (p as any).editedUtc as string | undefined;
 
-        // card classes only if NOT embedded
         const cardClasses = [
             "card",
             "card--tinted",
@@ -543,10 +511,7 @@ const PostCard: React.FC<PostCardProps> = memo(
             "hl-hover",
         ];
 
-        // accent border on every post
         cardClasses.push("hl-blue-border");
-
-        // alternate tones by depth
         const toneClass =
             depth % 2 === 0 ? "forum-post-tone-a" : "forum-post-tone-b";
         cardClasses.push(toneClass);
@@ -567,6 +532,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                 </small>
                                 {depth >= 1 && (
                                     <button
+                                        type="button"
                                         className="btn btn-sm btn-outline-secondary"
                                         onClick={() =>
                                             onToggleCollapsed(p.id)
@@ -628,10 +594,13 @@ const PostCard: React.FC<PostCardProps> = memo(
 
                                         <div className="mt-2 d-flex align-items-center gap-3">
                                             <button
+                                                type="button"
                                                 className="btn btn-sm btn-outline-primary"
-                                                onClick={() =>
-                                                    onToggleReply(p.id)
-                                                }
+                                                onClick={(e) => {
+                                                    e.preventDefault();      // make sure no form-submit happens
+                                                    e.stopPropagation();     // avoid any parent click handlers
+                                                    onToggleReply(p.id);
+                                                }}
                                                 disabled={!canReply}
                                             >
                                                 <i className="bi bi-reply me-1" />
@@ -658,6 +627,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                             {canEdit && (
                                                 <div className="btn-group btn-group-sm ms-2">
                                                     <button
+                                                        type="button"
                                                         className="btn btn-outline-secondary"
                                                         onClick={() =>
                                                             onStartEdit(
@@ -669,6 +639,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                         {t("actions.edit")}
                                                     </button>
                                                     <button
+                                                        type="button"
                                                         className="btn btn-outline-danger"
                                                         onClick={() =>
                                                             onDeletePost(p.id)
@@ -681,20 +652,27 @@ const PostCard: React.FC<PostCardProps> = memo(
                                         </div>
 
                                         {replyOpen[p.id] && canReply && (
-                                            <ReplyBox
-                                                value={replyText[p.id] || ""}
-                                                onChange={(v) =>
-                                                    onChangeReply(p.id, v)
-                                                }
-                                                onSubmit={() =>
-                                                    onSubmitReply(p.id)
-                                                }
-                                                onCancel={() => {
-                                                    onChangeReply(p.id, "");
-                                                    onToggleReply(p.id);
-                                                }}
-                                                sending={sending[p.id]}
-                                            />
+                                            <div id={`reply-${p.id}`}>
+                                                <ReplyBox
+                                                    value={
+                                                        replyText[p.id] || ""
+                                                    }
+                                                    onChange={(v) =>
+                                                        onChangeReply(p.id, v)
+                                                    }
+                                                    onSubmit={() =>
+                                                        onSubmitReply(p.id)
+                                                    }
+                                                    onCancel={() => {
+                                                        onChangeReply(
+                                                            p.id,
+                                                            ""
+                                                        );
+                                                        onToggleReply(p.id);
+                                                    }}
+                                                    sending={sending[p.id]}
+                                                />
+                                            </div>
                                         )}
 
                                         {extraUnderBody}
@@ -721,10 +699,8 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                         onChangeReply={
                                                             onChangeReply
                                                         }
-                                                        onSubmitReply={(
-                                                            idVal
-                                                        ) =>
-                                                            onSubmitReply(idVal)
+                                                        onSubmitReply={
+                                                            onSubmitReply
                                                         }
                                                         collapsed={collapsed}
                                                         onToggleCollapsed={
@@ -766,8 +742,8 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                 editText[p.id] ?? bodyHtml
                                             }
                                             onChange={(v) =>
-                                                setEditText((tState) => ({
-                                                    ...tState,
+                                                setEditText((s) => ({
+                                                    ...s,
                                                     [p.id]: v,
                                                 }))
                                             }
@@ -780,6 +756,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                         />
                                         <div className="d-flex gap-2 justify-content-end mt-2">
                                             <button
+                                                type="button"
                                                 className="btn btn-secondary btn-sm"
                                                 onClick={() =>
                                                     onCancelEdit(p.id)
@@ -789,6 +766,7 @@ const PostCard: React.FC<PostCardProps> = memo(
                                                 {t("threadHeader.cancel")}
                                             </button>
                                             <button
+                                                type="button"
                                                 className="btn btn-primary btn-sm"
                                                 onClick={() =>
                                                     onSaveEdit(p.id)
@@ -814,12 +792,15 @@ const PostCard: React.FC<PostCardProps> = memo(
         );
 
         if (embedded) {
-            // used for OP inside header card: no outer card wrapper
-            return inner;
+            return (
+                <div id={`post-${p.id}`} className="forum-post-op">
+                    {inner}
+                </div>
+            );
         }
 
         return (
-            <div className={cardClasses.join(" ")}>
+            <div className={cardClasses.join(" ")} id={`post-${p.id}`}>
                 <div className="card-body">{inner}</div>
             </div>
         );
@@ -827,20 +808,24 @@ const PostCard: React.FC<PostCardProps> = memo(
 );
 PostCard.displayName = "PostCard";
 
-/* ---------- Page ---------- */
-
 const ForumThreadView: React.FC = () => {
     const { lang, id } = useParams<{ id: string; lang?: string }>();
     const safeLang: "fr" | "en" = lang === "en" ? "en" : "fr";
 
     const navigate = useNavigate();
-
     const threadId = Number(id);
     const [searchParams, setSearchParams] = useSearchParams();
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
 
     const { user } = useAuth();
-    const { t } = useTranslation("pages/Forum/forumThreadView");
+    const { t, i18n } = useTranslation("pages/Forum/forumThreadView");
+
+    // Editor warm-up (preload PostEditor once to avoid first-open remount/jump)
+    const [warmEditor, setWarmEditor] = useState(true);
+    useEffect(() => {
+        const tm = window.setTimeout(() => setWarmEditor(false), 0);
+        return () => window.clearTimeout(tm);
+    }, []);
 
     const roles = (user as any)?.roles as string[] | undefined;
 
@@ -859,7 +844,6 @@ const ForumThreadView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
-    // UI state
     const [order, setOrder] = useState<Order>("recent");
     const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
     const [replyText, setReplyText] = useState<Record<number, string>>({});
@@ -867,16 +851,13 @@ const ForumThreadView: React.FC = () => {
     const [sending, setSending] = useState<Record<number, boolean>>({});
     const [voting, setVoting] = useState(false);
 
-    // per-post editing state
     const [editing, setEditing] = useState<Record<number, boolean>>({});
     const [editText, setEditText] = useState<Record<number, string>>({});
     const [saving, setSaving] = useState<Record<number, boolean>>({});
 
-    // thread title edit
     const [titleEditing, setTitleEditing] = useState(false);
     const [titleDraft, setTitleDraft] = useState("");
 
-    /** Fetch thread and the current page of posts. */
     const load = useCallback(async () => {
         try {
             setLoading(true);
@@ -902,144 +883,17 @@ const ForumThreadView: React.FC = () => {
         load();
     }, [load]);
 
-    /** SignalR live updates for this thread. */
-    useEffect(() => {
-        if (!threadId || Number.isNaN(threadId)) return;
-
-        const connection = new HubConnectionBuilder()
-            .withUrl("/hubs/forum")
-            .withAutomaticReconnect()
-            .configureLogging(LogLevel.None)
-            .build();
-
-        const handlePostCreated = (post: ForumPostTreeDto) => {
-            setPosts((prev) => {
-                if (!prev) return prev;
-
-                const prevAny = prev as any;
-                const isTopLevel = post.parentPostId == null;
-
-                // Only inject the new top-level post into the list if we are on page 1.
-                const shouldAttachToItems =
-                    !isTopLevel || (isTopLevel && prev.page === 1);
-
-                const newItems = shouldAttachToItems
-                    ? addPostToTree(prev.items, post)
-                    : prev.items;
-
-                if (newItems === prev.items && !isTopLevel) return prev;
-
-                const currentTotal =
-                    typeof prevAny.totalCount === "number"
-                        ? prevAny.totalCount
-                        : prev.items.length;
-                const newTotal = isTopLevel
-                    ? currentTotal + 1
-                    : currentTotal;
-
-                return {
-                    ...(prev as any),
-                    items: newItems,
-                    totalCount: newTotal,
-                };
-            });
-
-            setThread((prev) => {
-                if (!prev) return prev;
-                const isTopLevel = post.parentPostId == null;
-                return {
-                    ...prev,
-                    postCount: isTopLevel
-                        ? prev.postCount + 1
-                        : prev.postCount,
-                    lastPostUtc: post.createdUtc,
-                    lastBy: post.createdBy,
-                };
-            });
-        };
-
-        const handlePostUpdated = (post: ForumPostTreeDto) => {
-            setPosts((prev) => {
-                if (!prev) return prev;
-                const newItems = mergePostUpdate(prev.items, post);
-                if (newItems === prev.items) return prev;
-                return {
-                    ...(prev as any),
-                    items: newItems,
-                };
-            });
-        };
-
-        const handlePostDeleted = (payload: { postId: number }) => {
-            const postId = payload?.postId;
-            if (!postId) return;
-
-            setPosts((prev) => {
-                if (!prev) return prev;
-                const newItems = removeNodeFromTree(prev.items, postId);
-                if (newItems === prev.items) return prev;
-                const prevAny = prev as any;
-                const currentTotal =
-                    typeof prevAny.totalCount === "number"
-                        ? prevAny.totalCount
-                        : prev.items.length;
-                const newTotal = Math.max(0, currentTotal - 1);
-                return {
-                    ...(prev as any),
-                    items: newItems,
-                    totalCount: newTotal,
-                };
-            });
-
-            setThread((prev) =>
-                prev
-                    ? {
-                        ...prev,
-                        postCount: Math.max(0, prev.postCount - 1),
-                    }
-                    : prev
-            );
-        };
-
-        connection.on("PostCreated", handlePostCreated);
-        connection.on("PostUpdated", handlePostUpdated);
-        connection.on("PostDeleted", handlePostDeleted);
-
-        let cancelled = false;
-
-        (async () => {
-            try {
-                await connection.start();
-                if (!cancelled) {
-                    await connection.invoke("JoinThread", threadId);
-                }
-            } catch (err) {
-                console.error("Failed to connect to ForumHub", err);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-            (async () => {
-                try {
-                    await connection.invoke("LeaveThread", threadId);
-                } catch {
-                    // ignore
-                }
-                try {
-                    await connection.stop();
-                } catch {
-                    // ignore
-                }
-            })();
-        };
-    }, [threadId, setPosts, setThread]);
-
-    const setPage = (p: number) => setSearchParams({ page: String(p) });
+    const setPage = (p: number) => {
+        if (p === page) return;
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("page", String(p));
+            return next;
+        });
+    };
 
     const canVote = !!user;
 
-    /** Server may specify vote mode per thread; default applies otherwise. */
     const voteMode: "thread" | "op" =
         ((thread as any)?.voteMode === "op" ||
             (thread as any)?.voteMode === "thread")
@@ -1051,7 +905,6 @@ const ForumThreadView: React.FC = () => {
         [posts, order]
     );
 
-    /** OP for this page (page 1 only: earliest top-level in the page items). */
     const opOnPage = useMemo(() => {
         if (!posts || !posts.items.length || page !== 1) return null;
         let min = posts.items[0];
@@ -1065,10 +918,10 @@ const ForumThreadView: React.FC = () => {
         return min;
     }, [posts, page]);
 
-    // collapse helpers
     const toggleCollapsed = useCallback((idVal: number) => {
         setCollapsed((c) => ({ ...c, [idVal]: !c[idVal] }));
     }, []);
+
     const collapseAllReplies = useCallback(() => {
         if (!posts) return;
         const ids = collectReplyIds(posts.items);
@@ -1076,55 +929,77 @@ const ForumThreadView: React.FC = () => {
         ids.forEach((x) => (map[x] = true));
         setCollapsed(map);
     }, [posts]);
+
     const expandAllReplies = useCallback(() => setCollapsed({}), []);
 
-    // reply helpers
     const onToggleReply = useCallback((postId: number) => {
-        setReplyOpen((o) => ({ ...o, [postId]: !o[postId] }));
+        console.log("toggle reply for post", postId);
+        setReplyOpen((prev) => ({
+            ...prev,
+            [postId]: !prev[postId],
+        }));
     }, []);
+
     const onChangeReply = useCallback((postId: number, v: string) => {
         setReplyText((tState) => ({ ...tState, [postId]: v }));
     }, []);
 
-    /** Send a reply (parentPostId null for top-level reply). No full reload; hub updates tree. */
     const doReply = useCallback(
         async (parentPostId?: number | null) => {
             const key = parentPostId ?? 0;
             const bodyHtml = (replyText[key] || "").trim();
             if (!bodyHtml) return;
 
-            const anchorId =
-                typeof parentPostId === "number"
-                    ? `post-${parentPostId}-body`
-                    : null;
-
             try {
                 setSending((s) => ({ ...s, [key]: true }));
 
-                await fetchJSON(`/api/forum/threads/${threadId}/posts`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        body: bodyHtml,
-                        parentPostId: parentPostId ?? null,
-                    }),
-                });
+                const newPost = await fetchJSON<ForumPostTreeDto>(
+                    `/api/forum/threads/${threadId}/posts`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            body: bodyHtml,
+                            parentPostId: parentPostId ?? null,
+                        }),
+                    }
+                );
 
                 setReplyText((tState) => ({ ...tState, [key]: "" }));
                 setReplyOpen((o) => ({ ...o, [key]: false }));
 
-                // stay in place; optionally bring parent back into view
-                if (anchorId && typeof window !== "undefined") {
-                    window.requestAnimationFrame(() => {
-                        const el = document.getElementById(anchorId);
-                        if (el) {
-                            el.scrollIntoView({
-                                block: "start",
-                                behavior: "auto",
-                            });
-                        }
-                    });
-                }
+                setPosts((prev) => {
+                    if (!prev) return prev;
+                    const prevAny = prev as any;
+                    const isTopLevel = newPost.parentPostId == null;
+                    const newItems = addPostToTree(prev.items, newPost);
+                    const currentTotal =
+                        typeof prevAny.totalCount === "number"
+                            ? prevAny.totalCount
+                            : prev.items.length;
+                    const newTotal = isTopLevel
+                        ? currentTotal + 1
+                        : currentTotal;
+
+                    return {
+                        ...(prev as any),
+                        items: newItems,
+                        totalCount: newTotal,
+                    };
+                });
+
+                setThread((prev) => {
+                    if (!prev) return prev;
+                    const isTopLevel = newPost.parentPostId == null;
+                    return {
+                        ...prev,
+                        postCount: isTopLevel
+                            ? prev.postCount + 1
+                            : prev.postCount,
+                        lastPostUtc: newPost.createdUtc,
+                        lastBy: newPost.createdBy,
+                    };
+                });
             } catch (e) {
                 console.error(e);
                 alert(t("alerts.sendFailed"));
@@ -1139,7 +1014,6 @@ const ForumThreadView: React.FC = () => {
         [replyText, threadId, t]
     );
 
-    /** Thread-level voting (active only in "thread" mode). */
     const voteThread = useCallback(
         async (next: -1 | 0 | 1) => {
             if (voteMode !== "thread" || !thread || !canVote || voting) return;
@@ -1148,15 +1022,14 @@ const ForumThreadView: React.FC = () => {
             const prevVote = (thread as any).myVote ?? 0;
             const delta = next - prevVote;
 
-            // optimistic
-            setThread((tState) =>
-                tState
+            setThread((s) =>
+                s
                     ? ({
-                        ...(tState as any),
+                        ...(s as any),
                         score: prevScore + delta,
                         myVote: next,
                     } as any)
-                    : tState
+                    : s
             );
             setVoting(true);
             try {
@@ -1168,25 +1041,25 @@ const ForumThreadView: React.FC = () => {
                         body: JSON.stringify({ value: next }),
                     }
                 );
-                setThread((tState) =>
-                    tState
+                setThread((s) =>
+                    s
                         ? ({
-                            ...(tState as any),
+                            ...(s as any),
                             score: res.score ?? 0,
                             myVote: res.myVote ?? 0,
                         } as any)
-                        : tState
+                        : s
                 );
             } catch (e) {
                 console.error(e);
-                setThread((tState) =>
-                    tState
+                setThread((s) =>
+                    s
                         ? ({
-                            ...(tState as any),
+                            ...(s as any),
                             score: prevScore,
                             myVote: prevVote,
                         } as any)
-                        : tState
+                        : s
                 );
                 alert(t("alerts.voteFailed"));
             } finally {
@@ -1196,14 +1069,13 @@ const ForumThreadView: React.FC = () => {
         [voteMode, thread, canVote, voting, threadId, t]
     );
 
-    /** Per-post voting. In "thread" mode, OP is not votable (header owns the vote). */
     const onVotePost = useCallback(
         async (postId: number, next: -1 | 0 | 1) => {
             if (!posts || !canVote) return;
 
-            const isOp = opOnPage && opOnPage.id === postId;
-            if (isOp && voteMode !== "op") {
-                return; // thread mode: OP is controlled by header vote bar
+            const isOpLocal = opOnPage && opOnPage.id === postId;
+            if (isOpLocal && voteMode !== "op") {
+                return;
             }
 
             const current = findNodeById(posts.items, postId);
@@ -1213,7 +1085,6 @@ const ForumThreadView: React.FC = () => {
             const prevVote = (current as any).myVote ?? 0;
             const delta = next - prevVote;
 
-            // optimistic
             setPosts((pState) =>
                 pState
                     ? {
@@ -1248,7 +1119,6 @@ const ForumThreadView: React.FC = () => {
                 );
             } catch (e) {
                 console.error(e);
-                // rollback
                 setPosts((pState) =>
                     pState
                         ? {
@@ -1266,7 +1136,6 @@ const ForumThreadView: React.FC = () => {
         [posts, canVote, opOnPage, voteMode, t]
     );
 
-    // post edit/delete
     const onStartEdit = useCallback((postId: number, currentHtml: string) => {
         setEditing((eState) => ({ ...eState, [postId]: true }));
         setEditText((tState) => ({ ...tState, [postId]: currentHtml }));
@@ -1285,19 +1154,31 @@ const ForumThreadView: React.FC = () => {
         });
     }, []);
 
-    /** Save edit without full reload; hub will broadcast PostUpdated. */
     const onSaveEdit = useCallback(
         async (postId: number) => {
             const html = (editText[postId] || "").trim();
             if (!html) return;
             setSaving((s) => ({ ...s, [postId]: true }));
             try {
-                await fetchJSON(`/api/forum/posts/${postId}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ body: html }),
-                });
+                const updated = await fetchJSON<ForumPostTreeDto>(
+                    `/api/forum/posts/${postId}`,
+                    {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ body: html }),
+                    }
+                );
+
                 onCancelEdit(postId);
+
+                setPosts((prev) =>
+                    prev
+                        ? {
+                            ...(prev as any),
+                            items: mergePostUpdate(prev.items, updated),
+                        }
+                        : prev
+                );
             } catch (e) {
                 console.error(e);
                 alert(t("alerts.saveFailed"));
@@ -1312,14 +1193,31 @@ const ForumThreadView: React.FC = () => {
         [editText, onCancelEdit, t]
     );
 
-    /** Delete post without full reload; hub will broadcast PostDeleted. */
     const onDeletePost = useCallback(
         async (postId: number) => {
             if (!confirm(t("confirm.deletePost"))) return;
             try {
-                await fetchJSON(`/api/forum/posts/${postId}`, {
+                await fetch(`/api/forum/posts/${postId}`, {
                     method: "DELETE",
                 });
+
+                setPosts((prev) =>
+                    prev
+                        ? {
+                            ...(prev as any),
+                            items: removeNodeFromTree(prev.items, postId),
+                        }
+                        : prev
+                );
+
+                setThread((prev) =>
+                    prev
+                        ? {
+                            ...prev,
+                            postCount: Math.max(0, prev.postCount - 1),
+                        }
+                        : prev
+                );
             } catch (e) {
                 console.error(e);
                 alert(t("alerts.deleteFailed"));
@@ -1328,7 +1226,6 @@ const ForumThreadView: React.FC = () => {
         [t]
     );
 
-    // thread title edit
     const saveTitle = useCallback(async () => {
         if (!thread) return;
         const titleVal = titleDraft.trim();
@@ -1347,13 +1244,12 @@ const ForumThreadView: React.FC = () => {
         }
     }, [thread, titleDraft, load, t]);
 
-    // Global mod toggles for pin/lock from header
     const togglePinned = useCallback(
         async (nextPinned: boolean) => {
             if (!thread || !isModerator) return;
             const prev = thread.isPinned;
-            setThread((tState) =>
-                tState ? { ...tState, isPinned: nextPinned } : tState
+            setThread((s) =>
+                s ? { ...s, isPinned: nextPinned } : s
             );
             try {
                 await fetchJSON(`/api/forum/admin/threads/${thread.id}/pin`, {
@@ -1363,8 +1259,8 @@ const ForumThreadView: React.FC = () => {
                 });
             } catch (e) {
                 console.error(e);
-                setThread((tState) =>
-                    tState ? { ...tState, isPinned: prev } : tState
+                setThread((s) =>
+                    s ? { ...s, isPinned: prev } : s
                 );
                 alert(t("modThread.errors.pinFailed"));
             }
@@ -1376,8 +1272,8 @@ const ForumThreadView: React.FC = () => {
         async (nextLocked: boolean) => {
             if (!thread || !isModerator) return;
             const prev = thread.isLocked;
-            setThread((tState) =>
-                tState ? { ...tState, isLocked: nextLocked } : tState
+            setThread((s) =>
+                s ? { ...s, isLocked: nextLocked } : s
             );
             try {
                 await fetchJSON(
@@ -1390,8 +1286,8 @@ const ForumThreadView: React.FC = () => {
                 );
             } catch (e) {
                 console.error(e);
-                setThread((tState) =>
-                    tState ? { ...tState, isLocked: prev } : tState
+                setThread((s) =>
+                    s ? { ...s, isLocked: prev } : s
                 );
                 alert(t("modThread.errors.lockFailed"));
             }
@@ -1415,7 +1311,6 @@ const ForumThreadView: React.FC = () => {
 
     const canEditTitle = !!thread && (thread.canEditTitle || isModerator);
 
-    /** Controls displayed under the OP (or first when OP not on page). */
     const Controls = (
         <div className="my-3 d-flex flex-wrap gap-2 align-items-center section-highlight-mint p-2 p-sm-3">
             <div className="input-group input-group-sm forum-controls-order-group">
@@ -1441,6 +1336,7 @@ const ForumThreadView: React.FC = () => {
                 aria-label="collapse/expand replies"
             >
                 <button
+                    type="button"
                     className="btn btn-outline-secondary"
                     onClick={collapseAllReplies}
                 >
@@ -1448,6 +1344,7 @@ const ForumThreadView: React.FC = () => {
                     {t("controls.collapseReplies")}
                 </button>
                 <button
+                    type="button"
                     className="btn btn-outline-secondary"
                     onClick={expandAllReplies}
                 >
@@ -1458,10 +1355,33 @@ const ForumThreadView: React.FC = () => {
         </div>
     );
 
-    /* ---------- Render ---------- */
     return (
         <div className="container py-3">
-            {/* Thread header card (title, meta, voting, and global mod toggles) */}
+            {warmEditor && (
+                <div
+                    style={{
+                        position: "absolute",
+                        left: "-10000px",
+                        top: "0",
+                        width: "1px",
+                        height: "1px",
+                        overflow: "hidden",
+                        opacity: 0,
+                        pointerEvents: "none",
+                    }}
+                    aria-hidden="true"
+                >
+                    <PostEditor
+                        initialHTML=""
+                        onChange={() => { }}
+                        ariaLabel="editor warmup"
+                        giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
+                        giphyLang={i18n.language?.startsWith("fr") ? "fr" : "en"}
+                        giphyRating="g"
+                    />
+                </div>
+            )}
+
             <div className="card card--accent section-highlight-primary mb-3">
                 <div className="card-body">
                     <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -1501,6 +1421,7 @@ const ForumThreadView: React.FC = () => {
                                             </h1>
                                             {canEditTitle && (
                                                 <button
+                                                    type="button"
                                                     className="btn btn-sm btn-outline-secondary"
                                                     onClick={() =>
                                                         setTitleEditing(true)
@@ -1525,6 +1446,7 @@ const ForumThreadView: React.FC = () => {
                                                 }
                                             />
                                             <button
+                                                type="button"
                                                 className="btn btn-sm btn-secondary"
                                                 onClick={() => {
                                                     setTitleEditing(false);
@@ -1536,6 +1458,7 @@ const ForumThreadView: React.FC = () => {
                                                 {t("threadHeader.cancel")}
                                             </button>
                                             <button
+                                                type="button"
                                                 className="btn btn-sm btn-primary"
                                                 onClick={saveTitle}
                                                 disabled={!titleDraft.trim()}
@@ -1626,7 +1549,6 @@ const ForumThreadView: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* OP content embedded in the same card as the header (page 1 only) */}
                     {opOnPage && page === 1 && (
                         <div className="mt-3 pt-3 border-top forum-op-wrapper">
                             <PostCard
@@ -1690,13 +1612,11 @@ const ForumThreadView: React.FC = () => {
                 </div>
             ) : (
                 <>
-                    {/* Comments tree */}
                     <div className="vstack gap-2 mb-3">
                         {(() => {
                             const items = sortedItems;
 
                             if (opOnPage && page === 1) {
-                                // OP already rendered in header card; show only other top-level comments
                                 return items
                                     .filter((p) => p.id !== opOnPage.id)
                                     .map((p) => (
@@ -1735,7 +1655,6 @@ const ForumThreadView: React.FC = () => {
                                     ));
                             }
 
-                            // OP not on this page: show controls first, then all comments as cards
                             return (
                                 <>
                                     {Controls}
