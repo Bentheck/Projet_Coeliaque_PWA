@@ -8,10 +8,6 @@ import {
 import { useAuth } from "../components/AuthContext";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import {
-    detectPlatform,
-    type PlatformKind,
-} from "../lib/browserPlatform";
 
 /** Track online/offline (same helper as Home) */
 function useOnlineStatus() {
@@ -51,14 +47,6 @@ const PrelaunchHome: React.FC = () => {
 
     // Shared "now" tick for both offline TTL and launch countdown
     const [now, setNow] = React.useState<number>(() => Date.now());
-
-    // Platform detection (kept for completeness)
-    const [platform, setPlatform] =
-        React.useState<PlatformKind>("other-desktop");
-
-    React.useEffect(() => {
-        setPlatform(detectPlatform());
-    }, []);
 
     React.useEffect(() => {
         let mounted = true;

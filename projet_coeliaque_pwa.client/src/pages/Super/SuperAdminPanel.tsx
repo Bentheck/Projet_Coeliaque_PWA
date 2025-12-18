@@ -83,13 +83,6 @@ type MembershipDto = {
     lastChangeUtc?: string | null;
 };
 
-type MembershipUpdateInput = {
-    userId: string;
-    startDateUtc: string;
-    endDateUtc: string;
-    isActive: boolean;
-};
-
 type ForumAdminDto = {
     userId: string;
     displayName: string;
@@ -174,8 +167,6 @@ function formatUtc(iso: string | null | undefined): string {
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleString();
 }
-
-const lifetimeEndDate = "9999-12-31T00:00:00Z";
 
 // ------------------------
 // Component
