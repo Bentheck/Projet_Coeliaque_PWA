@@ -491,9 +491,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var required = CurrentDisclaimerVersion();
 
+            // FIX: upsert profile instead of returning 404
             var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
             if (profile == null)
-                return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
+            {
+                profile = new UserProfile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = uid,
+                    JoinedUtc = DateTime.UtcNow
+                };
+                _db.UserProfiles.Add(profile);
+            }
 
             var now = DateTime.UtcNow;
 
@@ -531,9 +540,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var required = CurrentPrivacyVersion();
 
+            // FIX: upsert profile instead of returning 404
             var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
             if (profile == null)
-                return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
+            {
+                profile = new UserProfile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = uid,
+                    JoinedUtc = DateTime.UtcNow
+                };
+                _db.UserProfiles.Add(profile);
+            }
 
             var now = DateTime.UtcNow;
 
@@ -571,9 +589,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var required = CurrentTosVersion();
 
+            // FIX: upsert profile instead of returning 404
             var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == uid);
             if (profile == null)
-                return NotFound(new { errorCode = ErrorCodes.ProfileNotFound });
+            {
+                profile = new UserProfile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = uid,
+                    JoinedUtc = DateTime.UtcNow
+                };
+                _db.UserProfiles.Add(profile);
+            }
 
             var now = DateTime.UtcNow;
 
@@ -834,8 +861,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                         Via = "ResetToken",
                         req.Lang
                     });
-
-
 
                 return Ok(new { ok = true });
             }
