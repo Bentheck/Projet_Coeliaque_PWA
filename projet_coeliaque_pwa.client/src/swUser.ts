@@ -49,9 +49,11 @@ export async function dumpApiCache() {
         await new Promise<void>((resolve) => {
             const mc = new MessageChannel();
             mc.port1.onmessage = (e) => {
-                const urls = e.data?.urls || [];
-                // eslint-disable-next-line no-console
-                //console.info("[SW API cache keys]", urls);
+                const urls = (e.data?.urls as unknown) ?? [];
+                if (Array.isArray(urls) && urls.length > 0) {
+                    // eslint-disable-next-line no-console
+                    console.info("[SW API cache keys]", urls);
+                }
                 resolve();
             };
             (sw as any).postMessage({ type: "LIST_API_CACHE" }, [mc.port2]);

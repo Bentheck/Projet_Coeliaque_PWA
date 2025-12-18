@@ -74,11 +74,6 @@ export async function syncDown(arg?: boolean | SyncOptions) {
             ? arg.faqLang
             : undefined;
 
-    const forceFaq =
-        typeof arg === "object" && arg && "forceFaq" in arg
-            ? !!arg.forceFaq
-            : false;
-
     // --- Factures (list) ---
     const lastFact = await getLastSync("factures").catch(() => null);
     const factures = await fetch(

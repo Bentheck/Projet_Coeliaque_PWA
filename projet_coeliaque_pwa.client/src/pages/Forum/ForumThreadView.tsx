@@ -739,7 +739,6 @@ const ForumThreadView: React.FC = () => {
 
     const setPage = (p: number) => setSearchParams({ page: String(p) });
 
-    const canReply = !!user && !thread?.isLocked;
     const canVote = !!user;
 
     /** Server may specify vote mode per thread; default applies otherwise. */
