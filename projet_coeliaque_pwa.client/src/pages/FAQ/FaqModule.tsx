@@ -1,4 +1,4 @@
-﻿// src/pages/FAQ/FaqModule.tsx
+﻿// PATH: src/pages/FAQ/FaqModule.tsx
 import { useEffect, useMemo, useState } from "react";
 import PostEditor from "../../components/PostEditor";
 
@@ -15,7 +15,55 @@ import type {
 
 import { useTranslation } from "react-i18next";
 
-import "../../styles/faq.css"
+import "../../styles/faq.css";
+
+/* ------------------------------------------------------------------ */
+/* Minimal SEO helpers (no dependency)                                 */
+/* ------------------------------------------------------------------ */
+
+function upsertMetaByName(name: string, content: string) {
+    if (typeof document === "undefined") return;
+    let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+    if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute("name", name);
+        document.head.appendChild(el);
+    }
+    el.setAttribute("content", content);
+}
+
+function upsertMetaByProperty(property: string, content: string) {
+    if (typeof document === "undefined") return;
+    let el = document.querySelector<HTMLMetaElement>(
+        `meta[property="${property}"]`
+    );
+    if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute("property", property);
+        document.head.appendChild(el);
+    }
+    el.setAttribute("content", content);
+}
+
+function upsertLinkRel(rel: string, href: string) {
+    if (typeof document === "undefined") return;
+    let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+    if (!el) {
+        el = document.createElement("link");
+        el.setAttribute("rel", rel);
+        document.head.appendChild(el);
+    }
+    el.setAttribute("href", href);
+}
+
+function setCanonicalToCurrentUrl() {
+    if (typeof window === "undefined") return;
+    upsertLinkRel("canonical", window.location.href);
+}
+
+function setRobots(content: string) {
+    upsertMetaByName("robots", content);
+}
 
 /* -------------------------------------------
    Helpers
@@ -107,14 +155,37 @@ export function FaqPage({ className = "" }: { className?: string }) {
         };
     }, [uiLang]);
 
-    const filtered = useMemo(
-        () => filterFaqTree(tree ?? [], q),
-        [tree, q]
-    );
+    const filtered = useMemo(() => filterFaqTree(tree ?? [], q), [tree, q]);
     const totalCount = useMemo(
         () => filtered.reduce((sum, c) => sum + c.questions.length, 0),
         [filtered]
     );
+
+    const SEO_LANG: "fr-ca" = "fr-ca";
+
+    // ✅ SEO (FR/EN) without Helmet
+    useEffect(() => {
+        if (typeof document === "undefined") return;
+
+        document.documentElement.lang = "fr-ca";
+        setCanonicalToCurrentUrl();
+        setRobots("index, follow");
+
+        const title = "FAQ — Services Cœliaque | Questions fréquentes";
+        const description =
+            "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.";
+
+        document.title = title;
+        upsertMetaByName("description", description);
+
+        upsertMetaByProperty("og:title", title);
+        upsertMetaByProperty("og:description", description);
+        upsertMetaByProperty("og:type", "website");
+
+        if (typeof window !== "undefined") {
+            upsertMetaByProperty("og:url", window.location.href);
+        }
+    }, []);
 
     return (
         <section className={`faq-page ${className}`.trim()}>
@@ -597,9 +668,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         onClick={async () => {
                             if (!catForm.nameFr || !catForm.slug) {
                                 return alert(
-                                    t(
-                                        "categoryForm.validationMissingNameSlug"
-                                    )
+                                    t("categoryForm.validationMissingNameSlug")
                                 );
                             }
 
@@ -807,9 +876,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                 !qForm.answerHtmlFr
                             ) {
                                 return alert(
-                                    t(
-                                        "questionForm.validationMissingRequired"
-                                    )
+                                    t("questionForm.validationMissingRequired")
                                 );
                             }
 
@@ -867,9 +934,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                             { credentials: "include" }
                                         );
                                         if (!res.ok) {
-                                            alert(
-                                                t("errors.loadCategory")
-                                            );
+                                            alert(t("errors.loadCategory"));
                                             return;
                                         }
                                         const full = (await res.json()) as any;
@@ -884,11 +949,9 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                             descriptionEn:
                                                 full.descriptionEn ?? "",
                                             sortOrder:
-                                                full.sortOrder ??
-                                                cat.sortOrder,
+                                                full.sortOrder ?? cat.sortOrder,
                                             isActive:
-                                                typeof full.isActive ===
-                                                    "boolean"
+                                                typeof full.isActive === "boolean"
                                                     ? full.isActive
                                                     : true,
                                         });
@@ -941,15 +1004,12 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                                     const res = await fetch(
                                                         `/api/faq/questions/full/${qq.id}`,
                                                         {
-                                                            credentials:
-                                                                "include",
+                                                            credentials: "include",
                                                         }
                                                     );
                                                     if (!res.ok) {
                                                         alert(
-                                                            t(
-                                                                "errors.loadQuestion"
-                                                            )
+                                                            t("errors.loadQuestion")
                                                         );
                                                         return;
                                                     }
@@ -962,23 +1022,17 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                                             full.categoryId ??
                                                             cat.id,
                                                         questionFr:
-                                                            full.questionFr ??
-                                                            "",
+                                                            full.questionFr ?? "",
                                                         questionEn:
-                                                            full.questionEn ??
-                                                            "",
+                                                            full.questionEn ?? "",
                                                         answerHtmlFr:
-                                                            full.answerHtmlFr ??
-                                                            "",
+                                                            full.answerHtmlFr ?? "",
                                                         answerHtmlEn:
-                                                            full.answerHtmlEn ??
-                                                            "",
+                                                            full.answerHtmlEn ?? "",
                                                         tagsCsvFr:
-                                                            full.tagsCsvFr ??
-                                                            "",
+                                                            full.tagsCsvFr ?? "",
                                                         tagsCsvEn:
-                                                            full.tagsCsvEn ??
-                                                            "",
+                                                            full.tagsCsvEn ?? "",
                                                         sortOrder:
                                                             full.sortOrder ??
                                                             qq.sortOrder,
@@ -993,11 +1047,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                                         behavior: "smooth",
                                                     });
                                                 } catch {
-                                                    alert(
-                                                        t(
-                                                            "errors.loadQuestion"
-                                                        )
-                                                    );
+                                                    alert(t("errors.loadQuestion"));
                                                 }
                                             }}
                                         >
@@ -1006,9 +1056,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                         <button
                                             type="button"
                                             className="btn btn-outline-danger btn-sm rounded-pill"
-                                            onClick={() =>
-                                                deleteQuestion(qq.id)
-                                            }
+                                            onClick={() => deleteQuestion(qq.id)}
                                         >
                                             {t("tree.deleteQuestion")}
                                         </button>
