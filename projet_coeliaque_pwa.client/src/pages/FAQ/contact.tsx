@@ -1,7 +1,55 @@
-﻿// src/pages/FAQ/contact.tsx
+﻿// PATH: src/pages/FAQ/contact.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthContext";
+
+/* ------------------------------------------------------------------ */
+/* Minimal SEO helpers (no dependency)                                 */
+/* ------------------------------------------------------------------ */
+
+function upsertMetaByName(name: string, content: string) {
+    if (typeof document === "undefined") return;
+    let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+    if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute("name", name);
+        document.head.appendChild(el);
+    }
+    el.setAttribute("content", content);
+}
+
+function upsertMetaByProperty(property: string, content: string) {
+    if (typeof document === "undefined") return;
+    let el = document.querySelector<HTMLMetaElement>(
+        `meta[property="${property}"]`
+    );
+    if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute("property", property);
+        document.head.appendChild(el);
+    }
+    el.setAttribute("content", content);
+}
+
+function upsertLinkRel(rel: string, href: string) {
+    if (typeof document === "undefined") return;
+    let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+    if (!el) {
+        el = document.createElement("link");
+        el.setAttribute("rel", rel);
+        document.head.appendChild(el);
+    }
+    el.setAttribute("href", href);
+}
+
+function setCanonicalToCurrentUrl() {
+    if (typeof window === "undefined") return;
+    upsertLinkRel("canonical", window.location.href);
+}
+
+function setRobots(content: string) {
+    upsertMetaByName("robots", content);
+}
 
 type ContactKind = "support" | "info" | "feedback";
 
@@ -29,6 +77,33 @@ function formatKb(bytes: number) {
 export default function ContactPage() {
     const { t, i18n } = useTranslation("pages/FAQ/contact");
     const { user } = useAuth() as any;
+
+    const uiLang: "fr" | "en" =
+        i18n.language?.startsWith("fr") ? "fr" : "en";
+
+    // ✅ SEO (FR/EN) without Helmet
+    useEffect(() => {
+        if (typeof document === "undefined") return;
+
+        document.documentElement.lang = "fr-ca";
+        setCanonicalToCurrentUrl();
+        setRobots("index, follow");
+
+        const title = "Contact — Services Cœliaque";
+        const description =
+            "Contactez Services Cœliaque pour toute question, suggestion ou demande de soutien.";
+
+        document.title = title;
+        upsertMetaByName("description", description);
+
+        upsertMetaByProperty("og:title", title);
+        upsertMetaByProperty("og:description", description);
+        upsertMetaByProperty("og:type", "website");
+
+        if (typeof window !== "undefined") {
+            upsertMetaByProperty("og:url", window.location.href);
+        }
+    }, []); 
 
     const [kind, setKind] = useState<ContactKind>("support");
     const [email, setEmail] = useState<string>("");
@@ -208,18 +283,28 @@ export default function ContactPage() {
                 noValidate
             >
                 {ok && (
-                    <div className="alert alert-success" role="status" aria-live="polite">
+                    <div
+                        className="alert alert-success"
+                        role="status"
+                        aria-live="polite"
+                    >
                         {ok}
                     </div>
                 )}
                 {error && (
-                    <div className="alert alert-danger" role="alert" aria-live="assertive">
+                    <div
+                        className="alert alert-danger"
+                        role="alert"
+                        aria-live="assertive"
+                    >
                         {error}
                     </div>
                 )}
 
                 <div className="mb-3">
-                    <label className="form-label">{t("fields.type.label")}</label>
+                    <label className="form-label">
+                        {t("fields.type.label")}
+                    </label>
                     <div className="d-flex flex-wrap gap-2">
                         <label className="btn btn-outline-primary">
                             <input
@@ -281,7 +366,10 @@ export default function ContactPage() {
                     {reasonSuggestions.length > 0 && (
                         <div className="d-flex flex-wrap gap-2 mb-2">
                             {reasonSuggestions.map((r) => (
-                                <label key={r} className="btn btn-outline-secondary btn-sm">
+                                <label
+                                    key={r}
+                                    className="btn btn-outline-secondary btn-sm"
+                                >
                                     <input
                                         type="radio"
                                         name="contact-reason-suggestion"
@@ -361,7 +449,10 @@ export default function ContactPage() {
                                         key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
                                         className="d-flex align-items-center justify-content-between gap-2 py-1 border-bottom"
                                     >
-                                        <span className="text-truncate" style={{ maxWidth: "70%" }}>
+                                        <span
+                                            className="text-truncate"
+                                            style={{ maxWidth: "70%" }}
+                                        >
                                             {f.name}{" "}
                                             <span className="text-muted">
                                                 ({formatKb(f.size)})
@@ -371,11 +462,14 @@ export default function ContactPage() {
                                             type="button"
                                             className="btn btn-outline-danger btn-sm"
                                             onClick={() => removeFileAt(idx)}
-                                            aria-label={t("helpers.removeAttachmentAria", {
-                                                defaultValue: "Remove attachment",
-                                            })}
+                                            aria-label={t(
+                                                "helpers.removeAttachmentAria",
+                                                { defaultValue: "Remove attachment" }
+                                            )}
                                         >
-                                            {t("buttons.remove", { defaultValue: "Remove" })}
+                                            {t("buttons.remove", {
+                                                defaultValue: "Remove",
+                                            })}
                                         </button>
                                     </li>
                                 ))}
@@ -383,7 +477,8 @@ export default function ContactPage() {
 
                             <div className="small text-muted mt-2">
                                 {t("helpers.attachmentsTotal", {
-                                    defaultValue: "Total: {{count}} file(s), {{kb}} KB",
+                                    defaultValue:
+                                        "Total: {{count}} file(s), {{kb}} KB",
                                     count: files.length,
                                     kb: Math.round(totalBytes / 1024),
                                 })}
