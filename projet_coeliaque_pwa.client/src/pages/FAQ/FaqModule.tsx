@@ -56,9 +56,10 @@ function upsertLinkRel(rel: string, href: string) {
     el.setAttribute("href", href);
 }
 
-function setCanonicalToCurrentUrl() {
+function setCanonicalToCurrentPath() {
     if (typeof window === "undefined") return;
-    upsertLinkRel("canonical", window.location.href);
+    const canonical = `${window.location.origin}${window.location.pathname}`;
+    upsertLinkRel("canonical", canonical);
 }
 
 function setRobots(content: string) {
@@ -87,7 +88,8 @@ function filterFaqTree(tree: FaqCategoryDto[], q: string): FaqCategoryDto[] {
                     .toLowerCase()
                     .includes(needle);
                 const inTags =
-                    (qq as any).tagsCsv?.toLowerCase?.().includes(needle) ?? false;
+                    (qq as any).tagsCsv?.toLowerCase?.().includes(needle) ??
+                    false;
                 const inCat = cat.name?.toLowerCase().includes(needle);
                 return inQ || inA || inTags || inCat;
             });
@@ -96,14 +98,45 @@ function filterFaqTree(tree: FaqCategoryDto[], q: string): FaqCategoryDto[] {
         .filter((c) => c.questions.length > 0);
 }
 
+type UiLang = "fr" | "en";
+type SeoLang = "fr-ca" | "en-ca";
+
+function getUiLang(i18nLang?: string): UiLang {
+    return i18nLang?.startsWith("fr") ? "fr" : "en";
+}
+
+function getSeo(uiLang: UiLang) {
+    const seoLang: SeoLang = uiLang === "fr" ? "fr-ca" : "en-ca";
+
+    // You asked: “Services” with an S.
+    if (uiLang === "fr") {
+        return {
+            seoLang,
+            title: "FAQ — Services Cœliaque | Questions fréquentes",
+            description:
+                "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.",
+            ogLocale: "fr_CA",
+            ogAltLocale: "en_CA",
+        };
+    }
+
+    return {
+        seoLang,
+        title: "FAQ — Services Cœliaque | Frequently Asked Questions",
+        description:
+            "Answers to common questions about Services Cœliaque: account, subscriptions, comparisons, invoices, and reports.",
+        ogLocale: "en_CA",
+        ogAltLocale: "fr_CA",
+    };
+}
+
 /* ===========================================
  * Public FAQ Page (offline-first, Dexie-backed)
  * =========================================== */
 
 export function FaqPage({ className = "" }: { className?: string }) {
     const { t, i18n } = useTranslation("pages/FAQ/faq");
-    const uiLang: "fr" | "en" =
-        i18n.language?.startsWith("fr") ? "fr" : "en";
+    const uiLang = getUiLang(i18n.language);
 
     const [q, setQ] = useState("");
     const [tree, setTree] = useState<FaqCategoryDto[] | null>(null);
@@ -161,31 +194,40 @@ export function FaqPage({ className = "" }: { className?: string }) {
         [filtered]
     );
 
-    const SEO_LANG: "fr-ca" = "fr-ca";
-
     // ✅ SEO (FR/EN) without Helmet
     useEffect(() => {
         if (typeof document === "undefined") return;
 
-        document.documentElement.lang = SEO_LANG;
-        setCanonicalToCurrentUrl();
+        const seo = getSeo(uiLang);
+
+        // Language
+        document.documentElement.lang = seo.seoLang;
+
+        // Canonical + robots
+        setCanonicalToCurrentPath();
         setRobots("index, follow");
 
-        const title = "FAQ — Services Cœliaque | Questions fréquentes";
-        const description =
-            "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.";
+        // Title + meta
+        document.title = seo.title;
+        upsertMetaByName("description", seo.description);
 
-        document.title = title;
-        upsertMetaByName("description", description);
-
-        upsertMetaByProperty("og:title", title);
-        upsertMetaByProperty("og:description", description);
+        // Open Graph
+        upsertMetaByProperty("og:title", seo.title);
+        upsertMetaByProperty("og:description", seo.description);
         upsertMetaByProperty("og:type", "website");
+        upsertMetaByProperty("og:site_name", "Services Cœliaque");
+
+        // Locale (helps when same URL / client-side i18n)
+        upsertMetaByProperty("og:locale", seo.ogLocale);
+        upsertMetaByProperty("og:locale:alternate", seo.ogAltLocale);
 
         if (typeof window !== "undefined") {
-            upsertMetaByProperty("og:url", window.location.href);
+            upsertMetaByProperty(
+                "og:url",
+                `${window.location.origin}${window.location.pathname}`
+            );
         }
-    }, []);
+    }, [uiLang]);
 
     return (
         <section className={`faq-page ${className}`.trim()}>
@@ -193,9 +235,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
             <div className="card card--accent mb-4 faq-header-card">
                 <div className="card-body">
                     <h1 className="h4 mb-1">{t("title")}</h1>
-                    <p className="mb-3 small text-muted">
-                        {t("subtitle")}
-                    </p>
+                    <p className="mb-3 small text-muted">{t("subtitle")}</p>
 
                     <div className="d-flex align-items-center gap-2 mb-2">
                         <input
@@ -276,16 +316,12 @@ export function FaqPage({ className = "" }: { className?: string }) {
                 ))}
 
                 {(filtered.length === 0 || !tree) && !isSyncing && (
-                    <p className="small text-muted mb-0">
-                        {t("noResults")}
-                    </p>
+                    <p className="small text-muted mb-0">{t("noResults")}</p>
                 )}
             </div>
 
             <aside className="mt-4 alert alert-warning small faq-disclaimer">
-                <strong className="d-block mb-1">
-                    {t("disclaimer.title")}
-                </strong>
+                <strong className="d-block mb-1">{t("disclaimer.title")}</strong>
                 <span>{t("disclaimer.body")}</span>
             </aside>
         </section>
@@ -345,13 +381,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                     headers: { Accept: "application/json" },
                 }),
                 // Preview tree (FR by default from server)
-                fetch(
-                    q ? `/api/faq?q=${encodeURIComponent(q)}` : "/api/faq",
-                    {
-                        credentials: "include",
-                        headers: { Accept: "application/json" },
-                    }
-                ),
+                fetch(q ? `/api/faq?q=${encodeURIComponent(q)}` : "/api/faq", {
+                    credentials: "include",
+                    headers: { Accept: "application/json" },
+                }),
             ]);
 
             const cJson = (await cRes.json()) as FaqCategorySummaryDto[];
@@ -372,14 +405,10 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [q]);
 
-    const upsertCategory = async (
-        payload: CategoryFormState & { id?: number }
-    ) => {
+    const upsertCategory = async (payload: CategoryFormState & { id?: number }) => {
         const isEdit = !!payload.id;
         const res = await fetch(
-            isEdit
-                ? `/api/faq/categories/${payload.id}`
-                : "/api/faq/categories",
+            isEdit ? `/api/faq/categories/${payload.id}` : "/api/faq/categories",
             {
                 method: isEdit ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json" },
@@ -412,9 +441,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
     const upsertQuestion = async (payload: QuestionFormState) => {
         const isEdit = !!payload.id;
         const res = await fetch(
-            isEdit
-                ? `/api/faq/questions/${payload.id}`
-                : "/api/faq/questions",
+            isEdit ? `/api/faq/questions/${payload.id}` : "/api/faq/questions",
             {
                 method: isEdit ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json" },
@@ -506,12 +533,8 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
     return (
         <section className={`faq-admin-page ${className}`.trim()}>
             <header className="mb-4">
-                <h1 className="h4 fw-bold mb-1">
-                    {t("title")}
-                </h1>
-                <p className="mb-2 small text-muted">
-                    {t("subtitle")}
-                </p>
+                <h1 className="h4 fw-bold mb-1">{t("title")}</h1>
+                <p className="mb-2 small text-muted">{t("subtitle")}</p>
 
                 <div className="d-flex align-items-center gap-2 mb-1">
                     <input
@@ -535,9 +558,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             {/* Category form */}
             <div className="mb-4 card card--tinted p-4 faq-admin-card">
                 <h2 className="h6 fw-semibold mb-3">
-                    {editingCatId
-                        ? t("categoryForm.edit")
-                        : t("categoryForm.new")}
+                    {editingCatId ? t("categoryForm.edit") : t("categoryForm.new")}
                 </h2>
 
                 <div className="row g-3">
@@ -591,9 +612,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
                 <div className="mt-3 row g-4">
                     <div className="col-md-6">
-                        <div className="small mb-2">
-                            {t("categoryForm.descriptionFr")}
-                        </div>
+                        <div className="small mb-2">{t("categoryForm.descriptionFr")}</div>
                         <PostEditor
                             key={`cat-desc-fr-${editingCatId ?? "new"}`}
                             initialHTML={catForm.descriptionFr}
@@ -607,9 +626,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         />
                     </div>
                     <div className="col-md-6">
-                        <div className="small mb-2">
-                            {t("categoryForm.descriptionEn")}
-                        </div>
+                        <div className="small mb-2">{t("categoryForm.descriptionEn")}</div>
                         <PostEditor
                             key={`cat-desc-en-${editingCatId ?? "new"}`}
                             initialHTML={catForm.descriptionEn}
@@ -667,9 +684,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         className="btn btn-dark btn-sm rounded-pill"
                         onClick={async () => {
                             if (!catForm.nameFr || !catForm.slug) {
-                                return alert(
-                                    t("categoryForm.validationMissingNameSlug")
-                                );
+                                return alert(t("categoryForm.validationMissingNameSlug"));
                             }
 
                             await upsertCategory({
@@ -699,9 +714,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             {/* Question form */}
             <div className="mb-4 card card--tinted p-4 faq-admin-card">
                 <h2 className="h6 fw-semibold mb-3">
-                    {qForm.id
-                        ? t("questionForm.edit")
-                        : t("questionForm.new")}
+                    {qForm.id ? t("questionForm.edit") : t("questionForm.new")}
                 </h2>
 
                 <div className="mb-3">
@@ -762,9 +775,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
 
                 <div className="mt-3 row g-4">
                     <div className="col-md-6">
-                        <div className="small mb-1">
-                            {t("questionForm.answerFr")}
-                        </div>
+                        <div className="small mb-1">{t("questionForm.answerFr")}</div>
                         <PostEditor
                             key={`q-answer-fr-${qForm.id ?? "new"}`}
                             initialHTML={qForm.answerHtmlFr}
@@ -778,9 +789,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         />
                     </div>
                     <div className="col-md-6">
-                        <div className="small mb-1">
-                            {t("questionForm.answerEn")}
-                        </div>
+                        <div className="small mb-1">{t("questionForm.answerEn")}</div>
                         <PostEditor
                             key={`q-answer-en-${qForm.id ?? "new"}`}
                             initialHTML={qForm.answerHtmlEn}
@@ -870,23 +879,15 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                         type="button"
                         className="btn btn-dark btn-sm rounded-pill"
                         onClick={async () => {
-                            if (
-                                !qForm.categoryId ||
-                                !qForm.questionFr ||
-                                !qForm.answerHtmlFr
-                            ) {
-                                return alert(
-                                    t("questionForm.validationMissingRequired")
-                                );
+                            if (!qForm.categoryId || !qForm.questionFr || !qForm.answerHtmlFr) {
+                                return alert(t("questionForm.validationMissingRequired"));
                             }
 
                             await upsertQuestion(qForm);
                             resetQForm();
                         }}
                     >
-                        {qForm.id
-                            ? t("questionForm.submitEdit")
-                            : t("questionForm.submitNew")}
+                        {qForm.id ? t("questionForm.submitEdit") : t("questionForm.submitNew")}
                     </button>
                     <button
                         type="button"
@@ -901,25 +902,18 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             {/* Category/question tree with quick actions */}
             <div className="vstack gap-3">
                 {tree.map((cat) => (
-                    <details
-                        key={cat.id}
-                        className="faq-admin-category rounded-4 p-4"
-                    >
+                    <details key={cat.id} className="faq-admin-category rounded-4 p-4">
                         <summary className="faq-admin-category-summary d-flex align-items-center justify-content-between cursor-pointer user-select-none fw-semibold">
                             <span>{cat.name}</span>
                             <span className="small text-muted">
-                                {t("tree.questionsCount", {
-                                    count: cat.questions.length,
-                                })}
+                                {t("tree.questionsCount", { count: cat.questions.length })}
                             </span>
                         </summary>
 
                         {cat.description && (
                             <div
                                 className="mt-2 small text-body-secondary"
-                                dangerouslySetInnerHTML={{
-                                    __html: cat.description,
-                                }}
+                                dangerouslySetInnerHTML={{ __html: cat.description }}
                             />
                         )}
 
@@ -944,21 +938,15 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                             nameFr: full.nameFr ?? "",
                                             nameEn: full.nameEn ?? "",
                                             slug: full.slug ?? "",
-                                            descriptionFr:
-                                                full.descriptionFr ?? "",
-                                            descriptionEn:
-                                                full.descriptionEn ?? "",
-                                            sortOrder:
-                                                full.sortOrder ?? cat.sortOrder,
+                                            descriptionFr: full.descriptionFr ?? "",
+                                            descriptionEn: full.descriptionEn ?? "",
+                                            sortOrder: full.sortOrder ?? cat.sortOrder,
                                             isActive:
                                                 typeof full.isActive === "boolean"
                                                     ? full.isActive
                                                     : true,
                                         });
-                                        window.scrollTo({
-                                            top: 0,
-                                            behavior: "smooth",
-                                        });
+                                        window.scrollTo({ top: 0, behavior: "smooth" });
                                     } catch {
                                         alert(t("errors.loadCategory"));
                                     }
@@ -989,12 +977,12 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                             })}
                                         </span>
                                     </summary>
+
                                     <div
                                         className="mt-2 small"
-                                        dangerouslySetInnerHTML={{
-                                            __html: qq.answerHtml,
-                                        }}
+                                        dangerouslySetInnerHTML={{ __html: qq.answerHtml }}
                                     />
+
                                     <div className="mt-2 d-flex gap-2">
                                         <button
                                             type="button"
@@ -1003,49 +991,31 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                                                 try {
                                                     const res = await fetch(
                                                         `/api/faq/questions/full/${qq.id}`,
-                                                        {
-                                                            credentials: "include",
-                                                        }
+                                                        { credentials: "include" }
                                                     );
                                                     if (!res.ok) {
-                                                        alert(
-                                                            t("errors.loadQuestion")
-                                                        );
+                                                        alert(t("errors.loadQuestion"));
                                                         return;
                                                     }
-                                                    const full =
-                                                        (await res.json()) as any;
+                                                    const full = (await res.json()) as any;
 
                                                     setQForm({
                                                         id: full.id,
-                                                        categoryId:
-                                                            full.categoryId ??
-                                                            cat.id,
-                                                        questionFr:
-                                                            full.questionFr ?? "",
-                                                        questionEn:
-                                                            full.questionEn ?? "",
-                                                        answerHtmlFr:
-                                                            full.answerHtmlFr ?? "",
-                                                        answerHtmlEn:
-                                                            full.answerHtmlEn ?? "",
-                                                        tagsCsvFr:
-                                                            full.tagsCsvFr ?? "",
-                                                        tagsCsvEn:
-                                                            full.tagsCsvEn ?? "",
-                                                        sortOrder:
-                                                            full.sortOrder ??
-                                                            qq.sortOrder,
+                                                        categoryId: full.categoryId ?? cat.id,
+                                                        questionFr: full.questionFr ?? "",
+                                                        questionEn: full.questionEn ?? "",
+                                                        answerHtmlFr: full.answerHtmlFr ?? "",
+                                                        answerHtmlEn: full.answerHtmlEn ?? "",
+                                                        tagsCsvFr: full.tagsCsvFr ?? "",
+                                                        tagsCsvEn: full.tagsCsvEn ?? "",
+                                                        sortOrder: full.sortOrder ?? qq.sortOrder,
                                                         isActive:
-                                                            typeof full.isActive ===
-                                                                "boolean"
+                                                            typeof full.isActive === "boolean"
                                                                 ? full.isActive
                                                                 : true,
                                                     });
-                                                    window.scrollTo({
-                                                        top: 0,
-                                                        behavior: "smooth",
-                                                    });
+
+                                                    window.scrollTo({ top: 0, behavior: "smooth" });
                                                 } catch {
                                                     alert(t("errors.loadQuestion"));
                                                 }
