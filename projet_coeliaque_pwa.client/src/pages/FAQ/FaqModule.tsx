@@ -71,6 +71,7 @@ function setRobots(content: string) {
 ------------------------------------------- */
 
 function stripHtml(s: string) {
+    if (typeof document === "undefined") return s || "";
     const el = document.createElement("div");
     el.innerHTML = s || "";
     return el.textContent || el.innerText || "";
@@ -83,14 +84,20 @@ function filterFaqTree(tree: FaqCategoryDto[], q: string): FaqCategoryDto[] {
     return tree
         .map((cat) => {
             const questions = cat.questions.filter((qq) => {
-                const inQ = qq.question?.toLowerCase().includes(needle);
+                const inQ = (qq.question || "").toLowerCase().includes(needle);
                 const inA = stripHtml(qq.answerHtml || "")
                     .toLowerCase()
                     .includes(needle);
+
+                // Optional tags if present
+                const tagsCsv = (qq as any).tagsCsv;
                 const inTags =
-                    (qq as any).tagsCsv?.toLowerCase?.().includes(needle) ??
-                    false;
-                const inCat = cat.name?.toLowerCase().includes(needle);
+                    typeof tagsCsv === "string"
+                        ? tagsCsv.toLowerCase().includes(needle)
+                        : false;
+
+                const inCat = (cat.name || "").toLowerCase().includes(needle);
+
                 return inQ || inA || inTags || inCat;
             });
             return { ...cat, questions };
@@ -99,35 +106,9 @@ function filterFaqTree(tree: FaqCategoryDto[], q: string): FaqCategoryDto[] {
 }
 
 type UiLang = "fr" | "en";
-type SeoLang = "fr-ca" | "en-ca";
 
 function getUiLang(i18nLang?: string): UiLang {
     return i18nLang?.startsWith("fr") ? "fr" : "en";
-}
-
-function getSeo(uiLang: UiLang) {
-    const seoLang: SeoLang = uiLang === "fr" ? "fr-ca" : "en-ca";
-
-    // You asked: “Services” with an S.
-    if (uiLang === "fr") {
-        return {
-            seoLang,
-            title: "FAQ — Services Cœliaque | Questions fréquentes",
-            description:
-                "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.",
-            ogLocale: "fr_CA",
-            ogAltLocale: "en_CA",
-        };
-    }
-
-    return {
-        seoLang,
-        title: "FAQ — Services Cœliaque | Frequently Asked Questions",
-        description:
-            "Answers to common questions about Services Cœliaque: account, subscriptions, comparisons, invoices, and reports.",
-        ogLocale: "en_CA",
-        ogAltLocale: "fr_CA",
-    };
 }
 
 /* ===========================================
@@ -169,6 +150,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
         const onOnline = () => void doSync();
         window.addEventListener("online", onOnline);
 
+        // If your SW notifies for API mutations, resync
         const onSwMsg = (evt: MessageEvent) => {
             const msg = evt.data;
             if (
@@ -194,32 +176,29 @@ export function FaqPage({ className = "" }: { className?: string }) {
         [filtered]
     );
 
-    // ✅ SEO (FR/EN) without Helmet
+    // ✅ SEO: FORCE FRENCH (index French, same URL i18n)
+    // This must NOT depend on uiLang. Keep it deterministic for crawlers.
     useEffect(() => {
         if (typeof document === "undefined") return;
 
-        const seo = getSeo(uiLang);
-
-        // Language
-        document.documentElement.lang = seo.seoLang;
-
-        // Canonical + robots
+        // Stable French SEO
+        document.documentElement.lang = "fr-ca";
         setCanonicalToCurrentPath();
         setRobots("index, follow");
 
-        // Title + meta
-        document.title = seo.title;
-        upsertMetaByName("description", seo.description);
+        const title = "FAQ — Services Cœliaque | Questions fréquentes";
+        const description =
+            "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.";
 
-        // Open Graph
-        upsertMetaByProperty("og:title", seo.title);
-        upsertMetaByProperty("og:description", seo.description);
+        document.title = title;
+        upsertMetaByName("description", description);
+
+        upsertMetaByProperty("og:title", title);
+        upsertMetaByProperty("og:description", description);
         upsertMetaByProperty("og:type", "website");
         upsertMetaByProperty("og:site_name", "Services Cœliaque");
-
-        // Locale (helps when same URL / client-side i18n)
-        upsertMetaByProperty("og:locale", seo.ogLocale);
-        upsertMetaByProperty("og:locale:alternate", seo.ogAltLocale);
+        upsertMetaByProperty("og:locale", "fr_CA");
+        upsertMetaByProperty("og:locale:alternate", "en_CA");
 
         if (typeof window !== "undefined") {
             upsertMetaByProperty(
@@ -227,7 +206,9 @@ export function FaqPage({ className = "" }: { className?: string }) {
                 `${window.location.origin}${window.location.pathname}`
             );
         }
-    }, [uiLang]);
+    }, []);
+
+    const showSeoFallback = (!tree || tree.length === 0) && !isSyncing;
 
     return (
         <section className={`faq-page ${className}`.trim()}>
@@ -263,6 +244,29 @@ export function FaqPage({ className = "" }: { className?: string }) {
                     </div>
                 </div>
             </div>
+
+            {/* ✅ Static French fallback to avoid Soft 404 when data hasn't loaded yet */}
+            {showSeoFallback && (
+                <section className="faq-seo-fallback mb-4">
+                    <h2 className="h5 mb-2">Questions fréquentes</h2>
+                    <p className="mb-2">
+                        Cette foire aux questions regroupe les réponses aux
+                        questions les plus fréquentes concernant Services
+                        Cœliaque, l’utilisation de la plateforme, les
+                        comparatifs, les factures et les rapports.
+                    </p>
+                    <ul className="mb-2">
+                        <li>À quoi sert Services Cœliaque&nbsp;?</li>
+                        <li>Comment fonctionnent les comparatifs&nbsp;?</li>
+                        <li>Les données sont-elles accessibles hors ligne&nbsp;?</li>
+                        <li>Comment contacter le support&nbsp;?</li>
+                    </ul>
+                    <p className="mb-0">
+                        Le contenu détaillé de la FAQ s’affiche automatiquement
+                        dès que les données sont chargées.
+                    </p>
+                </section>
+            )}
 
             {/* FAQ tree */}
             <div className="vstack gap-3">
@@ -315,7 +319,10 @@ export function FaqPage({ className = "" }: { className?: string }) {
                     </details>
                 ))}
 
-                {(filtered.length === 0 || !tree) && !isSyncing && (
+                {/* IMPORTANT:
+                   Only show "No results" once we actually have data.
+                   Do NOT show it when tree is null (initial load), which triggers Soft 404. */}
+                {tree && filtered.length === 0 && !isSyncing && (
                     <p className="small text-muted mb-0">{t("noResults")}</p>
                 )}
             </div>
@@ -380,7 +387,6 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                     credentials: "include",
                     headers: { Accept: "application/json" },
                 }),
-                // Preview tree (FR by default from server)
                 fetch(q ? `/api/faq?q=${encodeURIComponent(q)}` : "/api/faq", {
                     credentials: "include",
                     headers: { Accept: "application/json" },
@@ -405,7 +411,9 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [q]);
 
-    const upsertCategory = async (payload: CategoryFormState & { id?: number }) => {
+    const upsertCategory = async (
+        payload: CategoryFormState & { id?: number }
+    ) => {
         const isEdit = !!payload.id;
         const res = await fetch(
             isEdit ? `/api/faq/categories/${payload.id}` : "/api/faq/categories",
