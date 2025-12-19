@@ -1,39 +1,37 @@
 ﻿{
   "title": "Zone de démonstration",
-  "badge": "DEMO",
-  "intro": "Toutes les pages ci-dessous utilisent uniquement des données locales (Dexie). Aucun appel au serveur, vous pouvez montrer le flux sans risque.",
-  "warning": "Mode démonstration — les données affichées sont factices et stockées localement. Rien de ce que vous faites ici n'affecte vos données réelles.",
+  "badge": "DÉMO",
+  "intro": "Toutes les pages ci-dessous utilisent uniquement des données locales (Dexie). Aucun appel au serveur : vous pouvez parcourir le flux sans risque.",
+  "warning": "Mode démonstration — les données affichées sont factices et stockées localement. Rien de ce que vous faites ici n’affectera vos données réelles.",
 
   "calculator": {
     "title": "Calculateur",
-    "text": "Suivez les étapes ci-dessous pour simuler l’ensemble du processus du crédit d’impôt sans gluten avec des données de démo.",
-    "step1": "Factures",
-    "step2": "Comparatif annuel",
-    "step3": "Rapport d’impôt"
+    "text": "Suivez les étapes ci-dessous pour simuler l’ensemble du processus du crédit d’impôt sans gluten avec des données de démo."
   },
 
   "tour": {
     "calculator_switch": "Mode guidé",
     "grocery_switch": "Mode guidé"
   },
+  "backToHome": "Retour à l’accueil",
 
   "cards_comparatif_title": "Comparatif annuel",
-  "cards_comparatif_text": "Modifier quelques produits sans gluten (prix, formats, unités) pour montrer comment le comparatif est construit.",
+  "cards_comparatif_text": "Modifiez quelques produits sans gluten (prix, formats, unités) pour montrer comment le comparatif est construit.",
   "cards_comparatif_button": "Ouvrir le comparatif",
 
   "cards_rapports_title": "Rapport d’impôt",
-  "cards_rapports_text": "Lancer la génération de rapport (factice) puis afficher la version imprimable avec les totaux calculés.",
+  "cards_rapports_text": "Lancez une génération de rapport (factice), puis affichez la version imprimable avec les totaux calculés.",
   "cards_rapports_button": "Ouvrir les rapports",
 
   "cards_liste_title": "Listes d’épicerie",
-  "cards_liste_text": "Créer/compléter une liste d’épicerie en utilisant les produits de démo (gratuit + factures) avec estimation du total.",
+  "cards_liste_text": "Créez/complétez une liste d’épicerie avec les produits de démo (produits libres + articles de factures) avec estimation du total.",
   "cards_liste_button": "Ouvrir les listes d’épicerie",
 
   "cards_factures_title": "Factures",
-  "cards_factures_text": "Créer et modifier quelques factures de démonstration pour illustrer la saisie des achats et des items.",
+  "cards_factures_text": "Créez et modifiez quelques factures de démonstration pour illustrer la saisie des achats et des articles.",
   "cards_factures_button": "Ouvrir les factures",
 
-  "footer_tip": "Astuce : comme tout est local, vous pouvez casser ou modifier ces données sans aucun impact sur vos données réelles.",
+  "footer_tip": "Astuce : comme tout est local, vous pouvez casser ou modifier ces données de démo sans aucun impact sur vos données réelles.",
 
   "demo": {
     "guide": {
@@ -48,6 +46,13 @@
           "body": "Maintenant que votre facture est prête, ouvrez la page de comparatif pour voir comment vos produits sans gluten se comparent aux produits de référence.",
           "hint": "Cliquez sur ce bouton pour ouvrir le comparatif pour votre année courante."
         }
+      }
+    },
+    "grocery": {
+      "step1": {
+        "title": "Commencez une liste d’épicerie guidée",
+        "body": "Activez le mode guidé, puis cliquez ici pour créer une liste d’épicerie à partir de vos produits sans gluten.",
+        "hint": "Cliquez sur ce bouton pour passer à l’étape suivante."
       }
     }
   }

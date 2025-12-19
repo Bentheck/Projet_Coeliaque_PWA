@@ -22,19 +22,20 @@ const LIST_KEY = "factures/all";
 
 interface Facture extends IFacture { }
 
-// Shared bubble styles
+// Shared bubble styles – now theme-aware
 const bubbleContainerStyle: CSSProperties = {
     position: "absolute",
     top: "110%",
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#fffdf7",
-    border: "2px solid #ffc107",
+    backgroundColor: "var(--color-surface)",
+    border: "2px solid var(--color-primary-border)",
     borderRadius: "1rem",
     boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
     padding: "0.9rem 1.1rem",
     zIndex: 1050,
     width: 280,
+    color: "var(--color-text)",
 };
 
 const bubbleArrowUpStyle: CSSProperties = {
@@ -46,7 +47,7 @@ const bubbleArrowUpStyle: CSSProperties = {
     height: 0,
     borderLeft: "10px solid transparent",
     borderRight: "10px solid transparent",
-    borderBottom: "10px solid #ffc107",
+    borderBottom: "10px solid var(--color-primary-border)",
 };
 
 const bubbleArrowUpInnerStyle: CSSProperties = {
@@ -58,7 +59,7 @@ const bubbleArrowUpInnerStyle: CSSProperties = {
     height: 0,
     borderLeft: "8px solid transparent",
     borderRight: "8px solid transparent",
-    borderBottom: "8px solid #fffdf7",
+    borderBottom: "8px solid var(--color-surface)",
 };
 
 const bubbleArrowDownStyle: CSSProperties = {
@@ -70,7 +71,7 @@ const bubbleArrowDownStyle: CSSProperties = {
     height: 0,
     borderLeft: "10px solid transparent",
     borderRight: "10px solid transparent",
-    borderTop: "10px solid #ffc107",
+    borderTop: "10px solid var(--color-primary-border)",
 };
 
 const bubbleArrowDownInnerStyle: CSSProperties = {
@@ -82,7 +83,7 @@ const bubbleArrowDownInnerStyle: CSSProperties = {
     height: 0,
     borderLeft: "8px solid transparent",
     borderRight: "8px solid transparent",
-    borderTop: "8px solid #fffdf7",
+    borderTop: "8px solid var(--color-surface)",
 };
 
 const emptyFacture: Omit<Facture, "id"> = {
@@ -232,6 +233,14 @@ const DemoFactures: React.FC = () => {
                 <p className="text-muted small text-center mb-2">
                     {t("demo.warning")}
                 </p>
+
+                <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary mb-2"
+                    onClick={() => navigate("/demo")}
+                >
+                    ← {t("demo.return", "Retour au mode démo")}
+                </button>
 
                 {/* New invoice button + guided bubble for Step 2 */}
                 <div className="position-relative">
@@ -457,11 +466,14 @@ const DemoFactures: React.FC = () => {
                                                     ...bubbleContainerStyle,
                                                     top: "110%",
                                                     left: "50%",
-                                                    transform: "translateX(-50%)",
+                                                    transform:
+                                                        "translateX(-50%)",
                                                 }}
                                             >
                                                 <div style={bubbleArrowUpStyle} />
-                                                <div style={bubbleArrowUpInnerStyle} />
+                                                <div
+                                                    style={bubbleArrowUpInnerStyle}
+                                                />
 
                                                 <strong className="d-block mb-1 small fw-semibold">
                                                     {t(

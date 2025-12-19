@@ -3,7 +3,6 @@
 /* ===================================================================== */
 
 /* EDIT PAGE SCOPE HOOK */
-
 .liste-edit-page {
     /* hook for scoping */
 }
@@ -12,7 +11,7 @@
 .liste-badge-total {
     background: var(--color-accent-mint-soft);
     border: 1px solid var(--color-accent-mint-border);
-    color: #045e3e; /* AAA vs soft mint */
+    color: #045e3e; /* good contrast on light mint (light mode) */
     font-weight: 600;
     border-radius: 999px;
     padding: 0.35rem 0.9rem;
@@ -74,6 +73,7 @@
 
 /* Outline buttons in Liste-Épicerie edit */
 
+/* Blue outline */
 .liste-edit-page .btn-outline-primary {
     background-color: var(--color-primary-soft);
     border-color: var(--color-primary-border);
@@ -86,11 +86,11 @@
         color: var(--color-primary-text);
     }
 
-/* AAA mint outline button here too */
+/* Mint outline button */
 .liste-edit-page .btn-outline-success {
     background-color: var(--color-accent-mint-soft);
     border-color: var(--color-accent-mint-border);
-    color: #045e3e; /* AAA vs soft mint */
+    color: #045e3e; /* light mode text */
 }
 
     .liste-edit-page .btn-outline-success:hover {
@@ -99,6 +99,7 @@
         color: #022c22;
     }
 
+/* Neutral outline */
 .liste-edit-page .btn-outline-secondary {
     background-color: var(--color-surface-2);
     border-color: var(--color-border);
@@ -261,3 +262,29 @@ html[data-theme="dark"] .liste-total-row td {
     color: var(--color-text) !important;
     border-top-color: var(--color-border) !important;
 }
+
+/* ===================================================================== */
+/* DARK MODE SPECIFIC OVERRIDES                                          */
+/* ===================================================================== */
+
+/* Mint badge + mint button text color in dark */
+html[data-theme="dark"] .liste-badge-total,
+html[data-theme="dark"] .liste-edit-page .btn-outline-success,
+html[data-theme="dark"] .liste-edit-page .btn-outline-success:hover {
+    color: #e8fff7; /* light text on dark/mint surfaces */
+}
+
+/* Blue outline button text in dark (enabled) */
+html[data-theme="dark"] .liste-edit-page .btn-outline-primary,
+html[data-theme="dark"] .liste-edit-page .btn-outline-primary:hover {
+    color: var(--color-primary-text);
+}
+
+    /* Blue outline button text in dark (disabled) */
+    html[data-theme="dark"] .liste-edit-page .btn-outline-primary.disabled,
+    html[data-theme="dark"] .liste-edit-page .btn-outline-primary:disabled {
+        background-color: var(--color-primary-soft) !important;
+        border-color: var(--color-primary-border) !important;
+        color: #e5edff !important; /* readable light text */
+        opacity: 0.9 !important; /* still looks disabled */
+    }

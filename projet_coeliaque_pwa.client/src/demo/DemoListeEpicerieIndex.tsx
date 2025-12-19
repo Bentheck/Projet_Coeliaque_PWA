@@ -1,11 +1,6 @@
 ﻿// src/demo/DemoListesEpicerieIndex.tsx
-import React, {
-    useEffect,
-    useMemo,
-    useState,
-    type CSSProperties,
-} from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type ListeEpicerieDto } from "../offline/db";
@@ -19,7 +14,7 @@ type StatusFilter = "all" | "active" | "completed";
 /** Titles used for the demo grocery list (FR + EN). */
 const DEMO_LIST_TITLES = [
     "Liste d’épicerie démo",
-    "Liste d'epicerie démo", // safety for apostrophe variations
+    "Liste d'epicerie démo", // apostrophe variants
     "Demo grocery list",
 ];
 
@@ -29,13 +24,14 @@ const bubbleContainerStyle: CSSProperties = {
     top: "110%",
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#fffdf7",
-    border: "2px solid #ffc107",
+    backgroundColor: "var(--color-surface)",
+    border: "2px solid var(--color-primary-border)",
     borderRadius: "1rem",
-    boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
+    boxShadow: "0 .5rem 1.25rem rgba(0,0,0,0.25)",
     padding: "0.9rem 1.1rem",
     zIndex: 1050,
     width: 280,
+    color: "var(--color-text)",
 };
 
 const bubbleArrowStyle: CSSProperties = {
@@ -47,7 +43,7 @@ const bubbleArrowStyle: CSSProperties = {
     height: 0,
     borderLeft: "10px solid transparent",
     borderRight: "10px solid transparent",
-    borderBottom: "10px solid #ffc107",
+    borderBottom: "10px solid var(--color-primary-border)",
 };
 
 const bubbleArrowInnerStyle: CSSProperties = {
@@ -59,13 +55,13 @@ const bubbleArrowInnerStyle: CSSProperties = {
     height: 0,
     borderLeft: "8px solid transparent",
     borderRight: "8px solid transparent",
-    borderBottom: "8px solid #fffdf7",
+    borderBottom: "8px solid var(--color-surface)",
 };
 
 const DemoListesEpicerieIndex: React.FC = () => {
     const { t } = useTranslation("pages/ListeEpicerie/listesEpicerieIndex");
-
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
 
     const [q, setQ] = useState("");
     const [sortBy, setSortBy] = useState<SortKey>("recent");
@@ -81,6 +77,24 @@ const DemoListesEpicerieIndex: React.FC = () => {
 
     // Step 2: highlight "New list"
     const highlightNewList = isGroceryTour && step === 2;
+
+    // Demo list ID (for highlighting in step 10)
+    const [demoListId, setDemoListId] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!isGroceryTour) {
+            setDemoListId(null);
+            return;
+        }
+        try {
+            const raw = localStorage.getItem("sc-demo-grocery-last-list-id");
+            if (!raw) return;
+            const n = Number(raw);
+            if (Number.isFinite(n)) setDemoListId(n);
+        } catch {
+            // ignore
+        }
+    }, [isGroceryTour]);
 
     // Seed demo data once
     useEffect(() => {
@@ -157,17 +171,6 @@ const DemoListesEpicerieIndex: React.FC = () => {
         return arr;
     }, [listes, q, sortBy, status]);
 
-    // DEBUG: check what index sees during the tour
-    useEffect(() => {
-        if (isGroceryTour) {
-            console.log("DemoListesEpicerieIndex state", {
-                activeTour,
-                step,
-                listIds: listes.map((l) => ({ id: l.id, name: l.name })),
-            });
-        }
-    }, [isGroceryTour, activeTour, step, listes]);
-
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleString("fr-CA", {
             year: "numeric",
@@ -230,6 +233,15 @@ const DemoListesEpicerieIndex: React.FC = () => {
                 </h1>
             </div>
 
+            <div className="mt-2 text-center">
+                <Link
+                    to="/demo"
+                    className="btn btn-sm btn-outline-secondary"
+                >
+                    ← {t("demo.return", "Retour au mode démo")}
+                </Link>
+            </div>
+
             {seedError && (
                 <div className="alert alert-danger">{seedError}</div>
             )}
@@ -253,9 +265,7 @@ const DemoListesEpicerieIndex: React.FC = () => {
                                     aria-label={t("search.aria")}
                                     aria-describedby="search-addon"
                                     value={q}
-                                    onChange={(e) =>
-                                        setQ(e.target.value)
-                                    }
+                                    onChange={(e) => setQ(e.target.value)}
                                 />
                                 {q && (
                                     <button
@@ -275,13 +285,9 @@ const DemoListesEpicerieIndex: React.FC = () => {
                             <ul className="nav nav-pills">
                                 <li className="nav-item">
                                     <button
-                                        className={`nav-link ${status === "active"
-                                                ? "active"
-                                                : ""
+                                        className={`nav-link ${status === "active" ? "active" : ""
                                             }`}
-                                        onClick={() =>
-                                            applyStatus("active")
-                                        }
+                                        onClick={() => applyStatus("active")}
                                     >
                                         {t("filters.active")}{" "}
                                         <span className="badge text-bg-light ms-1">
@@ -295,9 +301,7 @@ const DemoListesEpicerieIndex: React.FC = () => {
                                                 ? "active"
                                                 : ""
                                             }`}
-                                        onClick={() =>
-                                            applyStatus("completed")
-                                        }
+                                        onClick={() => applyStatus("completed")}
                                     >
                                         {t("filters.completed")}{" "}
                                         <span className="badge text-bg-light ms-1">
@@ -307,13 +311,9 @@ const DemoListesEpicerieIndex: React.FC = () => {
                                 </li>
                                 <li className="nav-item">
                                     <button
-                                        className={`nav-link ${status === "all"
-                                                ? "active"
-                                                : ""
+                                        className={`nav-link ${status === "all" ? "active" : ""
                                             }`}
-                                        onClick={() =>
-                                            applyStatus("all")
-                                        }
+                                        onClick={() => applyStatus("all")}
                                     >
                                         {t("filters.all")}{" "}
                                         <span className="badge text-bg-light ms-1">
@@ -329,9 +329,7 @@ const DemoListesEpicerieIndex: React.FC = () => {
                                 className="form-select form-select-sm"
                                 value={sortBy}
                                 onChange={(e) =>
-                                    setSortBy(
-                                        e.target.value as SortKey
-                                    )
+                                    setSortBy(e.target.value as SortKey)
                                 }
                                 aria-label={t("sort.aria")}
                             >
@@ -359,7 +357,6 @@ const DemoListesEpicerieIndex: React.FC = () => {
                                     }
                                     onClick={() => {
                                         if (highlightNewList) {
-                                            // Grocery tour: Step 2 (new list) -> Step 3 (edit page)
                                             nextStep();
                                         }
                                     }}
@@ -403,9 +400,7 @@ const DemoListesEpicerieIndex: React.FC = () => {
                 <div className="border rounded-3 p-5 text-center bg-light">
                     <div className="display-6 mb-2">🛒</div>
                     <h2 className="h5">{t("empty.title")}</h2>
-                    <p className="text-muted mb-3">
-                        {t("empty.subtitle")}
-                    </p>
+                    <p className="text-muted mb-3">{t("empty.subtitle")}</p>
                     <Link
                         to="/demo/liste-epicerie/edit"
                         className="btn btn-primary"
@@ -424,19 +419,22 @@ const DemoListesEpicerieIndex: React.FC = () => {
 
                         const nameTrimmed = (l.name || "").trim();
 
-                        // 🎯 Demo target: correct tour + step + matching title
+                        // Demo target: STEP 10 – "Voir" on the demo list
                         const isDemoTarget =
                             isGroceryTour &&
-                            step >= 10 &&
-                            nameTrimmed &&
-                            DEMO_LIST_TITLES.includes(nameTrimmed);
+                            step === 10 &&
+                            (
+                                (demoListId != null && l.id === demoListId) ||
+                                (nameTrimmed &&
+                                    DEMO_LIST_TITLES.includes(nameTrimmed))
+                            );
+
+                        const viewHref = `/demo/liste-epicerie/view/${l.id}`;
 
                         return (
                             <div className="col" key={l.id}>
                                 <div
-                                    className={`card h-100 shadow-sm ${isCompleted
-                                            ? "border-success"
-                                            : ""
+                                    className={`card h-100 shadow-sm ${isCompleted ? "border-success" : ""
                                         }`}
                                 >
                                     <div className="card-body d-flex flex-column">
@@ -503,16 +501,28 @@ const DemoListesEpicerieIndex: React.FC = () => {
 
                                         {/* Actions */}
                                         <div className="mt-auto d-flex align-items-center gap-2">
-                                            {/* VIEW button – highlighted for demo list */}
+                                            {/* VIEW button – highlighted for demo list / step 10 */}
                                             <div className="position-relative w-100">
                                                 <Link
-                                                    to={`/demo/liste-epicerie/view/${l.id}`}
+                                                    to={viewHref}
                                                     className={
                                                         "btn btn-outline-secondary w-100" +
                                                         (isDemoTarget
                                                             ? " border border-2 border-warning"
                                                             : "")
                                                     }
+                                                    onClick={(e) => {
+                                                        if (
+                                                            isDemoTarget &&
+                                                            isGroceryTour &&
+                                                            step === 10
+                                                        ) {
+                                                            e.preventDefault();
+                                                            // Advance to step 11 before navigation
+                                                            nextStep();
+                                                            navigate(viewHref);
+                                                        }
+                                                    }}
                                                 >
                                                     {t("common.view")}
                                                 </Link>
@@ -548,7 +558,7 @@ const DemoListesEpicerieIndex: React.FC = () => {
                                                         <p className="small text-muted mb-0">
                                                             {t(
                                                                 "demo.grocery.viewDemo.hint",
-                                                                "Vous pouvez ensuite la modifier ou en créer d’autres selon vos besoins."
+                                                                "Vous verrez ensuite comment la liste se présente en mode consultation."
                                                             )}
                                                         </p>
                                                     </div>
@@ -577,9 +587,7 @@ const DemoListesEpicerieIndex: React.FC = () => {
                                                         )
                                                         : t("common.edit")
                                                 }
-                                                aria-disabled={
-                                                    isCompleted
-                                                }
+                                                aria-disabled={isCompleted}
                                             >
                                                 {t("common.edit")}
                                             </Link>

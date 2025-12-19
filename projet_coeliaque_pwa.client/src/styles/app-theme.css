@@ -31,6 +31,10 @@
     --shadow-elevated: 0 8px 24px rgba(15, 23, 42, 0.20);
     /* TABLE HEADER DEFAULT */
     --color-table-head: var(--color-surface-3);
+    --guide-bubble-bg: #fffdf7; /* light warm panel */
+    --guide-bubble-border: #fbbf24; /* amber border */
+    --guide-bubble-arrow-outer: #fbbf24; /* arrow outline */
+    --guide-bubble-arrow-inner: #fffdf7; /* arrow fill */
 }
 
 /* Dark mode overrides */
@@ -49,6 +53,10 @@ html[data-theme="dark"] {
     --shadow-card: 0 2px 18px rgba(0,0,0,0.75);
     --shadow-elevated: 0 2px 24px rgba(0,0,0,0.85);
     --color-table-head: #1e293b;
+    --guide-bubble-bg: #fffdf7; /* light warm panel */
+    --guide-bubble-border: #fbbf24; /* amber border */
+    --guide-bubble-arrow-outer: #fbbf24; /* arrow outline */
+    --guide-bubble-arrow-inner: #fffdf7; /* arrow fill */
 }
 
 /* ========================================================================= */
@@ -587,7 +595,6 @@ html[data-theme="dark"] .btn.success {
     html[data-theme="dark"] .btn-primary:focus,
     html[data-theme="dark"] .btn.success:hover,
     html[data-theme="dark"] .btn.success:focus {
-        /* slightly brighter indigo, still AAA vs white */
         background-color: #1d4ed8 !important;
         border-color: #2563eb !important;
         color: #ffffff !important;
@@ -611,7 +618,8 @@ html[data-theme="dark"] .btn-outline-danger {
 input,
 select,
 textarea {
-    background: var(--color-surface-2);
+    /* background-color so we don't wipe switch background-image accidentally */
+    background-color: var(--color-surface-2);
     color: var(--color-text);
     border-color: var(--color-border);
 }
@@ -622,6 +630,11 @@ textarea {
         border-color: var(--color-primary);
         box-shadow: 0 0 0 2px rgba(16,110,190,0.35);
     }
+
+/* Default checkbox style base */
+.form-check-input {
+    background-color: transparent;
+}
 
 html[data-theme="dark"] input,
 html[data-theme="dark"] select,
@@ -902,7 +915,7 @@ html[data-theme="dark"] .subscription-transaction-id {
 }
 
 html[data-theme="dark"] .subscription-badge-paid {
-    background-color: rgba(16,185,129,0.2); /* soft mint on dark */
+    background-color: rgba(16, 185, 129, 0.2); /* soft mint on dark */
     border-color: #0bbf95;
     color: #6ee7b7; /* light mint text for contrast */
 }
@@ -913,7 +926,7 @@ html[data-theme="dark"] .subscription-badge-paid {
 
 /* Section / card highlight – primary (blue) */
 .section-highlight-primary {
-    background: linear-gradient(135deg, var(--color-primary-soft-alt) 0%, #ffffff 45%, var(--color-primary-soft) 100%);
+    background: linear-gradient( 135deg, var(--color-primary-soft-alt) 0%, #ffffff 45%, var(--color-primary-soft) 100% );
     border-radius: 1rem;
     border: 1px solid var(--color-primary-border);
     box-shadow: var(--shadow-card);
@@ -921,7 +934,7 @@ html[data-theme="dark"] .subscription-badge-paid {
 
 /* Section / card highlight – mint (success / positive) */
 .section-highlight-mint {
-    background: radial-gradient(circle at top left, var(--color-accent-mint-soft) 0%, #ffffff 55%);
+    background: radial-gradient( circle at top left, var(--color-accent-mint-soft) 0%, #ffffff 55% );
     border-radius: 1rem;
     border: 1px solid var(--color-accent-mint-border);
     box-shadow: var(--shadow-card);
@@ -969,22 +982,22 @@ html[data-theme="dark"] .subscription-badge-paid {
 
 /* Dark mode tweaks so highlights still pop */
 html[data-theme="dark"] .section-highlight-primary {
-    background: linear-gradient(135deg, rgba(37,99,235,0.35) 0%, #020617 50%, rgba(59,130,246,0.5) 100%);
+    background: linear-gradient( 135deg, rgba(37, 99, 235, 0.35) 0%, #020617 50%, rgba(59, 130, 246, 0.5) 100% );
     border-color: #1d3fb5;
 }
 
 html[data-theme="dark"] .section-highlight-mint {
-    background: radial-gradient(circle at top left, rgba(34,197,94,0.35) 0%, #020617 55%);
+    background: radial-gradient( circle at top left, rgba(34, 197, 94, 0.35) 0%, #020617 55% );
     border-color: var(--color-accent-mint-border);
 }
 
 html[data-theme="dark"] .pill-highlight-primary {
-    background-color: rgba(37,99,235,0.2);
+    background-color: rgba(37, 99, 235, 0.2);
     color: #bfdbfe;
 }
 
 html[data-theme="dark"] .pill-highlight-mint {
-    background-color: rgba(16,185,129,0.2);
+    background-color: rgba(16, 185, 129, 0.2);
     color: #6ee7b7;
 }
 
@@ -1039,17 +1052,6 @@ html[data-theme="dark"] .pill-highlight-mint {
     box-shadow: 0 0 0 0.18rem rgba(11, 106, 203, 0.25);
 }
 
-/* Buttons upgraded with your colors (bottom overrides) 
-.btn-primary {
-    background: var(--color-primary) !important;
-    border-color: var(--color-primary-border) !important;
-}
-
-.btn-outline-primary:hover {
-    background: var(--color-primary-soft) !important;
-    border-color: var(--color-primary-border) !important;
-}
-*/
 /* Mint outline button – AAA text vs white & soft mint */
 .btn-mint-outline {
     border: 2px solid var(--color-accent-mint) !important;
@@ -1068,7 +1070,7 @@ html[data-theme="dark"] .btn-mint-outline {
 }
 
     html[data-theme="dark"] .btn-mint-outline:hover {
-        background-color: rgba(11,191,149,0.18) !important;
+        background-color: rgba(11, 191, 149, 0.18) !important;
     }
 
 /* ========================================================================= */
@@ -1373,3 +1375,70 @@ html[data-theme="dark"] .navbar-toggler-icon {
     /* 3 white bars, same geometry as Bootstrap's default */
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(249,250,251,1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
+
+/* ========================================================================= */
+/* BOOTSTRAP SWITCHES – CUSTOM SINGLE THUMB, LIGHT & DARK                    */
+/* ========================================================================= */
+
+/* Only affect switches, not all checkboxes */
+.form-switch .form-check-input {
+    position: relative;
+    width: 2.6em;
+    height: 1.35em;
+    margin-top: 0.2em;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background-color: #e5e7eb;
+    background-image: none !important; /* kill Bootstrap SVG thumb */
+    box-shadow: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+    /* Single thumb */
+    .form-switch .form-check-input::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0.16em;
+        transform: translateY(-50%);
+        width: 1.02em;
+        height: 1.02em;
+        border-radius: 999px;
+        background-color: #ffffff;
+        transition: left 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    /* Checked state */
+    .form-switch .form-check-input:checked {
+        background-color: var(--color-primary);
+        border-color: var(--color-primary-border);
+    }
+
+        .form-switch .form-check-input:checked::before {
+            left: calc(100% - 1.02em - 0.16em);
+        }
+
+    /* Focus ring */
+    .form-switch .form-check-input:focus {
+        outline: none;
+        box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.35);
+    }
+
+/* ---------- DARK MODE ---------- */
+
+html[data-theme="dark"] .form-switch .form-check-input {
+    background-color: #1f2937; /* dark track */
+    border-color: #4b5563;
+}
+
+    html[data-theme="dark"] .form-switch .form-check-input::before {
+        background-color: #e5e7eb; /* light thumb so it is visible on dark */
+    }
+
+    html[data-theme="dark"] .form-switch .form-check-input:checked {
+        background-color: #2563eb;
+        border-color: #1d4ed8;
+    }

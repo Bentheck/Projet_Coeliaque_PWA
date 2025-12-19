@@ -29,6 +29,7 @@
   "demo": {
     "badge": "DEMO",
     "warning": "Demo mode — report generation uses only local demo data (Dexie). No requests are sent to the server and your real reports are never changed.",
-    "loading": "Loading demo…"
+    "loading": "Loading demo…",
+    "return": "Return to demo mode"
   }
 }

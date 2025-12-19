@@ -53,8 +53,21 @@
     "deleteShort": "Suppr."
   },
   "demo": {
-    "badge": "DEMO",
+    "badge": "DÉMO",
     "subtitle": "Cette section utilise uniquement des données locales de démonstration (aucun appel au serveur).",
-    "loading": "Chargement de la démo…"
+    "loading": "Chargement de la démo…",
+    "return": "Retour au mode démo",
+    "grocery": {
+      "step2": {
+        "title": "Créer votre liste d’épicerie",
+        "body": "Cliquez ici pour démarrer une nouvelle liste d’épicerie en mode guidé.",
+        "hint": "Nous vous aiderons ensuite à ajouter des articles à partir de vos factures et de vos produits favoris."
+      },
+      "viewDemo": {
+        "title": "Consultez votre liste d’exemple",
+        "body": "Cliquez sur « Voir » pour explorer la liste d’épicerie avec les articles que vous venez d’ajouter.",
+        "hint": "Vous verrez ensuite comment la liste se présente en mode consultation."
+      }
+    }
   }
 }

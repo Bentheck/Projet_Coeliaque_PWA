@@ -160,13 +160,22 @@ const DemoHome: React.FC = () => {
 
     return (
         <div className="container py-4">
+
             {/* Header */}
             <div className="text-center mb-4">
                 <h1 className="h3 mb-1">
                     {t("title")}{" "}
                     <span className="badge bg-info ms-2">{t("badge")}</span>
                 </h1>
-                <p className="text-muted">{t("intro")}</p>
+
+                {/* Back to RootHome */}
+                <div className="mt-2">
+                    <Link to="/" className="btn btn-sm btn-outline-secondary">
+                        ← {t("backToHome", "Back to home")}
+                    </Link>
+                </div>
+
+                <p className="text-muted mt-3">{t("intro")}</p>
             </div>
 
             {/* Warning */}
@@ -240,7 +249,7 @@ const DemoHome: React.FC = () => {
                                         </Link>
                                     </div>
 
-                                    {/* Guided bubble for calculator – STEP 1 */}
+                                    {/* Guided bubble for calculator – STEP 1 (OK) */}
                                     {isCalculatorStep1 && (
                                         <div
                                             className="shadow-sm"
@@ -249,8 +258,9 @@ const DemoHome: React.FC = () => {
                                                 top: "100%",
                                                 left: "50%",
                                                 transform: "translate(-50%, 10px)",
-                                                background: "#fff",
-                                                border: "2px solid #f0ad4e",
+                                                backgroundColor: "var(--color-surface)",
+                                                border:
+                                                    "2px solid var(--color-primary-border)",
                                                 borderRadius: "0.9rem",
                                                 boxShadow:
                                                     "0 0.75rem 1.5rem rgba(0,0,0,.25)",
@@ -258,6 +268,7 @@ const DemoHome: React.FC = () => {
                                                     "0.85rem 1rem 0.85rem 1rem",
                                                 zIndex: 1050,
                                                 width: 320,
+                                                color: "var(--color-text)",
                                             }}
                                         >
                                             <div
@@ -265,7 +276,8 @@ const DemoHome: React.FC = () => {
                                                     position: "absolute",
                                                     top: "-10px",
                                                     left: "50%",
-                                                    transform: "translateX(-50%)",
+                                                    transform:
+                                                        "translateX(-50%)",
                                                     width: 0,
                                                     height: 0,
                                                     borderLeft:
@@ -273,7 +285,7 @@ const DemoHome: React.FC = () => {
                                                     borderRight:
                                                         "10px solid transparent",
                                                     borderBottom:
-                                                        "10px solid #f0ad4e",
+                                                        "10px solid var(--color-primary-border)",
                                                 }}
                                             />
                                             <div className="mb-1 fw-semibold">
@@ -350,17 +362,18 @@ const DemoHome: React.FC = () => {
                                                         left: "50%",
                                                         transform:
                                                             "translate(-50%, 10px)",
-                                                        background: "#fff",
+                                                        backgroundColor:
+                                                            "var(--color-surface)",
                                                         border:
-                                                            "2px solid #f0ad4e",
-                                                        borderRadius:
-                                                            "0.9rem",
+                                                            "2px solid var(--color-primary-border)",
+                                                        borderRadius: "0.9rem",
                                                         boxShadow:
                                                             "0 0.75rem 1.5rem rgba(0,0,0,.25)",
                                                         padding:
                                                             "0.85rem 1rem 0.85rem 1rem",
                                                         zIndex: 1050,
                                                         width: 320,
+                                                        color: "var(--color-text)",
                                                     }}
                                                 >
                                                     <div
@@ -378,7 +391,7 @@ const DemoHome: React.FC = () => {
                                                             borderRight:
                                                                 "10px solid transparent",
                                                             borderBottom:
-                                                                "10px solid #f0ad4e",
+                                                                "10px solid var(--color-primary-border)",
                                                         }}
                                                     />
                                                     <div className="fw-semibold mb-1">
@@ -495,14 +508,17 @@ const DemoHome: React.FC = () => {
                                             top: "110%",
                                             left: "50%",
                                             transform: "translateX(-50%)",
-                                            background: "#fffdf7",
-                                            border: "2px solid #ffc107",
+                                            backgroundColor:
+                                                "var(--color-surface)",
+                                            border:
+                                                "2px solid var(--color-primary-border)",
                                             borderRadius: "1rem",
                                             boxShadow:
                                                 "0 .5rem 1.25rem rgba(0,0,0,.25)",
                                             padding: "0.9rem 1.1rem",
                                             zIndex: 1050,
                                             width: 280,
+                                            color: "var(--color-text)",
                                         }}
                                     >
                                         <div
@@ -510,7 +526,8 @@ const DemoHome: React.FC = () => {
                                                 position: "absolute",
                                                 top: "-10px",
                                                 left: "50%",
-                                                transform: "translateX(-50%)",
+                                                transform:
+                                                    "translateX(-50%)",
                                                 width: 0,
                                                 height: 0,
                                                 borderLeft:
@@ -518,7 +535,7 @@ const DemoHome: React.FC = () => {
                                                 borderRight:
                                                     "10px solid transparent",
                                                 borderBottom:
-                                                    "10px solid #ffc107",
+                                                    "10px solid var(--color-primary-border)",
                                             }}
                                         />
                                         <div
@@ -526,7 +543,8 @@ const DemoHome: React.FC = () => {
                                                 position: "absolute",
                                                 top: "-8px",
                                                 left: "50%",
-                                                transform: "translateX(-50%)",
+                                                transform:
+                                                    "translateX(-50%)",
                                                 width: 0,
                                                 height: 0,
                                                 borderLeft:
@@ -534,26 +552,26 @@ const DemoHome: React.FC = () => {
                                                 borderRight:
                                                     "8px solid transparent",
                                                 borderBottom:
-                                                    "8px solid #fffdf7",
+                                                    "8px solid var(--color-surface)",
                                             }}
                                         />
 
                                         <strong className="d-block mb-1 small fw-semibold">
                                             {t(
                                                 "demo.grocery.step1.title",
-                                                "Commencez avec une liste d’épicerie guidée"
+                                                "Start a guided grocery list"
                                             )}
                                         </strong>
                                         <p className="small mb-2">
                                             {t(
                                                 "demo.grocery.step1.body",
-                                                "Activez le mode guidé puis cliquez ici pour créer une nouvelle liste d’épicerie à partir de vos produits sans gluten."
+                                                "Enable guided mode, then click here to create a new grocery list using your gluten-free demo products."
                                             )}
                                         </p>
                                         <p className="small text-muted mb-0">
                                             {t(
                                                 "demo.grocery.step1.hint",
-                                                "Cliquez sur ce bouton pour passer à l’étape suivante."
+                                                "Click this button to move to the next step."
                                             )}
                                         </p>
                                     </div>

@@ -1,5 +1,5 @@
 ﻿// src/demo/DemoListeEpicerieView.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -10,6 +10,7 @@ import {
     type FactureItem,
 } from "../offline/db";
 import { seedDemoDataIfNeeded } from "./seedDemoData";
+import { useDemoTour } from "./DemoTourContext";
 
 /* ============================== Small helpers ============================== */
 const fmtMoney = (n: number | null | undefined) =>
@@ -17,7 +18,9 @@ const fmtMoney = (n: number | null | undefined) =>
         ? n.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })
         : "—";
 
-const renderWeight = (obj?: { poidsValeur?: number | null; poidsUnite?: string | null } | null) => {
+const renderWeight = (
+    obj?: { poidsValeur?: number | null; poidsUnite?: string | null } | null
+) => {
     if (!obj) return "—";
     const { poidsValeur: val, poidsUnite: unit } = obj as any;
     const hasVal = val !== undefined && val !== null;
@@ -37,6 +40,47 @@ const fmtDate = (iso?: string) =>
         })
         : "—";
 
+/* ============================== Tour bubble styles ============================== */
+
+const tourBubbleContainerStyle: CSSProperties = {
+    position: "absolute",
+    top: "110%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    backgroundColor: "var(--color-surface)",
+    border: "2px solid var(--color-primary-border)",
+    borderRadius: "1rem",
+    boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
+    padding: "0.9rem 1.1rem",
+    zIndex: 1050,
+    width: 280,
+    color: "var(--color-text)",
+};
+
+const tourBubbleArrowStyle: CSSProperties = {
+    position: "absolute",
+    top: "-10px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent",
+    borderBottom: "10px solid var(--color-primary-border)",
+};
+
+const tourBubbleArrowInnerStyle: CSSProperties = {
+    position: "absolute",
+    top: "-8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 0,
+    height: 0,
+    borderLeft: "8px solid transparent",
+    borderRight: "8px solid transparent",
+    borderBottom: "8px solid var(--color-surface)",
+};
+
 /* ============================== Component ============================== */
 
 const DemoListeEpicerieView: React.FC = () => {
@@ -46,6 +90,12 @@ const DemoListeEpicerieView: React.FC = () => {
     const [seedError, setSeedError] = useState<string | null>(null);
     const [seedLoading, setSeedLoading] = useState(true);
 
+    // Demo tour (grocery – steps 10/11)
+    const { activeTour, step, endTour } = useDemoTour();
+    const isGroceryTour = activeTour === "grocery";
+    const showBackBubble = isGroceryTour && step === 11;
+
+    // Seed demo data once
     useEffect(() => {
         (async () => {
             try {
@@ -66,10 +116,15 @@ const DemoListeEpicerieView: React.FC = () => {
 
     // also keep local caches of item lookups for display
     const factureCache =
-        useLiveQuery<FactureItem[]>(async () => await db.factureItems.toArray(), []) ||
-        [];
+        useLiveQuery<FactureItem[]>(
+            async () => await db.factureItems.toArray(),
+            []
+        ) || [];
     const freeCache =
-        useLiveQuery<FreeItemDto[]>(async () => await db.freeItems.toArray(), []) || [];
+        useLiveQuery<FreeItemDto[]>(
+            async () => await db.freeItems.toArray(),
+            []
+        ) || [];
 
     type DisplayRow = {
         key: string;
@@ -106,7 +161,9 @@ const DemoListeEpicerieView: React.FC = () => {
                 const source = it.customName ? null : free ?? fac ?? null;
 
                 const sourceName =
-                    source && "item" in (source as any) ? (source as any).item : "";
+                    source && "item" in (source as any)
+                        ? (source as any).item
+                        : "";
                 const fallbackName = it.factureItemId
                     ? t("fallbacks.invoiceItem", { id: it.factureItemId })
                     : it.freeItemId
@@ -152,9 +209,8 @@ const DemoListeEpicerieView: React.FC = () => {
 
                 const favorite = !!it.isFavorite;
 
-                const key = String(
-                    it.id ?? `${it.factureItemId ?? it.freeItemId ?? "custom"}-${idx}`
-                );
+                // Unique key per row to avoid React warnings
+                const key = `${liste.id ?? "list"}-${idx}`;
 
                 return {
                     key,
@@ -180,7 +236,8 @@ const DemoListeEpicerieView: React.FC = () => {
     const groupedByStore: [string, DisplayRow[]][] = useMemo(() => {
         const map = new Map<string, DisplayRow[]>();
         for (const r of rows) {
-            const storeKey = r.store || t("summary.unknownStore", "Autre magasin");
+            const storeKey =
+                r.store || t("summary.unknownStore", "Autre magasin");
             if (!map.has(storeKey)) map.set(storeKey, []);
             map.get(storeKey)!.push(r);
         }
@@ -225,6 +282,17 @@ const DemoListeEpicerieView: React.FC = () => {
         }
     };
 
+    const handlePrintClick = () => {
+        window.print();
+    };
+
+    const handleBackClick = () => {
+        if (showBackBubble) {
+            // End tour when going back from step 11
+            endTour();
+        }
+    };
+
     if (seedLoading && !liste) {
         return (
             <div className="container py-4">
@@ -259,6 +327,9 @@ const DemoListeEpicerieView: React.FC = () => {
         );
     }
 
+    // Dynamic back target: DemoHome in grocery tour, index otherwise
+    const backHref = isGroceryTour ? "/demo" : "/demo/liste-epicerie";
+
     return (
         <div className="container py-4" id="print-section">
             {/* Screen/print visibility helpers */}
@@ -279,25 +350,57 @@ const DemoListeEpicerieView: React.FC = () => {
             <div className="d-flex flex-wrap justify-content-between align-items-end mb-2">
                 <div className="d-flex flex-column gap-1">
                     <div className="d-flex align-items-center gap-2">
-                        <Link
-                            to="/demo/liste-epicerie"
-                            className="btn btn-outline-secondary d-print-none"
-                        >
-                            ← {t("back")}{" "}
-                            <span className="badge bg-info ms-2">
-                                {t("demo.badge")}
-                            </span>
-                        </Link>
-                        <div className="d-flex align-items-center gap-2">
-                            <div>
-                                <h1 className="h5 mb-0">
-                                    {liste.name || t("titleDefault")}
-                                </h1>
-                                <div className="text-muted small">
-                                    {t("createdOn", {
-                                        date: fmtDate(liste.created),
-                                    })}
+                        {/* Back button + grocery tour bubble (STEP 11) */}
+                        <div className="position-relative d-inline-block">
+                            <Link
+                                to={backHref}
+                                className="btn btn-outline-secondary d-print-none"
+                                onClick={handleBackClick}
+                            >
+                                ← {t("back")}{" "}
+                                <span className="badge bg-info ms-2">
+                                    {t("demo.badge")}
+                                </span>
+                            </Link>
+
+                            {showBackBubble && (
+                                <div
+                                    className="shadow-sm"
+                                    style={tourBubbleContainerStyle}
+                                >
+                                    <div style={tourBubbleArrowStyle} />
+                                    <div style={tourBubbleArrowInnerStyle} />
+
+                                    <strong className="d-block mb-1 small fw-semibold">
+                                        {t(
+                                            "demo.grocery.viewBack.title",
+                                            "Revenir à la liste des listes"
+                                        )}
+                                    </strong>
+                                    <p className="small mb-2">
+                                        {t(
+                                            "demo.grocery.viewBack.body",
+                                            "Vous avez consulté l’exemple de liste. Revenez à l’écran principal pour voir comment vos différentes listes d’épicerie s’organisent."
+                                        )}
+                                    </p>
+                                    <p className="small text-muted mb-0">
+                                        {t(
+                                            "demo.grocery.viewBack.hint",
+                                            "Cliquez sur « Retour » pour terminer ce parcours guidé."
+                                        )}
+                                    </p>
                                 </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <h1 className="h5 mb-0">
+                                {liste.name || t("titleDefault")}
+                            </h1>
+                            <div className="text-muted small">
+                                {t("createdOn", {
+                                    date: fmtDate(liste.created),
+                                })}
                             </div>
                         </div>
                     </div>
@@ -329,9 +432,10 @@ const DemoListeEpicerieView: React.FC = () => {
                     >
                         {t("edit")}
                     </Link>
+
                     <button
                         className="btn btn-outline-secondary"
-                        onClick={() => window.print()}
+                        onClick={handlePrintClick}
                     >
                         {t("print")}
                     </button>
@@ -405,142 +509,176 @@ const DemoListeEpicerieView: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {groupedByStore.map(([storeName, storeRows]) => (
-                                        <React.Fragment key={storeName}>
-                                            {/* Group header row by store */}
-                                            <tr className="table-group-divider bg-light">
-                                                <td colSpan={9} className="fw-semibold">
-                                                    {storeName}
-                                                </td>
-                                            </tr>
-                                            {storeRows.map((r) => (
-                                                <tr key={r.key}>
+                                    {groupedByStore.map(
+                                        ([storeName, storeRows]) => (
+                                            <React.Fragment key={storeName}>
+                                                {/* Group header row by store */}
+                                                <tr className="table-group-divider bg-light">
                                                     <td
-                                                        className="text-center"
-                                                        style={{
-                                                            position: "relative",
-                                                            height: 40,
-                                                        }}
+                                                        colSpan={9}
+                                                        className="fw-semibold"
                                                     >
-                                                        {/* Native checkbox – invisible but clickable */}
-                                                        <input
-                                                            className="form-check-input d-print-none"
-                                                            type="checkbox"
-                                                            checked={r.checked}
-                                                            disabled={
-                                                                isCompleted ||
-                                                                r.id == null
-                                                            }
-                                                            onChange={(e) =>
-                                                                setItemChecked(
-                                                                    r.id,
-                                                                    e.target.checked
-                                                                )
-                                                            }
-                                                            aria-label={t(
-                                                                "aria.markAsDone",
-                                                                { name: r.name }
-                                                            )}
-                                                            style={{
-                                                                position: "absolute",
-                                                                left: "50%",
-                                                                top: "50%",
-                                                                transform:
-                                                                    "translate(-50%, -50%)",
-                                                                width: "26px",
-                                                                height: "26px",
-                                                                opacity: 0,
-                                                                cursor: "pointer",
-                                                                zIndex: 2,
-                                                            }}
-                                                        />
-
-                                                        {/* Ultra-visible custom box (screen + print) */}
-                                                        <div
-                                                            style={{
-                                                                width: "26px",
-                                                                height: "26px",
-                                                                border: "3px solid #000",
-                                                                borderRadius: "4px",
-                                                                fontSize: "1.6rem",
-                                                                fontWeight: 900,
-                                                                color: "#000",
-                                                                backgroundColor: r.checked
-                                                                    ? "#b6f2b3"
-                                                                    : "#fff",
-                                                                display: "flex",
-                                                                alignItems: "center",
-                                                                justifyContent: "center",
-                                                                position: "absolute",
-                                                                left: "50%",
-                                                                top: "50%",
-                                                                transform:
-                                                                    "translate(-50%, -50%)",
-                                                                pointerEvents: "none",
-                                                            }}
-                                                        >
-                                                            {r.checked ? "✓" : ""}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <strong
-                                                            className={
-                                                                r.checked
-                                                                    ? "text-decoration-line-through"
-                                                                    : ""
-                                                            }
-                                                        >
-                                                            {r.name}
-                                                        </strong>{" "}
-                                                        {r.favorite && (
-                                                            <span className="badge bg-warning text-dark align-middle">
-                                                                ★{" "}
-                                                                {t(
-                                                                    "badges.favorite"
-                                                                )}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        <small className="text-muted">
-                                                            {r.type || "—"}
-                                                        </small>
-                                                    </td>
-                                                    <td>{r.store || "—"}</td>
-                                                    <td>{r.weight}</td>
-                                                    <td className="text-end">
-                                                        {fmtMoney(
-                                                            r.unitPrice ?? undefined
-                                                        )}
-                                                    </td>
-                                                    <td className="text-end">
-                                                        {r.qty}
-                                                    </td>
-                                                    <td className="text-end">
-                                                        {fmtMoney(
-                                                            r.subtotal ?? undefined
-                                                        )}
-                                                    </td>
-                                                    <td className="text-center">
-                                                        {r.special ? (
-                                                            <span className="badge bg-success">
-                                                                {t("common.yes")}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="badge bg-secondary">
-                                                                {t("common.no")}
-                                                            </span>
-                                                        )}
+                                                        {storeName}
                                                     </td>
                                                 </tr>
-                                            ))}
-                                        </React.Fragment>
-                                    ))}
+                                                {storeRows.map((r) => (
+                                                    <tr key={r.key}>
+                                                        <td
+                                                            className="text-center"
+                                                            style={{
+                                                                position:
+                                                                    "relative",
+                                                                height: 40,
+                                                            }}
+                                                        >
+                                                            {/* Native checkbox – invisible but clickable */}
+                                                            <input
+                                                                className="form-check-input d-print-none"
+                                                                type="checkbox"
+                                                                checked={
+                                                                    r.checked
+                                                                }
+                                                                disabled={
+                                                                    isCompleted ||
+                                                                    r.id ==
+                                                                    null
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setItemChecked(
+                                                                        r.id,
+                                                                        e.target
+                                                                            .checked
+                                                                    )
+                                                                }
+                                                                aria-label={t(
+                                                                    "aria.markAsDone",
+                                                                    {
+                                                                        name: r.name,
+                                                                    }
+                                                                )}
+                                                                style={{
+                                                                    position:
+                                                                        "absolute",
+                                                                    left: "50%",
+                                                                    top: "50%",
+                                                                    transform:
+                                                                        "translate(-50%, -50%)",
+                                                                    width: "26px",
+                                                                    height: "26px",
+                                                                    opacity: 0,
+                                                                    cursor: "pointer",
+                                                                    zIndex: 2,
+                                                                }}
+                                                            />
+
+                                                            {/* Ultra-visible custom box (screen + print) */}
+                                                            <div
+                                                                style={{
+                                                                    width: "26px",
+                                                                    height: "26px",
+                                                                    border: "3px solid #000",
+                                                                    borderRadius:
+                                                                        "4px",
+                                                                    fontSize:
+                                                                        "1.6rem",
+                                                                    fontWeight: 900,
+                                                                    color: "#000",
+                                                                    backgroundColor:
+                                                                        r.checked
+                                                                            ? "#b6f2b3"
+                                                                            : "#fff",
+                                                                    display:
+                                                                        "flex",
+                                                                    alignItems:
+                                                                        "center",
+                                                                    justifyContent:
+                                                                        "center",
+                                                                    position:
+                                                                        "absolute",
+                                                                    left: "50%",
+                                                                    top: "50%",
+                                                                    transform:
+                                                                        "translate(-50%, -50%)",
+                                                                    pointerEvents:
+                                                                        "none",
+                                                                }}
+                                                            >
+                                                                {r.checked
+                                                                    ? "✓"
+                                                                    : ""}
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <strong
+                                                                className={
+                                                                    r.checked
+                                                                        ? "text-decoration-line-through"
+                                                                        : ""
+                                                                }
+                                                            >
+                                                                {r.name}
+                                                            </strong>{" "}
+                                                            {r.favorite && (
+                                                                <span className="badge bg-warning text-dark align-middle">
+                                                                    ★{" "}
+                                                                    {t(
+                                                                        "badges.favorite"
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <small className="text-muted">
+                                                                {r.type || "—"}
+                                                            </small>
+                                                        </td>
+                                                        <td>
+                                                            {r.store || "—"}
+                                                        </td>
+                                                        <td>{r.weight}</td>
+                                                        <td className="text-end">
+                                                            {fmtMoney(
+                                                                r.unitPrice ??
+                                                                undefined
+                                                            )}
+                                                        </td>
+                                                        <td className="text-end">
+                                                            {r.qty}
+                                                        </td>
+                                                        <td className="text-end">
+                                                            {fmtMoney(
+                                                                r.subtotal ??
+                                                                undefined
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            {r.special ? (
+                                                                <span className="badge bg-success">
+                                                                    {t(
+                                                                        "common.yes"
+                                                                    )}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="badge bg-secondary">
+                                                                    {t(
+                                                                        "common.no"
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        )
+                                    )}
                                 </tbody>
                                 {anyPrice && (
                                     <tfoot>
                                         <tr>
-                                            <th colSpan={7} className="text-end">
+                                            <th
+                                                colSpan={7}
+                                                className="text-end"
+                                            >
                                                 {t("table.total")}
                                             </th>
                                             <th className="text-end">
@@ -576,7 +714,8 @@ const DemoListeEpicerieView: React.FC = () => {
                                                             onChange={(e) =>
                                                                 setItemChecked(
                                                                     r.id,
-                                                                    e.target.checked
+                                                                    e.target
+                                                                        .checked
                                                                 )
                                                             }
                                                             aria-label={t(
@@ -681,10 +820,6 @@ const DemoListeEpicerieView: React.FC = () => {
                     </div>
                 </>
             )}
-
-            <div className="mt-3">
-                <small className="text-muted">{t("tip")}</small>
-            </div>
         </div>
     );
 };

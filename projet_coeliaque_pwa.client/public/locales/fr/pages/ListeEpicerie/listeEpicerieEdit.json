@@ -29,7 +29,7 @@
       "emptyType": "Aucun produit pour ce type.",
       "quickSearchLabel": "Recherche rapide",
       "quickSearchGluten": "Version sans gluten",
-      "quickSearchHint": "Utilise le type (ou le nom) comme mot-clé, par exemple « pain », « pâtes », etc. Si « Version sans gluten » est cochée, « sans gluten » est ajouté automatiquement à la recherche. Prendre note que la recherche « sans gluten » peut retourner des résultats avec gluten, prenez le temps de vérifier s'il vous plaît'.",
+      "quickSearchHint": "Utilise le type (ou le nom) comme mot-clé, par exemple « pain », « pâtes », etc. Si « Version sans gluten » est cochée, « sans gluten » est ajouté automatiquement à la recherche. Prendre note que la recherche « sans gluten » peut retourner des produits contenant du gluten — veuillez toujours vérifier.",
       "quickSearchButtons": {
         "walmart": "Walmart",
         "maxi": "Maxi",
@@ -55,7 +55,7 @@
     "favorite": "Favori"
   },
   "placeholders": {
-    "exampleProduct": "ex. Yogourt 2% 750 g",
+    "exampleProduct": "ex. Yogourt 2 % 750 g",
     "exampleType": "Laitier",
     "exampleStore": "Métro"
   },
@@ -100,10 +100,46 @@
     "deleteFreeProduct": "Supprimer ce produit libre ?"
   },
   "demo": {
-    "badge": "DEMO",
+    "badge": "DÉMO",
     "warning": "Mode démonstration — cette liste est stockée uniquement sur cet appareil. Aucune modification n’est envoyée au serveur et vos données réelles ne sont jamais touchées.",
-    "totalHint": "(Démo — total estimé uniquement à partir des données locales de démonstration)",
+    "totalHint": "(Démo — total estimé uniquement à partir des données locales)",
     "saveError": "Erreur lors de l’enregistrement de la liste (démo). Veuillez réessayer.",
-    "loading": "Chargement de la démo…"
+    "loading": "Chargement de la démo…",
+
+    "quickSearchDisabled": "Dans cette démonstration, les boutons de recherche rapide sont affichés à titre d’exemple mais restent désactivés.",
+    "quickSearchDisabledTitle": "Recherche rapide indisponible en mode démo",
+
+    "grocery": {
+      "fromInvoices": {
+        "title": "Ajouter des articles à partir de vos factures",
+        "body": "Utilisez ce bouton pour récupérer automatiquement les produits sans gluten déjà présents dans vos factures.",
+        "hint": "Cliquez pour ouvrir la liste des produits provenant des factures."
+      },
+      "factureModal": {
+        "title": "Choisissez les produits à reprendre",
+        "body": "Sélectionnez un type de produit, puis ajoutez les articles à inclure automatiquement dans votre liste.",
+        "hint": "Cliquez sur « Ajouter à la liste » à côté des produits souhaités."
+      },
+      "fromFree": {
+        "title": "Ajouter des produits personnalisés",
+        "body": "Créez ou réutilisez des produits que vous achetez souvent, même s’ils ne figurent pas encore dans vos factures.",
+        "hint": "Cliquez pour ouvrir votre catalogue de produits libres."
+      },
+      "freeModal": {
+        "title": "Ajoutez ou réutilisez vos produits favoris",
+        "body": "Créez des produits récurrents (pain, lait, collations, etc.) ou choisissez parmi ceux déjà définis.",
+        "hint": "Sélectionnez un type, puis ajoutez un article."
+      },
+      "freeType": {
+        "title": "Ajouter un produit hors factures",
+        "body": "Choisissez un type (pain, lait, collations, etc.), puis ajoutez un produit à votre liste.",
+        "hint": "Sélectionnez un type, puis cliquez sur « Ajouter »."
+      },
+      "save": {
+        "title": "Enregistrer cette liste d’épicerie",
+        "body": "Votre liste est prête. Enregistrez-la pour pouvoir la réutiliser plus tard.",
+        "hint": "Cliquez sur « Enregistrer » pour revenir à l’écran des listes."
+      }
+    }
   }
 }

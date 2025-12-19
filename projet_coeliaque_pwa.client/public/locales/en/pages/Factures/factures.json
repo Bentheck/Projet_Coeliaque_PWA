@@ -48,6 +48,7 @@
     "deleteFailed": "Error while deleting."
   },
   "demo": {
+    "return": "Return to demo mode",
     "badge": "DEMO",
     "warningTitle": "Demonstration mode",
     "warning": "No real data is used and no modification will be saved.",

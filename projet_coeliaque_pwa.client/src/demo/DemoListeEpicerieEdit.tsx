@@ -38,19 +38,20 @@ const UNIT_OPTIONS = [
 
 type StoreKey = "walmart" | "maxi" | "provigo" | "iga" | "superc";
 
-/** Shared bubble styles (same visual language as other demo pages). */
+/** Shared bubble styles (same visual language as other demo pages, theme-aware). */
 const bubbleContainerStyle: CSSProperties = {
     position: "absolute",
-    top: "110%",
+    top: "110%", // bubble below the anchor by default
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#fffdf7",
-    border: "2px solid #ffc107",
+    backgroundColor: "var(--color-surface)",
+    border: "2px solid var(--color-primary-border)",
     borderRadius: "1rem",
     boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
     padding: "0.7rem 0.95rem",
     zIndex: 1050,
     width: 280,
+    color: "var(--color-text)",
 };
 
 const bubbleArrowUpStyle: CSSProperties = {
@@ -62,7 +63,7 @@ const bubbleArrowUpStyle: CSSProperties = {
     height: 0,
     borderLeft: "10px solid transparent",
     borderRight: "10px solid transparent",
-    borderBottom: "10px solid #ffc107",
+    borderBottom: "10px solid var(--color-primary-border)",
 };
 
 const bubbleArrowUpInnerStyle: CSSProperties = {
@@ -74,31 +75,7 @@ const bubbleArrowUpInnerStyle: CSSProperties = {
     height: 0,
     borderLeft: "8px solid transparent",
     borderRight: "8px solid transparent",
-    borderBottom: "8px solid #fffdf7",
-};
-
-const bubbleArrowDownStyle: CSSProperties = {
-    position: "absolute",
-    bottom: "-10px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: 0,
-    height: 0,
-    borderLeft: "10px solid transparent",
-    borderRight: "10px solid transparent",
-    borderTop: "10px solid #ffc107",
-};
-
-const bubbleArrowDownInnerStyle: CSSProperties = {
-    position: "absolute",
-    bottom: "-8px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: 0,
-    height: 0,
-    borderLeft: "8px solid transparent",
-    borderRight: "8px solid transparent",
-    borderTop: "8px solid #fffdf7",
+    borderBottom: "8px solid var(--color-surface)",
 };
 
 const DemoListeEpicerieEdit: React.FC = () => {
@@ -843,16 +820,9 @@ const DemoListeEpicerieEdit: React.FC = () => {
                     </button>
 
                     {showSaveBubble && (
-                        <div
-                            style={{
-                                ...bubbleContainerStyle,
-                                top: "auto",
-                                left: "50%",
-                                transform: "translate(-50%, -110%)",
-                            }}
-                        >
-                            <div style={bubbleArrowDownStyle} />
-                            <div style={bubbleArrowDownInnerStyle} />
+                        <div style={bubbleContainerStyle}>
+                            <div style={bubbleArrowUpStyle} />
+                            <div style={bubbleArrowUpInnerStyle} />
                             <strong className="d-block mb-1 small fw-semibold">
                                 {t(
                                     "demo.grocery.save.title",
@@ -1282,7 +1252,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                                 disabled={true}
                                 title={t(
                                     "demo.quickSearchDisabledTitle",
-                                    "Fonction de recherche rapide désactivée dans la démo"
+                                    "Fonction de recherche rapide désactivée dans la déмо"
                                 ) as string}
                             >
                                 Maxi
@@ -1297,7 +1267,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                                 disabled={true}
                                 title={t(
                                     "demo.quickSearchDisabledTitle",
-                                    "Fonction de recherche rapide désactivée dans la démo"
+                                    "Fonction de recherche rapide désactivée dans la déмо"
                                 ) as string}
                             >
                                 Provigo
@@ -1310,7 +1280,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                                 disabled={true}
                                 title={t(
                                     "demo.quickSearchDisabledTitle",
-                                    "Fonction de recherche rapide désactivée dans la démo"
+                                    "Fonction de recherche rapide désactivée dans la déмо"
                                 ) as string}
                             >
                                 IGA
@@ -1325,7 +1295,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                                 disabled={true}
                                 title={t(
                                     "demo.quickSearchDisabledTitle",
-                                    "Fonction de recherche rapide désactivée dans la démo"
+                                    "Fonction de recherche rapide désactivée dans la déмо"
                                 ) as string}
                             >
                                 Super C
@@ -1543,14 +1513,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                         </select>
 
                         {highlightFreeTypeSelect && (
-                            <div
-                                style={{
-                                    ...bubbleContainerStyle,
-                                    top: "110%",
-                                    left: "50%",
-                                    transform: "translateX(-50%)",
-                                }}
-                            >
+                            <div style={bubbleContainerStyle}>
                                 <div style={bubbleArrowUpStyle} />
                                 <div style={bubbleArrowUpInnerStyle} />
                                 <strong className="d-block mb-1 small fw-semibold">
@@ -1672,8 +1635,7 @@ const DemoListeEpicerieEdit: React.FC = () => {
                                                             </small>
                                                         </td>
                                                         <td>
-                                                            {fi.magasin ??
-                                                                "—"}
+                                                            {fi.magasin ?? "—"}
                                                         </td>
                                                         <td className="text-end">
                                                             {hasQty

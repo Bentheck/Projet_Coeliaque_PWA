@@ -62,6 +62,13 @@
   "demo": {
     "badge": "DEMO",
     "warning": "Mode démonstration — cette liste est construite uniquement à partir des données locales de démo. Aucune modification n’est envoyée au serveur et vos données réelles ne sont jamais touchées.",
-    "loading": "Chargement de la démo…"
+    "loading": "Chargement de la démo…",
+    "grocery": {
+      "viewBack": {
+        "title": "Revenir au mode démo",
+        "body": "Vous venez de consulter un exemple de liste d’épicerie. Revenez à l’écran principal du mode démo pour voir comment tout s’emboîte.",
+        "hint": "Cliquez sur « Retour » pour terminer ce parcours guidé et revenir à la page d’accueil du mode démo."
+      }
+    }
   }
 }

@@ -280,12 +280,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 {
                     if (input.Active.Value)
                     {
-                        if (m.StartDate > now) m.StartDate = now;
-                        if (m.EndDate < now) m.EndDate = now.AddYears(1);
+                        // Ensure the window covers "now", but don't override explicit dates
+                        if (!input.StartDateUtc.HasValue && m.StartDate > now)
+                            m.StartDate = now;
+
+                        if (!input.EndDateUtc.HasValue && m.EndDate < now)
+                            m.EndDate = now.AddYears(1);
                     }
                     else
                     {
-                        m.EndDate = now.AddSeconds(-1);
+                        // Deactivate: only force "expire now" if caller did NOT set a manual end date
+                        if (!input.EndDateUtc.HasValue)
+                        {
+                            m.EndDate = now.AddSeconds(-1);
+                        }
                     }
                 }
             }
@@ -293,6 +301,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             await _db.SaveChangesAsync();
             return Ok(new MembershipDto(userId, m.StartDate, m.EndDate, m.IsActive));
         }
+
 
         private static DateTime EnsureUtc(DateTime dt)
         {

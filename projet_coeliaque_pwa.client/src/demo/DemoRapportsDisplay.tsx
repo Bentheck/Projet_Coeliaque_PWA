@@ -1,10 +1,76 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// src/demo/DemoRapportsDisplay.tsx
+import React, {
+    useEffect,
+    useState,
+    type CSSProperties,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type ReportPayload } from "../offline/db";
 import { seedDemoDataIfNeeded } from "./seedDemoData";
 import { useDemoTour } from "./DemoTourContext";
+
+// Theme-aware bubble styles for the Step 16 "Back" helper
+const backBubbleContainerStyle: CSSProperties = {
+    position: "absolute",
+    top: "110%",
+    right: 0,
+    backgroundColor: "var(--color-surface)",
+    border: "2px solid var(--color-primary-border)",
+    borderRadius: "0.9rem",
+    boxShadow: "0 0.75rem 1.5rem rgba(0,0,0,.25)",
+    padding: "0.85rem 1rem",
+    zIndex: 1050,
+    width: 320,
+    color: "var(--color-text)",
+};
+
+const backBubbleArrowStyle: CSSProperties = {
+    position: "absolute",
+    top: "-10px",
+    right: 24,
+    width: 0,
+    height: 0,
+    borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent",
+    borderBottom: "10px solid var(--color-primary-border)",
+};
+
+const backBubbleArrowInnerStyle: CSSProperties = {
+    position: "absolute",
+    top: "-8px",
+    right: 26,
+    width: 0,
+    height: 0,
+    borderLeft: "8px solid transparent",
+    borderRight: "8px solid transparent",
+    borderBottom: "8px solid var(--color-surface)",
+};
+
+// Theme-aware styles for the print prompt overlay/card
+const promptOverlayStyle: CSSProperties = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+    background: "rgba(0,0,0,0.35)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+};
+
+const promptCardStyle: CSSProperties = {
+    backgroundColor: "var(--color-surface)",
+    color: "var(--color-text)",
+    borderRadius: 12,
+    border: "1px solid var(--color-border)",
+    padding: 32,
+    minWidth: 350,
+    boxShadow: "0 4px 30px rgba(0,0,0,0.25)",
+};
 
 const DemoRapportsDisplay: React.FC = () => {
     const { t, i18n } = useTranslation("pages/Comparatif/rapportsDisplay");
@@ -157,38 +223,9 @@ const DemoRapportsDisplay: React.FC = () => {
 
                     {/* Guided bubble for CALCULATOR STEP 16: click Back to finish */}
                     {isCalculatorStep16 && (
-                        <div
-                            className="shadow-sm"
-                            style={{
-                                position: "absolute",
-                                top: "110%",
-                                right: 0,
-                                background: "#fff",
-                                border: "2px solid #f0ad4e",
-                                borderRadius: "0.9rem",
-                                boxShadow:
-                                    "0 0.75rem 1.5rem rgba(0,0,0,.25)",
-                                padding:
-                                    "0.85rem 1rem 0.85rem 1rem",
-                                zIndex: 1050,
-                                width: 320,
-                            }}
-                        >
-                            <div
-                                style={{
-                                    position: "absolute",
-                                    top: "-10px",
-                                    right: "24px",
-                                    width: 0,
-                                    height: 0,
-                                    borderLeft:
-                                        "10px solid transparent",
-                                    borderRight:
-                                        "10px solid transparent",
-                                    borderBottom:
-                                        "10px solid #f0ad4e",
-                                }}
-                            />
+                        <div style={backBubbleContainerStyle}>
+                            <div style={backBubbleArrowStyle} />
+                            <div style={backBubbleArrowInnerStyle} />
                             <div className="fw-semibold mb-1">
                                 {t(
                                     "demo.guide.calculator.step16.title",
@@ -214,30 +251,11 @@ const DemoRapportsDisplay: React.FC = () => {
 
             {/* Minimal modal for print details (only in normal mode) */}
             {showPrompt && (
-                <div
-                    style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 9999,
-                        background: "rgba(0,0,0,0.35)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
+                <div style={promptOverlayStyle}>
                     <form
                         onSubmit={handlePromptSubmit}
                         autoComplete="off"
-                        style={{
-                            background: "#fff",
-                            borderRadius: 12,
-                            padding: 32,
-                            minWidth: 350,
-                            boxShadow: "0 4px 30px rgba(0,0,0,0.17)",
-                        }}
+                        style={promptCardStyle}
                     >
                         <h4 className="mb-4">{t("prompt.title")}</h4>
                         <div
@@ -299,7 +317,7 @@ const DemoRapportsDisplay: React.FC = () => {
                             </button>
                             <button
                                 type="submit"
-                                className="btn btn.success"
+                                className="btn btn-success"
                             >
                                 {t("prompt.continuePrint")}
                             </button>

@@ -603,7 +603,7 @@ const ListeEpicerieEdit: React.FC = () => {
                             {t("addButtons.fromInvoices")}
                         </button>
                         <button
-                            className="btn btn-outline-primary"
+                            className="btn btn-outline-secondary"
                             onClick={() => setShowFreeModal(true)}
                         >
                             {t("addButtons.fromFree")}

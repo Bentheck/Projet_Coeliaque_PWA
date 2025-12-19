@@ -55,6 +55,19 @@
   "demo": {
     "badge": "DEMO",
     "subtitle": "This section uses local demo data only (no requests are sent to the server).",
-    "loading": "Loading demo…"
+    "loading": "Loading demo…",
+    "return": "Return to demo mode",
+    "grocery": {
+      "step2": {
+        "title": "Create your grocery list",
+        "body": "Click here to start a new grocery list in guided mode.",
+        "hint": "We will then help you add items from your invoices and favorite products."
+      },
+      "viewDemo": {
+        "title": "View the example list",
+        "body": "Click “View” to explore the grocery list with the items you just added.",
+        "hint": "You will then see how the list looks in view mode."
+      }
+    }
   }
 }
