@@ -167,7 +167,7 @@ export function FaqPage({ className = "" }: { className?: string }) {
     useEffect(() => {
         if (typeof document === "undefined") return;
 
-        document.documentElement.lang = "fr-ca";
+        document.documentElement.lang = SEO_LANG;
         setCanonicalToCurrentUrl();
         setRobots("index, follow");
 

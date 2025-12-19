@@ -78,9 +78,6 @@ export default function ContactPage() {
     const { t, i18n } = useTranslation("pages/FAQ/contact");
     const { user } = useAuth() as any;
 
-    const uiLang: "fr" | "en" =
-        i18n.language?.startsWith("fr") ? "fr" : "en";
-
     // ✅ SEO (FR/EN) without Helmet
     useEffect(() => {
         if (typeof document === "undefined") return;
@@ -103,7 +100,7 @@ export default function ContactPage() {
         if (typeof window !== "undefined") {
             upsertMetaByProperty("og:url", window.location.href);
         }
-    }, []); 
+    }, []);
 
     const [kind, setKind] = useState<ContactKind>("support");
     const [email, setEmail] = useState<string>("");
