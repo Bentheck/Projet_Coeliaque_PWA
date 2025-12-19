@@ -6,19 +6,17 @@
 
   "calculator": {
     "title": "Calculator",
-    "text": "Follow the steps below to simulate the full gluten-free tax credit process using demo data.",
-    "step1": "Invoices",
-    "step2": "Annual comparison",
-    "step3": "Tax report"
+    "text": "Follow the steps below to simulate the full gluten-free tax credit process using demo data."
   },
 
   "tour": {
     "calculator_switch": "Guided mode",
     "grocery_switch": "Guided mode"
   },
+  "backToHome": "Back to home",
 
   "cards_comparatif_title": "Annual comparison",
-  "cards_comparatif_text": "Edit a few gluten-free products (price, formats, units) to show how the comparison table is built.",
+  "cards_comparatif_text": "Edit a few gluten-free products (prices, formats, units) to show how the comparison table is built.",
   "cards_comparatif_button": "Open comparison",
 
   "cards_rapports_title": "Tax report",
@@ -48,6 +46,13 @@
           "body": "Now that your invoice is ready, open the comparison page to see how your gluten-free products compare to the reference products.",
           "hint": "Click this button to open the comparison for your current year."
         }
+      }
+    },
+    "grocery": {
+      "step1": {
+        "title": "Start a guided grocery list",
+        "body": "Enable guided mode, then click here to create a grocery list using your gluten-free products.",
+        "hint": "Click this button to continue to the next step."
       }
     }
   }

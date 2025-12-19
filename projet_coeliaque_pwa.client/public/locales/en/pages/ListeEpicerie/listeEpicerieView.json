@@ -62,6 +62,13 @@
   "demo": {
     "badge": "DEMO",
     "warning": "Demo mode — this list is built only from local demo data. No changes are sent to the server and your real data is never affected.",
-    "loading": "Loading demo…"
+    "loading": "Loading demo…",
+    "grocery": {
+      "viewBack": {
+        "title": "Return to demo home",
+        "body": "You’ve just viewed a sample grocery list. Go back to the main demo screen to see how everything fits together.",
+        "hint": "Click “Back” to finish this guided tour and return to the demo home page."
+      }
+    }
   }
 }

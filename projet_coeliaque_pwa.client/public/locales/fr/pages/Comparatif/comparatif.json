@@ -57,6 +57,7 @@
     "generateFailed": "Erreur lors de la génération du rapport."
   },
   "demo": {
+    "return": "Retour au mode démo",
     "badge": "DEMO",
     "warningTitle": "Mode démonstration",
     "warning": "Aucune donnée réelle n’est utilisée et aucune modification ne sera enregistrée.",

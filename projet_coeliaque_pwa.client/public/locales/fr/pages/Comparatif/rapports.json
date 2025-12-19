@@ -29,6 +29,7 @@
   "demo": {
     "badge": "DEMO",
     "warning": "Mode démonstration — la génération de rapports se fait uniquement sur les données locales (Dexie). Aucune requête n’est envoyée au serveur et vos rapports réels ne sont jamais modifiés.",
-    "loading": "Chargement de la démo…"
+    "loading": "Chargement de la démo…",
+    "return": "Retour au mode démo"
   }
 }

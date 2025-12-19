@@ -40,19 +40,20 @@ const emptyItem: Omit<FactureItem, "id"> = {
     wasOnSale: false,
 };
 
-// Shared bubble styles for this page (same visual language as Comparatif)
+// Shared bubble styles for this page (theme-aware)
 const bubbleContainerStyle: CSSProperties = {
     position: "absolute",
     top: "110%",
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#fffdf7",
-    border: "2px solid #ffc107",
+    backgroundColor: "var(--color-surface)",
+    border: "2px solid var(--color-primary-border)",
     borderRadius: "1rem",
     boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
     padding: "0.9rem 1.1rem",
     zIndex: 1050,
     width: 280,
+    color: "var(--color-text)",
 };
 
 const bubbleArrowUpStyle: CSSProperties = {
@@ -64,7 +65,7 @@ const bubbleArrowUpStyle: CSSProperties = {
     height: 0,
     borderLeft: "10px solid transparent",
     borderRight: "10px solid transparent",
-    borderBottom: "10px solid #ffc107",
+    borderBottom: "10px solid var(--color-primary-border)",
 };
 
 const bubbleArrowUpInnerStyle: CSSProperties = {
@@ -76,7 +77,7 @@ const bubbleArrowUpInnerStyle: CSSProperties = {
     height: 0,
     borderLeft: "8px solid transparent",
     borderRight: "8px solid transparent",
-    borderBottom: "8px solid #fffdf7",
+    borderBottom: "8px solid var(--color-surface)",
 };
 
 const bubbleArrowDownStyle: CSSProperties = {
@@ -88,7 +89,7 @@ const bubbleArrowDownStyle: CSSProperties = {
     height: 0,
     borderLeft: "10px solid transparent",
     borderRight: "10px solid transparent",
-    borderTop: "10px solid #ffc107",
+    borderTop: "10px solid var(--color-primary-border)",
 };
 
 const bubbleArrowDownInnerStyle: CSSProperties = {
@@ -100,7 +101,7 @@ const bubbleArrowDownInnerStyle: CSSProperties = {
     height: 0,
     borderLeft: "8px solid transparent",
     borderRight: "8px solid transparent",
-    borderTop: "8px solid #fffdf7",
+    borderTop: "8px solid var(--color-surface)",
 };
 
 export default function DemoFactureEdit() {
@@ -167,7 +168,6 @@ export default function DemoFactureEdit() {
     }, [cachedFacture, seedLoading]);
 
     // Coming from DemoFactures:
-    // Global mapping:
     // 1 = Home card
     // 2 = explanation on invoices list
     // 3 = highlight "View" on existing invoice
@@ -268,8 +268,7 @@ export default function DemoFactureEdit() {
         setModalTypeItem("");
         setModalForm(emptyItem);
 
-        // After adding the item, the next guided action is simply clicking "Save".
-        // (We keep the step numbering logic as-is; the bubble text is what changes.)
+        // After adding the item, the next guided action is clicking "Save".
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -291,7 +290,7 @@ export default function DemoFactureEdit() {
 
             // Guided tour: on Step 6, saving brings you back to DemoHome.
             if (isCalculatorTour && step === 6) {
-                nextStep(); // -> 7 (next: comparatif flow)
+                nextStep(); // -> 7
                 navigate("/demo");
             } else {
                 navigate("/demo/factures");
@@ -324,11 +323,11 @@ export default function DemoFactureEdit() {
         );
     }
 
-    // Local flags for each guided step on this page (global step mapping)
+    // Local flags for each guided step on this page
     const highlightAddItem = isCalculatorTour && step === 4; // click "Add item"
     const showModalStep1Bubble = isCalculatorTour && step === 5; // choose type
     const showModalStep2Bubble = isCalculatorTour && step === 6; // fill details
-    const showSaveBubble = isCalculatorTour && step === 6; // same logical step, different text ("Step 7" in the bubble)
+    const showSaveBubble = isCalculatorTour && step === 6; // same logical step
 
     return (
         <div className="container py-3">
@@ -412,7 +411,7 @@ export default function DemoFactureEdit() {
                                     {t("items.title")}
                                 </span>
 
-                                {/* Wrap button + bubble so we can absolutely-position the bubble */}
+                                {/* "Add item" button + bubble wrapper */}
                                 <span className="ms-2 position-relative">
                                     <Button
                                         variant="success"
@@ -435,7 +434,7 @@ export default function DemoFactureEdit() {
                                         <div
                                             style={{
                                                 ...bubbleContainerStyle,
-                                                fontSize: "0.875rem", // force body-small size, not h4 size
+                                                fontSize: "0.875rem",
                                             }}
                                         >
                                             <div style={bubbleArrowUpStyle} />
@@ -585,8 +584,7 @@ export default function DemoFactureEdit() {
                                                             handleItemChange(
                                                                 i,
                                                                 "prix",
-                                                                +e.target
-                                                                    .value
+                                                                +e.target.value
                                                             )
                                                         }
                                                         placeholder={t(
@@ -601,15 +599,12 @@ export default function DemoFactureEdit() {
                                                         className="form-control border-black rounded-2"
                                                         type="number"
                                                         step="0.01"
-                                                        value={
-                                                            item.poidsValeur
-                                                        }
+                                                        value={item.poidsValeur}
                                                         onChange={(e) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "poidsValeur",
-                                                                +e.target
-                                                                    .value
+                                                                +e.target.value
                                                             )
                                                         }
                                                         placeholder={t(
@@ -636,16 +631,14 @@ export default function DemoFactureEdit() {
                                                                 "placeholders.unitFallback"
                                                             )}
                                                         </option>
-                                                        {UNIT_OPTIONS.map(
-                                                            (u) => (
-                                                                <option
-                                                                    key={u}
-                                                                    value={u}
-                                                                >
-                                                                    {u}
-                                                                </option>
-                                                            )
-                                                        )}
+                                                        {UNIT_OPTIONS.map((u) => (
+                                                            <option
+                                                                key={u}
+                                                                value={u}
+                                                            >
+                                                                {u}
+                                                            </option>
+                                                        ))}
                                                     </select>
                                                 </td>
 
@@ -659,8 +652,7 @@ export default function DemoFactureEdit() {
                                                             handleItemChange(
                                                                 i,
                                                                 "quantite",
-                                                                +e.target
-                                                                    .value
+                                                                +e.target.value
                                                             )
                                                         }
                                                         placeholder={t(
@@ -674,15 +666,12 @@ export default function DemoFactureEdit() {
                                                     <input
                                                         className="form-check-input border-dark"
                                                         type="checkbox"
-                                                        checked={
-                                                            item.wasOnSale
-                                                        }
+                                                        checked={item.wasOnSale}
                                                         onChange={(e) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "wasOnSale",
-                                                                e.target
-                                                                    .checked
+                                                                e.target.checked
                                                             )
                                                         }
                                                         aria-label={t(
@@ -734,9 +723,7 @@ export default function DemoFactureEdit() {
                                                         <CreatableSelect
                                                             isClearable
                                                             menuPlacement="top"
-                                                            options={
-                                                                typeOptions
-                                                            }
+                                                            options={typeOptions}
                                                             value={
                                                                 item.typeItem
                                                                     ? {
@@ -764,32 +751,24 @@ export default function DemoFactureEdit() {
                                                                 ) as string
                                                             }
                                                             styles={{
-                                                                control: (
-                                                                    base
-                                                                ) => ({
+                                                                control: (base) => ({
                                                                     ...base,
                                                                     minHeight: 28,
                                                                     fontSize: 14,
                                                                 }),
                                                                 valueContainer:
-                                                                    (
-                                                                        base
-                                                                    ) => ({
+                                                                    (base) => ({
                                                                         ...base,
                                                                         padding:
                                                                             "0 6px",
                                                                     }),
-                                                                input: (
-                                                                    base
-                                                                ) => ({
+                                                                input: (base) => ({
                                                                     ...base,
                                                                     margin: 0,
                                                                     padding: 0,
                                                                 }),
                                                                 indicatorsContainer:
-                                                                    (
-                                                                        base
-                                                                    ) => ({
+                                                                    (base) => ({
                                                                         ...base,
                                                                         height: 22,
                                                                     }),
@@ -880,9 +859,7 @@ export default function DemoFactureEdit() {
                                                         </label>
                                                         <select
                                                             className="form-select form-select-sm border-black rounded-2"
-                                                            value={
-                                                                item.poidsUnite
-                                                            }
+                                                            value={item.poidsUnite}
                                                             onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
@@ -920,9 +897,7 @@ export default function DemoFactureEdit() {
                                                         <input
                                                             className="form-control form-control-sm border-black rounded-2"
                                                             type="number"
-                                                            value={
-                                                                item.quantite
-                                                            }
+                                                            value={item.quantite}
                                                             onChange={(e) =>
                                                                 handleItemChange(
                                                                     i,
@@ -1029,15 +1004,11 @@ export default function DemoFactureEdit() {
                                                 "translate(-50%, -110%)",
                                         }}
                                     >
+                                        <div style={bubbleArrowDownStyle} />
                                         <div
-                                            style={{
-                                                ...bubbleArrowDownStyle,
-                                            }}
-                                        />
-                                        <div
-                                            style={{
-                                                ...bubbleArrowDownInnerStyle,
-                                            }}
+                                            style={
+                                                bubbleArrowDownInnerStyle
+                                            }
                                         />
                                         <strong className="d-block mb-1 small fw-semibold">
                                             {t(
@@ -1091,7 +1062,16 @@ export default function DemoFactureEdit() {
                 <Modal.Body>
                     {/* Guided text for modal step 1 (choose type) */}
                     {modalStep === 1 && showModalStep1Bubble && (
-                        <div style={{ ...bubbleContainerStyle, position: "relative", top: 0, left: 0, transform: "none", width: "100%" }}>
+                        <div
+                            style={{
+                                ...bubbleContainerStyle,
+                                position: "relative",
+                                top: 0,
+                                left: 0,
+                                transform: "none",
+                                width: "100%",
+                            }}
+                        >
                             <strong className="d-block mb-1 small fw-semibold">
                                 {t("tour.calc_modal_step1_title")}
                             </strong>

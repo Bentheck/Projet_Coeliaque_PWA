@@ -29,7 +29,7 @@
       "emptyType": "No products for this type.",
       "quickSearchLabel": "Quick search",
       "quickSearchGluten": "Gluten-free version",
-      "quickSearchHint": "Use the type (or the name) as a keyword, for example ‘bread’, ‘pasta’, etc. If ‘Gluten-free version’ is checked, ‘gluten-free’ is automatically added to the search. Please note that searching for ‘gluten-free’ can still return products that contain gluten, so take the time to double-check.",
+      "quickSearchHint": "Use the type (or name) as a keyword, e.g. “bread”, “pasta”. If “Gluten-free version” is checked, “gluten-free” is added automatically. Note that gluten-free searches may still return products containing gluten — always double-check.",
       "quickSearchButtons": {
         "walmart": "Walmart",
         "maxi": "Maxi",
@@ -83,9 +83,9 @@
   "sections": {
     "itemsInList": "Items in this list",
     "fromInvoices": "From invoices",
-    "noInvoiceItems": "No invoice items yet.",
+    "noInvoiceItems": "No invoice items.",
     "freeProducts": "Free products",
-    "noFreeProducts": "No free products yet."
+    "noFreeProducts": "No free products."
   },
   "common": {
     "onSale": "On sale",
@@ -102,8 +102,44 @@
   "demo": {
     "badge": "DEMO",
     "warning": "Demo mode — this list is stored only on this device. No changes are sent to the server and your real data is never affected.",
-    "totalHint": "(Demo — total estimated only from local demo data)",
+    "totalHint": "(Demo — estimated total based on local demo data only)",
     "saveError": "An error occurred while saving the list (demo). Please try again.",
-    "loading": "Loading demo…"
+    "loading": "Loading demo…",
+
+    "quickSearchDisabled": "In this demo, quick search buttons are shown for illustration but remain disabled.",
+    "quickSearchDisabledTitle": "Quick search unavailable in demo mode",
+
+    "grocery": {
+      "fromInvoices": {
+        "title": "Add items from your invoices",
+        "body": "Use this button to automatically reuse gluten-free products already found in your invoices.",
+        "hint": "Click to open the list of invoice items."
+      },
+      "factureModal": {
+        "title": "Choose items to reuse",
+        "body": "Select a product type, then add items you want to automatically include in your grocery list.",
+        "hint": "Click “Add to list” next to the items you want."
+      },
+      "fromFree": {
+        "title": "Add custom products",
+        "body": "Create or reuse products you buy often, even if they don’t yet appear in your invoices.",
+        "hint": "Click to open your free products catalog."
+      },
+      "freeModal": {
+        "title": "Add or reuse favorite products",
+        "body": "Create recurring products (bread, milk, snacks, etc.) or choose from those you already defined.",
+        "hint": "Select a type, then add a product."
+      },
+      "freeType": {
+        "title": "Add a product not found in invoices",
+        "body": "Choose a type (bread, milk, snacks, etc.), then add a product to your list.",
+        "hint": "Select a type, then click “Add”."
+      },
+      "save": {
+        "title": "Save this grocery list",
+        "body": "Your list is ready. Save it so you can reuse it later.",
+        "hint": "Click “Save” to return to the lists screen."
+      }
+    }
   }
 }

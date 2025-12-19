@@ -26,13 +26,14 @@ const bubbleContainerStyle: CSSProperties = {
     top: "110%",
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#fffdf7",
-    border: "2px solid #ffc107",
+    backgroundColor: "var(--color-surface)",
+    border: "2px solid var(--color-primary-border)",
     borderRadius: "1rem",
     boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
     padding: "0.9rem 1.1rem",
     zIndex: 1050,
     width: 280,
+    color: "var(--color-text)",
 };
 
 const bubbleArrowStyle: CSSProperties = {
@@ -44,7 +45,7 @@ const bubbleArrowStyle: CSSProperties = {
     height: 0,
     borderLeft: "10px solid transparent",
     borderRight: "10px solid transparent",
-    borderBottom: "10px solid #ffc107",
+    borderBottom: "10px solid var(--color-primary-border)",
 };
 
 const bubbleArrowInnerStyle: CSSProperties = {
@@ -56,7 +57,7 @@ const bubbleArrowInnerStyle: CSSProperties = {
     height: 0,
     borderLeft: "8px solid transparent",
     borderRight: "8px solid transparent",
-    borderBottom: "8px solid #fffdf7",
+    borderBottom: "8px solid var(--color-surface)",
 };
 
 const DemoComparatif: React.FC = () => {

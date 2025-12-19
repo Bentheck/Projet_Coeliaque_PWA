@@ -29,6 +29,22 @@ function useOnlineStatus() {
     return online;
 }
 
+function getCurrentTheme(): "light" | "dark" {
+    if (typeof document === "undefined") return "light";
+    const attr = document.documentElement.getAttribute("data-theme");
+    return attr === "dark" ? "dark" : "light";
+}
+
+function applyTheme(next: "light" | "dark") {
+    if (typeof document === "undefined") return;
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+        localStorage.setItem("theme", next);
+    } catch {
+        // ignore
+    }
+}
+
 /**
  * Prelaunch homepage:
  * - Used while site is "NotLaunched" for anonymous users.
@@ -38,7 +54,7 @@ function useOnlineStatus() {
  * - Only demo + tester login buttons (no extra register/login/demo CTAs).
  */
 const PrelaunchHome: React.FC = () => {
-    const { t } = useTranslation("pages/home");
+    const { t, i18n } = useTranslation("pages/home");
     const isOnline = useOnlineStatus();
     const { user, membershipStatus } = useAuth();
 
@@ -47,6 +63,26 @@ const PrelaunchHome: React.FC = () => {
 
     // Shared "now" tick for both offline TTL and launch countdown
     const [now, setNow] = React.useState<number>(() => Date.now());
+
+    // Theme state (kept in sync with <html data-theme="...">)
+    const [theme, setTheme] = React.useState<"light" | "dark">(() =>
+        getCurrentTheme()
+    );
+
+    React.useEffect(() => {
+        // On mount: if you already persisted theme elsewhere, respect it
+        try {
+            const saved = localStorage.getItem("theme");
+            if (saved === "light" || saved === "dark") {
+                applyTheme(saved);
+                setTheme(saved);
+            } else {
+                setTheme(getCurrentTheme());
+            }
+        } catch {
+            setTheme(getCurrentTheme());
+        }
+    }, []);
 
     React.useEffect(() => {
         let mounted = true;
@@ -104,8 +140,7 @@ const PrelaunchHome: React.FC = () => {
     // -------------------------
     const isLoggedIn = !!user;
     const hasActiveMembership = membershipStatus === "Active";
-    const showOfflineCountdown =
-        !isOnline && isLoggedIn && !!status && status.ok === true;
+    const showOfflineCountdown = !isOnline && isLoggedIn && !!status && status.ok === true;
 
     let hh = "--",
         mm = "--",
@@ -122,27 +157,18 @@ const PrelaunchHome: React.FC = () => {
     }
 
     const ttlHours =
-        status && status.ok === true
-            ? Math.round(status.ttlMs / 3_600_000)
-            : 24;
+        status && status.ok === true ? Math.round(status.ttlMs / 3_600_000) : 24;
 
-    const cachedEntries =
-        status && status.ok === true ? status.entries : null;
+    const cachedEntries = status && status.ok === true ? status.entries : null;
 
     const displayName =
-        (user as any)?.displayName ??
-        (user as any)?.name ??
-        (user as any)?.email ??
-        null;
+        (user as any)?.displayName ?? (user as any)?.name ?? (user as any)?.email ?? null;
 
     // -------------------------
     // Launch countdown (prelaunch-specific)
     // Target: January 1, 2026, 15:00 EST = 20:00 UTC
     // -------------------------
-    const launchTargetUtcMs = React.useMemo(
-        () => Date.UTC(2026, 0, 1, 20, 0, 0),
-        []
-    );
+    const launchTargetUtcMs = React.useMemo(() => Date.UTC(2026, 0, 1, 20, 0, 0), []);
 
     const launchRemainingMs = Math.max(0, launchTargetUtcMs - now);
     const launchTotalSeconds = Math.floor(launchRemainingMs / 1000);
@@ -170,11 +196,22 @@ const PrelaunchHome: React.FC = () => {
         heroTitle = t("welcome.loggedInTitle", { name: displayName ?? "" });
         heroSubtitle = t("welcome.loggedInSubtitle");
     } else {
-        heroTitle = t("welcome.loggedInNoMembershipTitle", {
-            name: displayName ?? "",
-        });
+        heroTitle = t("welcome.loggedInNoMembershipTitle", { name: displayName ?? "" });
         heroSubtitle = t("welcome.loggedInNoMembershipSubtitle");
     }
+
+    const currentLang = (i18n.language || "fr").toLowerCase().startsWith("en") ? "en" : "fr";
+
+    const setLang = async (lang: "fr" | "en") => {
+        if (lang === currentLang) return;
+        await i18n.changeLanguage(lang);
+    };
+
+    const toggleTheme = () => {
+        const next: "light" | "dark" = theme === "dark" ? "light" : "dark";
+        applyTheme(next);
+        setTheme(next);
+    };
 
     return (
         <div className="prelaunch-page bg-light min-vh-100 d-flex flex-column">
@@ -183,13 +220,44 @@ const PrelaunchHome: React.FC = () => {
                 <div className="container">
                     <div className="card border-0 shadow-sm section-highlight-primary border-accent-primary">
                         <div className="card-body py-4 py-md-5">
+                            {/* Controls row (no new CSS; Bootstrap only) */}
+                            <div className="d-flex justify-content-end gap-2 mb-3">
+                                <div className="btn-group" role="group" aria-label="Language">
+                                    <button
+                                        type="button"
+                                        className={`btn btn-sm ${currentLang === "fr" ? "btn-primary" : "btn-outline-primary"
+                                            }`}
+                                        onClick={() => void setLang("fr")}
+                                    >
+                                        FR
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`btn btn-sm ${currentLang === "en" ? "btn-primary" : "btn-outline-primary"
+                                            }`}
+                                        onClick={() => void setLang("en")}
+                                    >
+                                        EN
+                                    </button>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={toggleTheme}
+                                    aria-label="Toggle theme"
+                                >
+                                    <i className={`bi ${theme === "dark" ? "bi-moon-stars" : "bi-sun"} me-2`} />
+                                    {theme === "dark"
+                                        ? t("ui.theme.dark", "Sombre")
+                                        : t("ui.theme.light", "Clair")}
+                                </button>
+                            </div>
+
                             <div className="row align-items-center">
                                 <div className="col-lg-7 mb-4 mb-lg-0">
                                     <h1 className="h2 mb-3 fw-bold">
-                                        {t(
-                                            "prelaunch.title",
-                                            "Services Cœliaque arrive bientôt"
-                                        )}
+                                        {t("prelaunch.title", "Services Cœliaque arrive bientôt")}
                                     </h1>
                                     <p className="text-muted mb-3">
                                         {t(
@@ -199,28 +267,16 @@ const PrelaunchHome: React.FC = () => {
                                     </p>
 
                                     <div className="d-flex flex-wrap gap-2 mt-3">
-                                        <Link
-                                            to="/demo"
-                                            className="btn btn-primary btn-lg"
-                                        >
+                                        <Link to="/demo" className="btn btn-primary btn-lg">
                                             <i className="bi bi-stars me-2" />
-                                            {t(
-                                                "prelaunch.cta.demo",
-                                                "Essayer la démo guidée"
-                                            )}
+                                            {t("prelaunch.cta.demo", "Essayer la démo guidée")}
                                         </Link>
 
                                         {/* Tester login button (for people with test accounts) */}
                                         {!isLoggedIn && (
-                                            <Link
-                                                to="/login"
-                                                className="btn btn-outline-secondary btn-lg"
-                                            >
+                                            <Link to="/login" className="btn btn-outline-secondary btn-lg">
                                                 <i className="bi bi-door-open me-2" />
-                                                {t(
-                                                    "prelaunch.cta.testerLogin",
-                                                    "Connexion testeur"
-                                                )}
+                                                {t("prelaunch.cta.testerLogin", "Connexion testeur")}
                                             </Link>
                                         )}
                                     </div>
@@ -230,72 +286,38 @@ const PrelaunchHome: React.FC = () => {
                                     <div className="card card--tinted h-100 shadow-sm border-0 section-highlight-mint border-accent-primary">
                                         <div className="card-body text-center">
                                             <p className="text-muted mb-2">
-                                                {t(
-                                                    "prelaunch.countdownLabel",
-                                                    "Lancement dans"
-                                                )}
+                                                {t("prelaunch.countdownLabel", "Lancement dans")}
                                             </p>
 
                                             {launchReached ? (
                                                 <div className="display-6 fw-bold text-success">
-                                                    {t(
-                                                        "prelaunch.launched",
-                                                        "C’est parti !"
-                                                    )}
+                                                    {t("prelaunch.launched", "C’est parti !")}
                                                 </div>
                                             ) : (
                                                 <>
                                                     <div className="d-flex justify-content-center gap-3 mb-2">
                                                         <div className="text-center">
-                                                            <div className="h2 fw-bold">
-                                                                {
-                                                                    launchDaysStr
-                                                                }
-                                                            </div>
+                                                            <div className="h2 fw-bold">{launchDaysStr}</div>
                                                             <small className="text-muted text-uppercase">
-                                                                {t(
-                                                                    "prelaunch.days",
-                                                                    "jours"
-                                                                )}
+                                                                {t("prelaunch.days", "jours")}
                                                             </small>
                                                         </div>
                                                         <div className="text-center">
-                                                            <div className="h2 fw-bold">
-                                                                {
-                                                                    launchHoursStr
-                                                                }
-                                                            </div>
+                                                            <div className="h2 fw-bold">{launchHoursStr}</div>
                                                             <small className="text-muted text-uppercase">
-                                                                {t(
-                                                                    "prelaunch.hours",
-                                                                    "heures"
-                                                                )}
+                                                                {t("prelaunch.hours", "heures")}
                                                             </small>
                                                         </div>
                                                         <div className="text-center">
-                                                            <div className="h2 fw-bold">
-                                                                {
-                                                                    launchMinutesStr
-                                                                }
-                                                            </div>
+                                                            <div className="h2 fw-bold">{launchMinutesStr}</div>
                                                             <small className="text-muted text-uppercase">
-                                                                {t(
-                                                                    "prelaunch.minutes",
-                                                                    "min"
-                                                                )}
+                                                                {t("prelaunch.minutes", "min")}
                                                             </small>
                                                         </div>
                                                         <div className="text-center">
-                                                            <div className="h2 fw-bold">
-                                                                {
-                                                                    launchSecondsStr
-                                                                }
-                                                            </div>
+                                                            <div className="h2 fw-bold">{launchSecondsStr}</div>
                                                             <small className="text-muted text-uppercase">
-                                                                {t(
-                                                                    "prelaunch.seconds",
-                                                                    "sec"
-                                                                )}
+                                                                {t("prelaunch.seconds", "sec")}
                                                             </small>
                                                         </div>
                                                     </div>
@@ -325,12 +347,8 @@ const PrelaunchHome: React.FC = () => {
                             <div className="row align-items-center">
                                 {/* Left side: hero text ONLY (no extra CTAs for prelaunch) */}
                                 <div className="col-lg-7 mb-4 mb-lg-0 text-center text-lg-start">
-                                    <h2 className="display-6 mb-3 fw-bold">
-                                        {heroTitle}
-                                    </h2>
-                                    <p className="lead text-muted mb-4">
-                                        {heroSubtitle}
-                                    </p>
+                                    <h2 className="display-6 mb-3 fw-bold">{heroTitle}</h2>
+                                    <p className="lead text-muted mb-4">{heroSubtitle}</p>
 
                                     <p className="text-muted mt-3 small d-flex align-items-center justify-content-center justify-content-lg-start">
                                         <i className="bi bi-wifi-off me-2" />
@@ -346,14 +364,10 @@ const PrelaunchHome: React.FC = () => {
                                                 <div className="card-body">
                                                     <h2 className="h5 d-flex align-items-center mb-2">
                                                         <i className="bi bi-calculator me-2" />
-                                                        {t(
-                                                            "features.calculator.title"
-                                                        )}
+                                                        {t("features.calculator.title")}
                                                     </h2>
                                                     <p className="text-muted mb-0">
-                                                        {t(
-                                                            "features.calculator.body"
-                                                        )}
+                                                        {t("features.calculator.body")}
                                                     </p>
                                                 </div>
                                             </div>
@@ -364,14 +378,10 @@ const PrelaunchHome: React.FC = () => {
                                                 <div className="card-body">
                                                     <h2 className="h5 d-flex align-items-center mb-2">
                                                         <i className="bi bi-cart-check me-2" />
-                                                        {t(
-                                                            "features.grocery.title"
-                                                        )}
+                                                        {t("features.grocery.title")}
                                                     </h2>
                                                     <p className="text-muted mb-0">
-                                                        {t(
-                                                            "features.grocery.body"
-                                                        )}
+                                                        {t("features.grocery.body")}
                                                     </p>
                                                 </div>
                                             </div>
@@ -382,14 +392,10 @@ const PrelaunchHome: React.FC = () => {
                                                 <div className="card-body">
                                                     <h2 className="h5 d-flex align-items-center mb-2">
                                                         <i className="bi bi-chat-dots me-2" />
-                                                        {t(
-                                                            "features.community.title"
-                                                        )}
+                                                        {t("features.community.title")}
                                                     </h2>
                                                     <p className="text-muted mb-0">
-                                                        {t(
-                                                            "features.community.body"
-                                                        )}
+                                                        {t("features.community.body")}
                                                     </p>
                                                 </div>
                                             </div>
@@ -405,29 +411,18 @@ const PrelaunchHome: React.FC = () => {
                                         <div className="card section-highlight-mint">
                                             <div className="card-header d-flex align-items-center justify-content-between">
                                                 <span className="d-inline-flex align-items-center gap-2">
-                                                    <i
-                                                        className="bi bi-hdd-network"
-                                                        aria-hidden="true"
-                                                    />
-                                                    <span>
-                                                        {t(
-                                                            "offline.card.title"
-                                                        )}
-                                                    </span>
+                                                    <i className="bi bi-hdd-network" aria-hidden="true" />
+                                                    <span>{t("offline.card.title")}</span>
                                                 </span>
                                                 <span className="pill-highlight-mint">
-                                                    <i
-                                                        className="bi bi-wifi-off"
-                                                        aria-hidden="true"
-                                                    />
+                                                    <i className="bi bi-wifi-off" aria-hidden="true" />
                                                     {t("offline.badge")}
                                                 </span>
                                             </div>
 
                                             <div className="card-body text-center offline-countdown-box">
                                                 <div
-                                                    className={`offline-countdown-digits ${deadlineMs &&
-                                                            deadlineMs > now
+                                                    className={`offline-countdown-digits ${deadlineMs && deadlineMs > now
                                                             ? "text-success"
                                                             : "text-danger"
                                                         }`}
@@ -437,32 +432,16 @@ const PrelaunchHome: React.FC = () => {
                                                     {hh}:{mm}:{ss}
                                                 </div>
                                                 <div className="text-muted mt-2">
-                                                    {deadlineMs &&
-                                                        deadlineMs > now
-                                                        ? t(
-                                                            "offline.status.available"
-                                                        )
-                                                        : t(
-                                                            "offline.status.expired"
-                                                        )}
+                                                    {deadlineMs && deadlineMs > now
+                                                        ? t("offline.status.available")
+                                                        : t("offline.status.expired")}
                                                 </div>
                                             </div>
 
                                             <div className="card-footer text-muted small d-flex justify-content-between">
-                                                <span>
-                                                    {t("offline.footer.ttl", {
-                                                        hours: ttlHours,
-                                                    })}
-                                                </span>
+                                                <span>{t("offline.footer.ttl", { hours: ttlHours })}</span>
                                                 {cachedEntries != null ? (
-                                                    <span>
-                                                        {t(
-                                                            "offline.footer.cached",
-                                                            {
-                                                                count: cachedEntries,
-                                                            }
-                                                        )}
-                                                    </span>
+                                                    <span>{t("offline.footer.cached", { count: cachedEntries })}</span>
                                                 ) : (
                                                     <span>&nbsp;</span>
                                                 )}
@@ -479,45 +458,33 @@ const PrelaunchHome: React.FC = () => {
                         <div className="card-body py-4 py-md-5">
                             <div className="row">
                                 <div className="col-lg-8 mb-4 mb-lg-0">
-                                    <h2 className="h3 mb-3">
-                                        {t("story.title")}
-                                    </h2>
-                                    <p className="text-muted">
-                                        {t("story.intro")}
-                                    </p>
+                                    <h2 className="h3 mb-3">{t("story.title")}</h2>
+                                    <p className="text-muted">{t("story.intro")}</p>
 
                                     <ul className="list-unstyled mt-3">
                                         <li className="mb-2 d-flex">
                                             <span className="me-2 text-primary">
                                                 <i className="bi bi-heart-fill" />
                                             </span>
-                                            <span>
-                                                {t("story.points.personal")}
-                                            </span>
+                                            <span>{t("story.points.personal")}</span>
                                         </li>
                                         <li className="mb-2 d-flex">
                                             <span className="me-2 text-primary">
                                                 <i className="bi bi-card-checklist" />
                                             </span>
-                                            <span>
-                                                {t("story.points.paperwork")}
-                                            </span>
+                                            <span>{t("story.points.paperwork")}</span>
                                         </li>
                                         <li className="mb-2 d-flex">
                                             <span className="me-2 text-primary">
                                                 <i className="bi bi-laptop" />
                                             </span>
-                                            <span>
-                                                {t("story.points.prototype")}
-                                            </span>
+                                            <span>{t("story.points.prototype")}</span>
                                         </li>
                                         <li className="mb-2 d-flex">
                                             <span className="me-2 text-primary">
                                                 <i className="bi bi-people" />
                                             </span>
-                                            <span>
-                                                {t("story.points.today")}
-                                            </span>
+                                            <span>{t("story.points.today")}</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -525,12 +492,8 @@ const PrelaunchHome: React.FC = () => {
                                 <div className="col-lg-4">
                                     <div className="card card--tinted h-100 shadow-sm border-0 section-highlight-primary border-accent-primary">
                                         <div className="card-body">
-                                            <h3 className="h5 mb-3">
-                                                {t("story.sideCard.title")}
-                                            </h3>
-                                            <p className="text-muted mb-0">
-                                                {t("story.sideCard.body")}
-                                            </p>
+                                            <h3 className="h5 mb-3">{t("story.sideCard.title")}</h3>
+                                            <p className="text-muted mb-0">{t("story.sideCard.body")}</p>
                                             {/* No "Créer un compte gratuit" or membership CTA in prelaunch */}
                                         </div>
                                     </div>

@@ -15,19 +15,21 @@ import { useDemoTour } from "./DemoTourContext";
 const REPORT_ROUTE = (annee: number) => `/demo/rapports/${annee}`;
 const EDIT_ROUTE = (annee: number) => `/demo/comparatif/${annee}`;
 
-/** Shared bubble style for this page (same look as DemoComparatif) */
+
+/** Shared bubble style for this page (same look as other demo bubbles, theme-aware) */
 const bubbleContainerStyle: CSSProperties = {
     position: "absolute",
     top: "110%",
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#fffdf7",
-    border: "2px solid #ffc107",
+    backgroundColor: "var(--color-surface)",
+    border: "2px solid var(--color-primary-border)",
     borderRadius: "1rem",
     boxShadow: "0 .5rem 1.25rem rgba(0,0,0,.25)",
     padding: "0.9rem 1.1rem",
     zIndex: 1050,
     width: 280,
+    color: "var(--color-text)",
 };
 
 const bubbleArrowStyle: CSSProperties = {
@@ -39,7 +41,7 @@ const bubbleArrowStyle: CSSProperties = {
     height: 0,
     borderLeft: "10px solid transparent",
     borderRight: "10px solid transparent",
-    borderBottom: "10px solid #ffc107",
+    borderBottom: "10px solid var(--color-primary-border)",
 };
 
 const bubbleArrowInnerStyle: CSSProperties = {
@@ -51,7 +53,7 @@ const bubbleArrowInnerStyle: CSSProperties = {
     height: 0,
     borderLeft: "8px solid transparent",
     borderRight: "8px solid transparent",
-    borderBottom: "8px solid #fffdf7",
+    borderBottom: "8px solid var(--color-surface)",
 };
 
 const DemoComparatifIndex: React.FC = () => {
@@ -148,7 +150,7 @@ const DemoComparatifIndex: React.FC = () => {
         }
     }, [isCalculatorTour, isStep8, isStep9, years, guideYear, nextStep]);
 
-    // FIX: when returning here later in the tour (e.g. at step 15),
+    // When returning here later in the tour (e.g. at step 15),
     // guideYear may be lost due to remounting. Restore it from the list.
     useEffect(() => {
         if (!isCalculatorTour) return;
@@ -284,6 +286,14 @@ const DemoComparatifIndex: React.FC = () => {
                 <p className="text-muted small text-center mb-2">
                     {t("demo.warning")}
                 </p>
+
+                <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary mb-2"
+                    onClick={() => navigate("/demo")}
+                >
+                    ← {t("demo.return", "Retour au mode démo")}
+                </button>
 
                 {/* "New comparison year" button (NOT used in calculator tour) */}
                 <div className="position-relative">
@@ -447,12 +457,11 @@ const DemoComparatifIndex: React.FC = () => {
                                                     )}
                                                 </span>
                                             )}
-                                            {successYear ===
-                                                y.annee && (
-                                                    <span className="ms-2 text-success">
-                                                        {t("status.ok")}
-                                                    </span>
-                                                )}
+                                            {successYear === y.annee && (
+                                                <span className="ms-2 text-success">
+                                                    {t("status.ok")}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
@@ -461,9 +470,10 @@ const DemoComparatifIndex: React.FC = () => {
                                         <div className="position-relative d-inline-block">
                                             <button
                                                 className={
-                                                    `btn btn-sm rounded-pill px-3 ${generated
-                                                        ? "btn-warning"
-                                                        : "btn-success"
+                                                    `btn btn-sm rounded-pill px-3 ${
+                                                        generated
+                                                            ? "btn-warning"
+                                                            : "btn-success"
                                                     }` +
                                                     (highlightGenerate
                                                         ? " border border-2 border-warning"
@@ -478,11 +488,11 @@ const DemoComparatifIndex: React.FC = () => {
                                                 title={
                                                     generated
                                                         ? (t(
-                                                            "buttons.generate.titleRegenerate"
-                                                        ) as string)
+                                                              "buttons.generate.titleRegenerate"
+                                                          ) as string)
                                                         : (t(
-                                                            "buttons.generate.titleGenerate"
-                                                        ) as string)
+                                                              "buttons.generate.titleGenerate"
+                                                          ) as string)
                                                 }
                                             >
                                                 {busy ? (
