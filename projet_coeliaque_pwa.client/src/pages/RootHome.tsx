@@ -1,7 +1,5 @@
 ﻿// PATH: src/pages/RootHome.tsx
-import React, { useEffect, useMemo } from "react";
-import { useTranslation } from "react-i18next";
-
+import React, { useEffect } from "react";
 import Home from "./Home";
 import PrelaunchHome from "./PrelaunchHome";
 
@@ -65,8 +63,6 @@ const RootHome: React.FC = () => {
     const { user } = useAuth();
     const { status } = useSiteStatus();
 
-    const { t, i18n } = useTranslation(["pages/Home/home", "common"]);
-
     const isLoggedIn = !!user;
 
     const isNotLaunchedForCurrentUser =
@@ -74,20 +70,11 @@ const RootHome: React.FC = () => {
         status.closedReason === "NotLaunched" &&
         status.isOpenForCurrentUser === false;
 
-    const uiLang: "fr" | "en" = useMemo(
-        () => (i18n.language?.startsWith("fr") ? "fr" : "en"),
-        [i18n.language]
-    );
-
-    const SEO_LANG: "fr-ca" = "fr-ca";
-
-    // Basic SEO for Home / Prelaunch home (no Helmet needed)
+    // ✅ SEO: French-only, stable for crawlers (same URL i18n)
     useEffect(() => {
         if (typeof document === "undefined") return;
 
-        // 🔒 SEO is French-only
         document.documentElement.lang = "fr-ca";
-
         setCanonicalToCurrentUrl();
         setRobots("index, follow");
 
@@ -114,11 +101,9 @@ const RootHome: React.FC = () => {
     }, [isNotLaunchedForCurrentUser, isLoggedIn]);
 
     if (isNotLaunchedForCurrentUser && !isLoggedIn) {
-        // Pre-launch public landing: no navbar (handled by Layout) + countdown + demo
         return <PrelaunchHome />;
     }
 
-    // Default: regular homepage
     return <Home />;
 };
 
