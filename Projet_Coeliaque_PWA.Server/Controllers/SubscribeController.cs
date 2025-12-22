@@ -60,6 +60,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<IActionResult> CreateCheckoutSession()
         {
             StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
+
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
@@ -68,7 +69,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return BadRequest(new { error = "Stripe price not configured." });
 
             var customerSvc = new CustomerService();
-            Customer customer;
 
             // Try to reuse an existing customer by email, otherwise create
             var existing = (await customerSvc.ListAsync(new CustomerListOptions
@@ -77,7 +77,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 Limit = 1
             })).FirstOrDefault();
 
-            customer = existing ?? await customerSvc.CreateAsync(new CustomerCreateOptions
+            var customer = existing ?? await customerSvc.CreateAsync(new CustomerCreateOptions
             {
                 Email = user.Email,
                 Metadata = new Dictionary<string, string> { ["user_id"] = user.Id }
@@ -88,21 +88,47 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 Customer = customer.Id,
                 Mode = "subscription",
                 PaymentMethodTypes = new List<string> { "card" },
+
                 LineItems = new List<SessionLineItemOptions>
-                {
-                    new SessionLineItemOptions { Price = priceId, Quantity = 1 }
-                },
+        {
+            new SessionLineItemOptions { Price = priceId, Quantity = 1 }
+        },
+
                 SuccessUrl = $"{_frontendUrl}/subscribe/success?session_id={{CHECKOUT_SESSION_ID}}",
                 CancelUrl = $"{_frontendUrl}/subscribe/cancel",
+
                 Metadata = new Dictionary<string, string> { ["user_id"] = user.Id },
+
                 SubscriptionData = new SessionSubscriptionDataOptions
                 {
                     Metadata = new Dictionary<string, string> { ["user_id"] = user.Id }
+                },
+
+                // =========================
+                // ✅ FIX FOR TAXES ON INVOICE
+                // =========================
+
+                // Forces Checkout to collect billing address (postal code/province needed for CA/QC taxes).
+                BillingAddressCollection = "required",
+
+                // Enables Stripe Tax computation for this Checkout Session / resulting subscription invoices.
+                AutomaticTax = new SessionAutomaticTaxOptions
+                {
+                    Enabled = true
+                },
+
+                // Strongly recommended: persist the collected address onto the Customer
+                // so renewals have location data even if session.customer_details isn't consulted.
+                CustomerUpdate = new SessionCustomerUpdateOptions
+                {
+                    Address = "auto",
+                    Name = "auto"
                 }
             };
 
             var sessionSvc = new SessionService();
             Session session;
+
             try
             {
                 session = await sessionSvc.CreateAsync(options);
