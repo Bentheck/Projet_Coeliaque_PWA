@@ -61,7 +61,10 @@ namespace Projet_coeliaque.Controllers
                 .OrderBy(c => c.SortOrder)
                 .ToListAsync();
 
-            // Mapping uses AutoMapper with lang passed via Items["lang"]
+            // Ensure questions are sorted
+            foreach (var c in entities)
+                c.Questions = c.Questions.OrderBy(x => x.SortOrder).ToList();
+
             var dtoCats = _mapper.Map<List<FaqCategoryDto>>(entities, opt =>
             {
                 opt.Items["lang"] = language;
@@ -98,26 +101,140 @@ namespace Projet_coeliaque.Controllers
         // ========== ADMIN (SuperAdmin) ==========
 
         /// <summary>
+        /// Admin tree: returns ALL categories (active + inactive) and ALL questions (active + inactive),
+        /// in the requested language. Optional search term filters questions similarly to the public endpoint.
+        /// </summary>
+        /// <param name="q">Optional search term.</param>
+        /// <param name="lang">"fr" or "en". Defaults to "fr".</param>
+        [HttpGet("admin/tree")]
+        [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(typeof(IEnumerable<FaqCategoryDto>), 200)]
+        public async Task<ActionResult<IEnumerable<FaqCategoryDto>>> GetAdminTree(
+            [FromQuery] string? q,
+            [FromQuery] string? lang = "fr")
+        {
+            var language = NormalizeLang(lang);
+
+            var entities = await _db.FaqCategories
+                .AsNoTracking()
+                // IMPORTANT: no IsActive filter here
+                .Include(c => c.Questions) // IMPORTANT: include inactive too
+                .OrderBy(c => c.SortOrder)
+                .ToListAsync();
+
+            // Ensure questions are sorted
+            foreach (var c in entities)
+                c.Questions = c.Questions.OrderBy(x => x.SortOrder).ToList();
+
+            var dtoCats = _mapper.Map<List<FaqCategoryDto>>(entities, opt =>
+            {
+                opt.Items["lang"] = language;
+            });
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+
+                dtoCats = dtoCats
+                    .Select(c =>
+                    {
+                        var filteredQuestions = c.Questions.Where(x =>
+                            (!string.IsNullOrEmpty(x.Question) &&
+                             x.Question.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(x.AnswerHtml) &&
+                             x.AnswerHtml.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(x.TagsCsv) &&
+                             x.TagsCsv.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(c.Name) &&
+                             c.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+                        ).ToList();
+
+                        c.Questions = filteredQuestions;
+                        return c;
+                    })
+                    .Where(c => c.Questions.Any())
+                    .ToList();
+            }
+
+            return Ok(dtoCats);
+        }
+
+        /// <summary>
         /// Returns all FAQ categories (admin summary).
+        /// Includes inactive categories. Active question counts are included via DTO.
         /// </summary>
         [HttpGet("categories")]
         [Authorize(Roles = "SuperAdmin")]
         [ProducesResponseType(typeof(IEnumerable<FaqCategorySummaryDto>), 200)]
         public async Task<ActionResult<IEnumerable<FaqCategorySummaryDto>>> GetCategories()
         {
-            var entities = await _db.FaqCategories
+            var cats = await _db.FaqCategories
                 .AsNoTracking()
                 .Include(c => c.Questions)
                 .OrderBy(c => c.SortOrder)
                 .ToListAsync();
 
-            var cats = _mapper.Map<List<FaqCategorySummaryDto>>(entities);
-            return Ok(cats);
+            // If your AutoMapper already maps summary, keep it; otherwise build manually.
+            var dto = _mapper.Map<List<FaqCategorySummaryDto>>(cats);
+            return Ok(dto);
+        }
+
+        [HttpGet("categories/full/{id:int}")]
+        [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetCategoryFull(int id)
+        {
+            var entity = await _db.FaqCategories
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (entity == null) return NotFound();
+
+            return Ok(new
+            {
+                entity.Id,
+                entity.Slug,
+                entity.NameFr,
+                entity.NameEn,
+                entity.DescriptionFr,
+                entity.DescriptionEn,
+                entity.SortOrder,
+                entity.IsActive
+            });
+        }
+
+        [HttpGet("questions/full/{id:int}")]
+        [Authorize(Roles = "SuperAdmin")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetQuestionFull(int id)
+        {
+            var entity = await _db.FaqQuestions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (entity == null) return NotFound();
+
+            return Ok(new
+            {
+                entity.Id,
+                entity.CategoryId,
+                entity.QuestionFr,
+                entity.QuestionEn,
+                entity.AnswerHtmlFr,
+                entity.AnswerHtmlEn,
+                entity.TagsCsvFr,
+                entity.TagsCsvEn,
+                entity.SortOrder,
+                entity.IsActive
+            });
         }
 
         [HttpPost("categories")]
         [Authorize(Roles = "SuperAdmin")]
         [ProducesResponseType(typeof(FaqCategorySummaryDto), 200)]
+        [ProducesResponseType(400)]
         [ProducesResponseType(409)]
         public async Task<ActionResult<FaqCategorySummaryDto>> CreateCategory([FromBody] UpsertCategoryInput input)
         {
@@ -125,7 +242,6 @@ namespace Projet_coeliaque.Controllers
                 return Conflict(new { message = "Slug déjà utilisé" });
 
             var entity = _mapper.Map<FaqCategory>(input);
-
             _db.FaqCategories.Add(entity);
             await _db.SaveChangesAsync();
 
@@ -144,8 +260,8 @@ namespace Projet_coeliaque.Controllers
                         entity.Slug,
                         entity.NameFr,
                         entity.NameEn,
-                        entity.SortOrder,
-                        entity.IsActive
+                        entity.IsActive,
+                        entity.SortOrder
                     });
             }
 
@@ -296,7 +412,6 @@ namespace Projet_coeliaque.Controllers
             _db.FaqQuestions.Add(entity);
             await _db.SaveChangesAsync();
 
-            // For admin we can default to FR view
             var dto = _mapper.Map<FaqQuestionDto>(entity, opt => opt.Items["lang"] = "fr");
 
             var uid = CurrentUserId;
@@ -465,50 +580,6 @@ namespace Projet_coeliaque.Controllers
 
             var dto = _mapper.Map<FaqCategorySummaryDto>(entity);
             return Ok(dto);
-        }
-
-        // ---------- Full bilingual payloads for admin editing ----------
-
-        [HttpGet("questions/full/{id:int}")]
-        [Authorize(Roles = "SuperAdmin")]
-        public async Task<ActionResult<object>> GetFullQuestion(int id)
-        {
-            var q = await _db.FaqQuestions.FirstOrDefaultAsync(x => x.Id == id);
-            if (q == null) return NotFound();
-
-            return Ok(new
-            {
-                q.Id,
-                q.CategoryId,
-                QuestionFr = q.QuestionFr,
-                QuestionEn = q.QuestionEn,
-                AnswerHtmlFr = q.AnswerHtmlFr,
-                AnswerHtmlEn = q.AnswerHtmlEn,
-                TagsCsvFr = q.TagsCsvFr,
-                TagsCsvEn = q.TagsCsvEn,
-                q.SortOrder,
-                q.IsActive
-            });
-        }
-
-        [HttpGet("categories/full/{id:int}")]
-        [Authorize(Roles = "SuperAdmin")]
-        public async Task<ActionResult<object>> GetFullCategory(int id)
-        {
-            var c = await _db.FaqCategories.FirstOrDefaultAsync(x => x.Id == id);
-            if (c == null) return NotFound();
-
-            return Ok(new
-            {
-                c.Id,
-                NameFr = c.NameFr,
-                NameEn = c.NameEn,
-                c.Slug,
-                DescriptionFr = c.DescriptionFr,
-                DescriptionEn = c.DescriptionEn,
-                c.SortOrder,
-                c.IsActive
-            });
         }
     }
 }
