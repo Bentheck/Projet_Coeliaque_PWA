@@ -370,14 +370,9 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
     const [tree, setTree] = useState<FaqCategoryDto[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Right-pane preview: subscribe to Dexie tree (FR content)
-    useEffect(() => {
-        const sub = repo.getFaqTree("fr").subscribe({
-            next: (val: FaqCategoryDto[]) => setTree(val),
-            error: () => setTree([]),
-        });
-        return () => sub.unsubscribe();
-    }, []);
+    // IMPORTANT:
+    // DO NOT subscribe the ADMIN tree to Dexie.
+    // Dexie stores the PUBLIC FAQ tree (active-only) and would overwrite inactive items.
 
     const refresh = async () => {
         setLoading(true);
@@ -387,10 +382,15 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
                     credentials: "include",
                     headers: { Accept: "application/json" },
                 }),
-                fetch(q ? `/api/faq?q=${encodeURIComponent(q)}` : "/api/faq", {
-                    credentials: "include",
-                    headers: { Accept: "application/json" },
-                }),
+                fetch(
+                    q
+                        ? `/api/faq/admin/tree?lang=fr&q=${encodeURIComponent(q)}`
+                        : "/api/faq/admin/tree?lang=fr",
+                    {
+                        credentials: "include",
+                        headers: { Accept: "application/json" },
+                    }
+                ),
             ]);
 
             const cJson = (await cRes.json()) as FaqCategorySummaryDto[];
@@ -399,7 +399,7 @@ export function FaqAdmin({ className = "" }: { className?: string }) {
             setCats(cJson);
             setTree(tJson);
 
-            // Keep Dexie in sync (FR)
+            // Keep Dexie in sync (FR) for the PUBLIC FAQ page
             await syncDown({ faqLang: "fr" });
         } finally {
             setLoading(false);
