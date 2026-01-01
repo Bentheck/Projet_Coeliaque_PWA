@@ -2,20 +2,45 @@
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Projet_Coeliaque_PWA.Server.Models
 {
     public class ForumCategory
     {
         public int Id { get; set; }
-        public string Slug { get; set; } = default!;
-        public string Name { get; set; } = default!;
+
+        [Required, MaxLength(80)]
+        public string Slug { get; set; } = "";
+
+        [Required, MaxLength(120)]
+        public string Name { get; set; } = "";
+
+        [MaxLength(500)]
         public string? Description { get; set; }
-        public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+
+        public DateTime CreatedUtc { get; set; }
+
         public string? CreatedByUserId { get; set; }
 
-        // NEW: forum language ("fr" or "en")
+        // "fr" or "en"
+        [Required, MaxLength(2)]
         public string Language { get; set; } = "fr";
+
+        /// <summary>
+        /// If false, the category is hidden from the public (but will still be visible in the admin panel).
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Category is visible/usable only to authenticated users.
+        /// </summary>
+        public bool MembersOnly { get; set; } = false;
+
+        /// <summary>
+        /// Only admins/mods can create threads in this category (members can still reply).
+        /// </summary>
+        public bool AdminOnlyThreadCreation { get; set; } = false;
 
         public ICollection<ForumThread> Threads { get; set; } = new List<ForumThread>();
     }

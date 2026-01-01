@@ -10,7 +10,9 @@
     "backToLanguage": "Back to language selection"
   },
   "badges": {
-    "threads_one": "{{count}} thread",
-    "threads_other": "{{count}} threads"
+    "threads": "{{count}} thread",
+    "threads_other": "{{count}} threads",
+    "membersOnly": "Members only",
+    "adminOnly": "Threads can be created by admins only"
   }
 }

@@ -131,7 +131,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var nextSlug = (input?.Slug ?? "").Trim().ToLowerInvariant();
             var nextName = (input?.Name ?? "").Trim();
             var nextDesc = string.IsNullOrWhiteSpace(input?.Description) ? null : input!.Description!.Trim();
-            var nextLangRaw = string.IsNullOrWhiteSpace(input?.Language) ? cat.Language : input!.Language!.Trim().ToLowerInvariant();
+            var nextLangRaw = string.IsNullOrWhiteSpace(input?.Language)
+                ? cat.Language
+                : input!.Language!.Trim().ToLowerInvariant();
             var nextLang = nextLangRaw == "en" ? "en" : "fr";
 
             if (string.IsNullOrWhiteSpace(nextSlug) || string.IsNullOrWhiteSpace(nextName))

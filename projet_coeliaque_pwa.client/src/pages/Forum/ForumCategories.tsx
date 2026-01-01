@@ -141,6 +141,22 @@ const ForumCategories: React.FC = () => {
                                         )}
                                     </h5>
 
+                                    {/* Badges for flags */}
+                                    {(c.membersOnly || c.adminOnlyThreadCreation) && (
+                                        <div className="mb-2 d-flex flex-wrap gap-2">
+                                            {c.membersOnly && (
+                                                <span className="badge rounded-pill bg-secondary">
+                                                    {t("badges.membersOnly")}
+                                                </span>
+                                            )}
+                                            {c.adminOnlyThreadCreation && (
+                                                <span className="badge rounded-pill bg-warning text-dark">
+                                                    {t("badges.adminOnly")}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <p className="card-text text-muted flex-grow-1 mb-3">
                                         {c.description || "—"}
                                     </p>

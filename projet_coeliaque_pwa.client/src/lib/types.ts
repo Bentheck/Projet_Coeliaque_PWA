@@ -15,13 +15,21 @@ export type UserProfileDto = {
 // Forum category container (e.g., "General", "Support")
 export type ForumCategoryDto = {
     id: number;
-    slug: string;            // URL-friendly identifier
+    slug: string;
     name: string;
     description?: string | null;
-    threadCount: number;     // Number of threads in this category
+    language?: string | null;
 
-    // NEW: language code from backend ("fr" or "en")
-    language: string;
+    // Visibility flags
+    membersOnly?: boolean;
+    adminOnlyThreadCreation?: boolean;
+    isActive?: boolean;
+
+    // Stats
+    threadCount: number;
+
+    // Computed per-request by the backend for the current user
+    canCreateThread?: boolean;
 };
 
 // Lightweight thread listing (for category pages)

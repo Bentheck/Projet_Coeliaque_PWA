@@ -80,8 +80,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [ProducesResponseType(typeof(IEnumerable<ForumCategoryDto>), 200)]
         public async Task<ActionResult> GetCategories([FromQuery] string? lang = null)
         {
+            var userId = _um.GetUserId(User);
+            var isAuthed = User?.Identity?.IsAuthenticated == true;
+            var isAdmin = await IsAdminAsync(userId);
+
             var q = _db.ForumCategories.AsNoTracking();
 
+            // Hide MembersOnly categories from anonymous users
+            if (!isAuthed)
+            {
+                q = q.Where(c => !c.MembersOnly);
+            }
+
+            // Optional language filter
             if (!string.IsNullOrWhiteSpace(lang))
             {
                 var norm = lang.Trim().ToLowerInvariant();
@@ -92,7 +103,28 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             var list = await q
-                .ProjectTo<ForumCategoryDto>(_mapper.ConfigurationProvider)
+                .OrderBy(c => c.Name)
+                .Select(c => new ForumCategoryDto
+                {
+                    Id = c.Id,
+                    Slug = c.Slug,
+                    Name = c.Name,
+                    Description = c.Description,
+                    Language = c.Language,
+
+                    MembersOnly = c.MembersOnly,
+                    AdminOnlyThreadCreation = c.AdminOnlyThreadCreation,
+                    IsActive = c.IsActive,
+
+                    ThreadCount = c.Threads.Count(),
+
+                    // Only authenticated users, only active categories,
+                    // and if AdminOnlyThreadCreation then user must be forum admin
+                    CanCreateThread =
+                        isAuthed &&
+                        c.IsActive &&
+                        (!c.AdminOnlyThreadCreation || isAdmin)
+                })
                 .ToListAsync();
 
             return Ok(list);
@@ -107,6 +139,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+            var isAuthed = User?.Identity?.IsAuthenticated == true;
+
+            // Enforce IsActive + MembersOnly at category level
+            var category = await _db.ForumCategories
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == categoryId);
+
+            if (category == null || !category.IsActive || (category.MembersOnly && !isAuthed))
+            {
+                return Ok(new PagedResult<ForumThreadListItemDto>(
+                    Array.Empty<ForumThreadListItemDto>(), page, pageSize, 0, 0));
+            }
 
             var baseQ = _db.ForumThreads
                 .AsNoTracking()
@@ -391,21 +436,38 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [ProducesResponseType(typeof(object), 201)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
         public async Task<ActionResult> CreateThread([FromBody] CreateThreadInput input)
         {
-            if (string.IsNullOrWhiteSpace(input.Title) || string.IsNullOrWhiteSpace(input.Body))
+            var title = input?.Title?.Trim();
+            var body = input?.Body?.Trim();
+
+            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(body))
                 return BadRequest("Titre et contenu requis.");
 
-            var exists = await _db.ForumCategories.AnyAsync(c => c.Id == input.CategoryId);
-            if (!exists) return BadRequest("Catégorie invalide.");
+            // Load category to enforce flags (IsActive / AdminOnlyThreadCreation, MembersOnly is handled by [Authorize])
+            var category = await _db.ForumCategories.FirstOrDefaultAsync(c => c.Id == input.CategoryId);
+            if (category == null)
+                return BadRequest("Catégorie invalide.");
+
+            // Inactive category: no new threads
+            if (!category.IsActive)
+                return BadRequest("Catégorie inactive.");
 
             var userId = _um.GetUserId(User)!;
+
+            // AdminOnlyThreadCreation: only forum admins may create threads in this category
+            if (category.AdminOnlyThreadCreation && !await IsAdminAsync(userId))
+            {
+                return Forbid();
+            }
+
             var now = DateTime.UtcNow;
 
             var t = new ForumThread
             {
-                CategoryId = input.CategoryId,
-                Title = input.Title.Trim(),
+                CategoryId = category.Id,
+                Title = title,
                 CreatedByUserId = userId,
                 CreatedUtc = now,
                 LastPostUtc = now,
@@ -415,7 +477,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var p = new ForumPost
             {
                 Thread = t,
-                Body = _sanitizer.Sanitize(input.Body.Trim()),
+                Body = _sanitizer.Sanitize(body),
                 CreatedByUserId = userId,
                 CreatedUtc = now
             };

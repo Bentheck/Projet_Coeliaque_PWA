@@ -4,16 +4,27 @@ using System.Collections.Generic;
 
 namespace Projet_Coeliaque_PWA.Server.DTOs
 {
-    public record class ForumCategoryDto
+    public sealed class ForumCategoryDto
     {
-        public int Id { get; init; }
-        public string Slug { get; init; } = "";
-        public string Name { get; init; } = "";
-        public string? Description { get; init; }
-        public int ThreadCount { get; init; }
+        public int Id { get; set; }
+        public string Slug { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public string? Language { get; set; }
 
-        // NEW: category language ("fr" or "en")
-        public string Language { get; init; } = "fr";
+        // Flags from the entity
+        public bool MembersOnly { get; set; }
+        public bool AdminOnlyThreadCreation { get; set; }
+        public bool IsActive { get; set; }
+
+        // Aggregated data
+        public int ThreadCount { get; set; }
+
+        /// <summary>
+        /// Whether the *current user* is allowed to create a thread in this category.
+        /// Computed in the controller.
+        /// </summary>
+        public bool CanCreateThread { get; set; }
     }
 
     public record class ForumThreadListItemDto

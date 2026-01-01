@@ -26,28 +26,45 @@ const ForumNewThread: React.FC = () => {
     const [sending, setSending] = useState(false);
     const [err, setErr] = useState<string | null>(null);
 
-    // Load categories and filter by language
+    // Roles / admin detection
+    const roles = (user as any)?.roles as string[] | undefined;
+    const isForumAdmin =
+        !!user &&
+        (((user as any).isForumAdmin === true) ||
+            (Array.isArray(roles) && roles.includes("ForumAdmin")));
+
+    // Load categories and filter by language + admin-only flag
     useEffect(() => {
         (async () => {
             try {
                 setErr(null);
-                const data = await fetchJSON<ForumCategoryDto[]>(
-                    "/api/forum/categories"
-                );
+                const data = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
 
-                const filtered = data.filter((c) =>
+                const filteredByLang = data.filter((c) =>
                     (c.language || "fr").toLowerCase().startsWith(safeLang)
                 );
 
-                setCats(filtered);
+                // Normalize flags
+                const normalized = filteredByLang.map((c) => ({
+                    ...c,
+                    membersOnly: c.membersOnly ?? false,
+                    adminOnlyThreadCreation: c.adminOnlyThreadCreation ?? false,
+                }));
+
+                // If user is not forum admin, hide admin-only categories for thread creation
+                const availableForCreation = normalized.filter(
+                    (c) => !c.adminOnlyThreadCreation || isForumAdmin
+                );
+
+                setCats(availableForCreation);
 
                 if (
                     initialCategoryId &&
-                    filtered.some((c) => c.id === initialCategoryId)
+                    availableForCreation.some((c) => c.id === initialCategoryId)
                 ) {
                     setCategoryId(initialCategoryId);
-                } else if (filtered.length) {
-                    setCategoryId(filtered[0].id);
+                } else if (availableForCreation.length) {
+                    setCategoryId(availableForCreation[0].id);
                 } else {
                     setCategoryId(0);
                 }
@@ -57,7 +74,7 @@ const ForumNewThread: React.FC = () => {
             }
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [safeLang]);
+    }, [safeLang, isForumAdmin]);
 
     // Minimal validation: ensure body has visible text
     const bodyPlain = useMemo(() => {
@@ -67,10 +84,7 @@ const ForumNewThread: React.FC = () => {
     }, [bodyHtml]);
 
     const canSubmit =
-        !sending &&
-        !!categoryId &&
-        title.trim().length > 0 &&
-        bodyPlain.length > 0;
+        !sending && !!categoryId && title.trim().length > 0 && bodyPlain.length > 0;
 
     const createThread = async () => {
         if (!canSubmit) return;
@@ -110,9 +124,7 @@ const ForumNewThread: React.FC = () => {
     return (
         <div className="container py-3">
             <div className="d-flex justify-content-between align-items-center mb-3">
-                <h1 className="h4 mb-0 section-title-accent">
-                    {t("title")}
-                </h1>
+                <h1 className="h4 mb-0 section-title-accent">{t("title")}</h1>
                 <Link
                     to={`/forum/${safeLang}`}
                     className="btn btn-outline-secondary btn-sm"
@@ -136,15 +148,11 @@ const ForumNewThread: React.FC = () => {
                     </div>
 
                     <div className="mb-3">
-                        <label className="form-label">
-                            {t("fields.category")}
-                        </label>
+                        <label className="form-label">{t("fields.category")}</label>
                         <select
                             className="form-select"
                             value={categoryId}
-                            onChange={(e) =>
-                                setCategoryId(Number(e.target.value))
-                            }
+                            onChange={(e) => setCategoryId(Number(e.target.value))}
                         >
                             {cats.length === 0 && (
                                 <option value={0}>
@@ -165,9 +173,7 @@ const ForumNewThread: React.FC = () => {
                     </div>
 
                     <div className="mb-3">
-                        <label className="form-label">
-                            {t("fields.title")}
-                        </label>
+                        <label className="form-label">{t("fields.title")}</label>
                         <input
                             className="form-control"
                             value={title}
@@ -177,17 +183,13 @@ const ForumNewThread: React.FC = () => {
                     </div>
 
                     <div className="mb-3">
-                        <label className="form-label">
-                            {t("fields.body")}
-                        </label>
+                        <label className="form-label">{t("fields.body")}</label>
                         <PostEditor
                             initialHTML={bodyHtml}
                             onChange={setBodyHtml}
                             ariaLabel={t("aria.composeBody")}
                             giphyApiKey={import.meta.env.VITE_GIPHY_KEY}
-                            giphyLang={
-                                i18n.language?.startsWith("fr") ? "fr" : "en"
-                            }
+                            giphyLang={i18n.language?.startsWith("fr") ? "fr" : "en"}
                             giphyRating="g"
                         />
                     </div>
@@ -205,9 +207,7 @@ const ForumNewThread: React.FC = () => {
                             onClick={createThread}
                             disabled={!canSubmit}
                         >
-                            {sending
-                                ? t("buttons.creating")
-                                : t("buttons.create")}
+                            {sending ? t("buttons.creating") : t("buttons.create")}
                         </button>
                     </div>
                 </div>
