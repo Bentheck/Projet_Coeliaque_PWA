@@ -17,7 +17,7 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "8.0.22")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -683,6 +683,9 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AdminOnlyThreadCreation")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("CreatedByUserId")
                         .HasColumnType("text");
 
@@ -693,9 +696,16 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Language")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<bool>("MembersOnly")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()

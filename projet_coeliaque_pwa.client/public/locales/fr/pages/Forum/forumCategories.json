@@ -10,7 +10,9 @@
     "backToLanguage": "Retour au choix de langue"
   },
   "badges": {
-    "threads_one": "{{count}} fil",
-    "threads_other": "{{count}} fils"
+    "threads": "{{count}} sujet",
+    "threads_other": "{{count}} sujets",
+    "membersOnly": "Réservé aux membres",
+    "adminOnly": "Sujets créés par l’administration seulement"
   }
 }

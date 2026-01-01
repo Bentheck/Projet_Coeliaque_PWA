@@ -5,11 +5,15 @@ import type { ForumCategoryDto } from "../../lib/types";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthContext";
 
+// Server payloads for category create/update
 type CreateCategoryInput = {
     slug: string;
     name: string;
     description?: string | null;
     language: string;
+    isActive: boolean;
+    membersOnly: boolean;
+    adminOnlyThreadCreation: boolean;
 };
 
 type UpdateCategoryInput = CreateCategoryInput;
@@ -77,10 +81,13 @@ const ForumAdminPanel: React.FC = () => {
             // No lang filter => we want FR + EN rows
             const data = await fetchJSON<ForumCategoryDto[]>("/api/forum/categories");
 
-            // Normalize language in case old rows have null/empty
+            // Normalize language + flags in case old rows have null/empty
             const normalized = data.map((c) => ({
                 ...c,
                 language: c.language && c.language.trim() ? c.language : "fr",
+                isActive: c.isActive ?? true,
+                membersOnly: c.membersOnly ?? false,
+                adminOnlyThreadCreation: c.adminOnlyThreadCreation ?? false,
             }));
 
             setCats(normalized);
@@ -165,6 +172,9 @@ const ForumAdminPanel: React.FC = () => {
             name: nFr,
             description: dFr,
             language: "fr",
+            isActive: true,
+            membersOnly: false,
+            adminOnlyThreadCreation: false,
         };
 
         const enPayload: CreateCategoryInput = {
@@ -172,6 +182,9 @@ const ForumAdminPanel: React.FC = () => {
             name: nEn,
             description: dEn,
             language: "en",
+            isActive: true,
+            membersOnly: false,
+            adminOnlyThreadCreation: false,
         };
 
         try {
@@ -207,13 +220,24 @@ const ForumAdminPanel: React.FC = () => {
      */
     const saveCat = async (
         id: number,
-        values: { slug: string; name: string; description: string | null; language: string }
+        values: {
+            slug: string;
+            name: string;
+            description: string | null;
+            language: string;
+            isActive: boolean;
+            membersOnly: boolean;
+            adminOnlyThreadCreation: boolean;
+        }
     ) => {
         const payload: UpdateCategoryInput = {
             slug: values.slug.trim(),
             name: values.name.trim(),
             description: values.description,
             language: values.language || "fr",
+            isActive: values.isActive,
+            membersOnly: values.membersOnly,
+            adminOnlyThreadCreation: values.adminOnlyThreadCreation,
         };
 
         try {
@@ -237,8 +261,7 @@ const ForumAdminPanel: React.FC = () => {
     const deleteCat = async (id: number, force: boolean) => {
         if (!confirm(t("confirm.deleteCategory"))) return;
         try {
-            const url = `/api/forum/admin/categories/${id}${force ? "?force=true" : ""
-                }`;
+            const url = `/api/forum/admin/categories/${id}${force ? "?force=true" : ""}`;
             await fetchJSON(url, { method: "DELETE" });
             await loadCategories();
         } catch (e) {
@@ -320,12 +343,9 @@ const ForumAdminPanel: React.FC = () => {
         try {
             setModsLoading(true);
             setModsErr(null);
-            await fetchJSON(
-                `/api/forum/admin/moderators/${encodeURIComponent(userId)}`,
-                {
-                    method: "DELETE",
-                }
-            );
+            await fetchJSON(`/api/forum/admin/moderators/${encodeURIComponent(userId)}`, {
+                method: "DELETE",
+            });
             await loadModerators();
             alert(t("globalModerators.alerts.removed"));
         } catch (e) {
@@ -366,12 +386,9 @@ const ForumAdminPanel: React.FC = () => {
         try {
             setAdminsLoading(true);
             setAdminsErr(null);
-            await fetchJSON(
-                `/api/super/forum/admins/${encodeURIComponent(userId)}`,
-                {
-                    method: "DELETE",
-                }
-            );
+            await fetchJSON(`/api/super/forum/admins/${encodeURIComponent(userId)}`, {
+                method: "DELETE",
+            });
             await loadAdmins();
             alert(t("admins.alerts.removed"));
         } catch (e) {
@@ -382,12 +399,8 @@ const ForumAdminPanel: React.FC = () => {
         }
     };
 
-    const availableForMod = users.filter(
-        (u) => !mods.some((m) => m.id === u.id)
-    );
-    const availableForAdmin = users.filter(
-        (u) => !admins.some((a) => a.userId === u.id)
-    );
+    const availableForMod = users.filter((u) => !mods.some((m) => m.id === u.id));
+    const availableForAdmin = users.filter((u) => !admins.some((a) => a.userId === u.id));
 
     return (
         <div className="container py-3 forum-admin-container">
@@ -396,9 +409,7 @@ const ForumAdminPanel: React.FC = () => {
 
             {/* Categories table + creation form */}
             <div className="card mb-4">
-                <div className="card-header">
-                    {t("sections.categories.title")}
-                </div>
+                <div className="card-header">{t("sections.categories.title")}</div>
                 <div className="card-body">
                     {loading ? (
                         <div>{t("loading")}</div>
@@ -411,17 +422,12 @@ const ForumAdminPanel: React.FC = () => {
                                             <th>{t("table.headers.id")}</th>
                                             <th>{t("table.headers.slug")}</th>
                                             <th>{t("table.headers.name")}</th>
-                                            <th>
-                                                {t(
-                                                    "table.headers.description"
-                                                )}
-                                            </th>
-                                            <th>
-                                                {t("table.headers.language")}
-                                            </th>
-                                            <th>
-                                                {t("table.headers.threads")}
-                                            </th>
+                                            <th>{t("table.headers.description")}</th>
+                                            <th>{t("table.headers.language")}</th>
+                                            <th>{t("table.headers.threads")}</th>
+                                            <th>{t("table.headers.isActive")}</th>
+                                            <th>{t("table.headers.membersOnly")}</th>
+                                            <th>{t("table.headers.adminOnlyThreadCreation")}</th>
                                             <th className="text-end">
                                                 {t("table.headers.actions")}
                                             </th>
@@ -437,17 +443,18 @@ const ForumAdminPanel: React.FC = () => {
                                                         defaultValue={c.slug}
                                                         onBlur={(e) =>
                                                             saveCat(c.id, {
-                                                                slug: e.target
-                                                                    .value,
+                                                                slug: e.target.value,
                                                                 name: c.name,
-                                                                description:
-                                                                    c.description ||
-                                                                    null,
+                                                                description: c.description || null,
                                                                 language:
                                                                     c.language &&
                                                                         c.language.trim()
                                                                         ? c.language
                                                                         : "fr",
+                                                                isActive: c.isActive ?? true,
+                                                                membersOnly: !!c.membersOnly,
+                                                                adminOnlyThreadCreation:
+                                                                    !!c.adminOnlyThreadCreation,
                                                             })
                                                         }
                                                     />
@@ -459,16 +466,17 @@ const ForumAdminPanel: React.FC = () => {
                                                         onBlur={(e) =>
                                                             saveCat(c.id, {
                                                                 slug: c.slug,
-                                                                name: e.target
-                                                                    .value,
-                                                                description:
-                                                                    c.description ||
-                                                                    null,
+                                                                name: e.target.value,
+                                                                description: c.description || null,
                                                                 language:
                                                                     c.language &&
                                                                         c.language.trim()
                                                                         ? c.language
                                                                         : "fr",
+                                                                isActive: c.isActive ?? true,
+                                                                membersOnly: !!c.membersOnly,
+                                                                adminOnlyThreadCreation:
+                                                                    !!c.adminOnlyThreadCreation,
                                                             })
                                                         }
                                                     />
@@ -476,21 +484,22 @@ const ForumAdminPanel: React.FC = () => {
                                                 <td>
                                                     <input
                                                         className="form-control form-control-sm"
-                                                        defaultValue={
-                                                            c.description || ""
-                                                        }
+                                                        defaultValue={c.description || ""}
                                                         onBlur={(e) =>
                                                             saveCat(c.id, {
                                                                 slug: c.slug,
                                                                 name: c.name,
                                                                 description:
-                                                                    e.target.value.trim() ||
-                                                                    null,
+                                                                    e.target.value.trim() || null,
                                                                 language:
                                                                     c.language &&
                                                                         c.language.trim()
                                                                         ? c.language
                                                                         : "fr",
+                                                                isActive: c.isActive ?? true,
+                                                                membersOnly: !!c.membersOnly,
+                                                                adminOnlyThreadCreation:
+                                                                    !!c.adminOnlyThreadCreation,
                                                             })
                                                         }
                                                     />
@@ -498,32 +507,101 @@ const ForumAdminPanel: React.FC = () => {
                                                 <td>
                                                     {/* read-only language indicator */}
                                                     <span className="badge bg-light text-dark">
-                                                        {c.language === "en"
-                                                            ? "EN"
-                                                            : "FR"}
+                                                        {c.language === "en" ? "EN" : "FR"}
                                                     </span>
                                                 </td>
                                                 <td>{c.threadCount}</td>
+                                                <td>
+                                                    <div className="form-check">
+                                                        <input
+                                                            id={`cat-active-${c.id}`}
+                                                            type="checkbox"
+                                                            className="form-check-input"
+                                                            checked={c.isActive ?? true}
+                                                            onChange={(e) =>
+                                                                saveCat(c.id, {
+                                                                    slug: c.slug,
+                                                                    name: c.name,
+                                                                    description:
+                                                                        c.description || null,
+                                                                    language:
+                                                                        c.language &&
+                                                                            c.language.trim()
+                                                                            ? c.language
+                                                                            : "fr",
+                                                                    isActive: e.target.checked,
+                                                                    membersOnly: !!c.membersOnly,
+                                                                    adminOnlyThreadCreation:
+                                                                        !!c.adminOnlyThreadCreation,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="form-check">
+                                                        <input
+                                                            id={`cat-members-${c.id}`}
+                                                            type="checkbox"
+                                                            className="form-check-input"
+                                                            checked={!!c.membersOnly}
+                                                            onChange={(e) =>
+                                                                saveCat(c.id, {
+                                                                    slug: c.slug,
+                                                                    name: c.name,
+                                                                    description:
+                                                                        c.description || null,
+                                                                    language:
+                                                                        c.language &&
+                                                                            c.language.trim()
+                                                                            ? c.language
+                                                                            : "fr",
+                                                                    isActive: c.isActive ?? true,
+                                                                    membersOnly: e.target.checked,
+                                                                    adminOnlyThreadCreation:
+                                                                        !!c.adminOnlyThreadCreation,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="form-check">
+                                                        <input
+                                                            id={`cat-adminonly-${c.id}`}
+                                                            type="checkbox"
+                                                            className="form-check-input"
+                                                            checked={!!c.adminOnlyThreadCreation}
+                                                            onChange={(e) =>
+                                                                saveCat(c.id, {
+                                                                    slug: c.slug,
+                                                                    name: c.name,
+                                                                    description:
+                                                                        c.description || null,
+                                                                    language:
+                                                                        c.language &&
+                                                                            c.language.trim()
+                                                                            ? c.language
+                                                                            : "fr",
+                                                                    isActive: c.isActive ?? true,
+                                                                    membersOnly: !!c.membersOnly,
+                                                                    adminOnlyThreadCreation:
+                                                                        e.target.checked,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                </td>
                                                 <td className="text-end">
                                                     <button
                                                         className="btn btn-sm btn-outline-danger"
-                                                        onClick={() =>
-                                                            deleteCat(
-                                                                c.id,
-                                                                false
-                                                            )
-                                                        }
+                                                        onClick={() => deleteCat(c.id, false)}
                                                     >
                                                         {t("buttons.delete")}
                                                     </button>
                                                     <button
                                                         className="btn btn-sm btn-outline-danger ms-2"
-                                                        onClick={() =>
-                                                            deleteCat(
-                                                                c.id,
-                                                                true
-                                                            )
-                                                        }
+                                                        onClick={() => deleteCat(c.id, true)}
                                                         title={
                                                             t(
                                                                 "buttons.forceTooltip"
@@ -553,12 +631,8 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={slugFr}
-                                        onChange={(e) =>
-                                            setSlugFr(e.target.value)
-                                        }
-                                        placeholder={t(
-                                            "newCategory.placeholders.slug"
-                                        )}
+                                        onChange={(e) => setSlugFr(e.target.value)}
+                                        placeholder={t("newCategory.placeholders.slug")}
                                     />
                                 </div>
                                 <div className="col-md-3">
@@ -568,12 +642,8 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={nameFr}
-                                        onChange={(e) =>
-                                            setNameFr(e.target.value)
-                                        }
-                                        placeholder={t(
-                                            "newCategory.placeholders.name"
-                                        )}
+                                        onChange={(e) => setNameFr(e.target.value)}
+                                        placeholder={t("newCategory.placeholders.name")}
                                     />
                                 </div>
                                 <div className="col-md-6">
@@ -583,9 +653,7 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={descFr}
-                                        onChange={(e) =>
-                                            setDescFr(e.target.value)
-                                        }
+                                        onChange={(e) => setDescFr(e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -601,9 +669,7 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={slugEn}
-                                        onChange={(e) =>
-                                            setSlugEn(e.target.value)
-                                        }
+                                        onChange={(e) => setSlugEn(e.target.value)}
                                         placeholder="en_general"
                                     />
                                 </div>
@@ -614,9 +680,7 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={nameEn}
-                                        onChange={(e) =>
-                                            setNameEn(e.target.value)
-                                        }
+                                        onChange={(e) => setNameEn(e.target.value)}
                                         placeholder="ex. General discussions"
                                     />
                                 </div>
@@ -627,9 +691,7 @@ const ForumAdminPanel: React.FC = () => {
                                     <input
                                         className="form-control"
                                         value={descEn}
-                                        onChange={(e) =>
-                                            setDescEn(e.target.value)
-                                        }
+                                        onChange={(e) => setDescEn(e.target.value)}
                                     />
                                 </div>
                                 <div className="col-md-2 mt-3 mt-md-0 d-flex align-items-end">
@@ -666,9 +728,7 @@ const ForumAdminPanel: React.FC = () => {
                             <input
                                 className="form-control"
                                 value={threadId}
-                                onChange={(e) =>
-                                    setThreadId(e.target.value)
-                                }
+                                onChange={(e) => setThreadId(e.target.value)}
                             />
                         </div>
                         <div className="col-md-2 form-check mt-4">
@@ -679,10 +739,7 @@ const ForumAdminPanel: React.FC = () => {
                                 checked={pin}
                                 onChange={(e) => setPin(e.target.checked)}
                             />
-                            <label
-                                htmlFor="pin"
-                                className="form-check-label"
-                            >
+                            <label htmlFor="pin" className="form-check-label">
                                 {t("quickThread.labels.pinned")}
                             </label>
                         </div>
@@ -694,10 +751,7 @@ const ForumAdminPanel: React.FC = () => {
                                 checked={lock}
                                 onChange={(e) => setLock(e.target.checked)}
                             />
-                            <label
-                                htmlFor="lock"
-                                className="form-check-label"
-                            >
+                            <label htmlFor="lock" className="form-check-label">
                                 {t("quickThread.labels.locked")}
                             </label>
                         </div>
@@ -743,15 +797,11 @@ const ForumAdminPanel: React.FC = () => {
                                         className="form-select"
                                         value={selectedAdminUserId}
                                         onChange={(e) =>
-                                            setSelectedAdminUserId(
-                                                e.target.value
-                                            )
+                                            setSelectedAdminUserId(e.target.value)
                                         }
                                     >
                                         <option value="">
-                                            {t(
-                                                "admins.placeholders.selectUser"
-                                            )}
+                                            {t("admins.placeholders.selectUser")}
                                         </option>
                                         {availableForAdmin.map((u) => (
                                             <option key={u.id} value={u.id}>
@@ -789,9 +839,7 @@ const ForumAdminPanel: React.FC = () => {
                                 </div>
                             </div>
 
-                            <h6 className="mb-2">
-                                {t("admins.labels.current")}
-                            </h6>
+                            <h6 className="mb-2">{t("admins.labels.current")}</h6>
                             {admins.length === 0 ? (
                                 <p className="text-muted small mb-0">
                                     {t("admins.empty")}
@@ -802,28 +850,14 @@ const ForumAdminPanel: React.FC = () => {
                                         <thead className="table-light">
                                             <tr>
                                                 <th>
-                                                    {
-                                                        t(
-                                                            "admins.headers.userId"
-                                                        )
-                                                    }
+                                                    {t("admins.headers.userId")}
                                                 </th>
                                                 <th>
-                                                    {
-                                                        t(
-                                                            "admins.headers.displayName"
-                                                        )
-                                                    }
+                                                    {t("admins.headers.displayName")}
                                                 </th>
-                                                <th>
-                                                    {t(
-                                                        "admins.headers.added"
-                                                    )}
-                                                </th>
+                                                <th>{t("admins.headers.added")}</th>
                                                 <th className="text-end">
-                                                    {t(
-                                                        "admins.headers.actions"
-                                                    )}
+                                                    {t("admins.headers.actions")}
                                                 </th>
                                             </tr>
                                         </thead>
@@ -843,19 +877,11 @@ const ForumAdminPanel: React.FC = () => {
                                                         <button
                                                             className="btn btn-sm btn-outline-danger"
                                                             onClick={() =>
-                                                                removeAdmin(
-                                                                    a.userId
-                                                                )
+                                                                removeAdmin(a.userId)
                                                             }
-                                                            disabled={
-                                                                adminsLoading
-                                                            }
+                                                            disabled={adminsLoading}
                                                         >
-                                                            {
-                                                                t(
-                                                                    "admins.buttons.remove"
-                                                                )
-                                                            }
+                                                            {t("admins.buttons.remove")}
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -893,9 +919,7 @@ const ForumAdminPanel: React.FC = () => {
                             <select
                                 className="form-select"
                                 value={selectedUserId}
-                                onChange={(e) =>
-                                    setSelectedUserId(e.target.value)
-                                }
+                                onChange={(e) => setSelectedUserId(e.target.value)}
                             >
                                 <option value="">
                                     {t(
@@ -947,11 +971,7 @@ const ForumAdminPanel: React.FC = () => {
                                 <thead className="table-light">
                                     <tr>
                                         <th>
-                                            {
-                                                t(
-                                                    "globalModerators.headers.userId"
-                                                )
-                                            }
+                                            {t("globalModerators.headers.userId")}
                                         </th>
                                         <th>
                                             {
@@ -961,11 +981,7 @@ const ForumAdminPanel: React.FC = () => {
                                             }
                                         </th>
                                         <th className="text-end">
-                                            {
-                                                t(
-                                                    "globalModerators.headers.actions"
-                                                )
-                                            }
+                                            {t("globalModerators.headers.actions")}
                                         </th>
                                     </tr>
                                 </thead>
@@ -1014,9 +1030,7 @@ const ForumAdminPanel: React.FC = () => {
                             <input
                                 className="form-control"
                                 value={postId}
-                                onChange={(e) =>
-                                    setPostId(e.target.value)
-                                }
+                                onChange={(e) => setPostId(e.target.value)}
                             />
                         </div>
                         <div className="col-md-3 form-check mt-4">
@@ -1025,14 +1039,9 @@ const ForumAdminPanel: React.FC = () => {
                                 type="checkbox"
                                 className="form-check-input"
                                 checked={deleted}
-                                onChange={(e) =>
-                                    setDeleted(e.target.checked)
-                                }
+                                onChange={(e) => setDeleted(e.target.checked)}
                             />
-                            <label
-                                htmlFor="deleted"
-                                className="form-check-label"
-                            >
+                            <label htmlFor="deleted" className="form-check-label">
                                 {t("moderation.labels.deleted")}
                             </label>
                         </div>
