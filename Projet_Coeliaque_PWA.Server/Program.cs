@@ -162,6 +162,12 @@ namespace Projet_Coeliaque_PWA.Server
             using (var scope = app.Services.CreateScope())
             {
                 var sp = scope.ServiceProvider;
+
+                // Apply any pending migrations
+                var db = sp.GetRequiredService<ApplicationDbContext>();
+                db.Database.Migrate();
+
+                // Seed roles + SuperAdmin (same as before)
                 SeedIdentityAsync(sp, app.Configuration).GetAwaiter().GetResult();
             }
 
