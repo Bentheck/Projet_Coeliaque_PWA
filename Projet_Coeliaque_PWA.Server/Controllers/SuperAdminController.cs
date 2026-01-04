@@ -342,10 +342,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 from m in gj.DefaultIfEmpty()
                 select new { User = u, Membership = m };
 
-            // Optional: onlyActive filter
+            // Optional: onlyActive filter (no use of IsActive here)
             if (OnlyActive == true)
             {
-                joinedQuery = joinedQuery.Where(x => x.Membership != null && x.Membership.IsActive);
+                var today = DateTime.UtcNow.Date;
+
+                joinedQuery = joinedQuery.Where(x =>
+                    x.Membership != null &&
+                    x.Membership.StartDate <= today &&
+                    (x.Membership.EndDate == null || x.Membership.EndDate >= today)
+                );
             }
 
             var totalCount = await joinedQuery.CountAsync();
@@ -363,10 +369,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     x.Membership != null ? x.Membership.EndDate : null,
                     x.Membership != null && x.Membership.IsActive,
                     x.Membership != null ? x.Membership.StripeCustomerId : null,
-                    x.Membership != null ? x.Membership.StripeSubscriptionId : null,
-                    x.Membership != null
-    ? EF.Property<DateTime?>(x.Membership, "LastChangeUtc")
-    : null
+                    x.Membership != null ? x.Membership.StripeSubscriptionId : null
                 ))
                 .ToListAsync();
 
