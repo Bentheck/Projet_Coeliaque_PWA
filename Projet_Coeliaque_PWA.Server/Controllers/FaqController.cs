@@ -47,6 +47,7 @@ namespace Projet_coeliaque.Controllers
         /// <param name="q">Optional search term.</param>
         /// <param name="lang">"fr" or "en". Defaults to "fr".</param>
         [HttpGet]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(IEnumerable<FaqCategoryDto>), 200)]
         public async Task<ActionResult<IEnumerable<FaqCategoryDto>>> GetTree(
             [FromQuery] string? q,
