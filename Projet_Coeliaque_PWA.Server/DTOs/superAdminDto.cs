@@ -12,8 +12,7 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         DateTime? EndDateUtc,
         bool IsActive,
         string? StripeCustomerId,
-        string? StripeSubscriptionId,
-        DateTime? LastChangeUtc
+        string? StripeSubscriptionId
     );
 
     public record SuperAdminUserMembershipPageDto(

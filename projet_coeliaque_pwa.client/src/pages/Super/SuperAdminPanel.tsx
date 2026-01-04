@@ -381,7 +381,7 @@ const SuperAdminPanel: React.FC = () => {
             if (email) params.set("Email", email);
             if (onlyActive) params.set("OnlyActive", "true");
 
-            const url = `/api/super/admins/memberships/list?${params}`;
+            const url = `/api/super/admins/memberships/all?${params}`;
             const res = await fetchJSON<UserMembershipPage>(url);
 
             setAllRows(res.items || []);
