@@ -109,6 +109,22 @@ type TesterInvite = {
     revokedUtc: string | null;
 };
 
+type UserMembershipRow = {
+    userId: string;
+    email: string;
+    displayName: string;
+    startDateUtc: string | null;
+    endDateUtc: string | null;
+    isActive: boolean;
+};
+
+type UserMembershipPage = {
+    items: UserMembershipRow[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+};
+
 type TesterInviteMode = "roleGranted" | "inviteCreated" | "inviteRefreshed" | "other" | null;
 
 // ---- Audit log types ----
@@ -189,7 +205,7 @@ const SuperAdminPanel: React.FC = () => {
     const [newModuleComment, setNewModuleComment] = useState("");
     const [creatingModule, setCreatingModule] = useState(false);
 
-    // ---- Membership tab ----
+    // ---- Membership tab (single user) ----
     const [query, setQuery] = useState("");
     const [suggestions, setSuggestions] = useState<UserSearch[]>([]);
     const [showSug, setShowSug] = useState(false);
@@ -202,6 +218,16 @@ const SuperAdminPanel: React.FC = () => {
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [savingM, setSavingM] = useState(false);
+
+    // ---- Membership tab (all users table) ----
+    const [allRows, setAllRows] = useState<UserMembershipRow[]>([]);
+    const [allPage, setAllPage] = useState(1);
+    const [allPageSize, setAllPageSize] = useState(50);
+    const [allTotal, setAllTotal] = useState(0);
+    const [allLoading, setAllLoading] = useState(false);
+    const [allHasLoadedOnce, setAllHasLoadedOnce] = useState(false);
+    const [allFilterEmail, setAllFilterEmail] = useState("");
+    const [allFilterOnlyActive, setAllFilterOnlyActive] = useState(false);
 
     // ---- Admins tab ----
     const [forumAdmins, setForumAdmins] = useState<ForumAdminDto[]>([]);
@@ -338,6 +364,43 @@ const SuperAdminPanel: React.FC = () => {
         }
     };
 
+    const loadAllMembershipRows = async (
+        page: number,
+        pageSize: number,
+        filters?: { email?: string; onlyActive?: boolean }
+    ) => {
+        setAllLoading(true);
+        try {
+            const params = new URLSearchParams();
+            params.set("Page", String(page));
+            params.set("PageSize", String(pageSize));
+
+            const email = (filters?.email ?? allFilterEmail).trim();
+            const onlyActive = filters?.onlyActive ?? allFilterOnlyActive;
+
+            if (email) params.set("Email", email);
+            if (onlyActive) params.set("OnlyActive", "true");
+
+            const url = `/api/super/admins/memberships/list?${params}`;
+            const res = await fetchJSON<UserMembershipPage>(url);
+
+            setAllRows(res.items || []);
+            setAllPage(res.page);
+            setAllPageSize(res.pageSize);
+            setAllTotal(res.totalCount);
+            setAllHasLoadedOnce(true);
+        } catch (e) {
+            console.error(e);
+            alert("Échec du chargement de la liste des abonnements.");
+        } finally {
+            setAllLoading(false);
+        }
+    };
+
+    // ------------------------
+    // Effects
+    // ------------------------
+
     // Initial load
     useEffect(() => {
         (async () => {
@@ -351,7 +414,7 @@ const SuperAdminPanel: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Membership search suggestions debounce
+    // Membership search suggestions debounce (autocomplete)
     useEffect(() => {
         const t = setTimeout(async () => {
             const q = query.trim();
@@ -377,6 +440,14 @@ const SuperAdminPanel: React.FC = () => {
     useEffect(() => {
         if (activeTab === "logs") {
             void loadLogs(logsPage, logsPageSize);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
+
+    // Load all memberships when the membership tab becomes active (first time)
+    useEffect(() => {
+        if (activeTab === "membership" && !allHasLoadedOnce) {
+            void loadAllMembershipRows(allPage, allPageSize);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
@@ -569,7 +640,7 @@ const SuperAdminPanel: React.FC = () => {
     };
 
     // ------------------------
-    // Membership actions
+    // Membership actions (single user)
     // ------------------------
 
     const pickUser = async (u: UserSearch) => {
@@ -661,6 +732,11 @@ const SuperAdminPanel: React.FC = () => {
             setActive(m.isActive);
             setStartDate(fromIsoToDateInput(m.startDateUtc));
             setEndDate(fromIsoToDateInput(m.endDateUtc));
+
+            // Refresh the big table row for this user if it is visible
+            if (allHasLoadedOnce) {
+                void loadAllMembershipRows(allPage, allPageSize);
+            }
         } catch (e) {
             console.error(e);
             alert("Échec de la mise à jour de l’abonnement.");
@@ -806,6 +882,46 @@ const SuperAdminPanel: React.FC = () => {
         logsTotal === 0 ? 1 : Math.max(1, Math.ceil(logsTotal / logsPageSize));
 
     // ------------------------
+    // Membership actions (all users table)
+    // ------------------------
+
+    const allMaxPage =
+        allTotal === 0 ? 1 : Math.max(1, Math.ceil(allTotal / allPageSize));
+
+    const onAllPageChange = async (delta: number) => {
+        const next = allPage + delta;
+        const page = Math.min(Math.max(1, next), allMaxPage);
+        setAllPage(page);
+        await loadAllMembershipRows(page, allPageSize);
+    };
+
+    const onAllPageSizeChange = async (value: number) => {
+        const size = value <= 0 ? 50 : value;
+        setAllPageSize(size);
+        setAllPage(1);
+        await loadAllMembershipRows(1, size);
+    };
+
+    const onAllFilterApply = async () => {
+        setAllPage(1);
+        await loadAllMembershipRows(1, allPageSize, {
+            email: allFilterEmail,
+            onlyActive: allFilterOnlyActive,
+        });
+    };
+
+    const onAllRowClick = async (row: UserMembershipRow) => {
+        // Clicking a row reuses the same editor on the left
+        const pseudoUser: UserSearch = {
+            userId: row.userId,
+            email: row.email,
+            displayName: row.displayName,
+        };
+        await pickUser(pseudoUser);
+        setActiveTab("membership");
+    };
+
+    // ------------------------
     // Render
     // ------------------------
 
@@ -836,8 +952,7 @@ const SuperAdminPanel: React.FC = () => {
                 <li className="nav-item">
                     <button
                         type="button"
-                        className={`nav-link ${activeTab === "admins" ? "active" : ""
-                            }`}
+                        className={`nav-link ${activeTab === "admins" ? "active" : ""}`}
                         onClick={() => setActiveTab("admins")}
                     >
                         Admins
@@ -846,8 +961,7 @@ const SuperAdminPanel: React.FC = () => {
                 <li className="nav-item">
                     <button
                         type="button"
-                        className={`nav-link ${activeTab === "testers" ? "active" : ""
-                            }`}
+                        className={`nav-link ${activeTab === "testers" ? "active" : ""}`}
                         onClick={() => setActiveTab("testers")}
                     >
                         Testeurs
@@ -914,18 +1028,16 @@ const SuperAdminPanel: React.FC = () => {
                                                                 )
                                                         }
                                                         onChange={(e) => {
-                                                            const v =
-                                                                e.target.value;
+                                                            const v = e.target.value;
                                                             let newVal: SiteClosedReasonCode =
                                                                 null;
                                                             if (v === "") {
                                                                 newVal = null;
                                                             } else {
-                                                                const n =
-                                                                    parseInt(
-                                                                        v,
-                                                                        10
-                                                                    );
+                                                                const n = parseInt(
+                                                                    v,
+                                                                    10
+                                                                );
                                                                 if (
                                                                     n === 0 ||
                                                                     n === 1 ||
@@ -960,8 +1072,7 @@ const SuperAdminPanel: React.FC = () => {
 
                                                 <div className="mb-3">
                                                     <label className="form-label">
-                                                        Date d’ouverture prévue
-                                                        (UTC)
+                                                        Date d’ouverture prévue (UTC)
                                                     </label>
                                                     <input
                                                         type="date"
@@ -1057,7 +1168,9 @@ const SuperAdminPanel: React.FC = () => {
                                             <div className="mt-3 small text-muted">
                                                 <div>
                                                     Vue actuelle pour vous :{" "}
-                                                    {siteStatus?.isOpenForCurrentUser ? "ACCES OK" : "BLOQUÉ"}
+                                                    {siteStatus?.isOpenForCurrentUser
+                                                        ? "ACCES OK"
+                                                        : "BLOQUÉ"}
                                                 </div>
                                                 <div>
                                                     Raison clé:{" "}
@@ -1102,8 +1215,7 @@ const SuperAdminPanel: React.FC = () => {
                                                                 <th>Clé</th>
                                                                 <th>Actif</th>
                                                                 <th>
-                                                                    NotBefore
-                                                                    (UTC)
+                                                                    NotBefore (UTC)
                                                                 </th>
                                                                 <th>
                                                                     Commentaire
@@ -1115,120 +1227,113 @@ const SuperAdminPanel: React.FC = () => {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {moduleFlags.map(
-                                                                (f) => (
-                                                                    <tr
-                                                                        key={
-                                                                            f.key
-                                                                        }
+                                                            {moduleFlags.map((f) => (
+                                                                <tr key={f.key}>
+                                                                    <td>{f.key}</td>
+                                                                    <td>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={
+                                                                                f.enabled
+                                                                            }
+                                                                            onChange={(
+                                                                                e
+                                                                            ) =>
+                                                                                setFlagField(
+                                                                                    f.key,
+                                                                                    "enabled",
+                                                                                    e
+                                                                                        .target
+                                                                                        .checked
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                    </td>
+                                                                    <td
+                                                                        style={{
+                                                                            minWidth: 130,
+                                                                        }}
                                                                     >
-                                                                        <td>
-                                                                            {
+                                                                        <input
+                                                                            type="date"
+                                                                            className="form-control form-control-sm"
+                                                                            value={fromIsoToDateInput(
+                                                                                f.notBeforeUtc
+                                                                            )}
+                                                                            onChange={(
+                                                                                e
+                                                                            ) =>
+                                                                                handleFlagNotBeforeDateChange(
+                                                                                    f.key,
+                                                                                    e
+                                                                                        .target
+                                                                                        .value
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                    </td>
+                                                                    <td>
+                                                                        <input
+                                                                            type="text"
+                                                                            className="form-control form-control-sm"
+                                                                            value={
+                                                                                f.comment ||
+                                                                                ""
+                                                                            }
+                                                                            onChange={(
+                                                                                e
+                                                                            ) =>
+                                                                                setFlagField(
+                                                                                    f.key,
+                                                                                    "comment",
+                                                                                    e
+                                                                                        .target
+                                                                                        .value ||
+                                                                                    null
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                    </td>
+                                                                    <td>
+                                                                        {f.usedInCode
+                                                                            ? "oui"
+                                                                            : "non"}
+                                                                    </td>
+                                                                    <td>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn btn-sm btn-outline-primary"
+                                                                            disabled={
+                                                                                savingFlagKey ===
                                                                                 f.key
                                                                             }
-                                                                        </td>
-                                                                        <td>
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={
-                                                                                    f.enabled
-                                                                                }
-                                                                                onChange={(
-                                                                                    e
-                                                                                ) =>
-                                                                                    setFlagField(
-                                                                                        f.key,
-                                                                                        "enabled",
-                                                                                        e
-                                                                                            .target
-                                                                                            .checked
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                        </td>
-                                                                        <td
-                                                                            style={{
-                                                                                minWidth: 130,
-                                                                            }}
+                                                                            onClick={() =>
+                                                                                saveFeatureFlag(
+                                                                                    f.key
+                                                                                )
+                                                                            }
                                                                         >
-                                                                            <input
-                                                                                type="date"
-                                                                                className="form-control form-control-sm"
-                                                                                value={fromIsoToDateInput(
-                                                                                    f.notBeforeUtc
-                                                                                )}
-                                                                                onChange={(
-                                                                                    e
-                                                                                ) =>
-                                                                                    handleFlagNotBeforeDateChange(
-                                                                                        f.key,
-                                                                                        e
-                                                                                            .target
-                                                                                            .value
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                        </td>
-                                                                        <td>
-                                                                            <input
-                                                                                type="text"
-                                                                                className="form-control form-control-sm"
-                                                                                value={
-                                                                                    f.comment ||
-                                                                                    ""
-                                                                                }
-                                                                                onChange={(
-                                                                                    e
-                                                                                ) =>
-                                                                                    setFlagField(
-                                                                                        f.key,
-                                                                                        "comment",
-                                                                                        e
-                                                                                            .target
-                                                                                            .value ||
-                                                                                        null
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                        </td>
-                                                                        <td>
-                                                                            {f.usedInCode
-                                                                                ? "oui"
-                                                                                : "non"}
-                                                                        </td>
-                                                                        <td>
-                                                                            <button
-                                                                                type="button"
-                                                                                className="btn btn-sm btn-outline-primary"
-                                                                                disabled={
-                                                                                    savingFlagKey ===
-                                                                                    f.key ||
-                                                                                    savingAllModules
-                                                                                }
-                                                                                onClick={() =>
-                                                                                    saveFeatureFlag(
-                                                                                        f.key
-                                                                                    )
-                                                                                }
-                                                                            >
-                                                                                Sauver
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                )
-                                                            )}
+                                                                            {savingFlagKey ===
+                                                                                f.key
+                                                                                ? "..."
+                                                                                : "Save"}
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
                                                         </tbody>
                                                     </table>
                                                 </div>
-                                                <div className="mb-3">
+
+                                                <div className="d-flex justify-content-end">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-sm btn-primary"
+                                                        className="btn btn-outline-primary btn-sm"
                                                         disabled={savingAllModules}
                                                         onClick={saveAllModules}
                                                     >
                                                         {savingAllModules
-                                                            ? "Sauvegarde de tous les modules..."
+                                                            ? "Sauvegarde..."
                                                             : "Sauvegarder tous les modules"}
                                                     </button>
                                                 </div>
@@ -1238,50 +1343,50 @@ const SuperAdminPanel: React.FC = () => {
                                         <hr />
 
                                         <h6>Ajouter un module</h6>
-                                        <div className="row g-2 align-items-center mb-2">
-                                            <div className="col-md-4">
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm"
-                                                    placeholder="Ex: Comparatif.Enabled"
-                                                    value={newModuleKey}
-                                                    onChange={(e) =>
-                                                        setNewModuleKey(
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                />
+                                        <div className="row g-2 align-items-end">
+                                            <div className="col-md-5">
+                                                <label className="form-label small">
+                                                    Clé brute ou suffixe
+                                                    <input
+                                                        type="text"
+                                                        className="form-control form-control-sm"
+                                                        placeholder="ex: Comparatif"
+                                                        value={newModuleKey}
+                                                        onChange={(e) =>
+                                                            setNewModuleKey(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                </label>
                                             </div>
                                             <div className="col-md-5">
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm"
-                                                    placeholder="Commentaire"
-                                                    value={newModuleComment}
-                                                    onChange={(e) =>
-                                                        setNewModuleComment(
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                />
+                                                <label className="form-label small">
+                                                    Commentaire
+                                                    <input
+                                                        type="text"
+                                                        className="form-control form-control-sm"
+                                                        value={newModuleComment}
+                                                        onChange={(e) =>
+                                                            setNewModuleComment(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                </label>
                                             </div>
-                                            <div className="col-md-3">
+                                            <div className="col-md-2 d-flex">
                                                 <button
                                                     type="button"
-                                                    className="btn btn-sm btn-outline-success w-100"
+                                                    className="btn btn-sm btn-success ms-auto"
                                                     disabled={creatingModule}
                                                     onClick={createModuleFlag}
                                                 >
                                                     {creatingModule
-                                                        ? "Création..."
-                                                        : "Créer le module"}
+                                                        ? "..."
+                                                        : "Créer"}
                                                 </button>
                                             </div>
-                                        </div>
-                                        <div className="small text-muted">
-                                            La clé sera normalisée en
-                                            <code> Module:&lt;Nom&gt;.Enabled</code>{" "}
-                                            si nécessaire.
                                         </div>
                                     </>
                                 )}
@@ -1293,146 +1398,362 @@ const SuperAdminPanel: React.FC = () => {
 
             {/* ---------------- MEMBERSHIP TAB ---------------- */}
             {activeTab === "membership" && (
-                <div className="card">
-                    <div className="card-header">Membership (recherche par courriel)</div>
-                    <div className="card-body">
-                        <div className="row g-2 align-items-center mb-2">
-                            <div className="col-md-6 position-relative">
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Courriel ou nom"
-                                    value={query}
-                                    onChange={(e) => {
-                                        setQuery(e.target.value);
-                                        setShowSug(true);
-                                    }}
-                                />
-                                {showSug && suggestions.length > 0 && (
-                                    <div className="list-group position-absolute w-100 shadow-sm">
-                                        {suggestions.map((s) => (
-                                            <button
-                                                key={s.userId}
-                                                type="button"
-                                                className="list-group-item list-group-item-action"
-                                                onClick={() => pickUser(s)}
-                                            >
-                                                {s.email} ({s.displayName})
-                                            </button>
-                                        ))}
+                <div className="row">
+                    {/* Left: search + single-user editor */}
+                    <div className="col-lg-5 mb-3">
+                        <div className="card h-100">
+                            <div className="card-header">Édition individuelle</div>
+                            <div className="card-body">
+                                <div className="mb-3">
+                                    <label className="form-label">
+                                        Recherche par email / nom d&apos;utilisateur
+                                    </label>
+                                    <div className="input-group">
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={query}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            onFocus={() => {
+                                                if (suggestions.length > 0) {
+                                                    setShowSug(true);
+                                                }
+                                            }}
+                                            placeholder="au moins 2 caractères"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-secondary"
+                                            disabled={searching}
+                                            onClick={runManualSearch}
+                                        >
+                                            {searching ? "…" : "Chercher"}
+                                        </button>
+                                    </div>
+                                    {searchMsg && (
+                                        <div className="form-text">{searchMsg}</div>
+                                    )}
+                                    {showSug && suggestions.length > 0 && (
+                                        <div className="mt-2 border rounded bg-white shadow-sm">
+                                            <ul className="list-group list-group-flush">
+                                                {suggestions.map((s) => (
+                                                    <li
+                                                        key={s.userId}
+                                                        className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                                                        style={{ cursor: "pointer" }}
+                                                        onClick={() => pickUser(s)}
+                                                    >
+                                                        <span>
+                                                            {s.displayName}{" "}
+                                                            <span className="text-muted small">
+                                                                {s.email}
+                                                            </span>
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {selectedUser && (
+                                    <div className="mb-3">
+                                        <div className="small text-muted">
+                                            Utilisateur sélectionné
+                                        </div>
+                                        <div>
+                                            <strong>
+                                                {selectedUser.displayName}
+                                            </strong>
+                                            <div className="text-muted">
+                                                {selectedUser.email}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
-                            </div>
-                            <div className="col-md-3">
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-secondary w-100"
-                                    disabled={searching}
-                                    onClick={runManualSearch}
-                                >
-                                    {searching ? "Recherche..." : "Rechercher"}
-                                </button>
-                            </div>
-                        </div>
-                        {searchMsg && (
-                            <div className="mb-2 text-muted small">{searchMsg}</div>
-                        )}
 
-                        {loadingM && <p>Chargement du membership...</p>}
+                                {loadingM && <p>Chargement de l’abonnement...</p>}
 
-                        {!loadingM && membership && selectedUser && (
-                            <>
-                                <hr />
-                                <h6>
-                                    {selectedUser.email} ({selectedUser.displayName})
-                                </h6>
-                                <div className="row g-3 mb-3">
-                                    <div className="col-md-4">
-                                        <label className="form-label">
-                                            Début (UTC)
-                                        </label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            disabled={membership.isLifetime}
-                                            value={startDate}
-                                            onChange={(e) =>
-                                                setStartDate(e.target.value)
-                                            }
-                                        />
-                                    </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label">
-                                            Fin (UTC)
-                                        </label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            disabled={membership.isLifetime}
-                                            value={endDate}
-                                            onChange={(e) =>
-                                                setEndDate(e.target.value)
-                                            }
-                                        />
-                                        {membership.isLifetime && (
-                                            <div className="form-text">
-                                                Abonnement à vie (fin
-                                                9999-12-31).
+                                {membership && (
+                                    <>
+                                        <div className="row g-2">
+                                            <div className="col-sm-6">
+                                                <label className="form-label">
+                                                    Début (UTC)
+                                                    <input
+                                                        type="date"
+                                                        className="form-control"
+                                                        value={startDate}
+                                                        onChange={(e) =>
+                                                            setStartDate(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                </label>
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="col-md-4 d-flex align-items-end">
-                                        <div className="form-check">
+                                            <div className="col-sm-6">
+                                                <label className="form-label">
+                                                    Fin (UTC)
+                                                    <input
+                                                        type="date"
+                                                        className="form-control"
+                                                        value={endDate}
+                                                        onChange={(e) =>
+                                                            setEndDate(e.target.value)
+                                                        }
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-check mb-2">
                                             <input
-                                                id="m-active"
-                                                type="checkbox"
                                                 className="form-check-input"
+                                                type="checkbox"
+                                                id="membership-active"
                                                 checked={active}
                                                 onChange={(e) =>
                                                     setActive(e.target.checked)
                                                 }
                                             />
                                             <label
-                                                htmlFor="m-active"
                                                 className="form-check-label"
+                                                htmlFor="membership-active"
                                             >
-                                                Actif
+                                                Abonnement actif
+                                            </label>
+                                        </div>
+
+                                        <div className="mb-2">
+                                            <small className="text-muted">
+                                                Fin actuelle :{" "}
+                                                {membership.endDateUtc
+                                                    ? formatUtc(membership.endDateUtc)
+                                                    : "(non défini)"}
+                                            </small>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-secondary btn-sm me-2"
+                                                onClick={() => {
+                                                    const today = new Date();
+                                                    const yyyy =
+                                                        today.getUTCFullYear();
+                                                    const mm = String(
+                                                        today.getUTCMonth() + 1
+                                                    ).padStart(2, "0");
+                                                    const dd = String(
+                                                        today.getUTCDate()
+                                                    ).padStart(2, "0");
+                                                    const todayStr = `${yyyy}-${mm}-${dd}`;
+                                                    setStartDate(todayStr);
+                                                }}
+                                            >
+                                                Début = aujourd&apos;hui
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-secondary btn-sm me-2"
+                                                onClick={() =>
+                                                    setEndDate(LIFETIME_END_DATE)
+                                                }
+                                            >
+                                                Fin = {LIFETIME_END_DATE} (lifetime)
+                                            </button>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            disabled={savingM}
+                                            onClick={saveMembership}
+                                        >
+                                            {savingM ? "Sauvegarde..." : "Sauvegarder"}
+                                        </button>
+                                    </>
+                                )}
+
+                                {!membership && !loadingM && (
+                                    <p className="text-muted">
+                                        Sélectionnez un utilisateur pour voir / éditer
+                                        son abonnement.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right: all users table */}
+                    <div className="col-lg-7 mb-3">
+                        <div className="card h-100">
+                            <div className="card-header d-flex justify-content-between align-items-center">
+                                <span>Tous les abonnements</span>
+                                <small className="text-muted">
+                                    {allTotal} utilisateur(s)
+                                </small>
+                            </div>
+                            <div className="card-body d-flex flex-column">
+                                <div className="row g-2 mb-3">
+                                    <div className="col-md-6">
+                                        <label className="form-label small">
+                                            Filtrer par email
+                                            <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                value={allFilterEmail}
+                                                onChange={(e) =>
+                                                    setAllFilterEmail(e.target.value)
+                                                }
+                                                placeholder="contient..."
+                                            />
+                                        </label>
+                                    </div>
+                                    <div className="col-md-3 d-flex align-items-end">
+                                        <div className="form-check small">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                id="filter-only-active"
+                                                checked={allFilterOnlyActive}
+                                                onChange={(e) =>
+                                                    setAllFilterOnlyActive(
+                                                        e.target.checked
+                                                    )
+                                                }
+                                            />
+                                            <label
+                                                className="form-check-label ms-1"
+                                                htmlFor="filter-only-active"
+                                            >
+                                                Actifs seulement
                                             </label>
                                         </div>
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-secondary"
-                                        onClick={() => setEndDate(LIFETIME_END_DATE)}
-                                        disabled={!selectedUser}
-                                    >
-                                        Lifetime
-                                    </button>
+                                    <div className="col-md-3 d-flex align-items-end">
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-primary ms-auto"
+                                            disabled={allLoading}
+                                            onClick={onAllFilterApply}
+                                        >
+                                            {allLoading ? "…" : "Appliquer"}
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="mb-2 small text-muted">
-                                    Dernier changement:{" "}
-                                    {formatUtc(membership.lastChangeUtc)}
+                                <div className="table-responsive flex-grow-1">
+                                    {allLoading && !allHasLoadedOnce && (
+                                        <p>Chargement des abonnements...</p>
+                                    )}
+                                    {!allLoading && allRows.length === 0 && (
+                                        <p className="text-muted">
+                                            Aucun utilisateur trouvé.
+                                        </p>
+                                    )}
+                                    {allRows.length > 0 && (
+                                        <table className="table table-sm align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Email</th>
+                                                    <th>Nom</th>
+                                                    <th>Début</th>
+                                                    <th>Fin</th>
+                                                    <th>Actif</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {allRows.map((row) => (
+                                                    <tr
+                                                        key={row.userId}
+                                                        style={{ cursor: "pointer" }}
+                                                        onClick={() =>
+                                                            onAllRowClick(row)
+                                                        }
+                                                    >
+                                                        <td>{row.email}</td>
+                                                        <td>{row.displayName}</td>
+                                                        <td>
+                                                            {row.startDateUtc
+                                                                ? fromIsoToDateInput(
+                                                                    row.startDateUtc
+                                                                )
+                                                                : ""}
+                                                        </td>
+                                                        <td>
+                                                            {row.endDateUtc
+                                                                ? fromIsoToDateInput(
+                                                                    row.endDateUtc
+                                                                )
+                                                                : ""}
+                                                        </td>
+                                                        <td>
+                                                            {row.isActive ? (
+                                                                <span className="badge bg-success">
+                                                                    Actif
+                                                                </span>
+                                                            ) : (
+                                                                <span className="badge bg-secondary">
+                                                                    Inactif
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
                                 </div>
 
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    disabled={savingM}
-                                    onClick={saveMembership}
-                                >
-                                    {savingM
-                                        ? "Sauvegarde..."
-                                        : "Sauvegarder le membership"}
-                                </button>
-                            </>
-                        )}
-
-                        {!loadingM && !membership && (
-                            <p className="text-muted mt-3">
-                                Aucune donnée de membership chargée.
-                            </p>
-                        )}
+                                {allRows.length > 0 && (
+                                    <div className="mt-2 d-flex justify-content-between align-items-center">
+                                        <div className="d-flex align-items-center gap-2">
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-secondary"
+                                                disabled={allPage <= 1 || allLoading}
+                                                onClick={() => onAllPageChange(-1)}
+                                            >
+                                                Précédent
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-secondary"
+                                                disabled={
+                                                    allPage >= allMaxPage || allLoading
+                                                }
+                                                onClick={() => onAllPageChange(1)}
+                                            >
+                                                Suivant
+                                            </button>
+                                            <span className="small text-muted ms-2">
+                                                Page {allPage} / {allMaxPage}
+                                            </span>
+                                        </div>
+                                        <div className="d-flex align-items-center gap-2 small">
+                                            <span>Taille page</span>
+                                            <select
+                                                className="form-select form-select-sm"
+                                                style={{ width: "5rem" }}
+                                                value={allPageSize}
+                                                onChange={(e) =>
+                                                    onAllPageSizeChange(
+                                                        Number(e.target.value)
+                                                    )
+                                                }
+                                                disabled={allLoading}
+                                            >
+                                                <option value={25}>25</option>
+                                                <option value={50}>50</option>
+                                                <option value={100}>100</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1440,117 +1761,122 @@ const SuperAdminPanel: React.FC = () => {
             {/* ---------------- ADMINS TAB ---------------- */}
             {activeTab === "admins" && (
                 <div className="row">
-                    <div className="col-md-6 mb-3">
-                        <div className="card">
-                            <div className="card-header">
-                                Admins du forum (liste DB)
-                            </div>
+                    <div className="col-lg-6 mb-3">
+                        <div className="card h-100">
+                            <div className="card-header">Admins Forum</div>
                             <div className="card-body">
-                                <div className="input-group mb-2">
-                                    <input
-                                        type="email"
-                                        className="form-control"
-                                        placeholder="courriel..."
-                                        value={faEmail}
-                                        onChange={(e) => setFaEmail(e.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-primary"
-                                        onClick={addForumAdmin}
-                                    >
-                                        Ajouter
-                                    </button>
-                                </div>
-                                <ul className="list-group small">
-                                    {forumAdmins.map((a) => (
-                                        <li
-                                            key={a.userId}
-                                            className="list-group-item d-flex justify-content-between align-items-center"
+                                <div className="mb-3">
+                                    <label className="form-label">
+                                        Ajouter un admin de forum (par email)
+                                    </label>
+                                    <div className="input-group">
+                                        <input
+                                            type="email"
+                                            className="form-control"
+                                            value={faEmail}
+                                            onChange={(e) =>
+                                                setFaEmail(e.target.value)
+                                            }
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-primary"
+                                            onClick={addForumAdmin}
                                         >
-                                            <span>
-                                                {a.displayName}{" "}
-                                                <span className="text-muted">
-                                                    ({a.userId})
-                                                </span>
-                                                <br />
-                                                <span className="text-muted">
-                                                    Ajouté:{" "}
-                                                    {formatUtc(a.addedUtc)}
-                                                </span>
-                                            </span>
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() =>
-                                                    removeForumAdmin(a.userId)
-                                                }
+                                            Ajouter
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h6>Liste actuelle</h6>
+                                {forumAdmins.length === 0 && (
+                                    <p className="text-muted">
+                                        Aucun admin de forum.
+                                    </p>
+                                )}
+                                {forumAdmins.length > 0 && (
+                                    <ul className="list-group">
+                                        {forumAdmins.map((a) => (
+                                            <li
+                                                key={a.userId}
+                                                className="list-group-item d-flex justify-content-between align-items-center"
                                             >
-                                                Retirer
-                                            </button>
-                                        </li>
-                                    ))}
-                                    {forumAdmins.length === 0 && (
-                                        <li className="list-group-item text-muted">
-                                            Aucun admin du forum défini.
-                                        </li>
-                                    )}
-                                </ul>
+                                                <div>
+                                                    <div>{a.displayName}</div>
+                                                    <div className="small text-muted">
+                                                        Ajouté le{" "}
+                                                        {formatUtc(a.addedUtc)}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    onClick={() =>
+                                                        removeForumAdmin(a.userId)
+                                                    }
+                                                >
+                                                    Retirer
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="col-md-6 mb-3">
-                        <div className="card">
-                            <div className="card-header">
-                                Admins Identity (rôle &quot;Admin&quot;)
-                            </div>
+                    <div className="col-lg-6 mb-3">
+                        <div className="card h-100">
+                            <div className="card-header">Admins Identity</div>
                             <div className="card-body">
-                                <div className="input-group mb-2">
-                                    <input
-                                        type="email"
-                                        className="form-control"
-                                        placeholder="courriel..."
-                                        value={iaEmail}
-                                        onChange={(e) => setIaEmail(e.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-primary"
-                                        onClick={addIdentityAdmin}
-                                    >
-                                        Ajouter
-                                    </button>
-                                </div>
-                                <ul className="list-group small">
-                                    {identityAdmins.map((a) => (
-                                        <li
-                                            key={a.userId}
-                                            className="list-group-item d-flex justify-content-between align-items-center"
+                                <div className="mb-3">
+                                    <label className="form-label">
+                                        Ajouter un admin Identity (par email)
+                                    </label>
+                                    <div className="input-group">
+                                        <input
+                                            type="email"
+                                            className="form-control"
+                                            value={iaEmail}
+                                            onChange={(e) =>
+                                                setIaEmail(e.target.value)
+                                            }
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-primary"
+                                            onClick={addIdentityAdmin}
                                         >
-                                            <span>
-                                                {a.displayName}{" "}
-                                                <span className="text-muted">
-                                                    ({a.userId})
-                                                </span>
-                                            </span>
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() =>
-                                                    removeIdentityAdmin(a.userId)
-                                                }
+                                            Ajouter
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h6>Liste actuelle</h6>
+                                {identityAdmins.length === 0 && (
+                                    <p className="text-muted">Aucun admin.</p>
+                                )}
+                                {identityAdmins.length > 0 && (
+                                    <ul className="list-group">
+                                        {identityAdmins.map((a) => (
+                                            <li
+                                                key={a.userId}
+                                                className="list-group-item d-flex justify-content-between align-items-center"
                                             >
-                                                Retirer
-                                            </button>
-                                        </li>
-                                    ))}
-                                    {identityAdmins.length === 0 && (
-                                        <li className="list-group-item text-muted">
-                                            Aucun admin Identity défini.
-                                        </li>
-                                    )}
-                                </ul>
+                                                <span>{a.displayName}</span>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    onClick={() =>
+                                                        removeIdentityAdmin(a.userId)
+                                                    }
+                                                >
+                                                    Retirer
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1560,188 +1886,199 @@ const SuperAdminPanel: React.FC = () => {
             {/* ---------------- TESTERS TAB ---------------- */}
             {activeTab === "testers" && (
                 <div className="row">
-                    <div className="col-md-6 mb-3">
-                        <div className="card">
-                            <div className="card-header">
-                                Testeurs (rôle &quot;Tester&quot;)
-                            </div>
+                    <div className="col-lg-6 mb-3">
+                        <div className="card h-100">
+                            <div className="card-header">Rôle Testeur</div>
                             <div className="card-body">
-                                <div className="mb-2">
+                                <div className="mb-3">
                                     <label className="form-label">
-                                        Courriel (compte existant ou invitation)
+                                        Ajouter le rôle Testeur à un compte
+                                        existant
                                     </label>
-                                    <input
-                                        type="email"
-                                        className="form-control"
-                                        value={inviteEmail}
-                                        onChange={(e) =>
-                                            setInviteEmail(e.target.value)
-                                        }
-                                    />
-                                </div>
-
-                                <div className="mb-2">
-                                    <label className="form-label">
-                                        Durée de l’invitation (heures,
-                                        optionnel)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        className="form-control"
-                                        value={inviteHours}
-                                        onChange={(e) =>
-                                            setInviteHours(e.target.value)
-                                        }
-                                    />
-                                    <div className="form-text">
-                                        Laissez vide pour la valeur par défaut
-                                        serveur.
-                                    </div>
-                                </div>
-
-                                <div className="mb-2">
-                                    <label className="form-label">
-                                        Langue de l’invitation
-                                    </label>
-                                    <select
-                                        className="form-select"
-                                        value={inviteLang}
-                                        onChange={(e) =>
-                                            setInviteLang(
-                                                e.target
-                                                    .value as typeof inviteLang
-                                            )
-                                        }
-                                    >
-                                        <option value="fr">FR</option>
-                                        <option value="en">EN</option>
-                                    </select>
-                                </div>
-
-                                <div className="d-flex gap-2 mb-2">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-primary"
-                                        onClick={addTesterFromAccount}
-                                    >
-                                        Ajouter rôle Testeur (compte existant)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary"
-                                        onClick={sendTesterInvite}
-                                    >
-                                        Envoyer une invitation Testeur
-                                    </button>
-                                </div>
-
-                                {inviteMessage && (
-                                    <div className="alert alert-info py-1 small mb-2">
-                                        {inviteMessage}
-                                    </div>
-                                )}
-
-                                <hr />
-                                <h6>Testeurs actuels</h6>
-                                <ul className="list-group small">
-                                    {testers.map((t) => (
-                                        <li
-                                            key={t.userId}
-                                            className="list-group-item d-flex justify-content-between align-items-center"
+                                    <div className="input-group">
+                                        <input
+                                            type="email"
+                                            className="form-control"
+                                            value={inviteEmail}
+                                            onChange={(e) =>
+                                                setInviteEmail(e.target.value)
+                                            }
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-primary"
+                                            onClick={addTesterFromAccount}
                                         >
-                                            <span>
-                                                {t.displayName}{" "}
-                                                <span className="text-muted">
-                                                    ({t.email})
-                                                </span>
-                                            </span>
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() =>
-                                                    removeTester(t.userId)
-                                                }
+                                            Ajouter rôle
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h6>Liste des testeurs</h6>
+                                {testers.length === 0 && (
+                                    <p className="text-muted">
+                                        Aucun testeur pour le moment.
+                                    </p>
+                                )}
+                                {testers.length > 0 && (
+                                    <ul className="list-group">
+                                        {testers.map((t) => (
+                                            <li
+                                                key={t.userId}
+                                                className="list-group-item d-flex justify-content-between align-items-center"
                                             >
-                                                Retirer
-                                            </button>
-                                        </li>
-                                    ))}
-                                    {testers.length === 0 && (
-                                        <li className="list-group-item text-muted">
-                                            Aucun testeur pour le moment.
-                                        </li>
-                                    )}
-                                </ul>
+                                                <div>
+                                                    <div>{t.displayName}</div>
+                                                    <div className="small text-muted">
+                                                        {t.email}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    onClick={() =>
+                                                        removeTester(t.userId)
+                                                    }
+                                                >
+                                                    Retirer
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="col-md-6 mb-3">
-                        <div className="card">
-                            <div className="card-header">
-                                Invitations Testeur (actives &amp; historiques)
-                            </div>
+                    <div className="col-lg-6 mb-3">
+                        <div className="card h-100">
+                            <div className="card-header">Invitations testeurs</div>
                             <div className="card-body">
-                                <div className="table-responsive">
-                                    <table className="table table-sm align-middle">
-                                        <thead>
-                                            <tr>
-                                                <th>Courriel</th>
-                                                <th>Créée</th>
-                                                <th>Expire</th>
-                                                <th>Statut</th>
-                                                <th />
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {invites.map((inv) => (
-                                                <tr key={inv.id}>
-                                                    <td>{inv.email}</td>
-                                                    <td>
-                                                        {formatUtc(
-                                                            inv.createdUtc
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        {formatUtc(
-                                                            inv.expiresUtc
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        {inviteStatusLabel(inv)}
-                                                    </td>
-                                                    <td>
-                                                        {!inv.revokedUtc &&
-                                                            !inv.acceptedUtc && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-sm btn-outline-danger"
-                                                                    onClick={() =>
-                                                                        revokeInvite(
-                                                                            inv.id
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    Révoquer
-                                                                </button>
-                                                            )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {invites.length === 0 && (
-                                                <tr>
-                                                    <td
-                                                        colSpan={5}
-                                                        className="text-muted"
-                                                    >
-                                                        Aucune invitation.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                                <div className="mb-3">
+                                    <label className="form-label">
+                                        Envoyer une invitation
+                                    </label>
+                                    <div className="row g-2">
+                                        <div className="col-12">
+                                            <input
+                                                type="email"
+                                                className="form-control"
+                                                placeholder="email du testeur"
+                                                value={inviteEmail}
+                                                onChange={(e) =>
+                                                    setInviteEmail(e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-sm-4">
+                                            <label className="form-label small">
+                                                Expire dans (heures)
+                                                <input
+                                                    type="number"
+                                                    className="form-control form-control-sm"
+                                                    value={inviteHours}
+                                                    onChange={(e) =>
+                                                        setInviteHours(
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    placeholder="ex: 48"
+                                                />
+                                            </label>
+                                        </div>
+                                        <div className="col-sm-4">
+                                            <label className="form-label small">
+                                                Langue
+                                                <select
+                                                    className="form-select form-select-sm"
+                                                    value={inviteLang}
+                                                    onChange={(e) =>
+                                                        setInviteLang(
+                                                            e.target.value === "en"
+                                                                ? "en"
+                                                                : "fr"
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="fr">
+                                                        Français
+                                                    </option>
+                                                    <option value="en">
+                                                        English
+                                                    </option>
+                                                </select>
+                                            </label>
+                                        </div>
+                                        <div className="col-sm-4 d-flex align-items-end">
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-primary w-100"
+                                                onClick={sendTesterInvite}
+                                            >
+                                                Envoyer
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {inviteMessage && (
+                                        <div className="mt-2 small text-success">
+                                            {inviteMessage}
+                                        </div>
+                                    )}
                                 </div>
+
+                                <h6>Invitations existantes</h6>
+                                {invites.length === 0 && (
+                                    <p className="text-muted">
+                                        Aucune invitation.
+                                    </p>
+                                )}
+                                {invites.length > 0 && (
+                                    <div className="table-responsive">
+                                        <table className="table table-sm align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Email</th>
+                                                    <th>Créée</th>
+                                                    <th>Expire</th>
+                                                    <th>Statut</th>
+                                                    <th />
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {invites.map((i) => (
+                                                    <tr key={i.id}>
+                                                        <td>{i.email}</td>
+                                                        <td>
+                                                            {formatUtc(i.createdUtc)}
+                                                        </td>
+                                                        <td>
+                                                            {formatUtc(i.expiresUtc)}
+                                                        </td>
+                                                        <td>
+                                                            {inviteStatusLabel(i)}
+                                                        </td>
+                                                        <td>
+                                                            {i.revokedUtc == null &&
+                                                                !i.acceptedUtc && (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-sm btn-outline-danger"
+                                                                        onClick={() =>
+                                                                            revokeInvite(
+                                                                                i.id
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Révoquer
+                                                                    </button>
+                                                                )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1751,112 +2088,95 @@ const SuperAdminPanel: React.FC = () => {
             {/* ---------------- LOGS TAB ---------------- */}
             {activeTab === "logs" && (
                 <div className="card">
-                    <div className="card-header">Logs d’audit</div>
+                    <div className="card-header">Journaux d’audit</div>
                     <div className="card-body">
                         <div className="row g-2 mb-3">
                             <div className="col-md-3">
-                                <label className="form-label">
-                                    Acteur (email / id)
+                                <label className="form-label small">
+                                    Acteur (email / nom)
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        value={logFilterActor}
+                                        onChange={(e) =>
+                                            setLogFilterActor(e.target.value)
+                                        }
+                                    />
                                 </label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={logFilterActor}
-                                    onChange={(e) =>
-                                        setLogFilterActor(e.target.value)
-                                    }
-                                />
                             </div>
                             <div className="col-md-3">
-                                <label className="form-label">Action</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="ex: SiteStatus.Update"
-                                    value={logFilterAction}
-                                    onChange={(e) =>
-                                        setLogFilterAction(e.target.value)
-                                    }
-                                />
+                                <label className="form-label small">
+                                    Action
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        value={logFilterAction}
+                                        onChange={(e) =>
+                                            setLogFilterAction(e.target.value)
+                                        }
+                                    />
+                                </label>
                             </div>
                             <div className="col-md-3">
-                                <label className="form-label">Cible</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={logFilterTarget}
-                                    onChange={(e) =>
-                                        setLogFilterTarget(e.target.value)
-                                    }
-                                />
+                                <label className="form-label small">
+                                    Cible
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        value={logFilterTarget}
+                                        onChange={(e) =>
+                                            setLogFilterTarget(e.target.value)
+                                        }
+                                    />
+                                </label>
                             </div>
                             <div className="col-md-3">
-                                <label className="form-label">Période</label>
-                                <div className="d-flex gap-1">
+                                <label className="form-label small">
+                                    Du
                                     <input
                                         type="date"
-                                        className="form-control"
+                                        className="form-control form-control-sm"
                                         value={logFilterFrom}
                                         onChange={(e) =>
                                             setLogFilterFrom(e.target.value)
                                         }
                                     />
-                                    <span className="align-self-center">
-                                        à
-                                    </span>
+                                </label>
+                                <label className="form-label small">
+                                    Au
                                     <input
                                         type="date"
-                                        className="form-control"
+                                        className="form-control form-control-sm"
                                         value={logFilterTo}
                                         onChange={(e) =>
                                             setLogFilterTo(e.target.value)
                                         }
                                     />
-                                </div>
+                                </label>
                             </div>
                         </div>
 
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                            <div>
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-primary btn-sm me-2"
-                                    onClick={onLogsSearch}
-                                    disabled={logsLoading}
-                                >
-                                    {logsLoading
-                                        ? "Chargement..."
-                                        : "Filtrer"}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-secondary btn-sm"
-                                    onClick={async () => {
-                                        setLogFilterActor("");
-                                        setLogFilterAction("");
-                                        setLogFilterTarget("");
-                                        setLogFilterFrom("");
-                                        setLogFilterTo("");
-                                        await onLogsSearch();
-                                    }}
-                                    disabled={logsLoading}
-                                >
-                                    Réinitialiser
-                                </button>
-                            </div>
-                            <div className="d-flex align-items-center gap-2">
-                                <span className="small text-muted">
-                                    {logsTotal} entrées
-                                </span>
+                        <div className="mb-3 d-flex justify-content-between align-items-center">
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary"
+                                disabled={logsLoading}
+                                onClick={onLogsSearch}
+                            >
+                                {logsLoading ? "Recherche..." : "Rechercher"}
+                            </button>
+                            <div className="d-flex align-items-center gap-2 small">
+                                <span>Page size</span>
                                 <select
                                     className="form-select form-select-sm"
-                                    style={{ width: "auto" }}
+                                    style={{ width: "5rem" }}
                                     value={logsPageSize}
-                                    onChange={async (e) =>
+                                    onChange={(e) =>
                                         onLogsPageSizeChange(
-                                            parseInt(e.target.value, 10)
+                                            Number(e.target.value)
                                         )
                                     }
+                                    disabled={logsLoading}
                                 >
                                     <option value={25}>25</option>
                                     <option value={50}>50</option>
@@ -1866,80 +2186,72 @@ const SuperAdminPanel: React.FC = () => {
                         </div>
 
                         <div className="table-responsive">
-                            <table className="table table-sm align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Date (UTC locale)</th>
-                                        <th>Acteur</th>
-                                        <th>Action</th>
-                                        <th>Cible</th>
-                                        <th>Résumé</th>
-                                        <th>IP</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {logs.map((log) => (
-                                        <tr key={log.id}>
-                                            <td>{formatUtc(log.timestampUtc)}</td>
-                                            <td>
-                                                {log.actorDisplayName ||
-                                                    log.actorUserId ||
-                                                    "(system)"}
-                                            </td>
-                                            <td>{log.action}</td>
-                                            <td>{log.target || ""}</td>
-                                            <td className="small">
-                                                {log.detailsSummary || ""}
-                                            </td>
-                                            <td className="small">
-                                                {log.ipAddress || ""}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {logs.length === 0 && !logsLoading && (
+                            {logsLoading && logs.length === 0 && (
+                                <p>Chargement des logs...</p>
+                            )}
+                            {!logsLoading && logs.length === 0 && (
+                                <p className="text-muted">Aucun log trouvé.</p>
+                            )}
+                            {logs.length > 0 && (
+                                <table className="table table-sm align-middle">
+                                    <thead>
                                         <tr>
-                                            <td
-                                                colSpan={6}
-                                                className="text-muted text-center"
-                                            >
-                                                Aucun log trouvé.
-                                            </td>
+                                            <th>Date</th>
+                                            <th>Acteur</th>
+                                            <th>Action</th>
+                                            <th>Cible</th>
+                                            <th>IP</th>
+                                            <th>Détails</th>
                                         </tr>
-                                    )}
-                                    {logsLoading && (
-                                        <tr>
-                                            <td colSpan={6}>Chargement...</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {logs.map((log) => (
+                                            <tr key={log.id}>
+                                                <td>
+                                                    {formatUtc(log.timestampUtc)}
+                                                </td>
+                                                <td>{log.actorDisplayName}</td>
+                                                <td>{log.action}</td>
+                                                <td>{log.target}</td>
+                                                <td>{log.ipAddress}</td>
+                                                <td>{log.detailsSummary}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
 
-                        <div className="d-flex justify-content-between align-items-center mt-2">
-                            <div className="btn-group btn-group-sm">
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-secondary"
-                                    onClick={() => onLogsPageChange(-1)}
-                                    disabled={logsLoading || logsPage <= 1}
-                                >
-                                    &laquo; Précédent
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-secondary"
-                                    onClick={() => onLogsPageChange(1)}
-                                    disabled={
-                                        logsLoading || logsPage >= logsMaxPage
-                                    }
-                                >
-                                    Suivant &raquo;
-                                </button>
+                        {logs.length > 0 && (
+                            <div className="mt-2 d-flex justify-content-between align-items-center">
+                                <div className="d-flex align-items-center gap-2">
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        disabled={logsPage <= 1 || logsLoading}
+                                        onClick={() => onLogsPageChange(-1)}
+                                    >
+                                        Précédent
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        disabled={
+                                            logsPage >= logsMaxPage || logsLoading
+                                        }
+                                        onClick={() => onLogsPageChange(1)}
+                                    >
+                                        Suivant
+                                    </button>
+                                    <span className="small text-muted ms-2">
+                                        Page {logsPage} / {logsMaxPage}
+                                    </span>
+                                </div>
+                                <div className="small text-muted">
+                                    Total : {logsTotal} entrées
+                                </div>
                             </div>
-                            <div className="small text-muted">
-                                Page {logsPage} / {logsMaxPage}
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -311,6 +311,75 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
         }
 
+        // GET /api/super/admins/memberships/all?Page=1&PageSize=50&Email=&OnlyActive=true
+        [HttpGet("memberships/all")]
+        public async Task<ActionResult<SuperAdminUserMembershipPageDto>> ListAllUserMemberships(
+            [FromQuery] int Page = 1,
+            [FromQuery] int PageSize = 50,
+            [FromQuery] string? Email = null,
+            [FromQuery] bool? OnlyActive = null)
+        {
+            Page = Math.Max(1, Page);
+            PageSize = Math.Clamp(PageSize, 10, 200);
+
+            // Base: ALL users
+            IQueryable<IdentityUser> usersQuery = _db.Users.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(Email))
+            {
+                var term = Email.Trim().ToLower();
+                usersQuery = usersQuery.Where(u =>
+                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
+                    (u.UserName != null && u.UserName.ToLower().Contains(term))
+                );
+            }
+
+            // Left join with memberships
+            var joinedQuery =
+                from u in usersQuery
+                join m in _db.Memberships.AsNoTracking()
+                    on u.Id equals m.UserId into gj
+                from m in gj.DefaultIfEmpty()
+                select new { User = u, Membership = m };
+
+            // Optional: onlyActive filter
+            if (OnlyActive == true)
+            {
+                joinedQuery = joinedQuery.Where(x => x.Membership != null && x.Membership.IsActive);
+            }
+
+            var totalCount = await joinedQuery.CountAsync();
+
+            var rows = await joinedQuery
+                .OrderBy(x => x.User.Email)
+                .ThenBy(x => x.User.UserName)
+                .Skip((Page - 1) * PageSize)
+                .Take(PageSize)
+                .Select(x => new SuperAdminUserMembershipRowDto(
+                    x.User.Id,
+                    x.User.Email ?? "",
+                    x.User.UserName ?? x.User.Email ?? "Utilisateur",
+                    x.Membership != null ? x.Membership.StartDate : null,
+                    x.Membership != null ? x.Membership.EndDate : null,
+                    x.Membership != null && x.Membership.IsActive,
+                    x.Membership != null ? x.Membership.StripeCustomerId : null,
+                    x.Membership != null ? x.Membership.StripeSubscriptionId : null,
+                    x.Membership != null
+    ? EF.Property<DateTime?>(x.Membership, "LastChangeUtc")
+    : null
+                ))
+                .ToListAsync();
+
+            var pageDto = new SuperAdminUserMembershipPageDto(
+                rows,
+                Page,
+                PageSize,
+                totalCount
+            );
+
+            return Ok(pageDto);
+        }
+
         #endregion
 
         #region Testers
