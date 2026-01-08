@@ -115,7 +115,7 @@ const Subscribe: React.FC = () => {
                             {t("price.label", "Tarif de l’abonnement")}
                         </strong>
                         <div className="mt-1">
-                            {t("price.value", "35 $ + taxes par année")}
+                            {t("price.value", "25 $ + taxes par année")}
                         </div>
                     </div>
 
