@@ -1,16 +1,22 @@
 ﻿/* =========================
    Service Worker — per-user API cache + deep offline support
-   FIXED: deterministic SPA navigation caching + clean update propagation
-   - Cache navigations under a single key (/index.html), not per-route
-   - Broadcast SW activation (version) to clients so the app can hard-reload
-   - Keep existing per-user API cache + i18n cache + offline outbox
+   FIXED:
+   - Deterministic SPA navigation caching (cache under /index.html key)
+   - Broadcast SW activation (version) so the app can hard-reload
+   - Per-user API cache
+   - i18n cache is VERSIONED + old i18n caches are PURGED on activate
+   - Optional message: PURGE_LOCALES (force-clear locale caches without bump)
+   - Offline outbox for writes
    ========================= */
 
-const APP_VERSION = "v1.0.30"; // ✅ bump on each deploy that should invalidate SW
+const APP_VERSION = "v1.0.31"; // ✅ bump on each deploy that should invalidate SW
 const PRECACHE = `precache-${APP_VERSION}`;
 const RUNTIME = "runtime";
 const API_CACHE_PREFIX = "api-runtime";
-const LOCALE_RUNTIME = "i18n-locales";
+
+/** ✅ i18n runtime cache is versioned */
+const LOCALE_RUNTIME = `i18n-locales-${APP_VERSION}`;
+const LOCALE_PREFIX = "i18n-locales-";
 
 /* ------- TTL (24h by default) ------- */
 const OFFLINE_MAX_AGE_MS_DEFAULT = 24 * 60 * 60 * 1000; // 24h
@@ -152,7 +158,9 @@ function offlineShapeFor(p) {
     return null;
 }
 
-/* ------- Install/activate ------- */
+/* =========================
+   Install / Activate
+   ========================= */
 self.addEventListener("install", (event) => {
     event.waitUntil(
         (async () => {
@@ -170,7 +178,6 @@ self.addEventListener("install", (event) => {
                 }
             } catch { }
 
-            // ✅ ensures the new SW moves to waiting immediately
             self.skipWaiting();
         })()
     );
@@ -180,34 +187,49 @@ self.addEventListener("activate", (event) => {
     event.waitUntil(
         (async () => {
             const names = await caches.keys();
+
+            // Purge old precaches
             await Promise.all(
-                names.map((n) => (n.startsWith("precache-") && n !== PRECACHE ? caches.delete(n) : null))
+                names.map((n) => (n.startsWith("precache-") && n !== PRECACHE) ? caches.delete(n) : null)
+            );
+
+            // ✅ Purge old i18n locale caches (fix stale translations)
+            await Promise.all(
+                names.map((n) => (n.startsWith(LOCALE_PREFIX) && n !== LOCALE_RUNTIME) ? caches.delete(n) : null)
             );
 
             if ("navigationPreload" in self.registration) {
-                try {
-                    await self.registration.navigationPreload.enable();
-                } catch { }
+                try { await self.registration.navigationPreload.enable(); } catch { }
             }
 
             await self.clients.claim();
 
-            // ✅ FIX: tell every open tab a new SW is active (app should reload)
+            // Tell every open tab a new SW is active (app can reload)
             const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
             for (const c of clients) c.postMessage({ type: "SW_ACTIVATED", version: APP_VERSION });
         })()
     );
 });
 
-/* ------- Per-user API cache ------- */
+/* =========================
+   Per-user API cache
+   ========================= */
 let USER_CACHE_KEY = "anon";
 const getApiCacheName = () => `${API_CACHE_PREFIX}-${USER_CACHE_KEY}`;
 const openApiCache = () => caches.open(getApiCacheName());
+
 async function purgeUserCaches() {
     const names = await caches.keys();
     const current = getApiCacheName();
     await Promise.all(
-        names.map((n) => (n.startsWith(API_CACHE_PREFIX) && n !== current ? caches.delete(n) : null))
+        names.map((n) => (n.startsWith(API_CACHE_PREFIX) && n !== current) ? caches.delete(n) : null)
+    );
+}
+
+async function purgeLocaleCaches() {
+    const names = await caches.keys();
+    await Promise.all(
+        names.map((n) => n.startsWith(LOCALE_PREFIX) ? caches.delete(n) : null)
     );
 }
 
@@ -219,8 +241,6 @@ const pathIsDenied = (p) => NAV_DENYLIST.some((rx) => rx.test(p));
 const META_DB = "sw-meta";
 const META_STORE = "kv";
 const LAST_OK_TS_KEY = "last-ok-ts";
-
-// in-memory snapshot of last-ok to avoid IDB race
 let LAST_OK_TS_MEM = null;
 
 function openMeta() {
@@ -249,13 +269,10 @@ async function metaGet(key) {
         req.onerror = () => reject(req.error);
     });
 }
-
 async function bumpLastOnline() {
     const now = Date.now();
     LAST_OK_TS_MEM = now;
-    try {
-        await metaSet(LAST_OK_TS_KEY, now);
-    } catch { }
+    try { await metaSet(LAST_OK_TS_KEY, now); } catch { }
 }
 
 /* =========================
@@ -263,7 +280,6 @@ async function bumpLastOnline() {
    ========================= */
 self.addEventListener("fetch", (event) => {
     const req = event.request;
-
     if (req.method !== "GET") return;
 
     const url = new URL(req.url);
@@ -271,72 +287,65 @@ self.addEventListener("fetch", (event) => {
 
     /* Navigations */
     if (req.mode === "navigate") {
-        // Denylisted routes: force network if possible, else offline.html
         if (pathIsDenied(url.pathname)) {
-            event.respondWith(
-                (async () => {
-                    try {
-                        return (await event.preloadResponse) || (await fetch(req));
-                    } catch {
-                        const prec = await caches.open(PRECACHE);
-                        return (await prec.match("/offline.html")) || new Response("", { status: 503 });
-                    }
-                })()
-            );
+            event.respondWith((async () => {
+                try { return (await event.preloadResponse) || (await fetch(req)); }
+                catch {
+                    const prec = await caches.open(PRECACHE);
+                    return (await prec.match("/offline.html")) || new Response("", { status: 503 });
+                }
+            })());
             return;
         }
 
-        // ✅ FIX: Always cache SPA shell under a single key (/index.html)
-        event.respondWith(
-            (async () => {
-                const run = await caches.open(RUNTIME);
-                const prec = await caches.open(PRECACHE);
+        event.respondWith((async () => {
+            const run = await caches.open(RUNTIME);
+            const prec = await caches.open(PRECACHE);
 
-                try {
-                    const preload = await event.preloadResponse;
-                    if (preload) {
-                        await run.put(NAV_HTML_KEY, preload.clone());
-                        await bumpLastOnline();
-                        return preload;
-                    }
-
-                    const fresh = await fetch(req);
-                    if (fresh.ok) {
-                        await run.put(NAV_HTML_KEY, fresh.clone());
-                        await bumpLastOnline();
-                    }
-                    return fresh;
-                } catch {
-                    return (
-                        (await run.match(NAV_HTML_KEY)) ||
-                        (await prec.match("/index.html")) ||
-                        (await prec.match("/offline.html")) ||
-                        new Response("", { status: 503 })
-                    );
+            try {
+                const preload = await event.preloadResponse;
+                if (preload) {
+                    await run.put(NAV_HTML_KEY, preload.clone());
+                    await bumpLastOnline();
+                    return preload;
                 }
-            })()
-        );
+
+                const fresh = await fetch(req);
+                if (fresh.ok) {
+                    await run.put(NAV_HTML_KEY, fresh.clone());
+                    await bumpLastOnline();
+                }
+                return fresh;
+            } catch {
+                return (
+                    (await run.match(NAV_HTML_KEY)) ||
+                    (await prec.match("/index.html")) ||
+                    (await prec.match("/offline.html")) ||
+                    new Response("", { status: 503 })
+                );
+            }
+        })());
         return;
     }
 
     /* i18n JSON */
     if (url.pathname.startsWith("/locales/") && url.pathname.endsWith(".json")) {
-        event.respondWith(
-            (async () => {
-                const loc = await caches.open(LOCALE_RUNTIME);
-                try {
-                    const fresh = await fetch(req);
-                    if (fresh.ok) await loc.put(req, fresh.clone());
-                    return fresh;
-                } catch {
-                    const hit = await loc.match(req);
-                    if (hit) return hit;
-                    const prec = await caches.open(PRECACHE);
-                    const precHit = await prec.match(req);
-                    return precHit || new Response("", { status: 503 });
-                }
-            })()
-        );
+        event.respondWith((async () => {
+            const loc = await caches.open(LOCALE_RUNTIME);
+            try {
+                // Always try network first (should be no-store at origin once you do nginx)
+                const fresh = await fetch(req);
+                if (fresh.ok) await loc.put(req, fresh.clone());
+                return fresh;
+            } catch {
+                const hit = await loc.match(req);
+                if (hit) return hit;
+
+                const prec = await caches.open(PRECACHE);
+                const precHit = await prec.match(req);
+                return precHit || new Response("", { status: 503 });
+            }
+        })());
         return;
     }
 
@@ -350,96 +359,93 @@ self.addEventListener("fetch", (event) => {
         url.searchParams.has("t");
 
     if (isStaticAsset(url.pathname) || looksLikeViteDev) {
-        event.respondWith(
-            (async () => {
-                if (looksLikeViteDev) {
-                    try {
-                        return await fetch(req);
-                    } catch {
-                        const run = await caches.open(RUNTIME);
-                        const hit = await run.match(req);
-                        if (hit) return hit;
-                        const prec = await caches.open(PRECACHE);
-                        return (await prec.match(req)) || new Response("", { status: 503 });
-                    }
-                }
-
-                const run = await caches.open(RUNTIME);
+        event.respondWith((async () => {
+            if (looksLikeViteDev) {
                 try {
-                    const resp = await fetch(req);
-                    if (resp.ok) await run.put(req, resp.clone());
-                    return resp;
+                    return await fetch(req);
                 } catch {
-                    const cached = await run.match(req);
-                    if (cached) return cached;
+                    const run = await caches.open(RUNTIME);
+                    const hit = await run.match(req);
+                    if (hit) return hit;
+
                     const prec = await caches.open(PRECACHE);
                     return (await prec.match(req)) || new Response("", { status: 503 });
                 }
-            })()
-        );
+            }
+
+            const run = await caches.open(RUNTIME);
+            try {
+                const resp = await fetch(req);
+                if (resp.ok) await run.put(req, resp.clone());
+                return resp;
+            } catch {
+                const cached = await run.match(req);
+                if (cached) return cached;
+
+                const prec = await caches.open(PRECACHE);
+                return (await prec.match(req)) || new Response("", { status: 503 });
+            }
+        })());
         return;
     }
 
     /* API GETs */
     if (isApiPath(url.pathname)) {
-        event.respondWith(
-            (async () => {
-                const apiCache = await openApiCache();
-                try {
-                    const fresh = await fetch(req);
-                    if (fresh.ok) {
-                        await apiCache.put(req, fresh.clone());
-                        await bumpLastOnline();
-                    }
-                    return fresh;
-                } catch {
-                    const cached = await apiCache.match(req);
-                    if (cached) return cached;
-
-                    let body;
-                    if (isCollectionEndpoint(url.pathname)) {
-                        body = JSON.stringify([]);
-                        return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
-                    }
-                    const special = offlineShapeFor(url.pathname);
-                    if (special) {
-                        body = JSON.stringify(special);
-                        return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
-                    }
-                    if (isSingletonEndpoint(url.pathname)) {
-                        body = JSON.stringify({});
-                        return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
-                    }
-
-                    return new Response("", { status: 200 });
+        event.respondWith((async () => {
+            const apiCache = await openApiCache();
+            try {
+                const fresh = await fetch(req);
+                if (fresh.ok) {
+                    await apiCache.put(req, fresh.clone());
+                    await bumpLastOnline();
                 }
-            })()
-        );
+                return fresh;
+            } catch {
+                const cached = await apiCache.match(req);
+                if (cached) return cached;
+
+                let body;
+                if (isCollectionEndpoint(url.pathname)) {
+                    body = JSON.stringify([]);
+                    return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
+                }
+                const special = offlineShapeFor(url.pathname);
+                if (special) {
+                    body = JSON.stringify(special);
+                    return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
+                }
+                if (isSingletonEndpoint(url.pathname)) {
+                    body = JSON.stringify({});
+                    return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
+                }
+
+                return new Response("", { status: 200 });
+            }
+        })());
         return;
     }
 
     /* Other GETs */
-    event.respondWith(
-        (async () => {
-            const run = await caches.open(RUNTIME);
-            try {
-                const resp = await fetch(req);
-                if (resp.ok) {
-                    run.put(req, resp.clone());
-                    await bumpLastOnline();
-                }
-                return resp;
-            } catch {
-                const cached = await run.match(req);
-                if (cached) return cached;
-                if (req.headers.get("accept")?.includes("text/html")) {
-                    const prec = await caches.open(PRECACHE);
-                    return (await prec.match("/offline.html")) || new Response("", { status: 503 });
-                }
-                return new Response("", { status: 503 });
+    event.respondWith((async () => {
+        const run = await caches.open(RUNTIME);
+        try {
+            const resp = await fetch(req);
+            if (resp.ok) {
+                run.put(req, resp.clone());
+                await bumpLastOnline();
             }
-        })()
-    );
+            return resp;
+        } catch {
+            const cached = await run.match(req);
+            if (cached) return cached;
+
+            if (req.headers.get("accept")?.includes("text/html")) {
+                const prec = await caches.open(PRECACHE);
+                return (await prec.match("/offline.html")) || new Response("", { status: 503 });
+            }
+            return new Response("", { status: 503 });
+        }
+    })());
 });
 
 /* =========================
@@ -458,6 +464,13 @@ self.addEventListener("message", (event) => {
 
     if (msg.type === "PURGE_USER_CACHES") {
         event.waitUntil?.(purgeUserCaches());
+        replyPort?.postMessage?.({ ok: true });
+    }
+
+    // ✅ NEW: force purge i18n caches (useful for hot-fixing stale translations without bump)
+    if (msg.type === "PURGE_LOCALES") {
+        event.waitUntil?.(purgeLocaleCaches());
+        replyPort?.postMessage?.({ ok: true });
     }
 
     if (msg.type === "drain-outbox") {
@@ -475,8 +488,9 @@ self.addEventListener("message", (event) => {
 
     if (msg.type === "SET_OFFLINE_MAX_AGE_HOURS") {
         const hours = Number(msg.hours);
-        OFFLINE_MAX_AGE_MS =
-            Number.isFinite(hours) && hours > 0 ? hours * 60 * 60 * 1000 : OFFLINE_MAX_AGE_MS_DEFAULT;
+        OFFLINE_MAX_AGE_MS = (Number.isFinite(hours) && hours > 0)
+            ? hours * 60 * 60 * 1000
+            : OFFLINE_MAX_AGE_MS_DEFAULT;
         replyPort?.postMessage({ ok: true, ms: OFFLINE_MAX_AGE_MS });
     }
 
@@ -486,46 +500,44 @@ self.addEventListener("message", (event) => {
     }
 
     if (msg.type === "GET_OFFLINE_STATUS") {
-        event.waitUntil(
-            (async () => {
-                const api = await openApiCache();
-                const keys = await api.keys();
-                const entries = keys.length;
+        event.waitUntil((async () => {
+            const api = await openApiCache();
+            const keys = await api.keys();
+            const entries = keys.length;
 
-                let lastOkTs = LAST_OK_TS_MEM;
-                if (lastOkTs == null) {
-                    const stored = await metaGet(LAST_OK_TS_KEY).catch(() => null);
-                    if (typeof stored === "number") {
-                        lastOkTs = stored;
-                        LAST_OK_TS_MEM = stored;
-                    }
+            let lastOkTs = LAST_OK_TS_MEM;
+            if (lastOkTs == null) {
+                const stored = await metaGet(LAST_OK_TS_KEY).catch(() => null);
+                if (typeof stored === "number") {
+                    lastOkTs = stored;
+                    LAST_OK_TS_MEM = stored;
                 }
+            }
 
-                if (typeof lastOkTs !== "number") {
-                    replyPort?.postMessage({
-                        ok: false,
-                        error: "never-online",
-                        entries,
-                        ttlMs: OFFLINE_MAX_AGE_MS,
-                        remainingMs: 0,
-                        source: "last-online",
-                    });
-                    return;
-                }
-
-                const elapsed = Date.now() - lastOkTs;
-                const remainingMs = Math.max(0, OFFLINE_MAX_AGE_MS - elapsed);
-                const ok = remainingMs > 0;
-
+            if (typeof lastOkTs !== "number") {
                 replyPort?.postMessage({
-                    ok,
-                    ttlMs: OFFLINE_MAX_AGE_MS,
-                    remainingMs,
+                    ok: false,
+                    error: "never-online",
                     entries,
+                    ttlMs: OFFLINE_MAX_AGE_MS,
+                    remainingMs: 0,
                     source: "last-online",
                 });
-            })()
-        );
+                return;
+            }
+
+            const elapsed = Date.now() - lastOkTs;
+            const remainingMs = Math.max(0, OFFLINE_MAX_AGE_MS - elapsed);
+            const ok = remainingMs > 0;
+
+            replyPort?.postMessage({
+                ok,
+                ttlMs: OFFLINE_MAX_AGE_MS,
+                remainingMs,
+                entries,
+                source: "last-online",
+            });
+        })());
     }
 });
 
@@ -544,6 +556,7 @@ function openOutbox() {
         req.onerror = () => reject(req.error);
     });
 }
+
 async function outboxAdd(item) {
     const db = await openOutbox();
     return new Promise((resolve, reject) => {
@@ -553,15 +566,17 @@ async function outboxAdd(item) {
         tx.onerror = () => reject(tx.error);
     });
 }
+
 async function outboxAll() {
     const db = await openOutbox();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(OUTBOX_STORE, "readonly");
         const req = tx.objectStore(OUTBOX_STORE).getAll();
         req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(tx.error);
     });
 }
+
 async function outboxDelete(id) {
     const db = await openOutbox();
     return new Promise((resolve, reject) => {
@@ -576,6 +591,7 @@ function extractListIdFromPath(pathname) {
     const m = pathname.match(/^\/api\/(?:liste-epicerie|ListeEpicerie)\/(\d+)(?:\/.*)?$/i);
     return m ? m[1] : null;
 }
+
 async function invalidateListCaches(listId) {
     const api = await openApiCache();
     const keys = await api.keys();
@@ -587,6 +603,7 @@ async function invalidateListCaches(listId) {
                 if (u.origin !== self.location.origin) return null;
 
                 if (LISTES_ROOT.test(u.pathname)) return api.delete(req);
+
                 const m = u.pathname.match(/^\/api\/(?:liste-epicerie|ListeEpicerie)\/(\d+)(?:\/.*)?$/i);
                 if (m && m[1] === String(listId)) return api.delete(req);
 
@@ -597,6 +614,7 @@ async function invalidateListCaches(listId) {
         })
     );
 
+    // best-effort rewarm
     try {
         fetch("/api/ListeEpicerie", { credentials: "include" }).catch(() => { });
         fetch(`/api/ListeEpicerie/${listId}`, { credentials: "include" }).catch(() => { });
@@ -611,7 +629,7 @@ self.addEventListener("fetch", (event) => {
     const url = new URL(req.url);
     if (!sameOrigin(url)) return;
 
-    // ✅ never intercept account/auth writes (they must hit network)
+    // never intercept account/auth writes (they must hit network)
     if (url.pathname.startsWith("/api/account/") || url.pathname.startsWith("/api/auth/")) {
         return;
     }
@@ -629,35 +647,31 @@ self.addEventListener("fetch", (event) => {
 
     if (!isOurWrite) return;
 
-    event.respondWith(
-        (async () => {
-            try {
-                return await fetch(req.clone());
-            } catch {
-                const body = await req.clone().text().catch(() => null);
-                await outboxAdd({
-                    ts: Date.now(),
-                    url: req.url,
-                    method: req.method,
-                    headers: Array.from(req.headers.entries()),
-                    body,
-                });
-                try {
-                    await self.registration.sync.register("sync-outbox");
-                } catch { }
-                return new Response(JSON.stringify({ queued: true, offline: true }), {
-                    headers: { "Content-Type": "application/json" },
-                    status: 202,
-                });
-            }
-        })()
-    );
+    event.respondWith((async () => {
+        try {
+            return await fetch(req.clone());
+        } catch {
+            const body = await req.clone().text().catch(() => null);
+            await outboxAdd({
+                ts: Date.now(),
+                url: req.url,
+                method: req.method,
+                headers: Array.from(req.headers.entries()),
+                body,
+            });
+
+            try { await self.registration.sync.register("sync-outbox"); } catch { }
+
+            return new Response(JSON.stringify({ queued: true, offline: true }), {
+                headers: { "Content-Type": "application/json" },
+                status: 202,
+            });
+        }
+    })());
 });
 
 self.addEventListener("sync", (event) => {
-    if (event.tag === "sync-outbox") {
-        event.waitUntil(drainOutbox());
-    }
+    if (event.tag === "sync-outbox") event.waitUntil(drainOutbox());
 });
 
 async function drainOutbox() {
@@ -669,8 +683,9 @@ async function drainOutbox() {
                 method: item.method,
                 headers,
                 body: item.body,
-                credentials: "include", // ✅ replay with cookies
+                credentials: "include",
             });
+
             if (resp.ok || resp.status === 409) {
                 await outboxDelete(item.id);
 
