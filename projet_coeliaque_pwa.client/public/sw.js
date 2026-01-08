@@ -1,11 +1,12 @@
 ﻿/* =========================
    Service Worker — per-user API cache + deep offline support
-   + Heartbeat-based TTL (no API dependency)
-   + Dev-safe static asset strategy (Vite / localhost = network-first)
-   + i18n: manifest warmup + runtime cache for /locales/** /*.json
+   FIXED: deterministic SPA navigation caching + clean update propagation
+   - Cache navigations under a single key (/index.html), not per-route
+   - Broadcast SW activation (version) to clients so the app can hard-reload
+   - Keep existing per-user API cache + i18n cache + offline outbox
    ========================= */
 
-const APP_VERSION = "v1.0.29"; // ⬅️ BUMPED VERSION
+const APP_VERSION = "v1.0.30"; // ✅ bump on each deploy that should invalidate SW
 const PRECACHE = `precache-${APP_VERSION}`;
 const RUNTIME = "runtime";
 const API_CACHE_PREFIX = "api-runtime";
@@ -17,7 +18,8 @@ let OFFLINE_MAX_AGE_MS = OFFLINE_MAX_AGE_MS_DEFAULT;
 
 /* ------- Precache ------- */
 const PRECACHE_URLS = [
-    "/", "/index.html",
+    "/",
+    "/index.html",
     "/manifest.webmanifest",
     "/offline.html",
     "/icons/icon-192.png",
@@ -26,6 +28,9 @@ const PRECACHE_URLS = [
 
 /* ------- Navigation denylist (force network if possible; fallback offline page) ------- */
 const NAV_DENYLIST = [/^\/forum(\/.*)?$/i, /^\/subscribe(\/.*)?$/i];
+
+/* ✅ SPA navigation cache key (single entry) */
+const NAV_HTML_KEY = "/index.html";
 
 /* =========================
    API ROUTE PATTERNS (kebab + PascalCase)
@@ -82,13 +87,22 @@ const USERS_API = /^\/api\/users(?:\/.*)?$/i;
 
 function isApiPath(p) {
     return (
-        LISTES_ROOT.test(p) || LISTES_ITEM.test(p) || LISTES_COMPLETED.test(p) || LISTES_ITEM_CHECKED.test(p) ||
-        FACTURES_API.test(p) || FACTURE_ITEMS_ROOT.test(p) || FACTURE_ITEMS_TYPES.test(p) || FACTURE_ITEMS_ITEM.test(p) ||
+        LISTES_ROOT.test(p) ||
+        LISTES_ITEM.test(p) ||
+        LISTES_COMPLETED.test(p) ||
+        LISTES_ITEM_CHECKED.test(p) ||
+        FACTURES_API.test(p) ||
+        FACTURE_ITEMS_ROOT.test(p) ||
+        FACTURE_ITEMS_TYPES.test(p) ||
+        FACTURE_ITEMS_ITEM.test(p) ||
         FREE_ITEMS_API.test(p) ||
-        FAQ_API.test(p) || FAQ_CATEGORIES.test(p) ||
-        COMPARATIF_API.test(p) || COMPARATIF_TYPES.test(p) ||
+        FAQ_API.test(p) ||
+        FAQ_CATEGORIES.test(p) ||
+        COMPARATIF_API.test(p) ||
+        COMPARATIF_TYPES.test(p) ||
         RAPPORTS_API.test(p) ||
-        MEMBERSHIP_STATUS.test(p) || ACCOUNT_STATUS.test(p) ||
+        MEMBERSHIP_STATUS.test(p) ||
+        ACCOUNT_STATUS.test(p) ||
         USERS_API.test(p)
     );
 }
@@ -132,7 +146,7 @@ function offlineShapeFor(p) {
             user: null,
             membershipStatus: null,
             isForumAdmin: false,
-            isSuperAdmin: false
+            isSuperAdmin: false,
         };
     }
     return null;
@@ -140,36 +154,49 @@ function offlineShapeFor(p) {
 
 /* ------- Install/activate ------- */
 self.addEventListener("install", (event) => {
-    event.waitUntil((async () => {
-        const cache = await caches.open(PRECACHE);
-        await cache.addAll(PRECACHE_URLS);
+    event.waitUntil(
+        (async () => {
+            const cache = await caches.open(PRECACHE);
+            await cache.addAll(PRECACHE_URLS);
 
-        // Warm i18n files from manifest (best effort)
-        try {
-            const res = await fetch("/locales/manifest.json", { cache: "no-store" });
-            if (res.ok) {
-                const { files } = await res.json();
-                if (Array.isArray(files) && files.length) {
-                    await cache.addAll(files);
+            // Warm i18n files from manifest (best effort)
+            try {
+                const res = await fetch("/locales/manifest.json", { cache: "no-store" });
+                if (res.ok) {
+                    const { files } = await res.json();
+                    if (Array.isArray(files) && files.length) {
+                        await cache.addAll(files);
+                    }
                 }
-            }
-        } catch { }
+            } catch { }
 
-        self.skipWaiting();
-    })());
+            // ✅ ensures the new SW moves to waiting immediately
+            self.skipWaiting();
+        })()
+    );
 });
 
 self.addEventListener("activate", (event) => {
-    event.waitUntil((async () => {
-        const names = await caches.keys();
-        await Promise.all(
-            names.map((n) => (n.startsWith("precache-") && n !== PRECACHE) ? caches.delete(n) : null)
-        );
-        if ("navigationPreload" in self.registration) {
-            try { await self.registration.navigationPreload.enable(); } catch { }
-        }
-        self.clients.claim();
-    })());
+    event.waitUntil(
+        (async () => {
+            const names = await caches.keys();
+            await Promise.all(
+                names.map((n) => (n.startsWith("precache-") && n !== PRECACHE ? caches.delete(n) : null))
+            );
+
+            if ("navigationPreload" in self.registration) {
+                try {
+                    await self.registration.navigationPreload.enable();
+                } catch { }
+            }
+
+            await self.clients.claim();
+
+            // ✅ FIX: tell every open tab a new SW is active (app should reload)
+            const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+            for (const c of clients) c.postMessage({ type: "SW_ACTIVATED", version: APP_VERSION });
+        })()
+    );
 });
 
 /* ------- Per-user API cache ------- */
@@ -180,13 +207,13 @@ async function purgeUserCaches() {
     const names = await caches.keys();
     const current = getApiCacheName();
     await Promise.all(
-        names.map((n) => (n.startsWith(API_CACHE_PREFIX) && n !== current) ? caches.delete(n) : null)
+        names.map((n) => (n.startsWith(API_CACHE_PREFIX) && n !== current ? caches.delete(n) : null))
     );
 }
 
 /* ------- Helpers ------- */
 const sameOrigin = (u) => u.origin === self.location.origin;
-const pathIsDenied = (p) => NAV_DENYLIST.some(rx => rx.test(p));
+const pathIsDenied = (p) => NAV_DENYLIST.some((rx) => rx.test(p));
 
 /* --------- Meta KV (last-online heartbeat) --------- */
 const META_DB = "sw-meta";
@@ -226,7 +253,9 @@ async function metaGet(key) {
 async function bumpLastOnline() {
     const now = Date.now();
     LAST_OK_TS_MEM = now;
-    try { await metaSet(LAST_OK_TS_KEY, now); } catch { }
+    try {
+        await metaSet(LAST_OK_TS_KEY, now);
+    } catch { }
 }
 
 /* =========================
@@ -242,59 +271,72 @@ self.addEventListener("fetch", (event) => {
 
     /* Navigations */
     if (req.mode === "navigate") {
+        // Denylisted routes: force network if possible, else offline.html
         if (pathIsDenied(url.pathname)) {
-            event.respondWith((async () => {
-                try { return (await event.preloadResponse) || (await fetch(req)); }
-                catch {
-                    const prec = await caches.open(PRECACHE);
-                    return (await prec.match("/offline.html")) || new Response("", { status: 503 });
-                }
-            })());
+            event.respondWith(
+                (async () => {
+                    try {
+                        return (await event.preloadResponse) || (await fetch(req));
+                    } catch {
+                        const prec = await caches.open(PRECACHE);
+                        return (await prec.match("/offline.html")) || new Response("", { status: 503 });
+                    }
+                })()
+            );
             return;
         }
 
-        event.respondWith((async () => {
-            try {
-                const preload = await event.preloadResponse;
-                if (preload) {
-                    const run = await caches.open(RUNTIME);
-                    run.put(req, preload.clone());
-                    await bumpLastOnline();
-                    return preload;
-                }
-                const fresh = await fetch(req);
-                if (fresh.ok) {
-                    const run = await caches.open(RUNTIME);
-                    run.put(req, fresh.clone());
-                    await bumpLastOnline();
-                }
-                return fresh;
-            } catch {
+        // ✅ FIX: Always cache SPA shell under a single key (/index.html)
+        event.respondWith(
+            (async () => {
+                const run = await caches.open(RUNTIME);
                 const prec = await caches.open(PRECACHE);
-                return (await prec.match("/index.html")) ||
-                    (await prec.match("/offline.html")) ||
-                    new Response("", { status: 503 });
-            }
-        })());
+
+                try {
+                    const preload = await event.preloadResponse;
+                    if (preload) {
+                        await run.put(NAV_HTML_KEY, preload.clone());
+                        await bumpLastOnline();
+                        return preload;
+                    }
+
+                    const fresh = await fetch(req);
+                    if (fresh.ok) {
+                        await run.put(NAV_HTML_KEY, fresh.clone());
+                        await bumpLastOnline();
+                    }
+                    return fresh;
+                } catch {
+                    return (
+                        (await run.match(NAV_HTML_KEY)) ||
+                        (await prec.match("/index.html")) ||
+                        (await prec.match("/offline.html")) ||
+                        new Response("", { status: 503 })
+                    );
+                }
+            })()
+        );
         return;
     }
 
     /* i18n JSON */
     if (url.pathname.startsWith("/locales/") && url.pathname.endsWith(".json")) {
-        event.respondWith((async () => {
-            const loc = await caches.open(LOCALE_RUNTIME);
-            try {
-                const fresh = await fetch(req);
-                if (fresh.ok) await loc.put(req, fresh.clone());
-                return fresh;
-            } catch {
-                const hit = await loc.match(req);
-                if (hit) return hit;
-                const prec = await caches.open(PRECACHE);
-                const precHit = await prec.match(req);
-                return precHit || new Response("", { status: 503 });
-            }
-        })());
+        event.respondWith(
+            (async () => {
+                const loc = await caches.open(LOCALE_RUNTIME);
+                try {
+                    const fresh = await fetch(req);
+                    if (fresh.ok) await loc.put(req, fresh.clone());
+                    return fresh;
+                } catch {
+                    const hit = await loc.match(req);
+                    if (hit) return hit;
+                    const prec = await caches.open(PRECACHE);
+                    const precHit = await prec.match(req);
+                    return precHit || new Response("", { status: 503 });
+                }
+            })()
+        );
         return;
     }
 
@@ -308,87 +350,96 @@ self.addEventListener("fetch", (event) => {
         url.searchParams.has("t");
 
     if (isStaticAsset(url.pathname) || looksLikeViteDev) {
-        event.respondWith((async () => {
-            if (looksLikeViteDev) {
+        event.respondWith(
+            (async () => {
+                if (looksLikeViteDev) {
+                    try {
+                        return await fetch(req);
+                    } catch {
+                        const run = await caches.open(RUNTIME);
+                        const hit = await run.match(req);
+                        if (hit) return hit;
+                        const prec = await caches.open(PRECACHE);
+                        return (await prec.match(req)) || new Response("", { status: 503 });
+                    }
+                }
+
+                const run = await caches.open(RUNTIME);
                 try {
-                    return await fetch(req);
+                    const resp = await fetch(req);
+                    if (resp.ok) await run.put(req, resp.clone());
+                    return resp;
                 } catch {
-                    const run = await caches.open(RUNTIME);
-                    const hit = await run.match(req);
-                    if (hit) return hit;
+                    const cached = await run.match(req);
+                    if (cached) return cached;
                     const prec = await caches.open(PRECACHE);
                     return (await prec.match(req)) || new Response("", { status: 503 });
                 }
-            }
-
-            const run = await caches.open(RUNTIME);
-            try {
-                const resp = await fetch(req);
-                if (resp.ok) await run.put(req, resp.clone());
-                return resp;
-            } catch {
-                const cached = await run.match(req);
-                if (cached) return cached;
-                const prec = await caches.open(PRECACHE);
-                return (await prec.match(req)) || new Response("", { status: 503 });
-            }
-        })());
+            })()
+        );
         return;
     }
 
     /* API GETs */
     if (isApiPath(url.pathname)) {
-        event.respondWith((async () => {
-            const apiCache = await openApiCache();
-            try {
-                const fresh = await fetch(req);
-                if (fresh.ok) {
-                    await apiCache.put(req, fresh.clone());
-                    await bumpLastOnline();
-                }
-                return fresh;
-            } catch {
-                const cached = await apiCache.match(req);
-                if (cached) return cached;
+        event.respondWith(
+            (async () => {
+                const apiCache = await openApiCache();
+                try {
+                    const fresh = await fetch(req);
+                    if (fresh.ok) {
+                        await apiCache.put(req, fresh.clone());
+                        await bumpLastOnline();
+                    }
+                    return fresh;
+                } catch {
+                    const cached = await apiCache.match(req);
+                    if (cached) return cached;
 
-                let body;
-                if (isCollectionEndpoint(url.pathname)) {
-                    body = JSON.stringify([]);
-                    return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
-                }
-                const special = offlineShapeFor(url.pathname);
-                if (special) {
-                    body = JSON.stringify(special);
-                    return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
-                }
-                if (isSingletonEndpoint(url.pathname)) {
-                    body = JSON.stringify({});
-                    return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
-                }
+                    let body;
+                    if (isCollectionEndpoint(url.pathname)) {
+                        body = JSON.stringify([]);
+                        return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
+                    }
+                    const special = offlineShapeFor(url.pathname);
+                    if (special) {
+                        body = JSON.stringify(special);
+                        return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
+                    }
+                    if (isSingletonEndpoint(url.pathname)) {
+                        body = JSON.stringify({});
+                        return new Response(body, { headers: { "Content-Type": "application/json" }, status: 200 });
+                    }
 
-                return new Response("", { status: 200 });
-            }
-        })());
+                    return new Response("", { status: 200 });
+                }
+            })()
+        );
         return;
     }
 
     /* Other GETs */
-    event.respondWith((async () => {
-        const run = await caches.open(RUNTIME);
-        try {
-            const resp = await fetch(req);
-            if (resp.ok) { run.put(req, resp.clone()); await bumpLastOnline(); }
-            return resp;
-        } catch {
-            const cached = await run.match(req);
-            if (cached) return cached;
-            if (req.headers.get("accept")?.includes("text/html")) {
-                const prec = await caches.open(PRECACHE);
-                return (await prec.match("/offline.html")) || new Response("", { status: 503 });
+    event.respondWith(
+        (async () => {
+            const run = await caches.open(RUNTIME);
+            try {
+                const resp = await fetch(req);
+                if (resp.ok) {
+                    run.put(req, resp.clone());
+                    await bumpLastOnline();
+                }
+                return resp;
+            } catch {
+                const cached = await run.match(req);
+                if (cached) return cached;
+                if (req.headers.get("accept")?.includes("text/html")) {
+                    const prec = await caches.open(PRECACHE);
+                    return (await prec.match("/offline.html")) || new Response("", { status: 503 });
+                }
+                return new Response("", { status: 503 });
             }
-            return new Response("", { status: 503 });
-        }
-    })());
+        })()
+    );
 });
 
 /* =========================
@@ -417,16 +468,15 @@ self.addEventListener("message", (event) => {
         (async () => {
             const api = await openApiCache();
             const keys = await api.keys();
-            const urls = keys.map(k => k.url);
+            const urls = keys.map((k) => k.url);
             replyPort?.postMessage({ ok: true, cache: getApiCacheName(), urls });
         })();
     }
 
     if (msg.type === "SET_OFFLINE_MAX_AGE_HOURS") {
         const hours = Number(msg.hours);
-        OFFLINE_MAX_AGE_MS = (Number.isFinite(hours) && hours > 0)
-            ? hours * 60 * 60 * 1000
-            : OFFLINE_MAX_AGE_MS_DEFAULT;
+        OFFLINE_MAX_AGE_MS =
+            Number.isFinite(hours) && hours > 0 ? hours * 60 * 60 * 1000 : OFFLINE_MAX_AGE_MS_DEFAULT;
         replyPort?.postMessage({ ok: true, ms: OFFLINE_MAX_AGE_MS });
     }
 
@@ -436,45 +486,46 @@ self.addEventListener("message", (event) => {
     }
 
     if (msg.type === "GET_OFFLINE_STATUS") {
-        event.waitUntil((async () => {
-            const api = await openApiCache();
-            const keys = await api.keys();
-            const entries = keys.length;
+        event.waitUntil(
+            (async () => {
+                const api = await openApiCache();
+                const keys = await api.keys();
+                const entries = keys.length;
 
-            let lastOkTs = LAST_OK_TS_MEM;
-            if (lastOkTs == null) {
-                const stored = await metaGet(LAST_OK_TS_KEY).catch(() => null);
-                if (typeof stored === "number") {
-                    lastOkTs = stored;
-                    LAST_OK_TS_MEM = stored;
+                let lastOkTs = LAST_OK_TS_MEM;
+                if (lastOkTs == null) {
+                    const stored = await metaGet(LAST_OK_TS_KEY).catch(() => null);
+                    if (typeof stored === "number") {
+                        lastOkTs = stored;
+                        LAST_OK_TS_MEM = stored;
+                    }
                 }
-            }
 
-            if (typeof lastOkTs !== "number") {
-                // never had heartbeat
+                if (typeof lastOkTs !== "number") {
+                    replyPort?.postMessage({
+                        ok: false,
+                        error: "never-online",
+                        entries,
+                        ttlMs: OFFLINE_MAX_AGE_MS,
+                        remainingMs: 0,
+                        source: "last-online",
+                    });
+                    return;
+                }
+
+                const elapsed = Date.now() - lastOkTs;
+                const remainingMs = Math.max(0, OFFLINE_MAX_AGE_MS - elapsed);
+                const ok = remainingMs > 0;
+
                 replyPort?.postMessage({
-                    ok: false,
-                    error: "never-online",
-                    entries,
+                    ok,
                     ttlMs: OFFLINE_MAX_AGE_MS,
-                    remainingMs: 0,
-                    source: "last-online"
+                    remainingMs,
+                    entries,
+                    source: "last-online",
                 });
-                return;
-            }
-
-            const elapsed = Date.now() - lastOkTs;
-            const remainingMs = Math.max(0, OFFLINE_MAX_AGE_MS - elapsed);
-            const ok = remainingMs > 0;
-
-            replyPort?.postMessage({
-                ok,
-                ttlMs: OFFLINE_MAX_AGE_MS,
-                remainingMs,
-                entries,
-                source: "last-online"
-            });
-        })());
+            })()
+        );
     }
 });
 
@@ -487,7 +538,8 @@ const OUTBOX_STORE = "mutations";
 function openOutbox() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(OUTBOX_DB, 1);
-        req.onupgradeneeded = () => req.result.createObjectStore(OUTBOX_STORE, { keyPath: "id", autoIncrement: true });
+        req.onupgradeneeded = () =>
+            req.result.createObjectStore(OUTBOX_STORE, { keyPath: "id", autoIncrement: true });
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
     });
@@ -528,18 +580,22 @@ async function invalidateListCaches(listId) {
     const api = await openApiCache();
     const keys = await api.keys();
 
-    await Promise.all(keys.map((req) => {
-        try {
-            const u = new URL(req.url);
-            if (u.origin !== self.location.origin) return null;
+    await Promise.all(
+        keys.map((req) => {
+            try {
+                const u = new URL(req.url);
+                if (u.origin !== self.location.origin) return null;
 
-            if (LISTES_ROOT.test(u.pathname)) return api.delete(req);
-            const m = u.pathname.match(/^\/api\/(?:liste-epicerie|ListeEpicerie)\/(\d+)(?:\/.*)?$/i);
-            if (m && m[1] === String(listId)) return api.delete(req);
+                if (LISTES_ROOT.test(u.pathname)) return api.delete(req);
+                const m = u.pathname.match(/^\/api\/(?:liste-epicerie|ListeEpicerie)\/(\d+)(?:\/.*)?$/i);
+                if (m && m[1] === String(listId)) return api.delete(req);
 
-            return null;
-        } catch { return null; }
-    }));
+                return null;
+            } catch {
+                return null;
+            }
+        })
+    );
 
     try {
         fetch("/api/ListeEpicerie", { credentials: "include" }).catch(() => { });
@@ -555,40 +611,47 @@ self.addEventListener("fetch", (event) => {
     const url = new URL(req.url);
     if (!sameOrigin(url)) return;
 
-    // ✅ FIX: never intercept account/auth writes (they must hit network)
+    // ✅ never intercept account/auth writes (they must hit network)
     if (url.pathname.startsWith("/api/account/") || url.pathname.startsWith("/api/auth/")) {
         return;
     }
 
     const isOurWrite =
-        LISTES_ITEM.test(url.pathname) || LISTES_COMPLETED.test(url.pathname) || LISTES_ITEM_CHECKED.test(url.pathname) ||
+        LISTES_ITEM.test(url.pathname) ||
+        LISTES_COMPLETED.test(url.pathname) ||
+        LISTES_ITEM_CHECKED.test(url.pathname) ||
         FACTURES_API.test(url.pathname) ||
         FREE_ITEMS_API.test(url.pathname) ||
-        COMPARATIF_API.test(url.pathname) || COMPARATIF_LINES.test(url.pathname) ||
+        COMPARATIF_API.test(url.pathname) ||
+        COMPARATIF_LINES.test(url.pathname) ||
         RAPPORTS_GENERATE.test(url.pathname) ||
         (USERS_ME_PROFILE.test(url.pathname) && req.method === "PUT");
 
     if (!isOurWrite) return;
 
-    event.respondWith((async () => {
-        try {
-            return await fetch(req.clone());
-        } catch {
-            const body = await req.clone().text().catch(() => null);
-            await outboxAdd({
-                ts: Date.now(),
-                url: req.url,
-                method: req.method,
-                headers: Array.from(req.headers.entries()),
-                body
-            });
-            try { await self.registration.sync.register("sync-outbox"); } catch { }
-            return new Response(JSON.stringify({ queued: true, offline: true }), {
-                headers: { "Content-Type": "application/json" },
-                status: 202
-            });
-        }
-    })());
+    event.respondWith(
+        (async () => {
+            try {
+                return await fetch(req.clone());
+            } catch {
+                const body = await req.clone().text().catch(() => null);
+                await outboxAdd({
+                    ts: Date.now(),
+                    url: req.url,
+                    method: req.method,
+                    headers: Array.from(req.headers.entries()),
+                    body,
+                });
+                try {
+                    await self.registration.sync.register("sync-outbox");
+                } catch { }
+                return new Response(JSON.stringify({ queued: true, offline: true }), {
+                    headers: { "Content-Type": "application/json" },
+                    status: 202,
+                });
+            }
+        })()
+    );
 });
 
 self.addEventListener("sync", (event) => {
@@ -606,7 +669,7 @@ async function drainOutbox() {
                 method: item.method,
                 headers,
                 body: item.body,
-                credentials: "include" // ✅ FIX: replay with cookies
+                credentials: "include", // ✅ replay with cookies
             });
             if (resp.ok || resp.status === 409) {
                 await outboxDelete(item.id);
