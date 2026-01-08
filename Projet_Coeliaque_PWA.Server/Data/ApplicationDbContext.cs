@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Models;
+using Projet_Coeliaque_PWA.Server.Data.Entities;
 
 namespace Projet_Coeliaque_PWA.Server.Data
 {
@@ -36,6 +37,9 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<AppSiteStatus> SiteStatuses { get; set; } = null!;
         public DbSet<AppFeatureFlag> FeatureFlags { get; set; } = null!;
         public DbSet<AdminAuditLog> AdminAuditLogs { get; set; } = null!;
+
+        // Scanned Receipts
+        public DbSet<ReceiptScan> ReceiptScans => Set<ReceiptScan>();
 
 
 

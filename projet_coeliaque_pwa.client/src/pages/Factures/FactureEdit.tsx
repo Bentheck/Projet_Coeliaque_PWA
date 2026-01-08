@@ -1,10 +1,12 @@
-﻿import React, { useEffect, useState } from "react";
+﻿// PATH: projet_coeliaque_pwa.client/src/pages/Factures/FactureEdit.tsx
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Row, Col, Table } from "react-bootstrap";
 import CreatableSelect from "react-select/creatable";
 import type { SingleValue } from "react-select";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
+import ReceiptImportModal from "../../components/receipts/ReceiptImportModal";
 
 import {
     getFacture,
@@ -61,6 +63,9 @@ export default function FactureEdit() {
     const [facture, setFacture] = useState<Facture | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Receipt import modal state
+    const [showReceiptModal, setShowReceiptModal] = useState(false);
 
     // When cache changes, adopt it as the editable snapshot
     useEffect(() => {
@@ -183,6 +188,30 @@ export default function FactureEdit() {
         setModalForm(emptyItem);
     }
 
+    // ----- Receipt import → merge items into invoice -----
+    function handleReceiptItemsChosen(items: any[]) {
+        if (!facture || !items || items.length === 0) return;
+
+        const nextItems = [...(facture.items ?? [])];
+
+        for (const raw of items) {
+            const src = raw || {};
+            const newItem: FactureItem = {
+                id: 0,
+                item: src.item ?? "",
+                typeItem: src.typeItem ?? "",
+                quantite: src.quantite ?? 1,
+                prix: src.prix ?? 0,
+                poidsValeur: src.poidsValeur ?? 0,
+                poidsUnite: src.poidsUnite ?? "",
+                wasOnSale: !!src.wasOnSale,
+            };
+            nextItems.push(newItem);
+        }
+
+        setFacture({ ...facture, items: nextItems });
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
@@ -282,7 +311,7 @@ export default function FactureEdit() {
 
                         {/* Items section */}
                         <div className="mb-4">
-                            <h4 className="mb-3 border-bottom pb-2 d-flex align-items-center">
+                            <h4 className="mb-3 border-bottom pb-2 d-flex align-items-center flex-wrap gap-2">
                                 <span>
                                     <i className="bi bi-list-columns me-2" />
                                     {t("items.title")}
@@ -290,12 +319,22 @@ export default function FactureEdit() {
                                 <Button
                                     variant="success"
                                     size="sm"
-                                    className="rounded-pill px-3 ms-2"
+                                    className="rounded-pill px-3"
                                     onClick={openAddModal}
                                     type="button"
                                 >
                                     <i className="bi bi-plus-circle" />{" "}
                                     {t("items.addButton")}
+                                </Button>
+                                <Button
+                                    variant="outline-primary"
+                                    size="sm"
+                                    className="rounded-pill px-3"
+                                    type="button"
+                                    onClick={() => setShowReceiptModal(true)}
+                                >
+                                    <i className="bi bi-camera me-1" />
+                                    {t("items.importFromReceipt", "Importer d’un reçu")}
                                 </Button>
                             </h4>
 
@@ -439,9 +478,7 @@ export default function FactureEdit() {
                                                         }
                                                     >
                                                         <option value="">
-                                                            {t(
-                                                                "placeholders.unitFallback"
-                                                            )}
+                                                            {t("placeholders.unitFallback")}
                                                         </option>
                                                         {UNIT_OPTIONS.map((u) => (
                                                             <option key={u} value={u}>
@@ -494,9 +531,7 @@ export default function FactureEdit() {
                                                         className="btn btn-outline-danger btn-sm rounded-pill px-3 invoice-remove-btn"
                                                         onClick={() => handleRemoveItem(i)}
                                                         aria-label={t("actions.remove")}
-                                                        title={
-                                                            t("actions.remove") as string
-                                                        }
+                                                        title={t("actions.remove") as string}
                                                     >
                                                         <i className="bi bi-x-lg" />
                                                     </button>
@@ -919,6 +954,21 @@ export default function FactureEdit() {
                     </Form>
                 </Modal.Body>
             </Modal>
+
+            {/* Receipt import modal */}
+            {facture && (
+                <ReceiptImportModal
+                    show={showReceiptModal}
+                    onClose={() => setShowReceiptModal(false)}
+                    factureId={facture.id}
+                    year={facture.annee}
+                    storeName={facture.magasin ?? ""}
+                    onItemsChosen={(items: any[]) => {
+                        handleReceiptItemsChosen(items);
+                        setShowReceiptModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 }

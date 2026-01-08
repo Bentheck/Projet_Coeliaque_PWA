@@ -13,6 +13,7 @@ using Projet_Coeliaque_PWA.Server.Services;
 using Projet_Coeliaque_PWA.Server.Services.Email;
 using Projet_Coeliaque_PWA.Server.Filters;
 using Projet_Coeliaque_PWA.Server.Infrastructure;
+using Projet_Coeliaque_PWA.Server.Services.Receipts;
 
 namespace Projet_Coeliaque_PWA.Server
 {
@@ -72,6 +73,7 @@ namespace Projet_Coeliaque_PWA.Server
                 };
             });
 
+            // Email
             builder.Services.Configure<SmtpEmailOptions>(builder.Configuration.GetSection("Email"));
 
             var emailOpt = builder.Configuration.GetSection("Email").Get<SmtpEmailOptions>() ?? new SmtpEmailOptions();
@@ -87,7 +89,7 @@ namespace Projet_Coeliaque_PWA.Server
             }
 
             builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, IdentityEmailSenderAdapter>();
-            builder.Services.AddSingleton<Projet_Coeliaque_PWA.Server.Services.Email.EmailTemplateService>();
+            builder.Services.AddSingleton<EmailTemplateService>();
 
             // App services
             builder.Services.AddHostedService<StripeMembershipReconciler>();
@@ -97,6 +99,10 @@ namespace Projet_Coeliaque_PWA.Server
             builder.Services.AddScoped<ISiteStatusService, SiteStatusService>();
             builder.Services.AddScoped<IFeatureFlagService, FeatureFlagService>();
             builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
+            // --- Receipt OCR / scan service (for photo receipts → items) ---
+            // Make sure you have IReceiptOcrService + ReceiptOcrService in Services/Receipts.
+            builder.Services.AddScoped<IReceiptOcrService, BasicReceiptOcrService>();
 
             // Authorization handlers / policies
             builder.Services.AddScoped<IAuthorizationHandler, IsForumAdminHandler>();
