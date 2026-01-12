@@ -1,6 +1,11 @@
 ﻿/* ===================================================================== */
 /* RAPPORTS                                                              */
+/* PATH: projet_coeliaque_pwa.client/src/styles/rapports.css              */
 /* ===================================================================== */
+
+/* ------------------------------ */
+/* Layout / Containers            */
+/* ------------------------------ */
 
 .rapports-container {
     max-width: 480px;
@@ -23,7 +28,35 @@ html[data-theme="dark"] .rapports-list-item {
     border-color: #1e293b;
 }
 
-/* Rapports print modal (force light look in dark mode, but respect theme surface) */
+/* Rapports display container */
+.rapports-display-container {
+    max-width: 1200px;
+}
+
+/* Info banner text size */
+.rapports-print-note {
+    font-size: 1.06em;
+}
+
+/* Small helper classes */
+.rapports-prompt-help {
+    font-size: 1em;
+}
+
+/* ------------------------------ */
+/* Print modal                    */
+/* ------------------------------ */
+
+.rapport-print-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
 
 .rapport-print-modal {
     background: var(--color-surface);
@@ -50,38 +83,9 @@ html[data-theme="dark"] .rapport-print-modal input.form-control {
         color: #9ca3af !important;
     }
 
-/* Modal overlay */
-
-.rapport-print-modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: rgba(0, 0, 0, 0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
-
-/* Small helper classes */
-
-.rapports-prompt-help {
-    font-size: 1em;
-}
-
-/* Rapports display container */
-
-.rapports-display-container {
-    max-width: 1200px;
-}
-
-/* Info banner text size */
-
-.rapports-print-note {
-    font-size: 1.06em;
-}
-
-/* Print header boxes */
+/* ------------------------------ */
+/* Print header boxes             */
+/* ------------------------------ */
 
 .rapports-print-header {
     margin-top: 18px;
@@ -112,7 +116,9 @@ html[data-theme="dark"] .rapport-print-modal input.form-control {
     width: 180px;
 }
 
-/* Total + explain sections */
+/* ------------------------------ */
+/* Total + explain sections       */
+/* ------------------------------ */
 
 .rapports-total {
     font-size: 1.1em;
@@ -124,4 +130,298 @@ html[data-theme="dark"] .rapport-print-modal input.form-control {
 
 .rapports-explain-note {
     font-size: 0.95em;
+}
+
+/* ------------------------------ */
+/* Comparatif table styling       */
+/* ------------------------------ */
+
+.comparatif-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    overflow: hidden; /* keeps rounded corners on header */
+}
+
+    .comparatif-table th,
+    .comparatif-table td {
+        border: 1px solid var(--color-border);
+        padding: 10px 10px;
+        vertical-align: middle;
+        word-break: break-word;
+    }
+
+    .comparatif-table thead th {
+        font-weight: 700;
+    }
+
+/* Group header row */
+.comparatif-header-sg {
+    background: rgba(34, 197, 94, 0.14);
+    color: var(--color-text);
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+
+.comparatif-header-ag {
+    background: rgba(59, 130, 246, 0.14);
+    color: var(--color-text);
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+
+.comparatif-header-total {
+    background: rgba(148, 163, 184, 0.16);
+    color: var(--color-text);
+    text-align: center;
+}
+
+/* Column header row (sub headers) */
+.comparatif-th-sg {
+    background: rgba(34, 197, 94, 0.08);
+    color: var(--color-text);
+}
+
+.comparatif-th-ag {
+    background: rgba(59, 130, 246, 0.08);
+    color: var(--color-text);
+}
+
+.double-divider {
+    border-right-width: 3px !important;
+}
+
+.comparatif-table tbody tr:nth-child(even) td {
+    background: rgba(148, 163, 184, 0.06);
+}
+
+/* Improve legibility on dark theme */
+html[data-theme="dark"] .comparatif-table {
+    background: #0b1220;
+    border-color: #1f2a3a;
+}
+
+    html[data-theme="dark"] .comparatif-table th,
+    html[data-theme="dark"] .comparatif-table td {
+        border-color: #1f2a3a;
+    }
+
+    html[data-theme="dark"] .comparatif-table tbody tr:nth-child(even) td {
+        background: rgba(148, 163, 184, 0.05);
+    }
+
+html[data-theme="dark"] .comparatif-header-sg {
+    background: rgba(34, 197, 94, 0.18);
+}
+
+html[data-theme="dark"] .comparatif-header-ag {
+    background: rgba(59, 130, 246, 0.18);
+}
+
+html[data-theme="dark"] .comparatif-header-total {
+    background: rgba(148, 163, 184, 0.14);
+}
+
+/* ------------------------------ */
+/* Highlight bar (screen-only)    */
+/* Matches your screenshot style  */
+/* ------------------------------ */
+
+.rapports-highlightbar {
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    margin: 10px 0 14px 0;
+}
+
+html[data-theme="dark"] .rapports-highlightbar {
+    background: rgba(148, 163, 184, 0.08);
+    border-color: #1f2a3a;
+}
+
+.rapports-highlightbar__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text);
+    font-size: 0.98em;
+    white-space: nowrap;
+}
+
+.rapports-highlight-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.65);
+    color: #0f172a;
+    font-size: 0.85em;
+    font-weight: 700;
+    line-height: 1;
+}
+
+html[data-theme="dark"] .rapports-highlight-badge {
+    background: rgba(2, 6, 23, 0.55);
+    color: #e5e7eb;
+    border-color: #334155;
+}
+
+.rapports-highlight-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.rapports-highlight-dot--neg {
+    background: rgba(239, 68, 68, 0.85);
+}
+
+.rapports-highlight-dot--empty {
+    background: rgba(245, 158, 11, 0.9);
+}
+
+.rapports-highlight-dot--both {
+    background: rgba(236, 72, 153, 0.9);
+}
+
+/* ------------------------------ */
+/* Highlighting rows (screen-only)*/
+/* Uses overlay so it wins vs     */
+/* per-cell backgrounds           */
+/* ------------------------------ */
+
+.rapport-row--empty > td,
+.rapport-row--neg > td,
+.rapport-row--neg.rapport-row--empty > td {
+    position: relative;
+}
+
+    /* Empty comparison (orange overlay) */
+    .rapport-row--empty > td::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(245, 158, 11, 0.14);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Negative subtotal (red overlay) */
+    .rapport-row--neg > td::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(239, 68, 68, 0.14);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Both (pink overlay) */
+    .rapport-row--neg.rapport-row--empty > td::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(236, 72, 153, 0.16);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Keep content above overlay */
+    .rapport-row--empty > td > *,
+    .rapport-row--neg > td > *,
+    .rapport-row--neg.rapport-row--empty > td > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Subtle left accent line */
+    .rapport-row--empty > td:first-child {
+        box-shadow: inset 4px 0 0 rgba(245, 158, 11, 0.65);
+    }
+
+    .rapport-row--neg > td:first-child {
+        box-shadow: inset 4px 0 0 rgba(239, 68, 68, 0.65);
+    }
+
+    .rapport-row--neg.rapport-row--empty > td:first-child {
+        box-shadow: inset 4px 0 0 rgba(236, 72, 153, 0.7);
+    }
+
+/* Dark theme tuning for highlight overlays */
+html[data-theme="dark"] .rapport-row--empty > td::before {
+    background: rgba(245, 158, 11, 0.12);
+}
+
+html[data-theme="dark"] .rapport-row--neg > td::before {
+    background: rgba(239, 68, 68, 0.12);
+}
+
+html[data-theme="dark"] .rapport-row--neg.rapport-row--empty > td::before {
+    background: rgba(236, 72, 153, 0.12);
+}
+
+/* ------------------------------ */
+/* Removed rows table helpers     */
+/* ------------------------------ */
+
+.rapports-removed-wrap .table {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .rapports-removed-wrap .table {
+    background: #0b1220;
+}
+
+html[data-theme="dark"] .rapports-removed-wrap .table-light {
+    --bs-table-bg: rgba(148, 163, 184, 0.10);
+    --bs-table-color: var(--color-text);
+}
+
+/* ------------------------------ */
+/* Print rules                    */
+/* ------------------------------ */
+
+@media print {
+    /* Keep borders crisp */
+    .comparatif-table {
+        border-color: #111 !important;
+    }
+
+        .comparatif-table th,
+        .comparatif-table td {
+            border-color: #111 !important;
+        }
+
+    /* Do NOT print highlight overlays or accent lines */
+    .rapport-row--empty > td::before,
+    .rapport-row--neg > td::before,
+    .rapport-row--neg.rapport-row--empty > td::before {
+        display: none !important;
+    }
+
+    .rapport-row--neg > td:first-child,
+    .rapport-row--empty > td:first-child,
+    .rapport-row--neg.rapport-row--empty > td:first-child {
+        box-shadow: none !important;
+    }
+
+    /* Do NOT print highlight bar */
+    .rapports-highlightbar {
+        display: none !important;
+    }
 }

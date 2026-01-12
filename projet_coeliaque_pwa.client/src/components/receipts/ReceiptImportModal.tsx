@@ -18,12 +18,10 @@ interface ReceiptImportModalProps {
     show: boolean;
     onClose: () => void;
 
-    // Context about the current invoice
     factureId: number;
     year: number;
     storeName: string;
 
-    // Called when user confirms the selection
     onItemsChosen: (items: ReceiptImportItem[]) => void;
 }
 
@@ -70,15 +68,13 @@ export default function ReceiptImportModal({
 
     const handleToggleRow = (index: number) => {
         setRows((prev) =>
-            prev.map((r) =>
-                r._index === index ? { ...r, _selected: !r._selected } : r
-            )
+            prev.map((r) => (r._index === index ? { ...r, _selected: !r._selected } : r))
         );
     };
 
     const handleToggleAll = () => {
         setRows((prev) => {
-            const allSelected = prev.every((r) => r._selected);
+            const allSelected = prev.length > 0 && prev.every((r) => r._selected);
             return prev.map((r) => ({ ...r, _selected: !allSelected }));
         });
     };
@@ -95,7 +91,6 @@ export default function ReceiptImportModal({
             formData.append("year", String(year));
             formData.append("storeName", storeName ?? "");
 
-            // NOTE: endpoint name is tentative; you will add the controller later.
             const res = await fetch("/api/receipts/scan", {
                 method: "POST",
                 body: formData,
@@ -107,11 +102,8 @@ export default function ReceiptImportModal({
                 throw new Error(text || `HTTP ${res.status}`);
             }
 
-            // Expected shape: { items: ReceiptImportItem[] }
             const json = await res.json();
-            const items: ReceiptImportItem[] = Array.isArray(json.items)
-                ? json.items
-                : [];
+            const items: ReceiptImportItem[] = Array.isArray(json.items) ? json.items : [];
 
             const withLocal: LocalRow[] = items.map((it, idx) => ({
                 _index: idx,
@@ -128,10 +120,7 @@ export default function ReceiptImportModal({
 
             setRows(withLocal);
         } catch (err: any) {
-            setError(
-                err?.message ??
-                t("errors.generic", "Une erreur est survenue.")
-            );
+            setError(err?.message ?? t("errors.generic"));
         } finally {
             setLoading(false);
         }
@@ -151,9 +140,7 @@ export default function ReceiptImportModal({
                 wasOnSale: r.wasOnSale,
             }));
 
-        if (selected.length > 0) {
-            onItemsChosen(selected);
-        }
+        if (selected.length > 0) onItemsChosen(selected);
 
         resetState();
         onClose();
@@ -163,13 +150,20 @@ export default function ReceiptImportModal({
     const anySelected = rows.some((r) => r._selected);
 
     return (
-        <Modal show={show} onHide={handleHide} size="lg" centered>
+        <Modal
+            show={show}
+            onHide={handleHide}
+            size="lg"
+            centered
+            contentClassName="receipt-import-modal"
+        >
             <Modal.Header closeButton>
                 <Modal.Title>
                     <i className="bi bi-camera me-2" />
-                    {t("title", "Importer à partir d’un reçu")}
+                    {t("title")}
                 </Modal.Title>
             </Modal.Header>
+
             <Modal.Body>
                 {error && (
                     <Alert variant="danger" className="mb-3">
@@ -178,38 +172,25 @@ export default function ReceiptImportModal({
                 )}
 
                 <Form.Group controlId="receipt-file" className="mb-3">
-                    <Form.Label className="fw-semibold">
-                        {t(
-                            "fields.fileLabel",
-                            "Sélectionnez une photo ou un scan du reçu"
-                        )}
-                    </Form.Label>
+                    <Form.Label className="fw-semibold">{t("fields.fileLabel")}</Form.Label>
                     <Form.Control
                         type="file"
-                        accept="image/*,.pdf"
+                        accept="image/*"
                         capture="environment"
                         onChange={handleFileChange}
                     />
-                    <Form.Text className="text-muted">
-                        {t(
-                            "fields.fileHelp",
-                            "Les photos claires et bien cadrées donnent de meilleurs résultats."
-                        )}
-                    </Form.Text>
+                    <Form.Text className="text-muted">{t("fields.fileHelp")}</Form.Text>
                 </Form.Group>
 
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <div className="small text-muted">
-                        {t(
-                            "context.invoiceInfo",
-                            "Facture #{{id}} — {{store}} ({{year}})",
-                            {
-                                id: factureId,
-                                store: storeName || t("context.unknownStore", "Magasin inconnu"),
-                                year,
-                            }
-                        )}
+                        {t("context.invoiceInfo", {
+                            id: factureId,
+                            store: storeName || t("context.unknownStore"),
+                            year,
+                        })}
                     </div>
+
                     <Button
                         variant="primary"
                         size="sm"
@@ -218,68 +199,52 @@ export default function ReceiptImportModal({
                         disabled={!file || loading}
                     >
                         {loading && (
-                            <Spinner
-                                as="span"
-                                animation="border"
-                                size="sm"
-                                className="me-2"
-                            />
+                            <Spinner as="span" animation="border" size="sm" className="me-2" />
                         )}
                         <i className="bi bi-magic me-1" />
-                        {t("buttons.analyze", "Analyser le reçu")}
+                        {t("buttons.analyze")}
                     </Button>
                 </div>
 
                 {hasRows && (
                     <>
                         <div className="mb-2 d-flex justify-content-between align-items-center">
-                            <span className="fw-semibold">
-                                {t(
-                                    "preview.title",
-                                    "Articles détectés sur le reçu"
-                                )}
-                            </span>
+                            <span className="fw-semibold">{t("preview.title")}</span>
+
                             <Button
                                 variant="outline-secondary"
                                 size="sm"
                                 className="rounded-pill px-3"
                                 onClick={handleToggleAll}
                             >
-                                {t("buttons.toggleAll", "Tout cocher / décocher")}
+                                {t("buttons.toggleAll")}
                             </Button>
                         </div>
 
                         <div className="table-responsive">
-                            <Table
-                                striped
-                                bordered
-                                hover
-                                size="sm"
-                                className="align-middle mb-0"
-                            >
+                            <Table striped bordered hover size="sm" className="align-middle mb-0">
                                 <thead className="table-light">
                                     <tr>
                                         <th style={{ width: "3rem" }} />
-                                        <th>{t("table.item", "Article")}</th>
-                                        <th style={{ width: "6rem" }}>
-                                            {t("table.price", "Prix")}
-                                        </th>
-                                        <th style={{ width: "5rem" }}>
-                                            {t("table.qty", "Qté")}
-                                        </th>
+                                        <th>{t("table.item")}</th>
+                                        <th style={{ width: "6rem" }}>{t("table.price")}</th>
+                                        <th style={{ width: "5rem" }}>{t("table.qty")}</th>
                                     </tr>
                                 </thead>
+
                                 <tbody>
                                     {rows.map((row) => (
                                         <tr key={row._index}>
                                             <td className="text-center">
-                                                <Form.Check
-                                                    type="checkbox"
-                                                    checked={row._selected}
-                                                    onChange={() =>
-                                                        handleToggleRow(row._index)
-                                                    }
-                                                />
+                                                <Form.Check className="m-0 d-inline-flex justify-content-center">
+                                                    <Form.Check.Input
+                                                        type="checkbox"
+                                                        className="receipt-import-checkbox"
+                                                        checked={row._selected}
+                                                        onChange={() => handleToggleRow(row._index)}
+                                                        aria-label={t("table.selectRow")}
+                                                    />
+                                                </Form.Check>
                                             </td>
                                             <td>{row.item}</td>
                                             <td>{row.prix.toFixed(2)}</td>
@@ -293,22 +258,15 @@ export default function ReceiptImportModal({
                 )}
 
                 {!hasRows && !loading && (
-                    <div className="text-muted small mt-3">
-                        {t(
-                            "empty.hint",
-                            "Choisissez un fichier, puis cliquez sur « Analyser le reçu » pour extraire les articles."
-                        )}
-                    </div>
+                    <div className="text-muted small mt-3">{t("empty.hint")}</div>
                 )}
             </Modal.Body>
+
             <Modal.Footer>
-                <Button
-                    variant="secondary"
-                    className="rounded-pill px-4"
-                    onClick={handleHide}
-                >
-                    {t("buttons.cancel", "Annuler")}
+                <Button variant="secondary" className="rounded-pill px-4" onClick={handleHide}>
+                    {t("buttons.cancel")}
                 </Button>
+
                 <Button
                     variant="success"
                     className="rounded-pill px-4"
@@ -316,10 +274,7 @@ export default function ReceiptImportModal({
                     disabled={!anySelected}
                 >
                     <i className="bi bi-plus-circle me-2" />
-                    {t(
-                        "buttons.addSelected",
-                        "Ajouter les articles sélectionnés"
-                    )}
+                    {t("buttons.addSelected")}
                 </Button>
             </Modal.Footer>
         </Modal>

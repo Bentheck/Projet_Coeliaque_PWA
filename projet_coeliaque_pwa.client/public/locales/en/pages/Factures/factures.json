@@ -11,13 +11,17 @@
   },
   "form": {
     "headings": {
-      "create": "Create invoice"
+      "create": "Create invoice",
+      "edit": "Edit invoice"
     },
     "labels": {
       "year": "Year",
       "invoiceId": "Invoice ID",
       "date": "Date",
       "store": "Store"
+    },
+    "placeholders": {
+      "dateIso": "YYYY-MM-DD"
     }
   },
   "empty": {
@@ -45,7 +49,8 @@
   "errors": {
     "unexpectedMissingId": "Unexpected response: missing id.",
     "saveFailed": "Error while saving.",
-    "deleteFailed": "Error while deleting."
+    "deleteFailed": "Error while deleting.",
+    "invalidDate": "Invalid date. Expected format: YYYY-MM-DD."
   },
   "demo": {
     "return": "Return to demo mode",

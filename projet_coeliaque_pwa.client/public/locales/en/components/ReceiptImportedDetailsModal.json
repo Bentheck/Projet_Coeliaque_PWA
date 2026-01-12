@@ -1,0 +1,23 @@
+﻿{
+  "title": "Complete imported item details",
+  "intro": "Review and complete the product type, weight, and whether the item was on sale.",
+  "empty": "No imported items are available to complete.",
+  "table": {
+    "article": "Item",
+    "typeProduit": "Product type",
+    "quantite": "Qty",
+    "prix": "Price",
+    "poids": "Weight",
+    "unite": "Unit",
+    "enSoldeQ": "On sale?"
+  },
+  "placeholders": {
+    "article": "Item name / brand",
+    "typeProduit": "Type (e.g., Milk, Bread, Vegetables...)",
+    "unitFallback": "Choose…"
+  },
+  "buttons": {
+    "cancel": "Cancel",
+    "apply": "Apply to items"
+  }
+}

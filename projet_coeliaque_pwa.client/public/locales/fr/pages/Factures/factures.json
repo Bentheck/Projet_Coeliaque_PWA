@@ -11,13 +11,17 @@
   },
   "form": {
     "headings": {
-      "create": "Créer une facture"
+      "create": "Créer une facture",
+      "edit": "Modifier la facture"
     },
     "labels": {
       "year": "Année",
       "invoiceId": "Facture ID",
       "date": "Date",
       "store": "Magasin"
+    },
+    "placeholders": {
+      "dateIso": "AAAA-MM-JJ"
     }
   },
   "empty": {
@@ -45,7 +49,8 @@
   "errors": {
     "unexpectedMissingId": "Réponse inattendue : id manquant.",
     "saveFailed": "Erreur lors de l’enregistrement.",
-    "deleteFailed": "Erreur lors de la suppression."
+    "deleteFailed": "Erreur lors de la suppression.",
+    "invalidDate": "Date invalide. Format attendu : AAAA-MM-JJ."
   },
   "demo": {
     "return": "Retour au mode démo",

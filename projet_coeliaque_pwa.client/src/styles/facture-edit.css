@@ -239,3 +239,136 @@ html[data-theme="dark"] .facture-type-modal__input {
     box-shadow: none !important;
     color: #e5e7eb !important;
 }
+
+/* ===================================================================== */
+/* Receipt import modal — FORCE native checkbox rendering                 */
+/* ===================================================================== */
+
+.receipt-import-modal input.receipt-import-checkbox[type="checkbox"] {
+    /* Your theme likely forces appearance:none globally; we undo it here */
+    -webkit-appearance: auto !important;
+    appearance: auto !important;
+    width: 1.05rem;
+    height: 1.05rem;
+    /* Make checkmarks readable in dark mode */
+    accent-color: #22c55e;
+    /* Some themes apply opacity/filters to form controls */
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+
+
+/* ===================================================================== */
+/* ReceiptImportedDetailsModal — sizing + react-select fixes              */
+/* ===================================================================== */
+
+/* Make modal truly larger than Bootstrap's default xl */
+.receipt-imported-details-dialog {
+    width: min(1400px, 98vw);
+    max-width: 1400px;
+}
+
+/* If your theme has aggressive modal padding, keep it tidy */
+.receipt-imported-details-modal .modal-body {
+    /* Scroll inside modal nicely */
+    max-height: calc(100vh - 220px);
+    overflow: auto;
+}
+
+/* React-select in this modal */
+.receipt-imported-details-modal .receipt-import-type__control {
+    background-color: var(--color-surface-2) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+    box-shadow: none !important;
+    border-radius: 0.5rem !important;
+    min-height: 38px;
+}
+
+.receipt-imported-details-modal .receipt-import-type__control--is-focused {
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 2px rgba(16, 110, 190, 0.35) !important;
+}
+
+/* This is usually the "black bar" culprit: value container / input inherits a bad background */
+.receipt-imported-details-modal .receipt-import-type__value-container {
+    background: transparent !important;
+}
+
+.receipt-imported-details-modal .receipt-import-type__single-value {
+    color: var(--color-text) !important;
+}
+
+.receipt-imported-details-modal .receipt-import-type__placeholder {
+    color: var(--color-text-muted) !important;
+}
+
+.receipt-imported-details-modal .receipt-import-type__input {
+    background: transparent !important;
+    color: var(--color-text) !important;
+    box-shadow: none !important;
+}
+
+/* Dropdown menu */
+.receipt-imported-details-modal .receipt-import-type__menu {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border: 1px solid var(--color-border) !important;
+    box-shadow: var(--shadow-elevated) !important;
+}
+
+.receipt-imported-details-modal .receipt-import-type__option {
+    background: transparent !important;
+    color: var(--color-text) !important;
+}
+
+.receipt-imported-details-modal .receipt-import-type__option--is-focused {
+    background: var(--color-hover) !important;
+}
+
+.receipt-imported-details-modal .receipt-import-type__option--is-selected {
+    background: var(--color-primary) !important;
+    color: var(--color-primary-text) !important;
+}
+
+/* Ensure the table wrapper doesn't cause weird clipping artifacts (menu is portaled anyway) */
+.receipt-imported-details-tablewrap {
+    overflow: visible;
+}
+
+/* Checkbox visibility (same approach as previous modal) */
+.receipt-imported-details-modal input.receipt-imported-details-checkbox[type="checkbox"] {
+    -webkit-appearance: auto !important;
+    appearance: auto !important;
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: #22c55e;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+/* DARK MODE overrides for this modal (keeps the control from turning into a black slab) */
+html[data-theme="dark"] .receipt-imported-details-modal .receipt-import-type__control {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .receipt-imported-details-modal .receipt-import-type__menu {
+    background-color: #020617 !important;
+    border-color: #334155 !important;
+    color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .receipt-imported-details-modal .receipt-import-type__single-value {
+    color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .receipt-imported-details-modal .receipt-import-type__placeholder {
+    color: #9ca3af !important;
+}
+
+html[data-theme="dark"] .receipt-imported-details-modal .receipt-import-type__input {
+    color: #e5e7eb !important;
+}

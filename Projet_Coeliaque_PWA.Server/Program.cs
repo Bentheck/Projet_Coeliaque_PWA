@@ -100,9 +100,9 @@ namespace Projet_Coeliaque_PWA.Server
             builder.Services.AddScoped<IFeatureFlagService, FeatureFlagService>();
             builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
-            // --- Receipt OCR / scan service (for photo receipts → items) ---
-            // Make sure you have IReceiptOcrService + ReceiptOcrService in Services/Receipts.
-            builder.Services.AddScoped<IReceiptOcrService, BasicReceiptOcrService>();
+            // --- Receipt OCR / scan service (for photo receipts -> items) ---
+            builder.Services.AddScoped<IReceiptOcrService, GoogleVisionReceiptOcrService>();
+            builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 
             // Authorization handlers / policies
             builder.Services.AddScoped<IAuthorizationHandler, IsForumAdminHandler>();

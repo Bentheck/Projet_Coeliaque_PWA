@@ -1,0 +1,32 @@
+﻿{
+  "title": "Importer à partir d’un reçu",
+  "fields": {
+    "fileLabel": "Sélectionnez une photo ou un scan du reçu",
+    "fileHelp": "Les photos claires et bien cadrées donnent de meilleurs résultats."
+  },
+  "context": {
+    "invoiceInfo": "Facture #{{id}} — {{store}} ({{year}})",
+    "unknownStore": "Magasin inconnu"
+  },
+  "buttons": {
+    "analyze": "Analyser le reçu",
+    "toggleAll": "Tout cocher / décocher",
+    "cancel": "Annuler",
+    "addSelected": "Ajouter les articles sélectionnés"
+  },
+  "preview": {
+    "title": "Articles détectés sur le reçu"
+  },
+  "table": {
+    "selectRow": "Sélectionner",
+    "item": "Article",
+    "price": "Prix",
+    "qty": "Qté"
+  },
+  "empty": {
+    "hint": "Choisissez un fichier, puis cliquez sur « Analyser le reçu » pour extraire les articles."
+  },
+  "errors": {
+    "generic": "Une erreur est survenue."
+  }
+}

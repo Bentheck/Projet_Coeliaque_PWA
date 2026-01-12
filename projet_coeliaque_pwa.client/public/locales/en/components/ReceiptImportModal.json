@@ -1,0 +1,32 @@
+﻿{
+  "title": "Import from a receipt",
+  "fields": {
+    "fileLabel": "Select a photo or scan of the receipt",
+    "fileHelp": "Clear, well-framed photos usually produce better results."
+  },
+  "context": {
+    "invoiceInfo": "Invoice #{{id}} — {{store}} ({{year}})",
+    "unknownStore": "Unknown store"
+  },
+  "buttons": {
+    "analyze": "Analyze receipt",
+    "toggleAll": "Toggle all",
+    "cancel": "Cancel",
+    "addSelected": "Add selected items"
+  },
+  "preview": {
+    "title": "Items detected on the receipt"
+  },
+  "table": {
+    "selectRow": "Select",
+    "item": "Item",
+    "price": "Price",
+    "qty": "Qty"
+  },
+  "empty": {
+    "hint": "Choose a file, then click “Analyze receipt” to extract the items."
+  },
+  "errors": {
+    "generic": "Something went wrong."
+  }
+}
