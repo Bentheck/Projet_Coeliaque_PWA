@@ -1,5 +1,5 @@
 ﻿// PATH: projet_coeliaque_pwa.client/src/components/receipts/ReceiptViewerModal.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Button, Spinner, Alert } from "react-bootstrap";
 
 export interface ReceiptViewerModalProps {
