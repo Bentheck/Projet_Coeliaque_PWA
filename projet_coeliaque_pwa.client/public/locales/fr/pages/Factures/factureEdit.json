@@ -12,7 +12,8 @@
   },
   "items": {
     "title": "Items",
-    "addButton": "Ajouter un item"
+    "addButton": "Ajouter un item",
+    "importFromReceipt": "Importer d’un reçu"
   },
   "table": {
     "typeProduit": "Type de produit",
@@ -29,7 +30,8 @@
     "prix": "Prix",
     "poids": "Poids",
     "quantite": "Quantité",
-    "unitFallback": "-- Unité --"
+    "unitFallback": "-- Unité --",
+    "dateIso": "AAAA-MM-JJ"
   },
   "buttons": {
     "save": "Enregistrer",
@@ -37,6 +39,19 @@
   },
   "actions": {
     "remove": "Supprimer"
+  },
+  "receipt": {
+    "label": "Reçu",
+    "none": "Aucun reçu importé.",
+    "loading": "Chargement du reçu…",
+    "loadFailed": "Impossible de charger le reçu.",
+    "unknownFile": "Fichier",
+    "uploadedOn": "importé le {{date}}",
+    "openBtn": "Ouvrir",
+    "openAria": "Ouvrir le reçu",
+    "replaceBtn": "Remplacer le reçu",
+    "confirmReplace": "Un reçu est déjà associé à cette facture. Voulez-vous le remplacer ? L’ancien reçu sera supprimé du serveur.",
+    "offlineDisabled": "Reçu indisponible hors ligne."
   },
   "modal": {
     "title": "Ajouter un item à la facture",
@@ -61,7 +76,25 @@
   },
   "error": {
     "loadInvoiceOffline": "Impossible de charger la facture (hors ligne et non en cache).",
-    "saveFailed": "Erreur lors de l’enregistrement."
+    "saveFailed": "Erreur lors de l’enregistrement.",
+    "invalidDate": "Date invalide. Format attendu : AAAA-MM-JJ."
+  },
+  "select": {
+    "create": "Créer \"{{value}}\"",
+    "noOptions": "Aucune option",
+    "loading": "Chargement…"
+  },
+  "units": {
+    "g": "g — grammes",
+    "kg": "kg — kilogrammes",
+    "mg": "mg — milligrammes",
+    "lb": "lb — livres",
+    "oz": "oz — onces",
+    "ml": "ml — millilitres",
+    "l": "l — litres",
+    "fl_oz": "fl oz — onces liquides",
+    "un": "unité — à l’unité",
+    "dozen": "douzaine — 12"
   },
   "demo": {
     "badge": "DEMO",

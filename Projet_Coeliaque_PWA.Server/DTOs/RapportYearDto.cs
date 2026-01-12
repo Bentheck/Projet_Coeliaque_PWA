@@ -9,6 +9,8 @@ public class RapportDisplayDto
     public List<ProductComparisonRowDto> ReportRows { get; set; } = new();
     public string UserName { get; set; }
     public decimal TotalSousTotalProduit { get; set; }
+
+    public List<string> RemovedRowKeys { get; set; } = new();
 }
 
 public class ProductComparisonRowDto
@@ -31,4 +33,6 @@ public class ProductComparisonRowDto
     public decimal DiffPar100 { get; set; }
     public decimal SousTotalProduit { get; set; }
     public string PrixPar100Unit { get; set; }
+
+    public string RowKey { get; set; } = "";
 }

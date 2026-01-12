@@ -1,0 +1,10 @@
+﻿{
+  "title": "Reçu",
+  "loading": "Chargement…",
+  "alt": "Image du reçu",
+  "errors": { "loadFailed": "Impossible de charger l’image du reçu." },
+  "buttons": {
+    "close": "Fermer",
+    "openInNewTab": "Ouvrir dans un nouvel onglet"
+  }
+}

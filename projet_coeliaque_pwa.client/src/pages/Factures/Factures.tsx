@@ -1,7 +1,13 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
+
+import Flatpickr from "react-flatpickr";
+import "flatpickr/dist/themes/material_blue.css";
+
+// Flatpickr locale FR
+import { French } from "flatpickr/dist/l10n/fr.js";
 
 import {
     getFacturesList,
@@ -19,13 +25,68 @@ interface Facture extends IFacture { }
 const emptyFacture: Omit<Facture, "id"> = {
     annee: new Date().getFullYear(),
     factureId: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
     magasin: "",
 };
 
+function pad2(n: number) {
+    return String(n).padStart(2, "0");
+}
+
+function dateToIsoLocal(d: Date) {
+    // Flatpickr gives a Date; produce YYYY-MM-DD without timezone surprises
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function isoToDate(iso: string | null | undefined) {
+    if (!iso) return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) return null;
+
+    const y = Number(m[1]);
+    const mo = Number(m[2]) - 1;
+    const da = Number(m[3]);
+
+    const d = new Date(y, mo, da);
+
+    // Validate rollover (e.g., 2025-02-31 becomes March 3)
+    if (d.getFullYear() !== y || d.getMonth() !== mo || d.getDate() !== da) {
+        return null;
+    }
+
+    return d;
+}
+
+function isValidIsoDateStrict(iso: string) {
+    // Must be exactly YYYY-MM-DD
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) return false;
+
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+
+    if (mo < 1 || mo > 12) return false;
+    if (d < 1 || d > 31) return false;
+
+    const dt = new Date(y, mo - 1, d);
+    return (
+        dt.getFullYear() === y &&
+        dt.getMonth() === mo - 1 &&
+        dt.getDate() === d
+    );
+}
+
 const Factures: React.FC = () => {
-    const { t } = useTranslation("pages/Factures/factures");
+    const { t, i18n } = useTranslation("pages/Factures/factures");
     const navigate = useNavigate();
+
+    // Refs
+    const yearRef = useRef<HTMLInputElement | null>(null);
+    const dateInputRef = useRef<HTMLInputElement | null>(null);
+
+    // Flatpickr instance ref (react-flatpickr typing varies by version)
+    const fpRef = useRef<any>(null);
 
     // Live list from Dexie (generic store)
     const factures = useLiveQuery(() => getFacturesList(LIST_KEY), []);
@@ -37,8 +98,18 @@ const Factures: React.FC = () => {
     const [current, setCurrent] = useState<Facture | null>(null);
     const [formData, setFormData] = useState(emptyFacture);
 
+    // Keep a text value for year to support maxLength + auto-advance cleanly
+    const [yearText, setYearText] = useState<string>(String(emptyFacture.annee));
+
     const list = (factures ?? []) as Facture[];
     const totalCount = list.length;
+
+    // Normalize language (e.g. "fr-CA" -> "fr")
+    const lang = (i18n.resolvedLanguage || i18n.language || "en")
+        .toLowerCase()
+        .split("-")[0];
+
+    const isFrench = lang === "fr";
 
     // Initial background refresh to populate Dexie if online
     const fetchFactures = async () => {
@@ -58,6 +129,7 @@ const Factures: React.FC = () => {
 
     useEffect(() => {
         if (navigator.onLine) void fetchFactures();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // ----- Handlers -----
@@ -66,16 +138,46 @@ const Factures: React.FC = () => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+
+        const selStart = e.target.selectionStart ?? digits.length;
+        const selEnd = e.target.selectionEnd ?? digits.length;
+
+        setYearText(digits);
+
+        setFormData((prev) => ({
+            ...prev,
+            annee: digits ? Number(digits) : ("" as any),
+        }));
+
+        const atEnd = selStart === digits.length && selEnd === digits.length;
+        if (digits.length === 4 && atEnd) {
+            requestAnimationFrame(() => {
+                dateInputRef.current?.focus();
+                dateInputRef.current?.select?.();
+            });
+        }
+    };
+
     const startCreate = () => {
         setFormData(emptyFacture);
+        setYearText(String(emptyFacture.annee));
         setCurrent(null);
         setFormMode("create");
+
+        requestAnimationFrame(() => {
+            yearRef.current?.focus();
+            yearRef.current?.select?.();
+        });
     };
 
     const handleCancel = () => {
         setFormMode("none");
         setCurrent(null);
         setFormData(emptyFacture);
+        setYearText(String(emptyFacture.annee));
+        setError(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -139,7 +241,7 @@ const Factures: React.FC = () => {
             const newId = created?.id ?? created?.Id;
             if (!newId) throw new Error(t("errors.unexpectedMissingId"));
 
-            await putFacture({ id: newId, ...formData });
+            await putFacture({ id: newId, ...formData } as any);
             handleCancel();
             void fetchFactures();
             navigate(`/factures/${newId}`);
@@ -181,14 +283,34 @@ const Factures: React.FC = () => {
         }
     };
 
+    // Flatpickr options: ISO format + allow keyboard input + locale when FR
+    const fpOptions = useMemo(() => {
+        const base: any = {
+            dateFormat: "Y-m-d",
+            allowInput: true,
+        };
+
+        // Flatpickr defaults to English if locale not specified
+        if (isFrench) base.locale = French;
+
+        return base;
+    }, [isFrench]);
+
+    // Controlled Date value for Flatpickr
+    const selectedDate = useMemo(() => {
+        const d = isoToDate(formData.date);
+        return d ?? null;
+    }, [formData.date]);
+
+    const invalidDateMessage = t("errors.invalidDate");
+    const datePlaceholder = t("form.placeholders.dateIso");
+
     // ----- Render -----
     return (
         <div className="container factures-container py-3">
             <div className="card card--accent shadow-sm mb-3">
                 <div className="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h1 className="h4 mb-0">
-                        {t("headings.title")}
-                    </h1>
+                    <h1 className="h4 mb-0">{t("headings.title")}</h1>
 
                     <button
                         className="btn btn-primary factures-new-btn"
@@ -201,11 +323,7 @@ const Factures: React.FC = () => {
                 </div>
             </div>
 
-            {error && (
-                <div className="alert alert-danger">
-                    {error}
-                </div>
-            )}
+            {error && <div className="alert alert-danger">{error}</div>}
 
             {/* Inline create/edit form */}
             {formMode !== "none" && (
@@ -223,14 +341,19 @@ const Factures: React.FC = () => {
                                     {t("form.labels.year")}
                                 </label>
                                 <input
+                                    ref={yearRef}
                                     id="facture-annee"
                                     name="annee"
-                                    type="number"
-                                    value={formData.annee}
-                                    onChange={handleChange}
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="\d*"
+                                    maxLength={4}
+                                    value={yearText}
+                                    onChange={handleYearChange}
                                     className="form-control"
                                 />
                             </div>
+
                             <div className="mb-2">
                                 <label htmlFor="facture-id" className="form-label">
                                     {t("form.labels.invoiceId")}
@@ -243,19 +366,103 @@ const Factures: React.FC = () => {
                                     className="form-control"
                                 />
                             </div>
+
                             <div className="mb-2">
                                 <label htmlFor="facture-date" className="form-label">
                                     {t("form.labels.date")}
                                 </label>
-                                <input
-                                    id="facture-date"
-                                    name="date"
-                                    type="date"
-                                    value={formData.date}
-                                    onChange={handleChange}
-                                    className="form-control"
+
+                                <Flatpickr
+                                    ref={fpRef}
+                                    options={fpOptions}
+                                    value={selectedDate ?? undefined}
+                                    onChange={(dates: Date[]) => {
+                                        const d = dates?.[0];
+                                        if (!d) {
+                                            setFormData((prev) => ({ ...prev, date: "" }));
+                                            return;
+                                        }
+
+                                        // Calendar selection is always valid
+                                        setError(null);
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            date: dateToIsoLocal(d),
+                                        }));
+                                    }}
+                                    render={(_props, ref) => (
+                                        <input
+                                            id="facture-date"
+                                            name="date"
+                                            ref={(el) => {
+                                                // Flatpickr internal ref
+                                                if (typeof ref === "function") ref(el);
+                                                else if (ref && typeof ref === "object")
+                                                    (ref as any).current = el;
+
+                                                // Our local ref for focus from year
+                                                dateInputRef.current = el;
+                                            }}
+                                            className="form-control"
+                                            placeholder={datePlaceholder}
+                                            autoComplete="off"
+                                            inputMode="numeric"
+                                            // Open picker automatically on focus
+                                            onFocus={() => {
+                                                fpRef.current?.flatpickr?.open?.();
+                                            }}
+                                            // Strict input validation: reject invalid ISO immediately once length is 10
+                                            onInput={(e) => {
+                                                const el = e.currentTarget;
+                                                const v = el.value.trim();
+
+                                                if (v.length === 0) {
+                                                    setError(null);
+                                                    setFormData((prev) => ({ ...prev, date: "" }));
+                                                    fpRef.current?.flatpickr?.clear?.();
+                                                    return;
+                                                }
+
+                                                // Allow partial typing without errors
+                                                if (v.length < 10) {
+                                                    setError(null);
+                                                    return;
+                                                }
+
+                                                if (!isValidIsoDateStrict(v)) {
+                                                    setError(invalidDateMessage);
+                                                    setFormData((prev) => ({ ...prev, date: "" }));
+                                                    fpRef.current?.flatpickr?.clear?.();
+
+                                                    requestAnimationFrame(() => {
+                                                        el.focus();
+                                                        el.select?.();
+                                                    });
+                                                    return;
+                                                }
+
+                                                // Valid: sync state and selected date so calendar matches typed value
+                                                setError(null);
+                                                setFormData((prev) => ({ ...prev, date: v }));
+                                                fpRef.current?.flatpickr?.setDate?.(v, false, "Y-m-d");
+                                            }}
+                                            // On blur: if user leaves partial/invalid value, clear it
+                                            onBlur={(e) => {
+                                                const el = e.currentTarget;
+                                                const v = el.value.trim();
+                                                if (v.length === 0) return;
+
+                                                if (v.length !== 10 || !isValidIsoDateStrict(v)) {
+                                                    setError(invalidDateMessage);
+                                                    setFormData((prev) => ({ ...prev, date: "" }));
+                                                    fpRef.current?.flatpickr?.clear?.();
+                                                }
+                                            }}
+                                        />
+                                    )}
                                 />
                             </div>
+
                             <div className="mb-3">
                                 <label htmlFor="facture-magasin" className="form-label">
                                     {t("form.labels.store")}
@@ -270,10 +477,7 @@ const Factures: React.FC = () => {
                             </div>
 
                             <div className="d-flex gap-2">
-                                <button
-                                    type="submit"
-                                    className="btn btn-success"
-                                >
+                                <button type="submit" className="btn btn-success">
                                     {formMode === "edit"
                                         ? t("buttons.save")
                                         : t("buttons.create")}
@@ -294,25 +498,18 @@ const Factures: React.FC = () => {
             {/* List */}
             {loading ? (
                 <div className="card card--tinted shadow-sm">
-                    <div className="card-body">
-                        {t("loading")}
-                    </div>
+                    <div className="card-body">{t("loading")}</div>
                 </div>
             ) : totalCount === 0 ? (
                 <div className="card card--tinted shadow-sm">
                     <div className="card-body text-center">
-                        <span className="text-muted">
-                            {t("empty.noneFound")}
-                        </span>
+                        <span className="text-muted">{t("empty.noneFound")}</span>
                     </div>
                 </div>
             ) : (
                 <div className="vstack gap-2">
                     {list.map((facture: Facture) => (
-                        <div
-                            key={facture.id}
-                            className="card card--tinted shadow-sm"
-                        >
+                        <div key={facture.id} className="card card--tinted shadow-sm">
                             <div className="card-body d-flex align-items-start factures-card-body">
                                 <div className="factures-card-main">
                                     <div>
@@ -334,16 +531,11 @@ const Factures: React.FC = () => {
                                         <button
                                             type="button"
                                             className="btn btn-outline-primary btn-sm"
-                                            onClick={() =>
-                                                navigate(`/factures/${facture.id}`)
-                                            }
+                                            onClick={() => navigate(`/factures/${facture.id}`)}
                                             aria-label={t("list.viewAria")}
                                             title={t("list.viewTitle") as string}
                                         >
-                                            <i
-                                                className="bi bi-eye"
-                                                aria-hidden="true"
-                                            />
+                                            <i className="bi bi-eye" aria-hidden="true" />
                                             <span className="btn-text ms-1">
                                                 {t("list.viewBtn")}
                                             </span>
@@ -357,10 +549,7 @@ const Factures: React.FC = () => {
                                         aria-label={t("list.deleteAria")}
                                         title={t("list.deleteTitle") as string}
                                     >
-                                        <i
-                                            className="bi bi-trash"
-                                            aria-hidden="true"
-                                        />
+                                        <i className="bi bi-trash" aria-hidden="true" />
                                         <span className="btn-text ms-1">
                                             {t("list.deleteBtn")}
                                         </span>

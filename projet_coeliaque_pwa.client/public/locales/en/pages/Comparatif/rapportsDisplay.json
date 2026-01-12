@@ -1,5 +1,9 @@
 ﻿{
   "loading": "Loading…",
+  "errors": {
+    "generic": "An error occurred."
+  },
+  "noRows": "No rows to display.",
   "print": {
     "noteLabel": "Note:",
     "noteMain": "When you click “Print”, you can enter your NAME and your SIN so they appear at the top of the report.",
@@ -16,6 +20,26 @@
     "nasPlaceholder": "XXX XXX XXX",
     "cancel": "Cancel",
     "continuePrint": "Continue and print"
+  },
+  "rows": {
+    "actionsHeader": "Remove row",
+    "removeAria": "Remove row",
+    "removeTitle": "Remove row",
+    "undo": "Undo",
+    "restoreAll": "Restore all removed rows",
+    "removedCount": "Removed rows: {{count}}",
+    "removedSectionTitle": "Removed rows",
+    "removedCols": {
+      "type": "Product Type",
+      "name": "Gluten-Free Name",
+      "subtotal": "Subtotal",
+      "actions": "Add Row"
+    },
+    "highlight": {
+      "negative": "Negative subtotal",
+      "emptyComparison": "Empty comparison",
+      "negAndEmpty": "Negative subtotal + empty comparison"
+    }
   },
   "title": "Comparison Report — Year {{year}}",
   "user": "User: {{name}}",

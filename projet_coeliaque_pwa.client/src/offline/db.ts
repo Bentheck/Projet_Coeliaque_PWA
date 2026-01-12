@@ -1,4 +1,5 @@
-﻿import Dexie, { type Table } from "dexie";
+﻿// PATH: projet_coeliaque_pwa.client/src/offline/db.ts
+import Dexie, { type Table } from "dexie";
 
 /* ---------- Types (existing) ---------- */
 export type FactureItem = {
@@ -132,8 +133,11 @@ export type ListeEpicerieDto = {
     completed?: boolean;
 };
 
-/* ---------- NEW: Reports payload (for /rapports/:year) ---------- */
+/* ---------- Reports payload (for /rapports/:year) ---------- */
 export type ReportProductComparisonRow = {
+    // NOTE: `rowKey` is NEW for Option 1 (server-generated stable key)
+    rowKey: string;
+
     typeItem: string;
     nomSansGluten: string;
     quantiteSansGluten: number;
@@ -153,10 +157,14 @@ export type ReportProductComparisonRow = {
     sousTotalProduit: number;
     prixPar100Unit: string;
 };
+
 export type ReportPayload = {
     reportRows: ReportProductComparisonRow[];
     totalSousTotalProduit: number;
     userName: string;
+
+    // NEW: Option 1 (persisted server-side + kept in Dexie)
+    removedRowKeys?: string[];
 };
 
 /* ---------- Dexie DB ---------- */
@@ -183,7 +191,7 @@ class AppDB extends Dexie {
     factureItemTypes!: Table<FactureItemTypeSummary, string>; // key: type
 
     // reports
-    reportYears!: Table<ReportYearDto, number>;                        // key: year
+    reportYears!: Table<ReportYearDto, number>; // key: year
     reportBodies!: Table<{ year: number; payload: ReportPayload }, number>; // key: year
 
     // comparatif types per year
@@ -224,6 +232,10 @@ class AppDB extends Dexie {
             reportBodies: "year",
             comparatifTypes: "annee",
         });
+
+        // NOTE:
+        // Adding `removedRowKeys` and `rowKey` does NOT require a Dexie schema bump,
+        // because they are nested inside payload objects stored in reportBodies.
     }
 }
 export const db = new AppDB();

@@ -1,4 +1,4 @@
-﻿// Controllers/RapportsController.cs
+﻿// PATH: Projet_Coeliaque_PWA.Server/Controllers/RapportsController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -80,14 +80,91 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var reportRows = JsonSerializer.Deserialize<List<ProductComparisonRowDto>>(savedReport.ReportJson)
                              ?? new List<ProductComparisonRowDto>();
 
+            // Removed keys (Option 1)
+            var removedKeys = string.IsNullOrWhiteSpace(savedReport.RemovedRowKeysJson)
+                ? new List<string>()
+                : (JsonSerializer.Deserialize<List<string>>(savedReport.RemovedRowKeysJson) ?? new List<string>());
+
+            // Prune removed keys that no longer exist (e.g., after regeneration)
+            var validKeySet = reportRows
+                .Select(r => (r.RowKey ?? "").Trim())
+                .Where(k => k.Length > 0)
+                .ToHashSet();
+
+            removedKeys = removedKeys
+                .Where(k => !string.IsNullOrWhiteSpace(k) && validKeySet.Contains(k.Trim()))
+                .Select(k => k.Trim())
+                .Distinct()
+                .ToList();
+
+            // Keep server storage clean
+            if (savedReport.RemovedRowKeysJson != null)
+            {
+                var normalizedJson = JsonSerializer.Serialize(removedKeys);
+                if (!string.Equals(normalizedJson, savedReport.RemovedRowKeysJson, StringComparison.Ordinal))
+                {
+                    savedReport.RemovedRowKeysJson = normalizedJson;
+                    await _db.SaveChangesAsync();
+                }
+            }
+
             var total = reportRows.Sum(r => r.SousTotalProduit);
 
             return new RapportDisplayDto
             {
                 ReportRows = reportRows,
                 UserName = user?.UserName ?? "",
-                TotalSousTotalProduit = total
+                TotalSousTotalProduit = total,
+                RemovedRowKeys = removedKeys
             };
+        }
+
+        // NEW: Persist removed rows (Option 1)
+        [HttpPut("{annee:int}/removed-rows")]
+        public async Task<IActionResult> UpdateRemovedRows(int annee, [FromBody] RemovedRowsUpdateDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            dto ??= new RemovedRowsUpdateDto();
+            var incoming = (dto.RemovedRowKeys ?? new List<string>())
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Select(k => k.Trim())
+                .Distinct()
+                .ToList();
+
+            var savedReport = await _db.SavedReports
+                .FirstOrDefaultAsync(r => r.UserId == userId && r.Year == annee);
+
+            if (savedReport == null)
+                return NotFound();
+
+            // Validate keys against current report rows
+            var reportRows = JsonSerializer.Deserialize<List<ProductComparisonRowDto>>(savedReport.ReportJson)
+                             ?? new List<ProductComparisonRowDto>();
+
+            var validKeySet = reportRows
+                .Select(r => (r.RowKey ?? "").Trim())
+                .Where(k => k.Length > 0)
+                .ToHashSet();
+
+            var cleaned = incoming.Where(k => validKeySet.Contains(k)).ToList();
+
+            savedReport.RemovedRowKeysJson = JsonSerializer.Serialize(cleaned);
+            await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Rapports.UpdateRemovedRows",
+                target: annee.ToString(),
+                details: new
+                {
+                    Year = annee,
+                    RemovedCount = cleaned.Count
+                });
+
+            return Ok(new { removedCount = cleaned.Count });
         }
 
         [HttpPost("generate/{annee}")]
@@ -157,10 +234,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
                 sousTotal = Math.Round(sousTotal, 2);
 
+                // NEW: stable RowKey (do NOT include computed numbers that can change with rounding)
+                var rowKey = BuildRowKey(
+                    factureGroup.TypeItem,
+                    factureGroup.Item,
+                    (decimal)factureGroup.PoidsValeur,
+                    factureGroup.PoidsUnite,
+                    factureGroup.Prix
+                );
+
                 reportRows.Add(new ProductComparisonRowDto
                 {
-                    TypeItem = factureGroup.TypeItem,
-                    NomSansGluten = factureGroup.Item,
+                    TypeItem = factureGroup.TypeItem ?? "",
+                    NomSansGluten = factureGroup.Item ?? "",
                     QuantiteSansGluten = factureGroup.QuantiteTotale,
                     FormatSansGluten = factureGroup.PoidsValeur,
                     UniteSansGluten = factureGroup.PoidsUnite,
@@ -176,7 +262,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     PrixPar100AvecGluten = ag100,
                     DiffPar100 = diffPer100,
                     SousTotalProduit = sousTotal,
-                    PrixPar100Unit = unitLabel
+                    PrixPar100Unit = unitLabel,
+
+                    RowKey = rowKey
                 });
             }
 
@@ -189,10 +277,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             {
                 savedReport = new SavedReport
                 {
-                    UserId = userId,
+                    UserId = userId!,
                     Year = annee,
                     GeneratedAt = DateTime.UtcNow,
-                    ReportJson = reportJson
+                    ReportJson = reportJson,
+                    RemovedRowKeysJson = JsonSerializer.Serialize(new List<string>())
                 };
                 _db.SavedReports.Add(savedReport);
             }
@@ -200,11 +289,28 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             {
                 savedReport.GeneratedAt = DateTime.UtcNow;
                 savedReport.ReportJson = reportJson;
+
+                // Keep existing removals but prune unknown keys after regeneration
+                var removedKeys = string.IsNullOrWhiteSpace(savedReport.RemovedRowKeysJson)
+                    ? new List<string>()
+                    : (JsonSerializer.Deserialize<List<string>>(savedReport.RemovedRowKeysJson) ?? new List<string>());
+
+                var validKeySet = reportRows
+                    .Select(r => (r.RowKey ?? "").Trim())
+                    .Where(k => k.Length > 0)
+                    .ToHashSet();
+
+                removedKeys = removedKeys
+                    .Where(k => !string.IsNullOrWhiteSpace(k) && validKeySet.Contains(k.Trim()))
+                    .Select(k => k.Trim())
+                    .Distinct()
+                    .ToList();
+
+                savedReport.RemovedRowKeysJson = JsonSerializer.Serialize(removedKeys);
             }
 
             await _db.SaveChangesAsync();
 
-            // Audit: user generated (or regenerated) a report for this year
             if (!string.IsNullOrEmpty(userId))
             {
                 await _audit.LogForUserIdAsync(
@@ -223,6 +329,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             return Ok();
+        }
+
+        private static string BuildRowKey(string? typeItem, string? nomSansGluten, decimal poidsValeur, string? poidsUnite, decimal prix)
+        {
+            // Normalize: case + trim + invariant formatting for decimals
+            var ti = (typeItem ?? "").Trim().ToLowerInvariant();
+            var nom = (nomSansGluten ?? "").Trim().ToLowerInvariant();
+            var unit = (poidsUnite ?? "").Trim().ToLowerInvariant();
+
+            // Use invariant string for decimals to avoid locale affecting keys
+            var pv = poidsValeur.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var p = prix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            return $"{ti}|{nom}|{pv}|{unit}|{p}";
         }
     }
 }
