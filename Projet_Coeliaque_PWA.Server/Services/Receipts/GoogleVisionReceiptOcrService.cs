@@ -93,12 +93,16 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
                 .Where(l => !string.IsNullOrWhiteSpace(l))
                 .ToList();
 
+            var storeName = TryExtractStoreName(rawLines);
+            var receiptDateIso = TryExtractReceiptDateIso(rawLines);
+            var total = (string?)null;
+
             var mergedLines = MergeProductAndPriceLines(rawLines);
 
             return new ReceiptParsed(
-                StoreName: null,
-                ReceiptDateIso: null,
-                Total: null,
+                StoreName: storeName,
+                ReceiptDateIso: receiptDateIso,
+                Total: total,
                 Lines: mergedLines.ToArray()
             );
         }
@@ -137,6 +141,212 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
 
             return null;
         }
+
+        // -----------------------------
+        // Store/date/total heuristics
+        // -----------------------------
+
+        private static string? TryExtractStoreName(List<string> lines)
+        {
+            // Often the store name is in the first 1–3 lines and mostly letters.
+            foreach (var line in lines.Take(6))
+            {
+                var t = NormalizeLine(line);
+
+                if (string.IsNullOrWhiteSpace(t)) continue;
+
+                // Skip very common non-store lines
+                if (LooksLikeNotStoreHeader(t)) continue;
+
+                // Require some letters
+                var letters = t.Count(char.IsLetter);
+                if (letters < 3) continue;
+
+                // Avoid super long noise
+                if (t.Length > 40) continue;
+
+                // Good candidate
+                return line.Trim();
+            }
+
+            return null;
+        }
+
+        private static bool LooksLikeNotStoreHeader(string t)
+        {
+            var s = t.ToLowerInvariant();
+
+            if (s.Contains("tel")) return true;
+            if (s.Contains("tél")) return true;
+            if (s.Contains("phone")) return true;
+            if (s.Contains("fax")) return true;
+            if (s.Contains("adresse")) return true;
+            if (s.Contains("address")) return true;
+            if (s.Contains("qc")) return true; // address line often includes QC + postal
+            if (Regex.IsMatch(s, @"\b[a-z]\d[a-z]\s?\d[a-z]\d\b")) return true; // postal code pattern
+
+            if (s.Contains("facture")) return true;
+            if (s.Contains("invoice")) return true;
+            if (s.Contains("receipt")) return true;
+            if (s.Contains("reçu")) return true;
+            if (s.Contains("recu")) return true;
+
+            // If it is basically numbers, ignore
+            if (t.Count(char.IsLetter) == 0 && t.Any(char.IsDigit)) return true;
+
+            return false;
+        }
+
+        private static string NormalizeLine(string line)
+        {
+            return (line ?? "").Trim().Trim('-', '_', '*', '#', ':');
+        }
+
+        private static string? TryExtractReceiptDateIso(List<string> lines)
+        {
+            // Search near top first (most receipts put date early)
+            foreach (var line in lines.Take(25))
+            {
+                var iso = TryFindDateIsoInText(line);
+                if (iso != null) return iso;
+            }
+
+            // Fallback: search all
+            foreach (var line in lines)
+            {
+                var iso = TryFindDateIsoInText(line);
+                if (iso != null) return iso;
+            }
+
+            return null;
+        }
+
+        private static string? TryFindDateIsoInText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+
+            // 1) YYYY-MM-DD or YYYY/MM/DD
+            {
+                var m = Regex.Match(text, @"(?<!\d)(?<y>\d{4})[-/\.](?<m>\d{2})[-/\.](?<d>\d{2})(?!\d)");
+                if (m.Success && TryMakeIso(m.Groups["y"].Value, m.Groups["m"].Value, m.Groups["d"].Value, out var iso))
+                    return iso;
+            }
+
+            // 2) DD/MM/YYYY or MM/DD/YYYY (common in Canada/Quebec => DD/MM)
+            {
+                var m = Regex.Match(text, @"(?<!\d)(?<a>\d{2})[-/\.](?<b>\d{2})[-/\.](?<y>\d{4})(?!\d)");
+                if (m.Success)
+                {
+                    var a = int.Parse(m.Groups["a"].Value, CultureInfo.InvariantCulture);
+                    var b = int.Parse(m.Groups["b"].Value, CultureInfo.InvariantCulture);
+                    var y = m.Groups["y"].Value;
+
+                    // Disambiguate:
+                    // - if a > 12 => it's DD/MM
+                    // - else if b > 12 => it's MM/DD
+                    // - else prefer DD/MM for Quebec-style receipts
+                    int day, month;
+                    if (a > 12) { day = a; month = b; }
+                    else if (b > 12) { month = a; day = b; }
+                    else { day = a; month = b; } // prefer DD/MM
+
+                    if (TryMakeIso(y, month.ToString("00"), day.ToString("00"), out var iso))
+                        return iso;
+                }
+            }
+
+            // 3) "15 Jan 2026" or "15 janvier 2026" (rare but exists)
+            {
+                // Keep it conservative: only if there is a 4-digit year
+                var m = Regex.Match(text, @"(?<!\d)(?<d>\d{1,2})\s+(?<mon>[A-Za-z\u00C0-\u017F]{3,})\s+(?<y>\d{4})(?!\d)");
+                if (m.Success)
+                {
+                    if (TryParseMonthName(m.Groups["mon"].Value, out var month))
+                    {
+                        var day = int.Parse(m.Groups["d"].Value, CultureInfo.InvariantCulture);
+                        var y = m.Groups["y"].Value;
+                        if (TryMakeIso(y, month.ToString("00"), day.ToString("00"), out var iso))
+                            return iso;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static bool TryParseMonthName(string monthText, out int month)
+        {
+            month = 0;
+            var s = (monthText ?? "").Trim().ToLowerInvariant();
+
+            // English
+            if (s.StartsWith("jan")) { month = 1; return true; }
+            if (s.StartsWith("feb")) { month = 2; return true; }
+            if (s.StartsWith("mar")) { month = 3; return true; }
+            if (s.StartsWith("apr")) { month = 4; return true; }
+            if (s.StartsWith("may")) { month = 5; return true; }
+            if (s.StartsWith("jun")) { month = 6; return true; }
+            if (s.StartsWith("jul")) { month = 7; return true; }
+            if (s.StartsWith("aug")) { month = 8; return true; }
+            if (s.StartsWith("sep")) { month = 9; return true; }
+            if (s.StartsWith("oct")) { month = 10; return true; }
+            if (s.StartsWith("nov")) { month = 11; return true; }
+            if (s.StartsWith("dec")) { month = 12; return true; }
+
+            // French
+            if (s.StartsWith("janv")) { month = 1; return true; }
+            if (s.StartsWith("févr") || s.StartsWith("fevr") || s.StartsWith("f\u00E9vr")) { month = 2; return true; }
+            if (s.StartsWith("mars")) { month = 3; return true; }
+            if (s.StartsWith("avr")) { month = 4; return true; }
+            if (s.StartsWith("mai")) { month = 5; return true; }
+            if (s.StartsWith("juin")) { month = 6; return true; }
+            if (s.StartsWith("juil")) { month = 7; return true; }
+            if (s.StartsWith("ao\u00FBt") || s.StartsWith("aout")) { month = 8; return true; }
+            if (s.StartsWith("sept")) { month = 9; return true; }
+            if (s.StartsWith("oct")) { month = 10; return true; }
+            if (s.StartsWith("nov")) { month = 11; return true; }
+            if (s.StartsWith("d\u00E9c") || s.StartsWith("dec")) { month = 12; return true; }
+
+            return false;
+        }
+
+        private static bool TryMakeIso(string y, string m, string d, out string iso)
+        {
+            iso = "";
+            if (!int.TryParse(y, NumberStyles.Integer, CultureInfo.InvariantCulture, out var yy)) return false;
+            if (!int.TryParse(m, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mm)) return false;
+            if (!int.TryParse(d, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dd)) return false;
+
+            try
+            {
+                var dt = new DateTime(yy, mm, dd);
+                iso = dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static decimal? TryExtractTotal(List<string> lines)
+        {
+            // Look for lines containing TOTAL and a price token
+            foreach (var line in lines)
+            {
+                var s = line.ToLowerInvariant();
+                if (s.Contains("total") || s.Contains("montant") || s.Contains("amount"))
+                {
+                    var p = TryExtractPrice(line);
+                    if (p.HasValue) return p.Value;
+                }
+            }
+            return null;
+        }
+
+        // -----------------------------
+        // Existing line parsing
+        // -----------------------------
 
         private static List<ReceiptParsedLine> MergeProductAndPriceLines(List<string> rawLines)
         {

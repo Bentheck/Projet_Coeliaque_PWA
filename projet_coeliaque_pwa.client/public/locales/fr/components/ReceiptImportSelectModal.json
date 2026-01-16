@@ -1,0 +1,15 @@
+﻿{
+  "title": "Sélectionner les articles",
+  "intro": "Cochez les lignes que vous souhaitez importer dans la facture.",
+  "empty": "Aucun article détecté.",
+  "table": {
+    "article": "Article",
+    "select": "Sélection"
+  },
+  "buttons": {
+    "cancel": "Annuler",
+    "next": "Continuer"
+  },
+  "selectAllLabel": "Tout sélectionner",
+  "selectRowLabel": "Sélectionner la ligne"
+}

@@ -7,9 +7,13 @@ import type { SingleValue } from "react-select";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 
-import ReceiptImportModal from "../../components/receipts/ReceiptImportModal";
-import ReceiptImportedDetailsModal from "../../components/receipts/ReceiptImportedDetailsModal";
-import type { ReceiptImportedDetailsItem } from "../../components/receipts/ReceiptImportedDetailsModal";
+import ReceiptImportModal, {
+    type ReceiptImportItem,
+} from "../../components/receipts/ReceiptImportModal";
+import ReceiptImportedDetailsModal, {
+    type ReceiptImportedDetailsItem,
+    mapImportDtosToDetailsItems,
+} from "../../components/receipts/ReceiptImportedDetailsModal";
 import ReceiptViewerModal from "../../components/receipts/ReceiptViewerModal";
 
 import Flatpickr from "react-flatpickr";
@@ -31,7 +35,9 @@ type UnitCode = "g" | "kg" | "mg" | "lb" | "oz" | "ml" | "l" | "fl_oz" | "un" | 
 const UNIT_OPTIONS: UnitCode[] = ["g", "kg", "mg", "lb", "oz", "ml", "l", "fl_oz", "un", "dozen"];
 
 interface FactureItem extends IFactureItem { }
-interface Facture extends IFacture { items: FactureItem[]; }
+interface Facture extends IFacture {
+    items: FactureItem[];
+}
 
 type ReceiptMeta = {
     hasReceipt: boolean;
@@ -54,8 +60,12 @@ const emptyItem: Omit<FactureItem, "id"> = {
 
 const LIST_KEY = "factures/all";
 
-function pad2(n: number) { return String(n).padStart(2, "0"); }
-function dateToIsoLocal(d: Date) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function pad2(n: number) {
+    return String(n).padStart(2, "0");
+}
+function dateToIsoLocal(d: Date) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
 
 function isoToDate(iso: string | null | undefined) {
     if (!iso) return null;
@@ -123,7 +133,7 @@ export default function FactureEdit() {
     // Receipt import modal state
     const [showReceiptModal, setShowReceiptModal] = useState(false);
 
-    // Receipt viewer modal state (NEW)
+    // Receipt viewer modal state
     const [showReceiptViewer, setShowReceiptViewer] = useState(false);
 
     // Add Item wizard modal state
@@ -158,7 +168,6 @@ export default function FactureEdit() {
         }
     }, []);
 
-    // Open receipt in modal (NEW)
     const openReceipt = () => {
         const url = receiptMeta?.openUrl;
         if (!url) return;
@@ -166,7 +175,6 @@ export default function FactureEdit() {
     };
 
     const openReplaceReceipt = () => {
-        // If one exists, confirm replacement
         if (receiptMeta?.hasReceipt) {
             const ok = window.confirm(t("receipt.confirmReplace"));
             if (!ok) return;
@@ -184,7 +192,6 @@ export default function FactureEdit() {
             setFacture(snap);
             setLoading(false);
 
-            // Load receipt meta once facture is known
             void refreshReceiptMeta(snap.id);
         }
     }, [cachedFacture, refreshReceiptMeta]);
@@ -210,7 +217,9 @@ export default function FactureEdit() {
                 if (mounted) setLoading(false);
             }
         })();
-        return () => { mounted = false; };
+        return () => {
+            mounted = false;
+        };
     }, [factureId, cachedFacture]);
 
     // backfill suggestions
@@ -259,11 +268,11 @@ export default function FactureEdit() {
         setModalForm((prev) => ({ ...prev, typeItem: modalTypeItem }));
         setModalStep(2);
     }
-    function handleBackStep() { setModalStep(1); }
+    function handleBackStep() {
+        setModalStep(1);
+    }
 
-    function handleModalChange(
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-    ) {
+    function handleModalChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
         const { name, value, type } = e.target;
         const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
         setModalForm((prev) => ({
@@ -289,19 +298,10 @@ export default function FactureEdit() {
     }
 
     // Receipt import → items chosen from OCR
-    function handleReceiptItemsChosen(items: any[]) {
+    function handleReceiptItemsChosen(items: ReceiptImportItem[]) {
         if (!facture || !items || items.length === 0) return;
 
-        const mapped: ReceiptImportedDetailsItem[] = items.map((src) => ({
-            id: 0,
-            item: src.item ?? "",
-            typeItem: src.typeItem ?? "",
-            quantite: src.quantite ?? 1,
-            prix: src.prix ?? 0,
-            poidsValeur: src.poidsValeur ?? 0,
-            poidsUnite: src.poidsUnite ?? "",
-            wasOnSale: !!src.wasOnSale,
-        }));
+        const mapped = mapImportDtosToDetailsItems(items);
 
         setPendingImportedItems(mapped);
         setShowImportedDetailsModal(true);
@@ -368,11 +368,14 @@ export default function FactureEdit() {
 
     const unitLabel = (code: UnitCode) => t(`units.${code}`);
 
-    const creatableMessages = useMemo(() => ({
-        formatCreateLabel: (input: string) => t("select.create", { value: input }),
-        noOptionsMessage: () => t("select.noOptions"),
-        loadingMessage: () => t("select.loading"),
-    }), [t]);
+    const creatableMessages = useMemo(
+        () => ({
+            formatCreateLabel: (input: string) => t("select.create", { value: input }),
+            noOptionsMessage: () => t("select.noOptions"),
+            loadingMessage: () => t("select.loading"),
+        }),
+        [t]
+    );
 
     const fpOptions = useMemo(() => {
         const base: any = { dateFormat: "Y-m-d", allowInput: true };
@@ -473,7 +476,10 @@ export default function FactureEdit() {
                                                     setError(invalidDateMessage);
                                                     setFacture({ ...facture, date: "" });
                                                     fpRef.current?.flatpickr?.clear?.();
-                                                    requestAnimationFrame(() => { el.focus(); el.select?.(); });
+                                                    requestAnimationFrame(() => {
+                                                        el.focus();
+                                                        el.select?.();
+                                                    });
                                                     return;
                                                 }
 
@@ -547,7 +553,6 @@ export default function FactureEdit() {
                                     {receiptMeta?.hasReceipt ? t("receipt.replaceBtn") : t("items.importFromReceipt")}
                                 </Button>
 
-                                {/* Receipt status / open */}
                                 <div className="ms-auto d-flex align-items-center flex-wrap gap-2">
                                     {receiptMetaLoading ? (
                                         <span className="small text-muted">{t("receipt.loading")}</span>
@@ -557,11 +562,16 @@ export default function FactureEdit() {
                                         <>
                                             <span className="small text-muted">
                                                 {t("receipt.label")}:{" "}
-                                                <strong>{receiptMeta.originalFileName || t("receipt.unknownFile")}</strong>
+                                                <strong>
+                                                    {receiptMeta.originalFileName || t("receipt.unknownFile")}
+                                                </strong>
                                                 {receiptMeta.uploadedUtc ? (
                                                     <>
                                                         {" "}
-                                                        — {t("receipt.uploadedOn", { date: formatReceiptDate(receiptMeta.uploadedUtc) })}
+                                                        —{" "}
+                                                        {t("receipt.uploadedOn", {
+                                                            date: formatReceiptDate(receiptMeta.uploadedUtc),
+                                                        })}
                                                     </>
                                                 ) : null}
                                             </span>
@@ -596,7 +606,9 @@ export default function FactureEdit() {
                                             <th className="invoice-col-weight">{t("table.poids")}</th>
                                             <th className="invoice-col-unit">{t("table.unite")}</th>
                                             <th className="invoice-col-qty">{t("table.quantite")}</th>
-                                            <th className="invoice-col-onsale text-nowrap">{t("table.enSoldeQ")}</th>
+                                            <th className="invoice-col-onsale text-nowrap">
+                                                {t("table.enSoldeQ")}
+                                            </th>
                                             <th className="invoice-col-actions" />
                                         </tr>
                                     </thead>
@@ -608,15 +620,25 @@ export default function FactureEdit() {
                                                     <CreatableSelect
                                                         isClearable
                                                         options={typeOptions}
-                                                        value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
-                                                        onChange={(option: SingleValue<{ label: string; value: string }>) =>
-                                                            handleItemChange(i, "typeItem", option?.value || "")
+                                                        value={
+                                                            item.typeItem
+                                                                ? { value: item.typeItem, label: item.typeItem }
+                                                                : null
                                                         }
+                                                        onChange={(
+                                                            option: SingleValue<{ label: string; value: string }>
+                                                        ) => handleItemChange(i, "typeItem", option?.value || "")}
                                                         placeholder={t("placeholders.type") as string}
                                                         classNamePrefix="facture-type"
-                                                        formatCreateLabel={creatableMessages.formatCreateLabel}
-                                                        noOptionsMessage={creatableMessages.noOptionsMessage}
-                                                        loadingMessage={creatableMessages.loadingMessage}
+                                                        formatCreateLabel={
+                                                            creatableMessages.formatCreateLabel
+                                                        }
+                                                        noOptionsMessage={
+                                                            creatableMessages.noOptionsMessage
+                                                        }
+                                                        loadingMessage={
+                                                            creatableMessages.loadingMessage
+                                                        }
                                                     />
                                                 </td>
 
@@ -624,8 +646,12 @@ export default function FactureEdit() {
                                                     <input
                                                         className="form-control rounded-2"
                                                         value={item.item}
-                                                        onChange={(e) => handleItemChange(i, "item", e.target.value)}
-                                                        placeholder={t("placeholders.marqueProduit")}
+                                                        onChange={(e) =>
+                                                            handleItemChange(i, "item", e.target.value)
+                                                        }
+                                                        placeholder={t(
+                                                            "placeholders.marqueProduit"
+                                                        )}
                                                     />
                                                 </td>
 
@@ -635,7 +661,9 @@ export default function FactureEdit() {
                                                         type="number"
                                                         step="0.01"
                                                         value={item.prix}
-                                                        onChange={(e) => handleItemChange(i, "prix", +e.target.value)}
+                                                        onChange={(e) =>
+                                                            handleItemChange(i, "prix", +e.target.value)
+                                                        }
                                                         placeholder={t("placeholders.prix")}
                                                     />
                                                 </td>
@@ -646,7 +674,13 @@ export default function FactureEdit() {
                                                         type="number"
                                                         step="0.01"
                                                         value={item.poidsValeur}
-                                                        onChange={(e) => handleItemChange(i, "poidsValeur", +e.target.value)}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "poidsValeur",
+                                                                +e.target.value
+                                                            )
+                                                        }
                                                         placeholder={t("placeholders.poids")}
                                                     />
                                                 </td>
@@ -655,9 +689,17 @@ export default function FactureEdit() {
                                                     <select
                                                         className="form-select rounded-2"
                                                         value={item.poidsUnite}
-                                                        onChange={(e) => handleItemChange(i, "poidsUnite", e.target.value)}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "poidsUnite",
+                                                                e.target.value
+                                                            )
+                                                        }
                                                     >
-                                                        <option value="">{t("placeholders.unitFallback")}</option>
+                                                        <option value="">
+                                                            {t("placeholders.unitFallback")}
+                                                        </option>
                                                         {UNIT_OPTIONS.map((u) => (
                                                             <option key={u} value={u}>
                                                                 {unitLabel(u)}
@@ -671,8 +713,16 @@ export default function FactureEdit() {
                                                         className="form-control rounded-2"
                                                         type="number"
                                                         value={item.quantite}
-                                                        onChange={(e) => handleItemChange(i, "quantite", +e.target.value)}
-                                                        placeholder={t("placeholders.quantite")}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "quantite",
+                                                                +e.target.value
+                                                            )
+                                                        }
+                                                        placeholder={t(
+                                                            "placeholders.quantite"
+                                                        )}
                                                     />
                                                 </td>
 
@@ -681,7 +731,13 @@ export default function FactureEdit() {
                                                         className="form-check-input"
                                                         type="checkbox"
                                                         checked={item.wasOnSale}
-                                                        onChange={(e) => handleItemChange(i, "wasOnSale", e.target.checked)}
+                                                        onChange={(e) =>
+                                                            handleItemChange(
+                                                                i,
+                                                                "wasOnSale",
+                                                                e.target.checked
+                                                            )
+                                                        }
                                                         aria-label={t("table.enSoldeQ")}
                                                     />
                                                 </td>
@@ -711,79 +767,161 @@ export default function FactureEdit() {
                                             <div className="card card--tinted shadow-sm rounded-3">
                                                 <div className="card-body py-2 px-3">
                                                     <div className="mb-2">
-                                                        <label className="form-label small mb-1">{t("table.typeProduit")}</label>
+                                                        <label className="form-label small mb-1">
+                                                            {t("table.typeProduit")}
+                                                        </label>
                                                         <CreatableSelect
                                                             isClearable
                                                             menuPlacement="top"
                                                             options={typeOptions}
-                                                            value={item.typeItem ? { value: item.typeItem, label: item.typeItem } : null}
-                                                            onChange={(option: SingleValue<{ label: string; value: string }>) =>
-                                                                handleItemChange(i, "typeItem", option?.value || "")
+                                                            value={
+                                                                item.typeItem
+                                                                    ? {
+                                                                        value: item.typeItem,
+                                                                        label: item.typeItem,
+                                                                    }
+                                                                    : null
                                                             }
-                                                            placeholder={t("placeholders.type") as string}
+                                                            onChange={(
+                                                                option: SingleValue<{
+                                                                    label: string;
+                                                                    value: string;
+                                                                }>
+                                                            ) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "typeItem",
+                                                                    option?.value || ""
+                                                                )
+                                                            }
+                                                            placeholder={
+                                                                (t(
+                                                                    "placeholders.type"
+                                                                ) as string)
+                                                            }
                                                             classNamePrefix="facture-type-mobile"
-                                                            formatCreateLabel={creatableMessages.formatCreateLabel}
-                                                            noOptionsMessage={creatableMessages.noOptionsMessage}
-                                                            loadingMessage={creatableMessages.loadingMessage}
+                                                            formatCreateLabel={
+                                                                creatableMessages.formatCreateLabel
+                                                            }
+                                                            noOptionsMessage={
+                                                                creatableMessages.noOptionsMessage
+                                                            }
+                                                            loadingMessage={
+                                                                creatableMessages.loadingMessage
+                                                            }
                                                         />
                                                     </div>
 
                                                     <div className="mb-2">
-                                                        <label className="form-label small mb-0">{t("table.marque")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.marque")}
+                                                        </label>
                                                         <input
                                                             className="form-control form-control-sm rounded-2"
                                                             value={item.item}
-                                                            onChange={(e) => handleItemChange(i, "item", e.target.value)}
-                                                            placeholder={t("placeholders.marqueProduit")}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "item",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                            placeholder={t(
+                                                                "placeholders.marqueProduit"
+                                                            )}
                                                         />
                                                     </div>
 
                                                     <div className="mb-1">
-                                                        <label className="form-label small mb-0">{t("table.prix")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.prix")}
+                                                        </label>
                                                         <input
                                                             className="form-control form-control-sm rounded-2"
                                                             type="number"
                                                             step="0.01"
                                                             value={item.prix}
-                                                            onChange={(e) => handleItemChange(i, "prix", +e.target.value)}
-                                                            placeholder={t("placeholders.prix")}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "prix",
+                                                                    +e.target.value
+                                                                )
+                                                            }
+                                                            placeholder={t(
+                                                                "placeholders.prix"
+                                                            )}
                                                         />
                                                     </div>
 
                                                     <div className="mb-1">
-                                                        <label className="form-label small mb-0">{t("table.poids")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.poids")}
+                                                        </label>
                                                         <input
                                                             className="form-control form-control-sm rounded-2"
                                                             type="number"
                                                             step="0.01"
                                                             value={item.poidsValeur}
-                                                            onChange={(e) => handleItemChange(i, "poidsValeur", +e.target.value)}
-                                                            placeholder={t("placeholders.poids")}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "poidsValeur",
+                                                                    +e.target.value
+                                                                )
+                                                            }
+                                                            placeholder={t(
+                                                                "placeholders.poids"
+                                                            )}
                                                         />
                                                     </div>
 
                                                     <div className="mb-1">
-                                                        <label className="form-label small mb-0">{t("table.unite")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.unite")}
+                                                        </label>
                                                         <select
                                                             className="form-select form-select-sm rounded-2"
                                                             value={item.poidsUnite}
-                                                            onChange={(e) => handleItemChange(i, "poidsUnite", e.target.value)}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "poidsUnite",
+                                                                    e.target.value
+                                                                )
+                                                            }
                                                         >
-                                                            <option value="">{t("placeholders.unitFallback")}</option>
+                                                            <option value="">
+                                                                {t(
+                                                                    "placeholders.unitFallback"
+                                                                )}
+                                                            </option>
                                                             {UNIT_OPTIONS.map((u) => (
-                                                                <option key={u} value={u}>{unitLabel(u)}</option>
+                                                                <option key={u} value={u}>
+                                                                    {unitLabel(u)}
+                                                                </option>
                                                             ))}
                                                         </select>
                                                     </div>
 
                                                     <div className="mb-1">
-                                                        <label className="form-label small mb-0">{t("table.quantite")}</label>
+                                                        <label className="form-label small mb-0">
+                                                            {t("table.quantite")}
+                                                        </label>
                                                         <input
                                                             className="form-control form-control-sm rounded-2"
                                                             type="number"
                                                             value={item.quantite}
-                                                            onChange={(e) => handleItemChange(i, "quantite", +e.target.value)}
-                                                            placeholder={t("placeholders.quantite")}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "quantite",
+                                                                    +e.target.value
+                                                                )
+                                                            }
+                                                            placeholder={t(
+                                                                "placeholders.quantite"
+                                                            )}
                                                         />
                                                     </div>
 
@@ -793,9 +931,18 @@ export default function FactureEdit() {
                                                             type="checkbox"
                                                             id={`onsale${i}`}
                                                             checked={item.wasOnSale}
-                                                            onChange={(e) => handleItemChange(i, "wasOnSale", e.target.checked)}
+                                                            onChange={(e) =>
+                                                                handleItemChange(
+                                                                    i,
+                                                                    "wasOnSale",
+                                                                    e.target.checked
+                                                                )
+                                                            }
                                                         />
-                                                        <label className="form-check-label small invoice-onsale-label" htmlFor={`onsale${i}`}>
+                                                        <label
+                                                            className="form-check-label small invoice-onsale-label"
+                                                            htmlFor={`onsale${i}`}
+                                                        >
                                                             {t("table.enSoldeQ")}
                                                         </label>
                                                     </div>
@@ -853,15 +1000,26 @@ export default function FactureEdit() {
                         {modalStep === 1 ? (
                             <>
                                 <Form.Group className="mb-3">
-                                    <Form.Label className="fw-bold">{t("modal.step1.typeLabel")}</Form.Label>
+                                    <Form.Label className="fw-bold">
+                                        {t("modal.step1.typeLabel")}
+                                    </Form.Label>
                                     <CreatableSelect
                                         isClearable
                                         options={typeOptions}
-                                        value={modalTypeItem ? { value: modalTypeItem, label: modalTypeItem } : null}
-                                        onChange={(option: SingleValue<{ label: string; value: string }>) =>
-                                            setModalTypeItem(option?.value || "")
+                                        value={
+                                            modalTypeItem
+                                                ? {
+                                                    value: modalTypeItem,
+                                                    label: modalTypeItem,
+                                                }
+                                                : null
                                         }
-                                        placeholder={t("modal.step1.placeholder") as string}
+                                        onChange={(
+                                            option: SingleValue<{ label: string; value: string }>
+                                        ) => setModalTypeItem(option?.value || "")}
+                                        placeholder={
+                                            (t("modal.step1.placeholder") as string)
+                                        }
                                         classNamePrefix="facture-type-modal"
                                         formatCreateLabel={creatableMessages.formatCreateLabel}
                                         noOptionsMessage={creatableMessages.noOptionsMessage}
@@ -876,7 +1034,8 @@ export default function FactureEdit() {
                                         disabled={!modalTypeItem.trim()}
                                         onClick={handleNextStep}
                                     >
-                                        {t("modal.next")} <i className="bi bi-arrow-right ms-2" />
+                                        {t("modal.next")}{" "}
+                                        <i className="bi bi-arrow-right ms-2" />
                                     </Button>
                                 </div>
                             </>
@@ -884,7 +1043,9 @@ export default function FactureEdit() {
                             <>
                                 <Row className="g-2 mb-3">
                                     <Col md={6}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.itemBrand")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.itemBrand")}
+                                        </Form.Label>
                                         <Form.Control
                                             type="text"
                                             name="item"
@@ -895,7 +1056,9 @@ export default function FactureEdit() {
                                     </Col>
 
                                     <Col md={3}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.quantity")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.quantity")}
+                                        </Form.Label>
                                         <Form.Control
                                             type="number"
                                             name="quantite"
@@ -906,7 +1069,9 @@ export default function FactureEdit() {
                                     </Col>
 
                                     <Col md={3}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.unitPrice")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.unitPrice")}
+                                        </Form.Label>
                                         <Form.Control
                                             type="number"
                                             step="0.01"
@@ -920,7 +1085,9 @@ export default function FactureEdit() {
 
                                 <Row className="g-2 mb-3">
                                     <Col md={4}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.weight")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.weight")}
+                                        </Form.Label>
                                         <Form.Control
                                             type="number"
                                             step="0.01"
@@ -932,16 +1099,22 @@ export default function FactureEdit() {
                                     </Col>
 
                                     <Col md={4}>
-                                        <Form.Label className="fw-bold">{t("modal.step2.unit")}</Form.Label>
+                                        <Form.Label className="fw-bold">
+                                            {t("modal.step2.unit")}
+                                        </Form.Label>
                                         <Form.Select
                                             name="poidsUnite"
                                             required
                                             value={modalForm.poidsUnite}
                                             onChange={handleModalChange}
                                         >
-                                            <option value="">{t("placeholders.unitFallback")}</option>
+                                            <option value="">
+                                                {t("placeholders.unitFallback")}
+                                            </option>
                                             {UNIT_OPTIONS.map((u) => (
-                                                <option key={u} value={u}>{unitLabel(u)}</option>
+                                                <option key={u} value={u}>
+                                                    {unitLabel(u)}
+                                                </option>
                                             ))}
                                         </Form.Select>
                                     </Col>
@@ -971,7 +1144,10 @@ export default function FactureEdit() {
                                     <Button
                                         type="submit"
                                         className="btn btn-success rounded-pill px-4"
-                                        disabled={!modalForm.item.trim() || !modalForm.poidsUnite.trim()}
+                                        disabled={
+                                            !modalForm.item.trim() ||
+                                            !modalForm.poidsUnite.trim()
+                                        }
                                     >
                                         <i className="bi bi-plus-circle me-2" />
                                         {t("modal.add")}
@@ -991,7 +1167,7 @@ export default function FactureEdit() {
                     factureId={facture.id}
                     year={facture.annee}
                     storeName={facture.magasin ?? ""}
-                    onItemsChosen={(items: any[]) => {
+                    onItemsChosen={(items: ReceiptImportItem[]) => {
                         handleReceiptItemsChosen(items);
                         setShowReceiptModal(false);
                     }}
@@ -1011,7 +1187,7 @@ export default function FactureEdit() {
                 />
             )}
 
-            {/* Receipt viewer modal (NEW) */}
+            {/* Receipt viewer modal */}
             {receiptMeta?.hasReceipt && receiptMeta.openUrl && (
                 <ReceiptViewerModal
                     show={showReceiptViewer}

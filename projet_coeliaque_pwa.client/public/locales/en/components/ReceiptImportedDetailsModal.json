@@ -1,7 +1,7 @@
 ﻿{
-  "title": "Complete imported item details",
-  "intro": "Review and complete the product type, weight, and whether the item was on sale.",
-  "empty": "No imported items are available to complete.",
+  "title": "Complete item details",
+  "intro": "Fill in the missing information for each selected item.",
+  "empty": "No items to complete.",
   "table": {
     "article": "Item",
     "typeProduit": "Product type",
@@ -9,15 +9,17 @@
     "prix": "Price",
     "poids": "Weight",
     "unite": "Unit",
-    "enSoldeQ": "On sale?"
+    "enSoldeQ": "On sale?",
+    "selectAll": "Select all",
+    "selectRow": "Select row"
   },
   "placeholders": {
-    "article": "Item name / brand",
-    "typeProduit": "Type (e.g., Milk, Bread, Vegetables...)",
-    "unitFallback": "Choose…"
+    "article": "Item name",
+    "typeProduit": "Type (e.g. bread, milk…)",
+    "unitFallback": "Choose a unit"
   },
   "buttons": {
     "cancel": "Cancel",
-    "apply": "Apply to items"
+    "apply": "Apply"
   }
 }

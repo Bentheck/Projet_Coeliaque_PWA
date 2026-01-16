@@ -13,7 +13,6 @@ using Projet_Coeliaque_PWA.Server.DTOs.Receipts;
 using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Services.Receipts;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
@@ -36,18 +35,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly IReceiptOcrService _ocrService;
         private readonly ILogger<ReceiptScansController> _logger;
         private readonly string _basePath;
-
-        private static readonly string[] GenericSkipSubstrings = new[]
-        {
-            "IGA ", "ROUTE DU", "TEL:", "VIVE LA BOUFFE", "SERVI PAR",
-            "NUMÉRO CARTE", "NUMERO CARTE", "CARTE MEMBRE", "SCENE+", "SCÈNE+",
-            "POINTS OBTENUS", "POINTS REMIS", " PTS", "POINTS ",
-            "EPICERIE", "ÉPICERIE", "VIANDE", "FRUITS/LEGUMES", "FRUITS/LÉGUMES", "FRUITS / LÉGUMES",
-            "RABAIS SUR LE PRIX COURANT", "RABAIS INSTANTANE", "RABAIS INSTANTANÉ", "RABAIS INSTANT",
-            "SOUS-TOTAL", "SOUS TOTAL", "TOTAL", "TPS (", "TVQ (", "TPS(", "TVQ(",
-            "NOMBRE D'ARTICLES", "ÉCONOMIES", "ECONOMIES", "VALEUR TOTAL", "VALEUR TOTALE", "ON POURCENTAGE",
-            "COUPON", "COUPONS", "VISA", "MASTERCARD", "INTERAC", "DÉBIT", "DEBIT", "ARGENT", "MÉDIA", "MEDIA", "MONNAIE"
-        };
 
         public ReceiptScansController(
             ApplicationDbContext db,
@@ -171,94 +158,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         // -----------------------------
-        // OCR mapping helpers
-        // -----------------------------
-
-        private static bool ShouldSkipLine(ReceiptParsedLine line)
-        {
-            var raw = (line.RawText ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(raw))
-                return true;
-
-            var upper = raw.ToUpperInvariant();
-
-            if (upper.Contains(" KG @ ") || upper.Contains("KG @") || upper.Contains("/ KG") || upper.Contains("/KG"))
-                return true;
-
-            if (upper.Contains(" @ $"))
-                return true;
-
-            foreach (var pattern in GenericSkipSubstrings)
-            {
-                if (upper.Contains(pattern))
-                    return true;
-            }
-
-            if (!raw.Any(char.IsLetter))
-                return true;
-
-            if (!line.Price.HasValue || line.Price.Value <= 0m)
-                return true;
-
-            return false;
-        }
-
-        private static List<ReceiptImportItemDto> MapParsedToImportItems(ReceiptParsed parsed)
-        {
-            var result = new List<ReceiptImportItemDto>();
-
-            if (parsed?.Lines == null || parsed.Lines.Length == 0)
-                return result;
-
-            var indexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var line in parsed.Lines)
-            {
-                if (ShouldSkipLine(line))
-                    continue;
-
-                var name = (line.Item ?? "").Trim();
-                if (string.IsNullOrWhiteSpace(name))
-                    name = (line.RawText ?? "").Trim();
-
-                if (string.IsNullOrWhiteSpace(name))
-                    continue;
-
-                var price = line.Price ?? 0m;
-                var qty = line.Qty ?? 1m;
-
-                if (price < 0m) price = 0m;
-                if (qty <= 0m) qty = 1m;
-
-                var key = $"{name.ToUpperInvariant()}|{price:F2}";
-
-                if (indexByKey.TryGetValue(key, out var existingIndex))
-                {
-                    result[existingIndex].Quantite += qty;
-                }
-                else
-                {
-                    var dto = new ReceiptImportItemDto
-                    {
-                        Id = 0,
-                        Item = name,
-                        Prix = Math.Round(price, 2, MidpointRounding.AwayFromZero),
-                        Quantite = qty,
-                        TypeItem = "",
-                        PoidsValeur = 0m,
-                        PoidsUnite = "",
-                        WasOnSale = false
-                    };
-
-                    indexByKey[key] = result.Count;
-                    result.Add(dto);
-                }
-            }
-
-            return result;
-        }
-
-        // -----------------------------
         // API endpoints
         // -----------------------------
 
@@ -294,7 +193,6 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         /// <summary>
         /// Downloads the stored image for a scan (so the UI can open/view it).
         /// </summary>
-        // GET: api/receipts/{id}/image
         // GET: api/receipts/{id}/image
         [HttpGet("{id:int}/image")]
         public async Task<IActionResult> GetImage(int id, CancellationToken ct)
@@ -486,10 +384,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 scan.Error = null;
                 await _db.SaveChangesAsync(ct);
 
+                var items = ReceiptImportMapper.MapParsedToImportItems(parsed);
+
                 return Ok(new ReceiptScanAnalyzeResponseDto
                 {
                     ScanId = scan.Id,
-                    Items = MapParsedToImportItems(parsed)
+                    Items = items
                 });
             }
             catch (Exception ex)
