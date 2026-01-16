@@ -83,5 +83,24 @@
       "disabledInDemo": "Désactivé pendant la visite guidée"
     }
   },
-  "pending": "(en attente…)"
+  "pending": "(en attente…)",
+  "receipt": {
+    "offlineDisabled": "La création à partir d’un reçu est désactivée hors ligne.",
+    "createFromScan": "Créer à partir d’un reçu",
+    "confirmCreateTitle": "Créer une facture à partir du reçu",
+    "itemsDetected": "{{count}} article(s) détecté(s) sur le reçu.",
+    "reviewItems": "Réviser les articles"
+  },
+  "units": {
+    "g": "g — grammes",
+    "kg": "kg — kilogrammes",
+    "mg": "mg — milligrammes",
+    "lb": "lb — livres",
+    "oz": "oz — onces",
+    "ml": "ml — millilitres",
+    "l": "l — litres",
+    "fl_oz": "fl oz — onces liquides",
+    "un": "unité — à l’unité",
+    "dozen": "douzaine — 12"
+  }
 }

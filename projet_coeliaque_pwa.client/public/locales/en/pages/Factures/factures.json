@@ -83,5 +83,24 @@
       "disabledInDemo": "Disabled during guided demo"
     }
   },
-  "pending": "(pending…)"
+  "pending": "(pending…)",
+  "receipt": {
+    "offlineDisabled": "Creating from a receipt is disabled while offline.",
+    "createFromScan": "Create from receipt",
+    "confirmCreateTitle": "Create an invoice from the receipt",
+    "itemsDetected": "{{count}} item(s) detected on the receipt.",
+    "reviewItems": "Review items"
+  },
+  "units": {
+    "g": "g — grams",
+    "kg": "kg — kilograms",
+    "mg": "mg — milligrams",
+    "lb": "lb — pounds",
+    "oz": "oz — ounces",
+    "ml": "ml — millilitres",
+    "l": "l — litres",
+    "fl_oz": "fl oz — fluid ounces",
+    "un": "unit — per unit",
+    "dozen": "dozen — 12"
+  }
 }

@@ -1,23 +1,25 @@
 ﻿{
-  "title": "Compléter les informations des articles importés",
-  "intro": "Vérifiez et complétez le type de produit, le poids et indiquez si l’article était en solde.",
-  "empty": "Aucun article importé n’est disponible pour la complétion.",
+  "title": "Compléter les détails des articles",
+  "intro": "Complétez les informations manquantes pour chaque article sélectionné.",
+  "empty": "Aucun article à compléter.",
   "table": {
     "article": "Article",
     "typeProduit": "Type de produit",
-    "quantite": "Qté",
+    "quantite": "Quantité",
     "prix": "Prix",
     "poids": "Poids",
     "unite": "Unité",
-    "enSoldeQ": "En solde ?"
+    "enSoldeQ": "En solde ?",
+    "selectAll": "Tout sélectionner",
+    "selectRow": "Sélectionner la ligne"
   },
   "placeholders": {
-    "article": "Nom / marque de l’article",
-    "typeProduit": "Type (ex.: Lait, Pain, Légume...)",
-    "unitFallback": "Choisir…"
+    "article": "Nom de l’article",
+    "typeProduit": "Type (ex.: pain, lait…)",
+    "unitFallback": "Choisir une unité"
   },
   "buttons": {
     "cancel": "Annuler",
-    "apply": "Appliquer aux articles"
+    "apply": "Appliquer"
   }
 }

@@ -225,12 +225,6 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 e.Property(x => x.SortOrder).HasDefaultValue(0);
             });
 
-            // Optional seed example
-            // modelBuilder.Entity<ForumCategory>().HasData(
-            //     new ForumCategory { Id = 1, Slug = "general", Name = "Général", Description = "Discussions générales" },
-            //     new ForumCategory { Id = 2, Slug = "recettes", Name = "Recettes", Description = "Idées et recettes" }
-            // );
-
             modelBuilder.Entity<TesterInvite>(b =>
             {
                 b.HasKey(x => x.Id);
