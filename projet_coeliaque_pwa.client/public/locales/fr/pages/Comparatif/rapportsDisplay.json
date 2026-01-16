@@ -1,5 +1,9 @@
 ﻿{
   "loading": "Chargement…",
+  "errors": {
+    "generic": "Une erreur est survenue."
+  },
+  "noRows": "Aucune ligne à afficher.",
   "print": {
     "noteLabel": "Note :",
     "noteMain": "Lorsque vous cliquerez sur « Imprimer », vous pourrez entrer votre NOM et votre NAS pour qu’ils apparaissent en haut du rapport.",
@@ -16,6 +20,26 @@
     "nasPlaceholder": "XXX XXX XXX",
     "cancel": "Annuler",
     "continuePrint": "Continuer et imprimer"
+  },
+  "rows": {
+    "actionsHeader": "Retirer la ligne",
+    "removeAria": "Retirer la ligne",
+    "removeTitle": "Retirer la ligne",
+    "undo": "Annuler",
+    "restoreAll": "Restaurer toutes les lignes retirées",
+    "removedCount": "Lignes retirées : {{count}}",
+    "removedSectionTitle": "Lignes retirées",
+    "removedCols": {
+      "type": "Type de produit",
+      "name": "Nom sans gluten",
+      "subtotal": "Sous-total",
+      "actions": "Remettre la rangée"
+    },
+    "highlight": {
+      "negative": "Sous-total négatif",
+      "emptyComparison": "Comparatif vide",
+      "negAndEmpty": "Sous-total négatif + comparatif vide"
+    }
   },
   "title": "Rapport Comparatif — Année {{year}}",
   "user": "Utilisateur : {{name}}",

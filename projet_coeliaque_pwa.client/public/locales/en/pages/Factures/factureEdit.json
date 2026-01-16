@@ -12,7 +12,8 @@
   },
   "items": {
     "title": "Items",
-    "addButton": "Add item"
+    "addButton": "Add item",
+    "importFromReceipt": "Import from receipt"
   },
   "table": {
     "typeProduit": "Product type",
@@ -29,7 +30,8 @@
     "prix": "Price",
     "poids": "Weight",
     "quantite": "Quantity",
-    "unitFallback": "-- Unit --"
+    "unitFallback": "-- Unit --",
+    "dateIso": "YYYY-MM-DD"
   },
   "buttons": {
     "save": "Save",
@@ -37,6 +39,19 @@
   },
   "actions": {
     "remove": "Remove"
+  },
+  "receipt": {
+    "label": "Receipt",
+    "none": "No receipt imported.",
+    "loading": "Loading receipt…",
+    "loadFailed": "Failed to load receipt.",
+    "unknownFile": "File",
+    "uploadedOn": "uploaded on {{date}}",
+    "openBtn": "Open",
+    "openAria": "Open receipt",
+    "replaceBtn": "Replace receipt",
+    "confirmReplace": "A receipt is already attached to this invoice. Replace it? The previous receipt will be deleted from the server.",
+    "offlineDisabled": "Receipt is unavailable offline."
   },
   "modal": {
     "title": "Add an item to the invoice",
@@ -61,7 +76,25 @@
   },
   "error": {
     "loadInvoiceOffline": "Unable to load the invoice (offline and not cached).",
-    "saveFailed": "Error while saving."
+    "saveFailed": "Error while saving.",
+    "invalidDate": "Invalid date. Expected format: YYYY-MM-DD."
+  },
+  "select": {
+    "create": "Create \"{{value}}\"",
+    "noOptions": "No options",
+    "loading": "Loading…"
+  },
+  "units": {
+    "g": "g — grams",
+    "kg": "kg — kilograms",
+    "mg": "mg — milligrams",
+    "lb": "lb — pounds",
+    "oz": "oz — ounces",
+    "ml": "ml — milliliters",
+    "l": "l — liters",
+    "fl_oz": "fl oz — fluid ounces",
+    "un": "unit — each",
+    "dozen": "dozen — 12"
   },
   "demo": {
     "badge": "DEMO",

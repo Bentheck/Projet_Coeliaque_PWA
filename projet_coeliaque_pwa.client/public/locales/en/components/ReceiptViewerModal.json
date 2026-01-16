@@ -1,0 +1,10 @@
+﻿{
+  "title": "Receipt",
+  "loading": "Loading…",
+  "alt": "Receipt image",
+  "errors": { "loadFailed": "Unable to load the receipt image." },
+  "buttons": {
+    "close": "Close",
+    "openInNewTab": "Open in new tab"
+  }
+}

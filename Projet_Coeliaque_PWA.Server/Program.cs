@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Globalization;
+using System.Net;
+using System.Threading.RateLimiting;
 using Projet_Coeliaque_PWA.Server.Auth;
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Mapping;
@@ -100,9 +104,9 @@ namespace Projet_Coeliaque_PWA.Server
             builder.Services.AddScoped<IFeatureFlagService, FeatureFlagService>();
             builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
-            // --- Receipt OCR / scan service (for photo receipts → items) ---
-            // Make sure you have IReceiptOcrService + ReceiptOcrService in Services/Receipts.
-            builder.Services.AddScoped<IReceiptOcrService, BasicReceiptOcrService>();
+            // --- Receipt OCR / scan service (for photo receipts -> items) ---
+            builder.Services.AddScoped<IReceiptOcrService, GoogleVisionReceiptOcrService>();
+            builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 
             // Authorization handlers / policies
             builder.Services.AddScoped<IAuthorizationHandler, IsForumAdminHandler>();
@@ -148,20 +152,93 @@ namespace Projet_Coeliaque_PWA.Server
             builder.Services.AddControllers();
 
             // --- IMPORTANT: forwarded headers (Cloudflare/nginx) so redirects stay HTTPS ---
+            // NOTE: In your setup, Nginx reverse-proxies to 127.0.0.1.
+            // Add KnownProxies for loopback so RemoteIpAddress becomes the real client IP.
             builder.Services.Configure<ForwardedHeadersOptions>(options =>
             {
                 options.ForwardedHeaders =
                     ForwardedHeaders.XForwardedFor |
                     ForwardedHeaders.XForwardedProto;
 
-                // We are behind a reverse proxy; avoid strict KnownNetworks/KnownProxies blocking.
+                // Trust only local reverse proxy hop (Nginx)
                 options.KnownNetworks.Clear();
                 options.KnownProxies.Clear();
+                options.KnownProxies.Add(IPAddress.Loopback);
+                options.KnownProxies.Add(IPAddress.IPv6Loopback);
+
+                // One proxy hop: client -> Nginx -> Kestrel
+                options.ForwardLimit = 1;
+            });
+
+            // ------------------------------------------------------------
+            // ASP.NET Core Rate Limiting (server-side)
+            // ------------------------------------------------------------
+            builder.Services.AddRateLimiter(opt =>
+            {
+                opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                opt.OnRejected = async (context, token) =>
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                    var ra = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+                        ? ((TimeSpan)retryAfter).TotalSeconds
+                        : 1;
+
+                    context.HttpContext.Response.Headers["Retry-After"] =
+                        Math.Ceiling(ra).ToString(CultureInfo.InvariantCulture);
+
+                    context.HttpContext.Response.ContentType = "application/json; charset=utf-8";
+                    await context.HttpContext.Response.WriteAsync(
+                        $$"""{"errorCode":"TooManyRequests","retryAfterSeconds":{{Math.Ceiling(ra)}}}""",
+                        token
+                    );
+                };
+
+                static string ClientKey(HttpContext ctx)
+                {
+                    // Prefer authenticated user id (avoids penalizing shared IPs)
+                    var uid = ctx.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrWhiteSpace(uid))
+                        return "u:" + uid;
+
+                    // Fallback: IP (requires UseForwardedHeaders)
+                    var ip = ctx.Connection.RemoteIpAddress?.ToString();
+                    return string.IsNullOrWhiteSpace(ip) ? "ip:unknown" : "ip:" + ip;
+                }
+
+                // General API policy: 120 req/min per user, else per IP
+                opt.AddPolicy("api", httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: ClientKey(httpContext),
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 120,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0
+                        })
+                );
+
+                // Sensitive account policy: 10 req/min per IP (force IP partition)
+                opt.AddPolicy("account_sensitive", httpContext =>
+                {
+                    var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: "ip:" + ip,
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 10,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0
+                        });
+                });
             });
 
             var app = builder.Build();
 
-            // Use forwarded headers VERY early (before auth, redirects, etc.)
+            // Use forwarded headers VERY early (before auth, rate limiting, redirects, etc.)
             app.UseForwardedHeaders();
 
             // ---- Seed roles + default SuperAdmin from configuration ----
@@ -199,12 +276,19 @@ namespace Projet_Coeliaque_PWA.Server
             app.UseRouting();
             app.UseSession();
 
+            // Rate limiting should run before auth/authorization to reject early (cheaper),
+            // but we key on user id when authenticated. That still works because User is not
+            // populated until UseAuthentication runs. So we keep it AFTER auth to support per-user keys.
             app.UseAuthentication();
+            app.UseRateLimiter();
             app.UseAuthorization();
 
             // API endpoints
             app.MapIdentityApi<IdentityUser>();
-            app.MapControllers();
+
+            // Apply default limiter to controllers under /api
+            // (IdentityApi endpoints are mapped above; you can add RequireRateLimiting there too if desired.)
+            app.MapControllers().RequireRateLimiting("api");
 
             app.Run();
 

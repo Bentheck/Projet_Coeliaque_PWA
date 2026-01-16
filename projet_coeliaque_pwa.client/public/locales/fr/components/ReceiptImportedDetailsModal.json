@@ -1,0 +1,25 @@
+﻿{
+  "title": "Compléter les détails des articles",
+  "intro": "Complétez les informations manquantes pour chaque article sélectionné.",
+  "empty": "Aucun article à compléter.",
+  "table": {
+    "article": "Article",
+    "typeProduit": "Type de produit",
+    "quantite": "Quantité",
+    "prix": "Prix",
+    "poids": "Poids",
+    "unite": "Unité",
+    "enSoldeQ": "En solde ?",
+    "selectAll": "Tout sélectionner",
+    "selectRow": "Sélectionner la ligne"
+  },
+  "placeholders": {
+    "article": "Nom de l’article",
+    "typeProduit": "Type (ex.: pain, lait…)",
+    "unitFallback": "Choisir une unité"
+  },
+  "buttons": {
+    "cancel": "Annuler",
+    "apply": "Appliquer"
+  }
+}

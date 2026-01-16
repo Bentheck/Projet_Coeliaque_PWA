@@ -1,4 +1,6 @@
-﻿using System;
+﻿// PATH: Projet_Coeliaque_PWA.Server/Data/Entities/ReceiptScan.cs
+#nullable enable
+using System;
 
 namespace Projet_Coeliaque_PWA.Server.Data.Entities
 {
@@ -6,25 +8,25 @@ namespace Projet_Coeliaque_PWA.Server.Data.Entities
     {
         public int Id { get; set; }
 
-        public string UserId { get; set; } = default!;
+        // Owner
+        public string UserId { get; set; } = string.Empty;
 
-        public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+        // Link to invoice (ONE receipt per facture)
+        public int FactureId { get; set; }
 
-        /// <summary>Année (UTC) au moment de l’upload, pour le rangement disque/filtrage.</summary>
-        public int Year { get; set; } = DateTime.UtcNow.Year;
+        public int Year { get; set; }
+        public DateTime CreatedUtc { get; set; }
 
-        public string OriginalFileName { get; set; } = default!;
-        public string ContentType { get; set; } = default!;
+        // Upload metadata
+        public string OriginalFileName { get; set; } = string.Empty;
+        public string? ContentType { get; set; }
 
-        /// <summary>Chemin absolu sur disque vers l’image du reçu.</summary>
-        public string StoragePath { get; set; } = default!;
+        // StoragePath = absolute file path to saved image
+        public string StoragePath { get; set; } = string.Empty;
 
-        /// <summary>queued | processing | done | failed</summary>
-        public string Status { get; set; } = "queued";
-
+        // OCR lifecycle
+        public string Status { get; set; } = "queued"; // queued|processing|done|failed
         public string? Error { get; set; }
-
-        /// <summary>Résultat OCR sérialisé en JSON (ReceiptParsed).</summary>
         public string? ParsedJson { get; set; }
     }
 }

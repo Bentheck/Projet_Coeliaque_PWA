@@ -1,0 +1,15 @@
+﻿{
+  "title": "Select items",
+  "intro": "Tick the rows you want to import into the invoice.",
+  "empty": "No items detected.",
+  "table": {
+    "article": "Item",
+    "select": "Select"
+  },
+  "buttons": {
+    "cancel": "Cancel",
+    "next": "Continue"
+  },
+  "selectAllLabel": "Select all",
+  "selectRowLabel": "Select row"
+}

@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -139,6 +140,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         /// <summary>Register a new user and email them a confirmation link.</summary>
         [AllowAnonymous]
+        [EnableRateLimiting("account_sensitive")]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req)
         {
@@ -391,6 +393,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         [AllowAnonymous]
+        [EnableRateLimiting("account_sensitive")]
         [HttpPost("resend-confirmation")]
         public async Task<IActionResult> ResendConfirmation([FromBody] LoginRequest req)
         {
@@ -428,6 +431,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         [AllowAnonymous]
+        [EnableRateLimiting("account_sensitive")]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
@@ -798,6 +802,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         [AllowAnonymous]
+        [EnableRateLimiting("account_sensitive")]
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
         {
@@ -836,6 +841,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         [AllowAnonymous]
+        [EnableRateLimiting("account_sensitive")]
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
         {
@@ -976,6 +982,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         [Authorize]
+        [EnableRateLimiting("account_sensitive")]
         [HttpPost("delete")]
         public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest req)
         {

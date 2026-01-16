@@ -1,4 +1,6 @@
-﻿using System.Threading;
+﻿// PATH: Projet_Coeliaque_PWA.Server/Services/Receipts/IReceiptOcrService.cs
+#nullable enable
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Projet_Coeliaque_PWA.Server.Services.Receipts

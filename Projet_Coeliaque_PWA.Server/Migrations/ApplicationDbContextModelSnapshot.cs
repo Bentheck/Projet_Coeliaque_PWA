@@ -380,7 +380,6 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ContentType")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedUtc")
@@ -388,6 +387,9 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     b.Property<string>("Error")
                         .HasColumnType("text");
+
+                    b.Property<int>("FactureId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
@@ -996,6 +998,9 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     b.Property<DateTime>("GeneratedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RemovedRowKeysJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("ReportJson")
                         .IsRequired()
