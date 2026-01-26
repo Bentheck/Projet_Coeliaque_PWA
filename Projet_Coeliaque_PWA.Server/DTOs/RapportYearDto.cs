@@ -11,6 +11,12 @@ public class RapportDisplayDto
     public decimal TotalSousTotalProduit { get; set; }
 
     public List<string> RemovedRowKeys { get; set; } = new();
+    public int AdultCount { get; set; } = 1;
+}
+
+public class AdultCountUpdateDto
+{
+    public int AdultCount { get; set; } = 1;
 }
 
 public class ProductComparisonRowDto

@@ -66,7 +66,13 @@
       "sousTotalProduit": "Product Subtotal"
     }
   },
-  "total": "TOTAL = {{total}}",
+  "adultCount": {
+    "label": "Adults (18+)",
+    "perAdultLine": "Per adult ({{count}}): {{total}}",
+    "explainTitle": "Per-adult total",
+    "explainFormula": "Total ÷ adults (18+)"
+  },
+  "total": "SUBTOTAL = {{total}}",
   "explain": {
     "title": "How the calculations work",
     "pricePer100": {

@@ -8,8 +8,13 @@ using Projet_Coeliaque_PWA.Server.DTOs;
 using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Models;
 using Projet_Coeliaque_PWA.Server.Services;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -97,7 +102,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .Distinct()
                 .ToList();
 
-            // Keep server storage clean
+            // Normalize adult count (never allow 0 => divide by 0 on client)
+            var adultCount = savedReport.AdultCount <= 0 ? 1 : savedReport.AdultCount;
+
+            // Keep server storage clean (removed keys)
             if (savedReport.RemovedRowKeysJson != null)
             {
                 var normalizedJson = JsonSerializer.Serialize(removedKeys);
@@ -108,6 +116,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 }
             }
 
+            // Keep server storage clean (adult count)
+            if (savedReport.AdultCount != adultCount)
+            {
+                savedReport.AdultCount = adultCount;
+                await _db.SaveChangesAsync();
+            }
+
             var total = reportRows.Sum(r => r.SousTotalProduit);
 
             return new RapportDisplayDto
@@ -115,7 +130,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 ReportRows = reportRows,
                 UserName = user?.UserName ?? "",
                 TotalSousTotalProduit = total,
-                RemovedRowKeys = removedKeys
+                RemovedRowKeys = removedKeys,
+                AdultCount = adultCount
             };
         }
 
@@ -165,6 +181,44 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 });
 
             return Ok(new { removedCount = cleaned.Count });
+        }
+
+        // NEW: Persist adult count (Adults 18+)
+        [HttpPut("{annee:int}/adult-count")]
+        public async Task<IActionResult> UpdateAdultCount(int annee, [FromBody] AdultCountUpdateDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            dto ??= new AdultCountUpdateDto();
+
+            var incoming = dto.AdultCount;
+
+            // clamp to avoid nonsense (and ensure never 0)
+            if (incoming < 1) incoming = 1;
+            if (incoming > 50) incoming = 50;
+
+            var savedReport = await _db.SavedReports
+                .FirstOrDefaultAsync(r => r.UserId == userId && r.Year == annee);
+
+            if (savedReport == null)
+                return NotFound();
+
+            savedReport.AdultCount = incoming;
+            await _db.SaveChangesAsync();
+
+            await _audit.LogForUserIdAsync(
+                userId,
+                "Rapports.UpdateAdultCount",
+                target: annee.ToString(),
+                details: new
+                {
+                    Year = annee,
+                    AdultCount = incoming
+                });
+
+            return Ok(new { adultCount = incoming });
         }
 
         [HttpPost("generate/{annee}")]
@@ -281,7 +335,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     Year = annee,
                     GeneratedAt = DateTime.UtcNow,
                     ReportJson = reportJson,
-                    RemovedRowKeysJson = JsonSerializer.Serialize(new List<string>())
+                    RemovedRowKeysJson = JsonSerializer.Serialize(new List<string>()),
+
+                    // NEW
+                    AdultCount = 1
                 };
                 _db.SavedReports.Add(savedReport);
             }
@@ -289,6 +346,10 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             {
                 savedReport.GeneratedAt = DateTime.UtcNow;
                 savedReport.ReportJson = reportJson;
+
+                // NEW: keep existing adult count but normalize
+                if (savedReport.AdultCount <= 0)
+                    savedReport.AdultCount = 1;
 
                 // Keep existing removals but prune unknown keys after regeneration
                 var removedKeys = string.IsNullOrWhiteSpace(savedReport.RemovedRowKeysJson)
@@ -324,7 +385,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                         Comparisons = productComparisons.Count,
                         RowCount = reportRows.Count,
                         SavedReportId = savedReport.Id,
-                        savedReport.GeneratedAt
+                        savedReport.GeneratedAt,
+                        AdultCount = savedReport.AdultCount
                     });
             }
 
@@ -339,8 +401,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var unit = (poidsUnite ?? "").Trim().ToLowerInvariant();
 
             // Use invariant string for decimals to avoid locale affecting keys
-            var pv = poidsValeur.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            var p = prix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var pv = poidsValeur.ToString(CultureInfo.InvariantCulture);
+            var p = prix.ToString(CultureInfo.InvariantCulture);
 
             return $"{ti}|{nom}|{pv}|{unit}|{p}";
         }

@@ -13,12 +13,21 @@ type RemovedRowsPutBody = {
     removedRowKeys: string[];
 };
 
+type AdultCountPutBody = {
+    adultCount: number;
+};
+
 function debounce<T extends (...args: any[]) => void>(fn: T, waitMs: number) {
     let t: any;
     return (...args: Parameters<T>) => {
         clearTimeout(t);
         t = setTimeout(() => fn(...args), waitMs);
     };
+}
+
+function clampInt(n: number, min: number, max: number) {
+    if (!Number.isFinite(n)) return min;
+    return Math.max(min, Math.min(max, Math.trunc(n)));
 }
 
 const RapportsDisplay: React.FC = () => {
@@ -48,13 +57,17 @@ const RapportsDisplay: React.FC = () => {
     // ---- Row removal persisted server-side (Option 1) ----
     const [removedKeys, setRemovedKeys] = useState<Set<string>>(() => new Set());
 
+    // ---- Adults (18+) count persisted server-side ----
+    // Default to 1 (never divide by 0)
+    const [adultCount, setAdultCount] = useState<number>(1);
+
     const getRowKeyFallback = (r: ReportRow) => {
         const parts = [
             r.typeItem ?? "",
-            r.nomSansGluten ?? "",
-            String(r.formatSansGluten ?? ""),
-            (r.uniteSansGluten ?? "").toLowerCase(),
-            String(r.prixSansGluten ?? ""),
+            (r as any).nomSansGluten ?? "",
+            String((r as any).formatSansGluten ?? ""),
+            String(((r as any).uniteSansGluten ?? "")).toLowerCase(),
+            String((r as any).prixSansGluten ?? ""),
         ];
         return parts.join("|");
     };
@@ -67,11 +80,19 @@ const RapportsDisplay: React.FC = () => {
 
     // hydrate removed keys from payload (Dexie) whenever payload changes
     useEffect(() => {
-        const keys = payload?.removedRowKeys ?? [];
+        const keys = (payload as any)?.removedRowKeys ?? [];
         if (!Array.isArray(keys)) return;
         setRemovedKeys(new Set(keys.filter((x) => typeof x === "string" && x.trim())));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [payload?.removedRowKeys]);
+    }, [(payload as any)?.removedRowKeys]);
+
+    // hydrate adultCount from payload whenever payload changes
+    useEffect(() => {
+        const fromPayload = Number((payload as any)?.adultCount ?? 1);
+        const normalized = clampInt(fromPayload, 1, 50);
+        setAdultCount((prev) => (prev === normalized ? prev : normalized));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [(payload as any)?.adultCount]);
 
     const removedCount = removedKeys.size;
 
@@ -86,6 +107,7 @@ const RapportsDisplay: React.FC = () => {
         if (removedKeys.size === 0 || rows.length === 0) return [];
         const keyToRow = new Map<string, ReportRow>();
         for (const r of rows) keyToRow.set(getRowKey(r), r);
+
         return Array.from(removedKeys.values())
             .map((k) => keyToRow.get(k))
             .filter(Boolean) as ReportRow[];
@@ -102,6 +124,15 @@ const RapportsDisplay: React.FC = () => {
     const totalFormatted = useMemo(() => {
         return totalVisible.toLocaleString(locale, { style: "currency", currency: "CAD" });
     }, [totalVisible, locale]);
+
+    const perAdultTotal = useMemo(() => {
+        const denom = clampInt(adultCount, 1, 50);
+        return totalVisible / denom;
+    }, [totalVisible, adultCount]);
+
+    const perAdultFormatted = useMemo(() => {
+        return perAdultTotal.toLocaleString(locale, { style: "currency", currency: "CAD" });
+    }, [perAdultTotal, locale]);
 
     // --- Highlight helpers ---
     function hasEmptyComparison(r: ReportRow): boolean {
@@ -125,7 +156,6 @@ const RapportsDisplay: React.FC = () => {
 
         return !hasAnything;
     }
-
 
     function hasNegativeSubtotal(r: ReportRow): boolean {
         const st = Number((r as any).sousTotalProduit ?? 0);
@@ -174,12 +204,12 @@ const RapportsDisplay: React.FC = () => {
         return debounce(async (keys: string[]) => {
             if (!annee || !Number.isFinite(anneeNum) || anneeNum <= 0) return;
 
-            // Update Dexie snapshot too (so reload works even if offline later)
+            // Update Dexie snapshot too
             if (payload) {
                 const nextPayload: ReportPayload = {
                     ...payload,
-                    removedRowKeys: keys,
-                };
+                    removedRowKeys: keys as any,
+                } as any;
                 await putReportBody(anneeNum, nextPayload);
             }
 
@@ -226,6 +256,51 @@ const RapportsDisplay: React.FC = () => {
 
     function handleRestoreAllRows() {
         setRemovedKeysAndPersist(new Set());
+    }
+
+    // --- Persist adult count ---
+    const persistAdultCount = useMemo(() => {
+        return debounce(async (countRaw: number) => {
+            if (!annee || !Number.isFinite(anneeNum) || anneeNum <= 0) return;
+
+            const count = clampInt(countRaw, 1, 50);
+
+            // Update Dexie snapshot too
+            if (payload) {
+                const nextPayload: ReportPayload = {
+                    ...payload,
+                    adultCount: count as any,
+                } as any;
+                await putReportBody(anneeNum, nextPayload);
+            }
+
+            if (!navigator.onLine) return;
+
+            try {
+                const body: AdultCountPutBody = { adultCount: count };
+                const res = await fetch(`/api/rapports/${anneeNum}/adult-count`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(body),
+                });
+
+                if (!res.ok) {
+                    // eslint-disable-next-line no-console
+                    console.warn("Persist adultCount failed:", await res.text());
+                }
+            } catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn("Persist adultCount exception:", e);
+            }
+        }, 350);
+    }, [annee, anneeNum, payload]);
+
+    function handleAdultCountChange(nextRaw: string) {
+        const parsed = Number(nextRaw);
+        const normalized = clampInt(parsed, 1, 50);
+        setAdultCount(normalized);
+        void persistAdultCount(normalized);
     }
 
     // Fetch if not in Dexie
@@ -287,7 +362,7 @@ const RapportsDisplay: React.FC = () => {
                 </b>
             </div>
 
-            <div className="no-print mb-3 d-flex flex-wrap gap-2">
+            <div className="no-print mb-3 d-flex flex-wrap gap-2 align-items-center">
                 <button
                     className="btn btn-success rounded-pill px-4"
                     onClick={handlePrintClick}
@@ -316,6 +391,24 @@ const RapportsDisplay: React.FC = () => {
                         {t("rows.restoreAll")}
                     </button>
                 )}
+
+                {/* Adults (18+) input */}
+                <div className="ms-auto d-flex align-items-center gap-2">
+                    <label className="fw-bold mb-0" htmlFor="adultCountInput">
+                        {t("adultCount.label", "Adults (18+)")}
+                    </label>
+                    <input
+                        id="adultCountInput"
+                        className="form-control"
+                        style={{ width: 110 }}
+                        type="number"
+                        min={1}
+                        max={50}
+                        step={1}
+                        value={adultCount}
+                        onChange={(e) => handleAdultCountChange(e.target.value)}
+                    />
+                </div>
             </div>
 
             {showPrompt && (
@@ -406,11 +499,13 @@ const RapportsDisplay: React.FC = () => {
                 <h1 className="mb-1">{t("title", { year: annee })}</h1>
                 <p className="text-muted">{t("user", { name: userName })}</p>
 
-                {/* Screen-only legend (hidden by .no-print) */}
                 {(highlightStats.neg + highlightStats.empty + highlightStats.both) > 0 && (
                     <div className="no-print rapports-highlightbar">
                         <div className="rapports-highlightbar__item">
-                            <span className="rapports-highlight-dot rapports-highlight-dot--neg" aria-hidden="true" />
+                            <span
+                                className="rapports-highlight-dot rapports-highlight-dot--neg"
+                                aria-hidden="true"
+                            />
                             <span>{t("rows.highlight.negative", "Negative subtotal")}</span>
                             {highlightStats.neg > 0 && (
                                 <span className="rapports-highlight-badge">{highlightStats.neg}</span>
@@ -418,7 +513,10 @@ const RapportsDisplay: React.FC = () => {
                         </div>
 
                         <div className="rapports-highlightbar__item">
-                            <span className="rapports-highlight-dot rapports-highlight-dot--empty" aria-hidden="true" />
+                            <span
+                                className="rapports-highlight-dot rapports-highlight-dot--empty"
+                                aria-hidden="true"
+                            />
                             <span>{t("rows.highlight.emptyComparison", "Empty comparison")}</span>
                             {highlightStats.empty > 0 && (
                                 <span className="rapports-highlight-badge">{highlightStats.empty}</span>
@@ -427,8 +525,16 @@ const RapportsDisplay: React.FC = () => {
 
                         {highlightStats.both > 0 && (
                             <div className="rapports-highlightbar__item">
-                                <span className="rapports-highlight-dot rapports-highlight-dot--both" aria-hidden="true" />
-                                <span>{t("rows.highlight.negAndEmpty", "Negative subtotal + empty comparison")}</span>
+                                <span
+                                    className="rapports-highlight-dot rapports-highlight-dot--both"
+                                    aria-hidden="true"
+                                />
+                                <span>
+                                    {t(
+                                        "rows.highlight.negAndEmpty",
+                                        "Negative subtotal + empty comparison"
+                                    )}
+                                </span>
                                 <span className="rapports-highlight-badge">{highlightStats.both}</span>
                             </div>
                         )}
@@ -449,7 +555,10 @@ const RapportsDisplay: React.FC = () => {
                                 </th>
                                 <th colSpan={2} className="comparatif-header-total"></th>
 
-                                <th className="comparatif-header-total no-print" style={{ textAlign: "center" }} />
+                                <th
+                                    className="comparatif-header-total no-print"
+                                    style={{ textAlign: "center" }}
+                                />
                             </tr>
 
                             <tr>
@@ -487,12 +596,8 @@ const RapportsDisplay: React.FC = () => {
                                 const trTitle = getRowHighlightTitle(r);
 
                                 return (
-                                    <tr
-                                        key={`${getRowKey(r)}::${i}`}
-                                        className={trClass}
-                                        title={trTitle}
-                                    >
-                                        <td className="comparatif-th-sg">{r.typeItem}</td>
+                                    <tr key={`${getRowKey(r)}::${i}`} className={trClass} title={trTitle}>
+                                        <td className="comparatif-th-sg">{(r as any).typeItem}</td>
                                         <td className="comparatif-th-sg">{(r as any).nomSansGluten}</td>
                                         <td className="comparatif-th-sg">{(r as any).quantiteSansGluten}</td>
                                         <td className="comparatif-th-sg">{(r as any).formatSansGluten}</td>
@@ -565,8 +670,18 @@ const RapportsDisplay: React.FC = () => {
                     </table>
                 )}
 
+                {/* Total + per-adult (inverted emphasis) */}
                 <div className="rapports-total mt-4">
-                    <b>{t("total", { total: totalFormatted })}</b>
+                    <b>
+                        {t("adultCount.perAdultLine", {
+                            count: clampInt(adultCount, 1, 50),
+                            total: perAdultFormatted,
+                        })}
+                    </b>
+
+                    <div className="text-muted" style={{ marginTop: 6 }}>
+                        {t("total", { total: totalFormatted })}
+                    </div>
                 </div>
 
                 {removedRows.length > 0 && (
@@ -663,6 +778,13 @@ const RapportsDisplay: React.FC = () => {
                             </li>
                             <li className="mt-2">
                                 <b>{t("explain.total.title")}</b>
+                            </li>
+                            <li className="mt-2">
+                                <b>{t("adultCount.explainTitle", "Per-adult total")}</b>
+                                <br />
+                                <span>
+                                    <code>{t("adultCount.explainFormula", "Total ÷ adults (18+)")}</code>
+                                </span>
                             </li>
                         </ul>
                         <div className="mt-2 text-secondary rapports-explain-note">
