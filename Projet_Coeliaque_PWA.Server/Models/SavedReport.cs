@@ -10,5 +10,7 @@ namespace Projet_Coeliaque_PWA.Server.Models
         public DateTime GeneratedAt { get; set; }
         public string ReportJson { get; set; }  // JSON-serialized ProductComparisonRow list
         public string? RemovedRowKeysJson { get; set; }
+
+        public int AdultCount { get; set; } = 1;
     }
 }
