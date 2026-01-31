@@ -157,6 +157,9 @@ const Factures: React.FC = () => {
     const [selectModalItems, setSelectModalItems] =
         useState<ReceiptImportedDetailsItem[] | null>(null);
 
+    // NEW: reason for reporting this scan’s OCR quality (used during create-from-scan flow)
+    const [scanReportReason, setScanReportReason] = useState<string>("");
+
     // For type options in items modal
     const allTypeItems = useLiveQuery(async () => {
         const l = (await getFacturesList(LIST_KEY)) as any[] | null;
@@ -393,6 +396,9 @@ const Factures: React.FC = () => {
             setScanDraft(draft);
             setPendingImportedItems(mapped);
             setScanConfirmOpen(true);
+
+            // reset any previous report text when starting a new scan flow
+            setScanReportReason("");
         } catch (err: any) {
             setError(err?.message ?? String(err));
         } finally {
@@ -408,6 +414,7 @@ const Factures: React.FC = () => {
         setScanDraft(null);
         setPendingImportedItems(null);
         setSelectModalItems(null);
+        setScanReportReason(""); // reset report text when cancelling the flow
     };
 
     const proceedToItemsConfirm = () => {
@@ -478,6 +485,42 @@ const Factures: React.FC = () => {
                 console.warn("Receipt upload failed:", msg);
             }
 
+            // Try to read ScanId from the response, if any
+            let scanId: number | null = null;
+            try {
+                if (resReceipt.ok) {
+                    const body: any = await resReceipt.json();
+                    scanId =
+                        body?.scanId ??
+                        body?.ScanId ??
+                        null;
+                }
+            } catch {
+                // ignore JSON errors; scanId will just stay null
+            }
+
+            // If the user entered a report reason during the flow and we have a scanId,
+            // mark this scan as reported on the backend.
+            const trimmedReason = scanReportReason.trim();
+            if (scanId && trimmedReason.length > 0) {
+                try {
+                    await fetch(`/api/receipts/scan/${scanId}/report`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({
+                            reason: trimmedReason,
+                            factureId: newId,
+                            year: scanDraft.annee,
+                            storeName: scanDraft.magasin ?? "",
+                        }),
+                    });
+                } catch (err) {
+                    console.warn("Failed to report scan:", err);
+                    // best-effort only; do not block the user flow
+                }
+            }
+
             const existing = (await getFacturesList(LIST_KEY)) ?? [];
             const optimistic: Facture = { id: newId, ...scanDraft } as any;
             await putFacturesList(LIST_KEY, [
@@ -485,6 +528,9 @@ const Factures: React.FC = () => {
                 ...(existing as Facture[]),
             ]);
             await putFacture({ ...optimistic, items: payload.items } as any);
+
+            // Reset report reason after successful flow
+            setScanReportReason("");
 
             navigate(`/factures/${newId}`);
             void fetchFactures();
@@ -517,7 +563,7 @@ const Factures: React.FC = () => {
     return (
         <div className="container factures-container py-3">
             <div className="card card--accent shadow-sm mb-3">
-                <div className="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div className="card-body d-flex justify-content-between align.items-center flex-wrap gap-2">
                     <h1 className="h4 mb-0">{ts("headings.title")}</h1>
 
                     <div className="d-flex gap-2 flex-wrap">
@@ -657,10 +703,44 @@ const Factures: React.FC = () => {
                                 />
                             </div>
 
-                            <div className="small text-muted">
+                            <div className="small text-muted mb-2">
                                 {ts("receipt.itemsDetected", {
                                     count: pendingImportedItems?.length ?? 0,
                                 })}
+                            </div>
+
+                            {/* NEW: optional report reason during create-from-scan */}
+                            <div className="mt-3">
+                                <Form.Label className="form-label">
+                                    {ts(
+                                        "receipt.report.label",
+                                        { defaultValue: "Report a problem with this scan (optional)" }
+                                    )}
+                                </Form.Label>
+                                <Form.Control
+                                    as="textarea"
+                                    rows={2}
+                                    value={scanReportReason}
+                                    placeholder={ts(
+                                        "receipt.report.placeholder",
+                                        {
+                                            defaultValue:
+                                                "For example: total incorrect, items mis-read, wrong store, etc.",
+                                        }
+                                    )}
+                                    onChange={(e) =>
+                                        setScanReportReason(e.target.value)
+                                    }
+                                />
+                                <div className="form-text">
+                                    {ts(
+                                        "receipt.report.help",
+                                        {
+                                            defaultValue:
+                                                "If you fill this, the scan will be flagged when the invoice is created.",
+                                        }
+                                    )}
+                                </div>
                             </div>
                         </>
                     ) : null}
@@ -870,7 +950,7 @@ const Factures: React.FC = () => {
                             <div className="d-flex gap-2">
                                 <button
                                     type="submit"
-                                    className="btn btn-success"
+                                    className="btn btn.success"
                                 >
                                     {formMode === "edit"
                                         ? ts("buttons.save")

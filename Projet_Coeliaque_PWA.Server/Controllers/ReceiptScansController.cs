@@ -8,7 +8,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Projet_Coeliaque_PWA.Server.Data;
-using Projet_Coeliaque_PWA.Server.Data.Entities;
 using Projet_Coeliaque_PWA.Server.DTOs.Receipts;
 using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Services.Receipts;
@@ -389,7 +388,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 return Ok(new ReceiptScanAnalyzeResponseDto
                 {
                     ScanId = scan.Id,
-                    Items = items
+                    Items = items.ToList()
                 });
             }
             catch (Exception ex)
@@ -468,7 +467,19 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     contentType = (string?)null,
                     sizeBytes = (long?)null,
                     uploadedUtc = (DateTime?)null,
-                    openUrl = (string?)null
+                    openUrl = (string?)null,
+
+                    // extra fields
+                    scanId = (int?)null,
+                    factureId = factureId,
+                    year = (int?)null,
+                    status = (string?)null,
+                    error = (string?)null,
+
+                    // reporting-related flags
+                    isReported = (bool?)null,
+                    reportedUtc = (DateTime?)null,
+                    reportReason = (string?)null
                 });
             }
 
@@ -500,8 +511,49 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 factureId = scan.FactureId,
                 year = scan.Year,
                 status = scan.Status,
-                error = scan.Error
+                error = scan.Error,
+
+                // reporting-related flags
+                isReported = scan.IsReported,
+                reportedUtc = scan.ReportedUtc,
+                reportReason = scan.ReportReason
             });
+        }
+
+        /// <summary>
+        /// Marks a given scan as reported/problematic by the current user.
+        ///
+        /// POST: /api/receipts/scan/{scanId}/report
+        /// Body:  { reason?: string, factureId?: number, year?: number, storeName?: string }
+        ///
+        /// Only the scan belonging to the current user can be reported.
+        /// </summary>
+        [HttpPost("scan/{scanId:int}/report")]
+        public async Task<IActionResult> ReportScan(
+            int scanId,
+            [FromBody] ReceiptScanReportRequest request,
+            CancellationToken ct)
+        {
+            if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            if (scanId <= 0) return BadRequest("Invalid scanId.");
+
+            var scan = await _db.ReceiptScans
+                .FirstOrDefaultAsync(x => x.Id == scanId && x.UserId == UserId, ct);
+
+            if (scan is null)
+                return NotFound();
+
+            scan.IsReported = true;
+            scan.ReportedUtc = DateTime.UtcNow;
+            scan.ReportedByUserId = UserId;
+
+            if (!string.IsNullOrWhiteSpace(request.Reason))
+                scan.ReportReason = request.Reason.Trim();
+
+            await _db.SaveChangesAsync(ct);
+
+            // No body needed for now
+            return NoContent();
         }
     }
 }

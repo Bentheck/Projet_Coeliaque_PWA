@@ -1,4 +1,4 @@
-﻿// PATH: src/components/receipts/ReceiptImportModal.tsx
+﻿// PATH: projet_coeliaque_pwa.client/src/components/receipts/ReceiptImportModal.tsx
 import { useState, useCallback } from "react";
 import { Modal, Button, Form, Alert, Spinner, Table } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
@@ -23,6 +23,14 @@ interface ReceiptImportModalProps {
     storeName: string;
 
     onItemsChosen: (items: ReceiptImportItem[]) => void;
+}
+
+// Shape we expect from /api/receipts/scan
+interface ReceiptScanResponse {
+    scanId?: number | string;
+    items?: ReceiptImportItem[];
+    // allow extra fields without typing them now
+    [key: string]: any;
 }
 
 interface LocalRow extends ReceiptImportItem {
@@ -102,9 +110,9 @@ export default function ReceiptImportModal({
                 throw new Error(text || `HTTP ${res.status}`);
             }
 
-            const json = await res.json();
-            const items: ReceiptImportItem[] = Array.isArray(json.items) ? json.items : [];
+            const json = (await res.json()) as ReceiptScanResponse;
 
+            const items: ReceiptImportItem[] = Array.isArray(json.items) ? json.items : [];
             const withLocal: LocalRow[] = items.map((it, idx) => ({
                 _index: idx,
                 _selected: true,
@@ -126,7 +134,7 @@ export default function ReceiptImportModal({
         }
     };
 
-    const handleApply = () => {
+    const handleApply = async () => {
         const selected = rows
             .filter((r) => r._selected)
             .map<ReceiptImportItem>((r) => ({
@@ -140,8 +148,11 @@ export default function ReceiptImportModal({
                 wasOnSale: r.wasOnSale,
             }));
 
-        if (selected.length > 0) onItemsChosen(selected);
+        if (selected.length === 0) {
+            return;
+        }
 
+        onItemsChosen(selected);
         resetState();
         onClose();
     };
@@ -179,7 +190,9 @@ export default function ReceiptImportModal({
                         capture="environment"
                         onChange={handleFileChange}
                     />
-                    <Form.Text className="text-muted">{t("fields.fileHelp")}</Form.Text>
+                    <Form.Text className="text-muted">
+                        {t("fields.fileHelp")}
+                    </Form.Text>
                 </Form.Group>
 
                 <div className="d-flex justify-content-between align-items-center mb-3">

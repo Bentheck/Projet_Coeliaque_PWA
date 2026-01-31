@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿// PATH: Projet_Coeliaque_PWA.Server/Data/ApplicationDbContext.cs
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Projet_Coeliaque_PWA.Server.Models;
-using Projet_Coeliaque_PWA.Server.Data.Entities;
 
 namespace Projet_Coeliaque_PWA.Server.Data
 {
@@ -40,8 +40,8 @@ namespace Projet_Coeliaque_PWA.Server.Data
 
         // Scanned Receipts
         public DbSet<ReceiptScan> ReceiptScans => Set<ReceiptScan>();
-
-
+        // OLD MODEL REMOVED:
+        // public DbSet<ReceiptScanReport> ReceiptScanReports { get; set; } = null!;
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
@@ -173,8 +173,6 @@ namespace Projet_Coeliaque_PWA.Server.Data
             {
                 b.HasKey(x => x.Id);
 
-                // FIX A: remove SQL Server–specific NEWSEQUENTIALID()
-                // and rely on Guid generation côté client / EF (ValueGeneratedOnAdd).
                 b.Property(x => x.Id)
                     .ValueGeneratedOnAdd();
 
@@ -225,6 +223,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 e.Property(x => x.SortOrder).HasDefaultValue(0);
             });
 
+            // ---------- TesterInvite ----------
             modelBuilder.Entity<TesterInvite>(b =>
             {
                 b.HasKey(x => x.Id);
@@ -239,6 +238,28 @@ namespace Projet_Coeliaque_PWA.Server.Data
 
                 b.HasIndex(x => x.Email);
                 b.HasIndex(x => x.TokenHash).IsUnique();
+            });
+
+            // ---------- ReceiptScan (simple flags, no separate report table) ----------
+            modelBuilder.Entity<ReceiptScan>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.Property(x => x.UserId)
+                    .IsRequired();
+
+                b.Property(x => x.OriginalFileName)
+                    .IsRequired();
+
+                b.Property(x => x.StoragePath)
+                    .IsRequired();
+
+                b.Property(x => x.Status)
+                    .IsRequired()
+                    .HasMaxLength(32);
+
+                b.Property(x => x.IsReported)
+                    .HasDefaultValue(false);
             });
         }
     }
