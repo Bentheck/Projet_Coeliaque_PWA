@@ -371,53 +371,6 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Data.Entities.ReceiptScan", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ContentType")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Error")
-                        .HasColumnType("text");
-
-                    b.Property<int>("FactureId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("OriginalFileName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ParsedJson")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("StoragePath")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ReceiptScans");
-                });
-
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.AdminAuditLog", b =>
                 {
                     b.Property<int>("Id")
@@ -1144,6 +1097,68 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .IsUnique();
 
                     b.ToTable("UserProfiles");
+                });
+
+            modelBuilder.Entity("ReceiptScan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<int>("FactureId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsReported")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ParsedJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReportReason")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReportedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReportedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReceiptScans");
                 });
 
             modelBuilder.Entity("ListeEpicerieItem", b =>

@@ -51,7 +51,10 @@
     "openAria": "Open receipt",
     "replaceBtn": "Replace receipt",
     "confirmReplace": "A receipt is already attached to this invoice. Replace it? The previous receipt will be deleted from the server.",
-    "offlineDisabled": "Receipt is unavailable offline."
+    "offlineDisabled": "Receipt is unavailable offline.",
+    "demoDisabledTitle": "Import disabled in demo mode",
+    "demoDisabledBody": "In the full version, you can directly import a scanned receipt. This feature is disabled here for the demo.",
+    "demoDisabledTooltip": "Receipt import is only available in the full version."
   },
   "modal": {
     "title": "Add an item to the invoice",

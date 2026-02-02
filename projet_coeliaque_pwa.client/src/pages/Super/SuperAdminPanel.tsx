@@ -147,7 +147,26 @@ type AuditLogPage = {
     totalCount: number;
 };
 
-type TabKey = "site" | "membership" | "admins" | "testers" | "logs";
+// ---- Reported receipt scans ----
+
+type ReportedScanRow = {
+    scanId: number;
+    factureId: number | null;
+    year: number | null;
+    storeName: string | null;
+    createdUtc: string;
+    reportCount: number;
+    lastReportUtc: string | null;
+    lastReason: string | null;
+};
+
+type TabKey =
+    | "site"
+    | "membership"
+    | "admins"
+    | "testers"
+    | "reportedScans"
+    | "logs";
 
 // ------------------------
 // Helpers
@@ -255,6 +274,11 @@ const SuperAdminPanel: React.FC = () => {
     const [logFilterTarget, setLogFilterTarget] = useState("");
     const [logFilterFrom, setLogFilterFrom] = useState("");
     const [logFilterTo, setLogFilterTo] = useState("");
+
+    // ---- Reported scans tab ----
+    const [reportedScans, setReportedScans] = useState<ReportedScanRow[]>([]);
+    const [reportedLoading, setReportedLoading] = useState(false);
+    const [reportedLoadedOnce, setReportedLoadedOnce] = useState(false);
 
     // ------------------------
     // Loaders
@@ -397,6 +421,22 @@ const SuperAdminPanel: React.FC = () => {
         }
     };
 
+    const loadReportedScans = async () => {
+        setReportedLoading(true);
+        try {
+            const data = await fetchJSON<ReportedScanRow[]>(
+                "/api/super/receipts/reported"
+            );
+            setReportedScans(data || []);
+            setReportedLoadedOnce(true);
+        } catch (e) {
+            console.error(e);
+            alert("Échec du chargement des scans signalés.");
+        } finally {
+            setReportedLoading(false);
+        }
+    };
+
     // ------------------------
     // Effects
     // ------------------------
@@ -451,6 +491,13 @@ const SuperAdminPanel: React.FC = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
+
+    // Load reported scans when the tab becomes active (first time)
+    useEffect(() => {
+        if (activeTab === "reportedScans" && !reportedLoadedOnce) {
+            void loadReportedScans();
+        }
+    }, [activeTab, reportedLoadedOnce]);
 
     // ------------------------
     // Site status & flags actions
@@ -922,6 +969,18 @@ const SuperAdminPanel: React.FC = () => {
     };
 
     // ------------------------
+    // Reported scans actions
+    // ------------------------
+
+    const downloadScanImage = (scanId: number) => {
+        window.open(`/api/super/receipts/scan/${scanId}/image`, "_blank");
+    };
+
+    const downloadScanText = (scanId: number) => {
+        window.open(`/api/super/receipts/scan/${scanId}/text`, "_blank");
+    };
+
+    // ------------------------
     // Render
     // ------------------------
 
@@ -965,6 +1024,15 @@ const SuperAdminPanel: React.FC = () => {
                         onClick={() => setActiveTab("testers")}
                     >
                         Testeurs
+                    </button>
+                </li>
+                <li className="nav-item">
+                    <button
+                        type="button"
+                        className={`nav-link ${activeTab === "reportedScans" ? "active" : ""}`}
+                        onClick={() => setActiveTab("reportedScans")}
+                    >
+                        Scans signalés
                     </button>
                 </li>
                 <li className="nav-item">
@@ -2081,6 +2149,109 @@ const SuperAdminPanel: React.FC = () => {
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ---------------- REPORTED SCANS TAB ---------------- */}
+            {activeTab === "reportedScans" && (
+                <div className="card">
+                    <div className="card-header d-flex justify-content-between align-items-center">
+                        <span>Scans de reçus signalés</span>
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary"
+                            disabled={reportedLoading}
+                            onClick={loadReportedScans}
+                        >
+                            {reportedLoading ? "Rafraîchissement..." : "Rafraîchir"}
+                        </button>
+                    </div>
+                    <div className="card-body">
+                        {reportedLoading && !reportedLoadedOnce && (
+                            <p>Chargement des scans...</p>
+                        )}
+
+                        {!reportedLoading && reportedScans.length === 0 && (
+                            <p className="text-muted">Aucun scan signalé.</p>
+                        )}
+
+                        {reportedScans.length > 0 && (
+                            <div className="table-responsive">
+                                <table className="table table-sm align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Upload</th>
+                                            <th>Facture</th>
+                                            <th>Année</th>
+                                            <th>Magasin</th>
+                                            <th>Rapports</th>
+                                            <th>Dernière raison</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {reportedScans.map((row) => {
+                                            const reason = row.lastReason || "";
+                                            const shortReason =
+                                                reason.length > 80
+                                                    ? reason.slice(0, 77) + "..."
+                                                    : reason;
+
+                                            return (
+                                                <tr key={row.scanId}>
+                                                    <td>{formatUtc(row.createdUtc)}</td>
+                                                    <td>{row.factureId ?? "—"}</td>
+                                                    <td>{row.year ?? "—"}</td>
+                                                    <td>{row.storeName || ""}</td>
+                                                    <td>{row.reportCount}</td>
+                                                    <td style={{ maxWidth: "260px" }}>
+                                                        {reason ? (
+                                                            <span title={reason}>
+                                                                {shortReason}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted">
+                                                                (aucune)
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <div
+                                                            className="btn-group btn-group-sm"
+                                                            role="group"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-outline-primary"
+                                                                onClick={() =>
+                                                                    downloadScanImage(
+                                                                        row.scanId
+                                                                    )
+                                                                }
+                                                            >
+                                                                Image
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-outline-secondary"
+                                                                onClick={() =>
+                                                                    downloadScanText(
+                                                                        row.scanId
+                                                                    )
+                                                                }
+                                                            >
+                                                                Texte
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

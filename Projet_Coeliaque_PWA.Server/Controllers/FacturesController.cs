@@ -214,11 +214,18 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         /// Create a facture from a receipt scan (OCR).
         /// Sends multipart/form-data with 'file' = image.
         /// Auto-fills Magasin/Date/Annee and generates FactureId like "store-yyyy-mm-dd" (unique per user).
+        ///
+        /// Uses the same mapping pipeline as:
+        /// - /api/factures/scan-parse-receipt
+        /// - /api/receipts/scan
+        /// so items are consistent everywhere.
         /// </summary>
         // POST: api/factures/scan-create-from-receipt
         [HttpPost("scan-create-from-receipt")]
         [RequestSizeLimit(15 * 1024 * 1024)]
-        public async Task<ActionResult<FactureDto>> ScanCreateFromReceipt([FromForm] IFormFile file, CancellationToken ct = default)
+        public async Task<ActionResult<FactureDto>> ScanCreateFromReceipt(
+            [FromForm] IFormFile file,
+            CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(UserId)) return Unauthorized();
             if (file == null || file.Length <= 0) return BadRequest("Missing file.");
@@ -289,27 +296,27 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 FactureId = factureId
             };
 
-            // Items from OCR lines (best effort)
-            foreach (var line in parsed.Lines ?? Array.Empty<ReceiptParsedLine>())
+            // Items via central mapper (same as scan-parse-receipt & /api/receipts/scan)
+            var mappedItems = ReceiptImportMapper.MapParsedToImportItems(parsed);
+
+            foreach (var dto in mappedItems)
             {
-                var name = (line.Item ?? "").Trim();
-                if (string.IsNullOrWhiteSpace(name)) continue;
-                if (LooksLikeNonItemLine(name)) continue;
-
-                var price = line.Price ?? 0m;
-                if (price <= 0m) continue;
-
                 var item = new FactureItem
                 {
                     Id = 0,
                     Facture = facture,
-                    Item = name,
-                    TypeItem = "",
-                    Quantite = (double)(line.Qty ?? 1m),
-                    Prix = price,
-                    PoidsValeur = 0d,
-                    PoidsUnite = "",
-                    WasOnSale = false
+                    Item = dto.Item,
+                    TypeItem = dto.TypeItem ?? string.Empty,
+                    // decimal -> double
+                    Quantite = (double)dto.Quantite,
+                    Prix = dto.Prix,
+                    // decimal? -> double
+                    PoidsValeur = dto.PoidsValeur.HasValue
+                        ? (double)dto.PoidsValeur.Value
+                        : 0d,
+                    PoidsUnite = dto.PoidsUnite ?? string.Empty,
+                    // bool? -> bool
+                    WasOnSale = dto.WasOnSale ?? false
                 };
 
                 facture.Items.Add(item);

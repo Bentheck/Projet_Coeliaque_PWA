@@ -46,6 +46,17 @@ type ReceiptMeta = {
     sizeBytes?: number | null;
     uploadedUtc?: string | null;
     openUrl?: string | null;
+
+    // extra fields from /meta (used for reporting)
+    scanId?: number;
+    factureId?: number;
+    year?: number;
+    status?: string | null;
+    error?: string | null;
+
+    isReported?: boolean | null;
+    reportedUtc?: string | null;
+    reportReason?: string | null;
 };
 
 const emptyItem: Omit<FactureItem, "id"> = {
@@ -337,6 +348,52 @@ export default function FactureEdit() {
         setShowImportedDetailsModal(false);
     }
 
+    async function handleReportScan() {
+        if (!facture || !receiptMeta?.scanId) return;
+
+        const defaultReason = receiptMeta.reportReason || "";
+        const reason = window.prompt(
+            t(
+                "receipt.reportPrompt",
+                "Décrivez brièvement le problème avec ce scan (ex: mauvais montant, mauvaises lignes, etc.)."
+            ) as string,
+            defaultReason
+        );
+
+        // User cancelled
+        if (reason === null) return;
+
+        try {
+            const res = await fetch(`/api/receipts/scan/${receiptMeta.scanId}/report`, {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ reason }),
+            });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => "");
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+
+            await refreshReceiptMeta(facture.id);
+
+            alert(
+                t("receipt.reportThanks", "Merci, le scan a été signalé. Cela nous aidera à améliorer l'OCR.") as string
+            );
+        } catch (e: any) {
+            console.error(e);
+            alert(
+                t(
+                    "receipt.reportError",
+                    "Une erreur est survenue lors de l'envoi du rapport. Veuillez réessayer plus tard."
+                ) as string
+            );
+        }
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!facture) return;
@@ -588,6 +645,37 @@ export default function FactureEdit() {
                                                 <i className="bi bi-image me-1" />
                                                 {t("receipt.openBtn")}
                                             </Button>
+
+                                            <Button
+                                                variant={
+                                                    receiptMeta.isReported
+                                                        ? "outline-secondary"
+                                                        : "outline-warning"
+                                                }
+                                                size="sm"
+                                                className="rounded-pill px-3"
+                                                type="button"
+                                                onClick={handleReportScan}
+                                                disabled={receiptMeta.isReported === true || !navigator.onLine}
+                                                aria-label={t(
+                                                    "receipt.reportAria",
+                                                    "Signaler un problème avec ce scan"
+                                                )}
+                                            >
+                                                <i className="bi bi-flag me-1" />
+                                                {receiptMeta.isReported
+                                                    ? t("receipt.alreadyReported", "Scan déjà signalé")
+                                                    : t("receipt.reportBtn", "Signaler un problème")}
+                                            </Button>
+
+                                            {receiptMeta.isReported && (
+                                                <span className="badge bg-warning text-dark">
+                                                    {t("receipt.reportedOnLabel", "Signalé le")}{" "}
+                                                    {receiptMeta.reportedUtc
+                                                        ? formatReceiptDate(receiptMeta.reportedUtc)
+                                                        : ""}
+                                                </span>
+                                            )}
                                         </>
                                     ) : (
                                         <span className="small text-muted">{t("receipt.none")}</span>

@@ -1,5 +1,4 @@
-﻿// src/demo/DemoFactureEdit.tsx
-import React, {
+﻿import React, {
     useEffect,
     useState,
     type CSSProperties,
@@ -15,7 +14,6 @@ import {
     getFacture,
     putFacture,
     getFacturesList,
-    putFacturesList,
     type Facture as IFacture,
     type FactureItem as IFactureItem,
 } from "../offline/db";
@@ -117,6 +115,9 @@ export default function DemoFactureEdit() {
     const { activeTour, step, nextStep } = useDemoTour();
     const isCalculatorTour = activeTour === "calculator";
 
+    // Demo warning bubble for import-from-receipt
+    const [showImportBubble, setShowImportBubble] = useState(false);
+
     useEffect(() => {
         (async () => {
             try {
@@ -128,6 +129,15 @@ export default function DemoFactureEdit() {
             }
         })();
     }, []);
+
+    // Auto-hide import bubble after a few seconds
+    useEffect(() => {
+        if (!showImportBubble) return;
+        const timer = window.setTimeout(() => {
+            setShowImportBubble(false);
+        }, 6000);
+        return () => window.clearTimeout(timer);
+    }, [showImportBubble]);
 
     const cachedFacture = useLiveQuery(
         () => getFacture(factureId),
@@ -278,27 +288,15 @@ export default function DemoFactureEdit() {
 
         try {
             await putFacture(facture);
-
-            // keep list cache in sync
-            const list = (await getFacturesList(LIST_KEY)) as Facture[] | null;
-            if (list) {
-                const next = list.map((f) =>
-                    f.id === facture.id ? facture : f
-                );
-                await putFacturesList(LIST_KEY, next);
-            }
-
-            // Guided tour: on Step 6, saving brings you back to DemoHome.
-            if (isCalculatorTour && step === 6) {
-                nextStep(); // -> 7
-                navigate("/demo");
-            } else {
-                navigate("/demo/factures");
-            }
+            navigate("/demo/factures");
         } catch (err: any) {
             setError(err.message ?? t("error.saveFailed"));
         }
     }
+
+    const handleDemoImportClick = () => {
+        setShowImportBubble(true);
+    };
 
     if (loading) {
         return (
@@ -457,6 +455,61 @@ export default function DemoFactureEdit() {
                                                     "Cliquez maintenant pour ouvrir l’assistant d’item."
                                                 )}
                                             </p>
+                                        </div>
+                                    )}
+                                </span>
+
+                                {/* Import-from-receipt button in demo – shows bubble instead of real action */}
+                                <span className="position-relative d-inline-block ms-2">
+                                    <Button
+                                        variant="outline-primary"
+                                        size="sm"
+                                        className="rounded-pill px-3"
+                                        type="button"
+                                        onClick={handleDemoImportClick}
+                                        title={t(
+                                            "receipt.demoDisabledTooltip",
+                                            "Importation de reçu disponible seulement dans la version complète."
+                                        )}
+                                    >
+                                        <i className="bi bi-camera me-1" />
+                                        {t(
+                                            "items.importFromReceipt",
+                                            "Importer à partir d’un reçu"
+                                        )}
+                                    </Button>
+
+                                    {showImportBubble && (
+                                        <div
+                                            style={bubbleContainerStyle}
+                                            role="status"
+                                            aria-live="polite"
+                                        >
+                                            <div style={bubbleArrowUpStyle} />
+                                            <div style={bubbleArrowUpInnerStyle} />
+                                            <strong className="d-block mb-1 small fw-semibold">
+                                                {t(
+                                                    "receipt.demoDisabledTitle",
+                                                    "Importation désactivée en mode démo"
+                                                )}
+                                            </strong>
+                                            <p className="small mb-2">
+                                                {t(
+                                                    "receipt.demoDisabledBody",
+                                                    "Dans la version complète, vous pouvez importer directement un reçu numérisé. Cette fonctionnalité est désactivée ici pour la démonstration."
+                                                )}
+                                            </p>
+                                            <div className="text-end mt-1">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    onClick={() =>
+                                                        setShowImportBubble(false)
+                                                    }
+                                                >
+                                                    OK
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                 </span>

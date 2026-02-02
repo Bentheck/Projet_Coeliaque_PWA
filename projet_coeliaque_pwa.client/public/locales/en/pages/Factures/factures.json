@@ -81,7 +81,10 @@
       },
       "nextStep": "Next step",
       "disabledInDemo": "Disabled during guided demo"
-    }
+    },
+    "scanDisabledTitle": "Feature disabled in demo mode",
+    "scanDisabledBody": "In the full version, you can take a picture of your receipt to automatically create an invoice. This feature is disabled here for the demo.",
+    "scanDisabledTooltip": "Receipt scan is only available with a real account."
   },
   "pending": "(pending…)",
   "receipt": {

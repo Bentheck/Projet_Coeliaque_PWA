@@ -77,6 +77,12 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
             using var doc = JsonDocument.Parse(responseText);
             string? fullText = ExtractFullText(doc);
 
+            // DEBUG: dump Vision full text beside the image for profile tuning.
+            if (!string.IsNullOrWhiteSpace(fullText))
+            {
+                DumpDebugText(absoluteImagePath, fullText);
+            }
+
             if (string.IsNullOrWhiteSpace(fullText))
             {
                 return new ReceiptParsed(
@@ -95,7 +101,7 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
 
             var storeName = TryExtractStoreName(rawLines);
             var receiptDateIso = TryExtractReceiptDateIso(rawLines);
-            var total = (string?)null;
+            var total = (string?)null; // we’re not really using this yet
 
             var mergedLines = MergeProductAndPriceLines(rawLines);
 
@@ -105,6 +111,30 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
                 Total: total,
                 Lines: mergedLines.ToArray()
             );
+        }
+
+        /// <summary>
+        /// Writes Vision's fullText into a sidecar file next to the image:
+        ///   /path/receipt-foo.jpg -> /path/receipt-foo.vision.txt
+        /// Best-effort, swallowed on failure.
+        /// </summary>
+        private static void DumpDebugText(string imagePath, string content)
+        {
+            try
+            {
+                var dir = Path.GetDirectoryName(imagePath);
+                if (string.IsNullOrWhiteSpace(dir))
+                    dir = Path.GetTempPath();
+
+                var baseName = Path.GetFileNameWithoutExtension(imagePath);
+                var txtPath = Path.Combine(dir, baseName + ".vision.txt");
+
+                File.WriteAllText(txtPath, content);
+            }
+            catch
+            {
+                // best effort only, never break OCR because of debug dump
+            }
         }
 
         private static string? ExtractFullText(JsonDocument doc)
@@ -255,9 +285,8 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
                 }
             }
 
-            // 3) "15 Jan 2026" or "15 janvier 2026" (rare but exists)
+            // 3) "15 Jan 2026" or "15 janvier 2026"
             {
-                // Keep it conservative: only if there is a 4-digit year
                 var m = Regex.Match(text, @"(?<!\d)(?<d>\d{1,2})\s+(?<mon>[A-Za-z\u00C0-\u017F]{3,})\s+(?<y>\d{4})(?!\d)");
                 if (m.Success)
                 {
@@ -345,7 +374,7 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
         }
 
         // -----------------------------
-        // Existing line parsing
+        // Line parsing
         // -----------------------------
 
         private static List<ReceiptParsedLine> MergeProductAndPriceLines(List<string> rawLines)
