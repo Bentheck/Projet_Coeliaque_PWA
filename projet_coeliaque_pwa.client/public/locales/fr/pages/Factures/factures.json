@@ -81,7 +81,10 @@
       },
       "nextStep": "Étape suivante",
       "disabledInDemo": "Désactivé pendant la visite guidée"
-    }
+    },
+    "scanDisabledTitle": "Fonctionnalité désactivée en mode démo",
+    "scanDisabledBody": "Dans la version complète, vous pouvez prendre une photo de votre reçu pour créer automatiquement une facture. Cette fonctionnalité est désactivée ici pour la démonstration.",
+    "scanDisabledTooltip": "Fonction scan de reçu disponible uniquement avec un vrai compte."
   },
   "pending": "(en attente…)",
   "receipt": {

@@ -1,5 +1,4 @@
-﻿// src/demo/DemoFactures.tsx
-import React, {
+﻿import React, {
     useEffect,
     useState,
     type CSSProperties,
@@ -118,6 +117,9 @@ const DemoFactures: React.FC = () => {
     const [current, setCurrent] = useState<Facture | null>(null);
     const [formData, setFormData] = useState(emptyFacture);
 
+    // Demo warning bubble for scan button
+    const [showScanBubble, setShowScanBubble] = useState(false);
+
     useEffect(() => {
         (async () => {
             try {
@@ -129,6 +131,15 @@ const DemoFactures: React.FC = () => {
             }
         })();
     }, []);
+
+    // Auto-hide scan bubble after a few seconds
+    useEffect(() => {
+        if (!showScanBubble) return;
+        const timer = window.setTimeout(() => {
+            setShowScanBubble(false);
+        }, 6000);
+        return () => window.clearTimeout(timer);
+    }, [showScanBubble]);
 
     const loading = seedLoading && !factures;
 
@@ -204,6 +215,10 @@ const DemoFactures: React.FC = () => {
     const highlightedFactureId =
         isStep3 && list.length > 0 ? list[0].id : null;
 
+    const handleDemoScanClick = () => {
+        setShowScanBubble(true);
+    };
+
     if (loading) {
         return (
             <div className="container py-3">
@@ -242,58 +257,109 @@ const DemoFactures: React.FC = () => {
                     ← {t("demo.return", "Retour au mode démo")}
                 </button>
 
-                {/* New invoice button + guided bubble for Step 2 */}
-                <div className="position-relative">
-                    <button
-                        className={
-                            "btn btn-primary" +
-                            (isStep2 ? " border border-2 border-warning" : "")
-                        }
-                        style={{ minWidth: 170 }}
-                        onClick={startCreate}
-                    >
-                        {t("buttons.new")}
-                    </button>
+                {/* Action buttons row: Scan (demo bubble) + New invoice (guided) */}
+                <div className="d-flex gap-2 flex-wrap justify-content-center">
+                    {/* Scan receipt button in demo – shows bubble instead of real action */}
+                    <div className="position-relative d-inline-block">
+                        <button
+                            type="button"
+                            className="btn btn-outline-primary"
+                            onClick={handleDemoScanClick}
+                            title={t(
+                                "demo.scanDisabledTooltip",
+                                "Disponible uniquement avec un vrai compte (fonction scan réelle)."
+                            )}
+                        >
+                            <i className="bi bi-camera me-2" />
+                            {t("receipt.createFromScan", "Créer à partir d'un reçu (scan)")}
+                        </button>
 
-                    {isStep2 && (
-                        <div style={bubbleContainerStyle}>
-                            <div style={bubbleArrowUpStyle} />
-                            <div style={bubbleArrowUpInnerStyle} />
-                            <strong className="d-block mb-1 small fw-semibold">
-                                {t(
-                                    "demo.guide.step1a.title",
-                                    "Step 2 · See how invoices work"
-                                )}
-                            </strong>
-                            <p className="small mb-2">
-                                {t(
-                                    "demo.guide.step1a.body",
-                                    "Normally, you would click here to create a new invoice for your grocery receipt."
-                                )}
-                            </p>
-                            <p className="small mb-2">
-                                {t(
-                                    "demo.guide.step1a.body2",
-                                    "For this guided demo, we’ll reuse an existing invoice instead of creating a new one."
-                                )}
-                            </p>
-                            <p className="small mb-0 text-muted">
-                                {t(
-                                    "demo.guide.step1a.hint",
-                                    "Click “Next step” below to choose one of the existing invoices."
-                                )}
-                            </p>
-                            <div className="text-end mt-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-primary"
-                                    onClick={nextStep}
-                                >
-                                    {t("demo.guide.nextStep")}
-                                </button>
+                        {showScanBubble && (
+                            <div
+                                style={bubbleContainerStyle}
+                                role="status"
+                                aria-live="polite"
+                            >
+                                <div style={bubbleArrowUpStyle} />
+                                <div style={bubbleArrowUpInnerStyle} />
+                                <strong className="d-block mb-1 small fw-semibold">
+                                    {t(
+                                        "demo.scanDisabledTitle",
+                                        "Fonctionnalité désactivée en mode démo"
+                                    )}
+                                </strong>
+                                <p className="small mb-2">
+                                    {t(
+                                        "demo.scanDisabledBody",
+                                        "Dans la version complète, vous pouvez prendre une photo de votre reçu pour créer automatiquement une facture. Cette fonctionnalité est désactivée ici pour la démonstration."
+                                    )}
+                                </p>
+                                <div className="text-end mt-1">
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={() => setShowScanBubble(false)}
+                                    >
+                                        OK
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
+
+                    {/* New invoice button + guided bubble for Step 2 */}
+                    <div className="position-relative">
+                        <button
+                            className={
+                                "btn btn-primary" +
+                                (isStep2 ? " border border-2 border-warning" : "")
+                            }
+                            style={{ minWidth: 170 }}
+                            onClick={startCreate}
+                        >
+                            {t("buttons.new")}
+                        </button>
+
+                        {isStep2 && (
+                            <div style={bubbleContainerStyle}>
+                                <div style={bubbleArrowUpStyle} />
+                                <div style={bubbleArrowUpInnerStyle} />
+                                <strong className="d-block mb-1 small fw-semibold">
+                                    {t(
+                                        "demo.guide.step1a.title",
+                                        "Step 2 · See how invoices work"
+                                    )}
+                                </strong>
+                                <p className="small mb-2">
+                                    {t(
+                                        "demo.guide.step1a.body",
+                                        "Normally, you would click here to create a new invoice for your grocery receipt."
+                                    )}
+                                </p>
+                                <p className="small mb-2">
+                                    {t(
+                                        "demo.guide.step1a.body2",
+                                        "For this guided demo, we’ll reuse an existing invoice instead of creating a new one."
+                                    )}
+                                </p>
+                                <p className="small mb-0 text-muted">
+                                    {t(
+                                        "demo.guide.step1a.hint",
+                                        "Click “Next step” below to choose one of the existing invoices."
+                                    )}
+                                </p>
+                                <div className="text-end mt-2">
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary"
+                                        onClick={nextStep}
+                                    >
+                                        {t("demo.guide.nextStep")}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

@@ -51,7 +51,10 @@
     "openAria": "Ouvrir le reçu",
     "replaceBtn": "Remplacer le reçu",
     "confirmReplace": "Un reçu est déjà associé à cette facture. Voulez-vous le remplacer ? L’ancien reçu sera supprimé du serveur.",
-    "offlineDisabled": "Reçu indisponible hors ligne."
+    "offlineDisabled": "Reçu indisponible hors ligne.",
+    "demoDisabledTitle": "Importation désactivée en mode démo",
+    "demoDisabledBody": "Dans la version complète, vous pouvez importer directement un reçu numérisé. Cette fonctionnalité est désactivée ici pour la démonstration.",
+    "demoDisabledTooltip": "Importation de reçu disponible seulement dans la version complète."
   },
   "modal": {
     "title": "Ajouter un item à la facture",
