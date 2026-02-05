@@ -1,4 +1,4 @@
-﻿{
+{
   "loading": "Loading…",
   "errorGeneric": "Something went wrong.",
   "back": "Back",
@@ -18,7 +18,8 @@
     "favorites_one": "{{count}} favorite",
     "favorites_other": "{{count}} favorites",
     "onSale_one": "{{count}} on sale",
-    "onSale_other": "{{count}} on sale"
+    "onSale_other": "{{count}} on sale",
+    "unknownStore": "Other store"
   },
   "table": {
     "done": "Done",

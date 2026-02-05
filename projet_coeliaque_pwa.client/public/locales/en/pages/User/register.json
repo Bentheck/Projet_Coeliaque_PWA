@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Create account",
   "emailLabel": "Email",
   "passwordLabel": "Password",
@@ -51,7 +51,9 @@
     "emailTaken": "This email is already in use.",
     "inviteRequired": "An invite code is required to create an account at this time.",
     "invalidInvite": "The invite code is invalid, expired, or does not match this email.",
-    "testerRoleGrantFailed": "Your account could not be granted tester permissions. Please contact support."
+    "testerRoleGrantFailed": "Your account could not be granted tester permissions. Please contact support.",
+    "privacyRequired": "You must accept the Privacy Policy to create an account.",
+    "tosRequired": "You must accept the Terms of Service to create an account."
   },
   "help": {
     "displayNameAria": "Help about the display name",
@@ -60,5 +62,9 @@
     "confirmPassword": "Retype the same password to confirm it.",
     "confirmPasswordAria": "Help about confirming the password",
     "inviteTokenAria": "Help about the invite code field"
+  },
+  "legal": {
+    "accept": "Accept",
+    "decline": "Decline"
   }
 }

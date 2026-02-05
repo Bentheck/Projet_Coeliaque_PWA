@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Rapports comparatifs disponibles",
   "loading": "Chargement…",
   "empty": "Aucun rapport disponible.",
@@ -30,6 +30,20 @@
     "badge": "DEMO",
     "warning": "Mode démonstration — la génération de rapports se fait uniquement sur les données locales (Dexie). Aucune requête n’est envoyée au serveur et vos rapports réels ne sont jamais modifiés.",
     "loading": "Chargement de la démo…",
-    "return": "Retour au mode démo"
+    "return": "Retour au mode démo",
+    "guide": {
+      "close": "Fermer",
+      "reports": {
+        "generateBody": "Ce bouton crée un rapport de comparaison pour l'année sélectionnée à partir des produits configurés.",
+        "generateHint": "Une fois généré, vous pouvez le consulter, l'imprimer ou le régénérer après une modification de vos données.",
+        "generateTitle": "Generer un rapport de demonstration",
+        "viewBody": "Cliquez ici pour ouvrir le rapport complet de cette année. Dans l'application complète, c'est cette vue que vous pouvez imprimer ou exporter pour vos impôts.",
+        "viewHint": "Vous pouvez revenir a cette liste avec le bouton retour en haut de la page du rapport.",
+        "viewTitle": "Voir le rapport detaille"
+      }
+    }
+  },
+  "errors": {
+    "generic": "Une erreur est survenue lors du chargement des rapports."
   }
 }

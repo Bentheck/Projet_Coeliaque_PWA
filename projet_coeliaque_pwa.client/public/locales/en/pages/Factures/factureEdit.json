@@ -1,4 +1,4 @@
-﻿{
+{
   "loading": "Loading…",
   "notFound": "Not found",
   "title": {
@@ -54,7 +54,14 @@
     "offlineDisabled": "Receipt is unavailable offline.",
     "demoDisabledTitle": "Import disabled in demo mode",
     "demoDisabledBody": "In the full version, you can directly import a scanned receipt. This feature is disabled here for the demo.",
-    "demoDisabledTooltip": "Receipt import is only available in the full version."
+    "demoDisabledTooltip": "Receipt import is only available in the full version.",
+    "alreadyReported": "Scan already reported",
+    "reportAria": "Report an issue with this scan",
+    "reportBtn": "Report an issue",
+    "reportError": "An error occurred while sending your report. Please try again later.",
+    "reportPrompt": "Briefly describe the issue with this scan (for example: wrong amount, wrong items, etc.).",
+    "reportThanks": "Thanks, the scan was reported. This helps us improve OCR.",
+    "reportedOnLabel": "Reported on"
   },
   "modal": {
     "title": "Add an item to the invoice",

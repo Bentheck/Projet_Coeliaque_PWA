@@ -1,0 +1,15 @@
+{
+  "actions": {
+    "back": "Retour"
+  },
+  "errors": {
+    "missingContent": "Le contenu de la politique de confidentialité est manquant."
+  },
+  "meta": {
+    "versionLabel": "Version actuelle :"
+  },
+  "page": {
+    "fullVersionHint": "Voici la politique de confidentialité complète de Services Coeliaque.",
+    "title": "Politique de confidentialité"
+  }
+}

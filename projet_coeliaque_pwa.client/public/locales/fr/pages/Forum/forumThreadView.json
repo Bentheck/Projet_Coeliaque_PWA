@@ -1,4 +1,4 @@
-﻿{
+{
   "replyBox": {
     "ariaLabel": "Rédiger votre réponse",
     "clear": "Effacer",
@@ -71,7 +71,14 @@
     },
     "errors": {
       "pinFailed": "Impossible de mettre à jour l'état épinglé.",
-      "lockFailed": "Impossible de mettre à jour l'état verrouillé."
+      "lockFailed": "Impossible de mettre à jour l'état verrouillé.",
+      "deleteFailed": "Impossible de supprimer ce fil."
+    },
+    "buttons": {
+      "deleteThread": "Supprimer le fil"
+    },
+    "confirm": {
+      "deleteThread": "Supprimer ce fil ?"
     }
   },
   "modPanel": {

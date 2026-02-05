@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Available Comparison Reports",
   "loading": "Loading…",
   "empty": "No reports available.",
@@ -30,6 +30,20 @@
     "badge": "DEMO",
     "warning": "Demo mode — report generation uses only local demo data (Dexie). No requests are sent to the server and your real reports are never changed.",
     "loading": "Loading demo…",
-    "return": "Return to demo mode"
+    "return": "Return to demo mode",
+    "guide": {
+      "close": "Close",
+      "reports": {
+        "generateBody": "This button creates a comparison report for the selected year based on your configured products.",
+        "generateHint": "Once generated, you can view it, print it, or regenerate it after updating your data.",
+        "generateTitle": "Generate a demo report",
+        "viewBody": "Click here to open the full report for this year. In the full app, this is the view you can print or export for taxes.",
+        "viewHint": "You can return to this list using the back button at the top of the report page.",
+        "viewTitle": "View detailed report"
+      }
+    }
+  },
+  "errors": {
+    "generic": "An error occurred while loading reports."
   }
 }

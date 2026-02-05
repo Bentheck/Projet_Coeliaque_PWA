@@ -1,10 +1,8 @@
-﻿{
+{
   "titles": {
     "admin": "Forum Administration Panel"
   },
-
   "loading": "Loading...",
-
   "errors": {
     "loadCategories": "Failed to load categories.",
     "createFailed": "Creation failed.",
@@ -13,18 +11,15 @@
     "loadModerators": "Failed to load thread moderators.",
     "saveModerators": "Failed to save moderators."
   },
-
   "alerts": {
     "applied": "Changes applied.",
     "failed": "An error occurred.",
     "moderatorsSaved": "Moderators saved successfully."
   },
-
   "confirm": {
     "deleteCategory": "Are you sure you want to delete this category?",
     "clearModerators": "The list is empty. Do you really want to remove all moderators for this thread?"
   },
-
   "sections": {
     "categories": {
       "title": "Forum Categories"
@@ -38,9 +33,11 @@
     "globalModerators": {
       "title": "Forum moderators",
       "description": "Moderators have access to management tools (pin/lock threads, moderate posts, etc.)."
+    },
+    "admins": {
+      "title": "Forum administrators"
     }
   },
-
   "table": {
     "headers": {
       "id": "ID",
@@ -48,10 +45,13 @@
       "name": "Name",
       "description": "Description",
       "threads": "Threads",
-      "actions": "Actions"
+      "actions": "Actions",
+      "adminOnlyThreadCreation": "Admin-only thread creation",
+      "isActive": "Active",
+      "language": "Language",
+      "membersOnly": "Members only"
     }
   },
-
   "buttons": {
     "delete": "Delete",
     "force": "Force",
@@ -61,7 +61,6 @@
     "loading": "Loading...",
     "saving": "Saving..."
   },
-
   "newCategory": {
     "title": "Create New Category",
     "labels": {
@@ -74,7 +73,6 @@
       "name": "e.g. General Discussion"
     }
   },
-
   "quickThread": {
     "labels": {
       "threadId": "Thread ID",
@@ -82,14 +80,12 @@
       "locked": "Locked"
     }
   },
-
   "moderation": {
     "labels": {
       "postId": "Post ID",
       "deleted": "Deleted"
     }
   },
-
   "globalModerators": {
     "labels": {
       "selectUser": "Select a user",
@@ -120,6 +116,41 @@
     },
     "confirm": {
       "remove": "Remove this moderator?"
+    }
+  },
+  "admins": {
+    "alerts": {
+      "added": "Forum administrator added.",
+      "removed": "Forum administrator removed."
+    },
+    "buttons": {
+      "add": "Add administrator",
+      "reload": "Reload list",
+      "remove": "Remove"
+    },
+    "confirm": {
+      "remove": "Remove this forum administrator?"
+    },
+    "empty": "No forum administrators yet.",
+    "errors": {
+      "load": "Failed to load forum administrators.",
+      "save": "Failed to save forum administrator changes."
+    },
+    "headers": {
+      "actions": "Actions",
+      "added": "Added on",
+      "displayName": "Display name",
+      "userId": "User ID"
+    },
+    "info": {
+      "superAdminOnly": "Only super administrators can manage forum administrators."
+    },
+    "labels": {
+      "current": "Current forum administrators",
+      "selectUser": "Select a user"
+    },
+    "placeholders": {
+      "selectUser": "Choose a user..."
     }
   }
 }

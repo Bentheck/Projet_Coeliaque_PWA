@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "New thread",
   "errors": {
     "loadCategories": "Unable to load categories.",
@@ -10,17 +10,26 @@
     "body": "Message"
   },
   "placeholders": {
-    "titleExample": "E.g. Gluten-free tips at XYZ"
+    "titleExample": "E.g. Gluten-free tips at XYZ",
+    "noCategories": "No categories available"
   },
   "aria": {
     "composeBody": "Compose thread message"
   },
   "messages": {
-    "loginToPost": "Sign in to create a thread."
+    "loginToPost": "Sign in to create a thread.",
+    "helperText": "Pick a category, write your title and message, then publish."
   },
   "buttons": {
     "cancel": "Cancel",
     "create": "Create",
-    "creating": "Creating…"
+    "creating": "Creating…",
+    "backToCategories": "Back to categories"
+  },
+  "badge": {
+    "newThreadHighlight": "New thread"
+  },
+  "help": {
+    "categoryLanguageHint": "You are posting in the {{lang}} section."
   }
 }

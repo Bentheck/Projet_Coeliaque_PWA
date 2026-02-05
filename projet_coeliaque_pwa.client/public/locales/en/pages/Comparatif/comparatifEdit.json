@@ -1,4 +1,4 @@
-﻿{
+{
   "loading": "Loading…",
   "notFound": "Not found",
   "header": {
@@ -58,7 +58,8 @@
       "back": "Back",
       "submit": "Add",
       "quickSearchLabel": "Quick search (optional). Please make sure you’ve visited each site at least once before using this tool. Thank you!",
-      "quickSearchHelp": "Uses the chosen type as the search keyword (e.g. bread, pasta, cookies...)."
+      "quickSearchHelp": "Uses the chosen type as the search keyword (e.g. bread, pasta, cookies...).",
+      "quickSearchDisabled": "Quick search is unavailable until type and brand are entered."
     }
   },
   "alerts": {

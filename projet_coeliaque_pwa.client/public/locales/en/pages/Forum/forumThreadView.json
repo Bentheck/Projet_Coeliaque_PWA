@@ -1,4 +1,4 @@
-﻿{
+{
   "replyBox": {
     "ariaLabel": "Write your reply",
     "clear": "Clear",
@@ -71,7 +71,14 @@
     },
     "errors": {
       "pinFailed": "Failed to update pinned state.",
-      "lockFailed": "Failed to update locked state."
+      "lockFailed": "Failed to update locked state.",
+      "deleteFailed": "Failed to delete this thread."
+    },
+    "buttons": {
+      "deleteThread": "Delete thread"
+    },
+    "confirm": {
+      "deleteThread": "Delete this thread?"
     }
   },
   "modPanel": {

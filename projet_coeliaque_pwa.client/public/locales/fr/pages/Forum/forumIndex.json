@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Forum",
   "errors": {
     "loadCategories": "Impossible de charger les catégories."
@@ -10,5 +10,16 @@
   "badges": {
     "threads_one": "{{count}} fil",
     "threads_other": "{{count}} fils"
-  }
+  },
+  "steps": {
+    "language": {
+      "buttons": {
+        "en": "Anglais",
+        "fr": "Français"
+      },
+      "subtitle": "Choisissez votre langue préférée pour le forum.",
+      "title": "Choisir la langue"
+    }
+  },
+  "subtitle": "Posez vos questions, partagez vos astuces et échangez avec la communauté."
 }

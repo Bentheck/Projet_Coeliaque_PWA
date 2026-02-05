@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Créer un compte",
   "emailLabel": "Courriel",
   "passwordLabel": "Mot de passe",
@@ -51,7 +51,9 @@
     "emailTaken": "Ce courriel est déjà utilisé.",
     "inviteRequired": "Un code d’invitation est requis pour créer un compte pour le moment.",
     "invalidInvite": "Le code d’invitation est invalide, expiré ou ne correspond pas à ce courriel.",
-    "testerRoleGrantFailed": "Votre compte n’a pas pu recevoir les permissions de testeur. Veuillez contacter le soutien."
+    "testerRoleGrantFailed": "Votre compte n’a pas pu recevoir les permissions de testeur. Veuillez contacter le soutien.",
+    "privacyRequired": "Vous devez accepter la politique de confidentialité pour créer un compte.",
+    "tosRequired": "Vous devez accepter les conditions d'utilisation pour créer un compte."
   },
   "help": {
     "displayNameAria": "Aide sur le nom affiché",
@@ -60,5 +62,9 @@
     "confirmPassword": "Retapez le même mot de passe pour le confirmer.",
     "confirmPasswordAria": "Aide sur la confirmation du mot de passe",
     "inviteTokenAria": "Aide concernant le champ du code d’invitation"
+  },
+  "legal": {
+    "accept": "Accepter",
+    "decline": "Refuser"
   }
 }

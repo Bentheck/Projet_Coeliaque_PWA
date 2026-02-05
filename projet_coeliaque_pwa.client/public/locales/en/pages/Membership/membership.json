@@ -1,11 +1,12 @@
-﻿{
+{
   "title": "Membership",
   "loading": "Loading…",
   "alert": {
     "lifetimePrefix": "Your membership is",
     "lifetimeLabel": "lifetime",
     "activeUntilPrefix": "Your membership is active until",
-    "none": "You don’t have an active membership."
+    "none": "You don’t have an active membership.",
+    "expiredPrefix": "Membership expired on"
   },
   "badge": {
     "lifetime": "Lifetime",
@@ -19,7 +20,8 @@
   },
   "portal": {
     "noUrl": "Unable to open the Stripe portal.",
-    "openError": "Error opening the portal."
+    "openError": "Error opening the portal.",
+    "offlineTitle": "You must be online to open the billing portal."
   },
   "help": {
     "updateCard": {

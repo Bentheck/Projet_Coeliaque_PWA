@@ -1,4 +1,4 @@
-﻿{
+{
   "welcome": {
     "title": "Services Coeliaque : vos outils sans gluten en ligne.",
     "subtitle": "Calculez votre crédit d’impôt, planifiez vos listes d’épicerie et échangez avec la communauté — même sans connexion Internet.",
@@ -133,5 +133,11 @@
     "minutes": "min",
     "seconds": "sec",
     "targetDateDescription": "Lancement prévu le 1er janvier 2026 à 15 h (heure de l’Est)"
+  },
+  "ui": {
+    "theme": {
+      "dark": "Sombre",
+      "light": "Clair"
+    }
   }
 }

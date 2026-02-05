@@ -1,4 +1,4 @@
-﻿{
+{
   "header": {
     "title": "Annual Comparison"
   },
@@ -54,7 +54,9 @@
     "regenExisting": "The {{year}} report already exists.\nRegenerate it?"
   },
   "errors": {
-    "generateFailed": "Error while generating the report."
+    "generateFailed": "Error while generating the report.",
+    "generic": "Something went wrong.",
+    "yearExists": "This year already exists."
   },
   "demo": {
     "return": "Return to demo mode",

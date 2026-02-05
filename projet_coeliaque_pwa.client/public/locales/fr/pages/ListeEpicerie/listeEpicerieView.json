@@ -1,4 +1,4 @@
-﻿{
+{
   "loading": "Chargement…",
   "errorGeneric": "Une erreur est survenue.",
   "back": "Retour",
@@ -18,7 +18,8 @@
     "favorites_one": "{{count}} favori",
     "favorites_other": "{{count}} favoris",
     "onSale_one": "{{count}} en spécial",
-    "onSale_other": "{{count}} en spécial"
+    "onSale_other": "{{count}} en spécial",
+    "unknownStore": "Autre magasin"
   },
   "table": {
     "done": "Fait",

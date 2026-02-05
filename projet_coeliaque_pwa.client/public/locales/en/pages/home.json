@@ -1,4 +1,4 @@
-﻿{
+{
   "welcome": {
     "title": "Services Coeliaque: your gluten-free tools in one place.",
     "subtitle": "Calculate your tax credit, manage your grocery lists and connect with the community — even when you’re offline.",
@@ -133,5 +133,11 @@
     "minutes": "min",
     "seconds": "sec",
     "targetDateDescription": "Launch planned for January 1, 2026 at 3:00 p.m. Eastern Time"
+  },
+  "ui": {
+    "theme": {
+      "dark": "Dark",
+      "light": "Light"
+    }
   }
 }

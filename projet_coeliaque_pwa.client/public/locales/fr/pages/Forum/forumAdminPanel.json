@@ -1,10 +1,8 @@
-﻿{
+{
   "titles": {
     "admin": "Panneau d'administration du forum"
   },
-
   "loading": "Chargement...",
-
   "errors": {
     "loadCategories": "Impossible de charger les catégories.",
     "createFailed": "La création a échoué.",
@@ -13,18 +11,15 @@
     "loadModerators": "Impossible de charger les modérateurs pour ce fil.",
     "saveModerators": "Impossible d'enregistrer les modérateurs."
   },
-
   "alerts": {
     "applied": "Modifications appliquées.",
     "failed": "Une erreur est survenue.",
     "moderatorsSaved": "Modérateurs enregistrés avec succès."
   },
-
   "confirm": {
     "deleteCategory": "Voulez-vous vraiment supprimer cette catégorie?",
     "clearModerators": "La liste est vide. Voulez-vous vraiment retirer tous les modérateurs de ce fil?"
   },
-
   "sections": {
     "categories": {
       "title": "Catégories du forum"
@@ -38,9 +33,11 @@
     "globalModerators": {
       "title": "Modérateurs du forum",
       "description": "Les modérateurs disposent des outils de gestion (épingler/fermer les fils, modérer les messages, etc.)."
+    },
+    "admins": {
+      "title": "Administrateurs du forum"
     }
   },
-
   "table": {
     "headers": {
       "id": "ID",
@@ -48,10 +45,13 @@
       "name": "Nom",
       "description": "Description",
       "threads": "Fils",
-      "actions": "Actions"
+      "actions": "Actions",
+      "adminOnlyThreadCreation": "Création de fil réservée aux administrateurs",
+      "isActive": "Actif",
+      "language": "Langue",
+      "membersOnly": "Membres seulement"
     }
   },
-
   "buttons": {
     "delete": "Supprimer",
     "force": "Forcer",
@@ -61,7 +61,6 @@
     "loading": "Chargement...",
     "saving": "Enregistrement..."
   },
-
   "newCategory": {
     "title": "Créer une nouvelle catégorie",
     "labels": {
@@ -74,7 +73,6 @@
       "name": "ex. Discussions générales"
     }
   },
-
   "quickThread": {
     "labels": {
       "threadId": "ID du fil",
@@ -82,14 +80,12 @@
       "locked": "Verrouillé"
     }
   },
-
   "moderation": {
     "labels": {
       "postId": "ID du message",
       "deleted": "Supprimé"
     }
   },
-
   "globalModerators": {
     "labels": {
       "selectUser": "Sélectionner un utilisateur",
@@ -120,6 +116,41 @@
     },
     "confirm": {
       "remove": "Retirer ce modérateur ?"
+    }
+  },
+  "admins": {
+    "alerts": {
+      "added": "Administrateur du forum ajouté.",
+      "removed": "Administrateur du forum retiré."
+    },
+    "buttons": {
+      "add": "Ajouter l'administrateur",
+      "reload": "Recharger la liste",
+      "remove": "Retirer"
+    },
+    "confirm": {
+      "remove": "Retirer cet administrateur du forum ?"
+    },
+    "empty": "Aucun administrateur du forum pour le moment.",
+    "errors": {
+      "load": "Impossible de charger les administrateurs du forum.",
+      "save": "Impossible d'enregistrer les changements des administrateurs du forum."
+    },
+    "headers": {
+      "actions": "Actions",
+      "added": "Ajoute le",
+      "displayName": "Nom d'affichage",
+      "userId": "ID utilisateur"
+    },
+    "info": {
+      "superAdminOnly": "Seuls les super administrateurs peuvent gérer les administrateurs du forum."
+    },
+    "labels": {
+      "current": "Administrateurs actuels du forum",
+      "selectUser": "Sélectionner un utilisateur"
+    },
+    "placeholders": {
+      "selectUser": "Choisir un utilisateur..."
     }
   }
 }
