@@ -387,7 +387,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 joinedQuery = joinedQuery.Where(x =>
                     x.Membership != null &&
                     x.Membership.StartDate <= today &&
-                    (x.Membership.EndDate == null || x.Membership.EndDate >= today)
+                    x.Membership.EndDate >= today
                 );
             }
 

@@ -308,6 +308,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .FirstOrDefaultAsync(l =>
                     l.Id == lineId &&
                     l.ComparatifYearId == yearId &&
+                    l.ComparatifYear != null &&
                     l.ComparatifYear.UserId == userId);
 
             if (line == null) return NotFound($"No line found. yearId={yearId} lineId={lineId}");
@@ -367,6 +368,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .FirstOrDefaultAsync(l =>
                     l.Id == lineId &&
                     l.ComparatifYearId == yearId &&
+                    l.ComparatifYear != null &&
                     l.ComparatifYear.UserId == userId);
 
             if (line == null) return NotFound($"No line found. yearId={yearId} lineId={lineId}");
@@ -403,7 +405,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var types = await _db.FactureItems
                 .AsNoTracking()
-                .Where(fi => fi.Facture.UserId == userId && fi.Facture.Annee == annee)
+                .Where(fi => fi.Facture != null && fi.Facture.UserId == userId && fi.Facture.Annee == annee)
                 .Select(fi => fi.TypeItem)
                 .Where(type => !string.IsNullOrEmpty(type))
                 .Distinct()

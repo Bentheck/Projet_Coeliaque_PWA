@@ -41,11 +41,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpGet("types")]
         public async Task<ActionResult<object>> GetTypes([FromQuery] string? q, CancellationToken ct = default)
         {
-            if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            var userId = UserId;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
             var query = _db.FactureItems
                 .AsNoTracking()
-                .Where(fi => fi.Facture.UserId == UserId);
+                .Where(fi => fi.Facture != null && fi.Facture.UserId == userId);
 
             if (!string.IsNullOrWhiteSpace(q))
             {
@@ -75,11 +76,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             [FromQuery] string? q,
             CancellationToken ct = default)
         {
-            if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            var userId = UserId;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
             var items = _db.FactureItems
                 .AsNoTracking()
-                .Where(fi => fi.Facture.UserId == UserId);
+                .Where(fi => fi.Facture != null && fi.Facture.UserId == userId);
 
             if (!string.IsNullOrWhiteSpace(type))
                 items = items.Where(fi => fi.TypeItem == type);
@@ -91,15 +93,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             var rows = await items
-                .OrderByDescending(fi => fi.Facture.Date)
+                .OrderByDescending(fi => fi.Facture!.Date)
                 .Select(fi => new
                 {
                     id = fi.Id,
                     item = fi.Item,
                     typeItem = fi.TypeItem,
                     prix = fi.Prix,
-                    magasin = fi.Facture.Magasin,
-                    date = fi.Facture.Date,            // ISO-friendly from server
+                    magasin = fi.Facture!.Magasin,
+                    date = fi.Facture!.Date,            // ISO-friendly from server
                     wasOnSale = fi.WasOnSale,
                     poidsValeur = fi.PoidsValeur,
                     poidsUnite = fi.PoidsUnite,
@@ -116,19 +118,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<object>> GetOne(int id, CancellationToken ct = default)
         {
-            if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            var userId = UserId;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
             var dto = await _db.FactureItems
                 .AsNoTracking()
-                .Where(fi => fi.Id == id && fi.Facture.UserId == UserId)
+                .Where(fi => fi.Id == id && fi.Facture != null && fi.Facture.UserId == userId)
                 .Select(fi => new
                 {
                     id = fi.Id,
                     item = fi.Item,
                     typeItem = fi.TypeItem,
                     prix = fi.Prix,
-                    magasin = fi.Facture.Magasin,
-                    date = fi.Facture.Date,
+                    magasin = fi.Facture!.Magasin,
+                    date = fi.Facture!.Date,
                     wasOnSale = fi.WasOnSale,
                     poidsValeur = fi.PoidsValeur,
                     poidsUnite = fi.PoidsUnite,
