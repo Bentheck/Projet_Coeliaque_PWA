@@ -31,3 +31,14 @@
         padding: .375rem .5rem;
     }
 }
+
+/* Ensure receipt import select checkboxes render with visible native ticks */
+.receipt-import-select-modal input.receipt-import-select-checkbox[type="checkbox"] {
+    -webkit-appearance: auto !important;
+    appearance: auto !important;
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: #22c55e;
+    opacity: 1 !important;
+    filter: none !important;
+}
