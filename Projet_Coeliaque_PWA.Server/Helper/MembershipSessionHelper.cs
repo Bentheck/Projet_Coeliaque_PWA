@@ -34,7 +34,7 @@ namespace Projet_coeliaque.Helper
         /// </item>
         /// </list>
         /// </remarks>
-        public static async Task<IActionResult> EnsureMembershipOrRedirectAsync(
+        public static async Task<IActionResult?> EnsureMembershipOrRedirectAsync(
             PageModel pageModel, // or pass HttpContext + Url/Page as needed
             string userId,
             IMembershipService membershipService)

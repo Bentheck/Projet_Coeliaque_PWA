@@ -546,6 +546,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             scan.IsReported = true;
             scan.ReportedUtc = DateTime.UtcNow;
             scan.ReportedByUserId = UserId;
+            scan.IsReportResolved = false;
+            scan.ReportResolvedUtc = null;
+            scan.ReportResolvedByUserId = null;
 
             if (!string.IsNullOrWhiteSpace(request.Reason))
                 scan.ReportReason = request.Reason.Trim();

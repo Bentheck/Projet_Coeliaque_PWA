@@ -199,7 +199,7 @@ public class UserProfilesController : ControllerBase
         }
         else
         {
-            profile.DisplayName = null; // allow clearing
+            profile.DisplayName = string.Empty; // allow clearing while keeping DB non-null
         }
 
         // Regular fields

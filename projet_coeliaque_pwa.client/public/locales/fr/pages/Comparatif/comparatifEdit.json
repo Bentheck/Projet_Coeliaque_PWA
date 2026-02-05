@@ -1,4 +1,4 @@
-﻿{
+{
   "loading": "Chargement…",
   "notFound": "Introuvable",
   "header": {
@@ -58,7 +58,8 @@
       "back": "Précédent",
       "submit": "Ajouter",
       "quickSearchLabel": "Recherche rapide (facultatif), assuré vous d'avoir été au moins une fois sur chaque page avant d'utiliser cet outil, merci!",
-      "quickSearchHelp": "Utilise le type choisi comme mot-clé (ex. : pain, pâtes, biscuits...)."
+      "quickSearchHelp": "Utilise le type choisi comme mot-clé (ex. : pain, pâtes, biscuits...).",
+      "quickSearchDisabled": "La recherche rapide est indisponible tant que le type et la marque ne sont pas saisis."
     }
   },
   "alerts": {

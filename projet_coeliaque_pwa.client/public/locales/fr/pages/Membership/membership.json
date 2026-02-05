@@ -1,11 +1,12 @@
-﻿{
+{
   "title": "Abonnement",
   "loading": "Chargement…",
   "alert": {
     "lifetimePrefix": "Votre abonnement est",
     "lifetimeLabel": "à vie",
     "activeUntilPrefix": "Votre abonnement est actif jusqu’au",
-    "none": "Vous n’avez pas d’abonnement actif."
+    "none": "Vous n’avez pas d’abonnement actif.",
+    "expiredPrefix": "Abonnement expiré le"
   },
   "badge": {
     "lifetime": "À vie",
@@ -19,7 +20,8 @@
   },
   "portal": {
     "noUrl": "Impossible d’ouvrir le portail Stripe.",
-    "openError": "Erreur lors de l’ouverture du portail."
+    "openError": "Erreur lors de l’ouverture du portail.",
+    "offlineTitle": "Vous devez etre en ligne pour ouvrir le portail de facturation."
   },
   "help": {
     "updateCard": {

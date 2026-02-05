@@ -260,6 +260,9 @@ namespace Projet_Coeliaque_PWA.Server.Data
 
                 b.Property(x => x.IsReported)
                     .HasDefaultValue(false);
+
+                b.Property(x => x.IsReportResolved)
+                    .HasDefaultValue(false);
             });
         }
     }

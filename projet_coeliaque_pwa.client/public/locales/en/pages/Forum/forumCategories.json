@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Forum",
   "subtitle": "Choose a category to view discussions.",
   "errors": {
@@ -14,5 +14,9 @@
     "threads_other": "{{count}} threads",
     "membersOnly": "Members only",
     "adminOnly": "Threads can be created by admins only"
+  },
+  "mod": {
+    "deleteCategoryConfirm": "Delete this category?",
+    "deleteCategoryFailed": "Failed to delete this category."
   }
 }

@@ -180,20 +180,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     CreatedUtc = t.CreatedUtc,
 
                     CreatedBy =
-                        !string.IsNullOrWhiteSpace(upCreated.DisplayName)
+                        (upCreated != null && !string.IsNullOrWhiteSpace(upCreated.DisplayName))
                             ? upCreated.DisplayName
-                            : (t.CreatedBy != null
-                                ? (t.CreatedBy.UserName ?? t.CreatedBy.Email ?? "Utilisateur")
-                                : "Utilisateur"),
+                            : (t.CreatedBy!.UserName ?? t.CreatedBy!.Email ?? "Utilisateur"),
 
                     LastPostUtc = t.LastPostUtc,
 
                     LastBy =
-                        !string.IsNullOrWhiteSpace(upLast.DisplayName)
+                        (upLast != null && !string.IsNullOrWhiteSpace(upLast.DisplayName))
                             ? upLast.DisplayName
-                            : (t.LastPostBy != null
-                                ? (t.LastPostBy.UserName ?? t.LastPostBy.Email ?? "—")
-                                : "—"),
+                            : (t.LastPostBy!.UserName ?? t.LastPostBy!.Email ?? "—"),
 
                     PostCount = t.Posts.Count(p => !p.IsDeleted),
                     IsLocked = t.IsLocked,
@@ -239,21 +235,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     CreatedUtc = t.CreatedUtc,
 
                     CreatedBy =
-                        !string.IsNullOrWhiteSpace(upCreated.DisplayName)
+                        (upCreated != null && !string.IsNullOrWhiteSpace(upCreated.DisplayName))
                             ? upCreated.DisplayName
-                            : (t.CreatedBy != null
-                                ? (t.CreatedBy.UserName ?? t.CreatedBy.Email ?? "Utilisateur")
-                                : "Utilisateur"),
+                            : (t.CreatedBy!.UserName ?? t.CreatedBy!.Email ?? "Utilisateur"),
 
                     CreatedByUserId = t.CreatedByUserId,
                     LastPostUtc = t.LastPostUtc,
 
                     LastBy =
-                        !string.IsNullOrWhiteSpace(upLast.DisplayName)
+                        (upLast != null && !string.IsNullOrWhiteSpace(upLast.DisplayName))
                             ? upLast.DisplayName
-                            : (t.LastPostBy != null
-                                ? (t.LastPostBy.UserName ?? t.LastPostBy.Email ?? "—")
-                                : "—"),
+                            : (t.LastPostBy!.UserName ?? t.LastPostBy!.Email ?? "—"),
 
                     IsLocked = t.IsLocked,
                     IsPinned = t.IsPinned,
@@ -439,8 +431,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult> CreateThread([FromBody] CreateThreadInput input)
         {
-            var title = input?.Title?.Trim();
-            var body = input?.Body?.Trim();
+            if (input is null)
+                return BadRequest("Titre et contenu requis.");
+
+            var title = input.Title?.Trim();
+            var body = input.Body?.Trim();
 
             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(body))
                 return BadRequest("Titre et contenu requis.");

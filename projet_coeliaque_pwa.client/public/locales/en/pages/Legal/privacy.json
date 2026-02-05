@@ -1,0 +1,15 @@
+{
+  "actions": {
+    "back": "Back"
+  },
+  "errors": {
+    "missingContent": "Privacy policy content is missing."
+  },
+  "meta": {
+    "versionLabel": "Current version:"
+  },
+  "page": {
+    "fullVersionHint": "This is the full privacy policy for Services Coeliaque.",
+    "title": "Privacy Policy"
+  }
+}

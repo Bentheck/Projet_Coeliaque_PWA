@@ -1,10 +1,9 @@
-﻿{
+{
   "title": "FAQ — Administration",
   "subtitle": "Create categories, add questions/answers in French and English, and manage order and status.",
   "searchPlaceholder": "Search…",
   "loading": "Loading…",
   "stats": "{{categories}} category(ies), {{questions}} question(s)",
-
   "categoryForm": {
     "new": "New category",
     "edit": "Edit category",
@@ -20,7 +19,6 @@
     "cancel": "Cancel",
     "validationMissingNameSlug": "Name (FR) and slug are required."
   },
-
   "questionForm": {
     "new": "New question",
     "edit": "Edit question",
@@ -38,7 +36,6 @@
     "clear": "Clear",
     "validationMissingRequired": "Category, FR question and FR answer are required."
   },
-
   "tree": {
     "questionsCount": "{{count}} question(s)",
     "noQuestions": "No questions.",
@@ -48,12 +45,10 @@
     "deleteQuestion": "Delete",
     "orderLabel": "order {{value}}"
   },
-
   "confirm": {
     "deleteCategory": "Delete this category?",
     "deleteQuestion": "Delete this question?"
   },
-
   "errors": {
     "categorySave": "Error while saving category.",
     "categoryDelete": "Error while deleting category.",
@@ -61,5 +56,15 @@
     "questionDelete": "Error while deleting question.",
     "loadCategory": "Error while loading the category.",
     "loadQuestion": "Error while loading the question."
-  }
+  },
+  "clear": "Clear",
+  "disclaimer": {
+    "body": "FAQ content is for information only and does not replace professional medical, legal, or tax advice.",
+    "title": "Important notice"
+  },
+  "noQuestionsInCategory": "No questions in this category.",
+  "noResults": "No results found.",
+  "resultsCount": "{{count}} result(s)",
+  "searchAria": "Search FAQ",
+  "syncing": "Syncing..."
 }

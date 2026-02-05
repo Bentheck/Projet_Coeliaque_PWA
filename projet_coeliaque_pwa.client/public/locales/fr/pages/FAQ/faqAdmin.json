@@ -1,10 +1,9 @@
-﻿{
+{
   "title": "FAQ — Administration",
   "subtitle": "Créez des catégories, ajoutez des questions/réponses en français et en anglais, gérez l’ordre et l’état.",
   "searchPlaceholder": "Rechercher…",
   "loading": "Chargement…",
   "stats": "{{categories}} catégorie(s), {{questions}} question(s)",
-
   "categoryForm": {
     "new": "Nouvelle catégorie",
     "edit": "Modifier la catégorie",
@@ -20,7 +19,6 @@
     "cancel": "Annuler",
     "validationMissingNameSlug": "Nom (FR) et slug sont requis"
   },
-
   "questionForm": {
     "new": "Nouvelle question",
     "edit": "Modifier la question",
@@ -38,7 +36,6 @@
     "clear": "Effacer",
     "validationMissingRequired": "Catégorie, question FR et réponse FR sont requis."
   },
-
   "tree": {
     "questionsCount": "{{count}} question(s)",
     "noQuestions": "Aucune question.",
@@ -48,12 +45,10 @@
     "deleteQuestion": "Supprimer",
     "orderLabel": "ordre {{value}}"
   },
-
   "confirm": {
     "deleteCategory": "Supprimer cette catégorie ?",
     "deleteQuestion": "Supprimer cette question ?"
   },
-
   "errors": {
     "categorySave": "Erreur catégorie",
     "categoryDelete": "Erreur suppression catégorie",
@@ -61,5 +56,15 @@
     "questionDelete": "Erreur suppression question",
     "loadCategory": "Erreur lors du chargement de la catégorie.",
     "loadQuestion": "Erreur lors du chargement de la question."
-  }
+  },
+  "clear": "Effacer",
+  "disclaimer": {
+    "body": "Le contenu de la FAQ est fourni a titre informatif et ne remplace pas un avis medical, juridique ou fiscal professionnel.",
+    "title": "Avis important"
+  },
+  "noQuestionsInCategory": "Aucune question dans cette catégorie.",
+  "noResults": "Aucun resultat trouve.",
+  "resultsCount": "{{count}} resultat(s)",
+  "searchAria": "Rechercher dans la FAQ",
+  "syncing": "Synchronisation..."
 }

@@ -35,7 +35,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             _config = config;
             _userManager = userManager;
             _audit = audit;
-            _frontendUrl = _config["FrontendUrl"];
+            _frontendUrl = _config["FrontendUrl"] ?? string.Empty;
         }
 
         /// <summary>

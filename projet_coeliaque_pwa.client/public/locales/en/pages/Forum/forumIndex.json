@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Forum",
   "errors": {
     "loadCategories": "Unable to load categories."
@@ -10,5 +10,16 @@
   "badges": {
     "threads_one": "{{count}} thread",
     "threads_other": "{{count}} threads"
-  }
+  },
+  "steps": {
+    "language": {
+      "buttons": {
+        "en": "English",
+        "fr": "French"
+      },
+      "subtitle": "Choose your preferred language for the forum.",
+      "title": "Choose language"
+    }
+  },
+  "subtitle": "Ask questions, share tips, and connect with the community."
 }

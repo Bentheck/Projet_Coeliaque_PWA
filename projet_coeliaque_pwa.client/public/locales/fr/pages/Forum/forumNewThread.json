@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Nouveau fil",
   "errors": {
     "loadCategories": "Impossible de charger les catégories.",
@@ -10,17 +10,26 @@
     "body": "Message"
   },
   "placeholders": {
-    "titleExample": "Ex. Astuces sans gluten chez XYZ"
+    "titleExample": "Ex. Astuces sans gluten chez XYZ",
+    "noCategories": "Aucune catégorie disponible"
   },
   "aria": {
     "composeBody": "Rédiger le message du fil"
   },
   "messages": {
-    "loginToPost": "Connectez-vous pour créer un fil."
+    "loginToPost": "Connectez-vous pour créer un fil.",
+    "helperText": "Choisissez une catégorie, rédigez votre titre et votre message, puis publiez."
   },
   "buttons": {
     "cancel": "Annuler",
     "create": "Créer",
-    "creating": "Création…"
+    "creating": "Création…",
+    "backToCategories": "Retour aux catégories"
+  },
+  "badge": {
+    "newThreadHighlight": "Nouveau fil"
+  },
+  "help": {
+    "categoryLanguageHint": "Vous publiez dans la section {{lang}}."
   }
 }

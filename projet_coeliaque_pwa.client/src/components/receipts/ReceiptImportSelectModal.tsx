@@ -72,7 +72,12 @@ export default function ReceiptImportSelectModal({
     };
 
     return (
-        <Modal show={show} onHide={onCancel} centered>
+        <Modal
+            show={show}
+            onHide={onCancel}
+            centered
+            className="receipt-import-select-modal"
+        >
             <Modal.Header closeButton>
                 <Modal.Title>
                     <i className="bi bi-check2-square me-2" />
@@ -99,6 +104,7 @@ export default function ReceiptImportSelectModal({
                                         <Form.Check className="m-0 d-inline-flex justify-content-center">
                                             <Form.Check.Input
                                                 type="checkbox"
+                                                className="receipt-import-select-checkbox"
                                                 checked={allSelected}
                                                 onChange={handleToggleAll}
                                                 aria-label={t(
@@ -117,6 +123,7 @@ export default function ReceiptImportSelectModal({
                                             <Form.Check className="m-0 d-inline-flex justify-content-center">
                                                 <Form.Check.Input
                                                     type="checkbox"
+                                                    className="receipt-import-select-checkbox"
                                                     checked={row._selected}
                                                     onChange={() =>
                                                         handleToggleRow(

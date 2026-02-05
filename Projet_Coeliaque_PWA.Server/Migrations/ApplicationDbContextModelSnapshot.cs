@@ -17,7 +17,7 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.22")
+                .HasAnnotation("ProductVersion", "8.0.23")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1119,6 +1119,11 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Property<int>("FactureId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsReportResolved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("IsReported")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1133,6 +1138,12 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
 
                     b.Property<string>("ReportReason")
                         .HasColumnType("text");
+
+                    b.Property<string>("ReportResolvedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReportResolvedUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ReportedByUserId")
                         .HasColumnType("text");

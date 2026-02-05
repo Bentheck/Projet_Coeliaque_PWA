@@ -1,4 +1,4 @@
-﻿{
+{
   "loading": "Chargement…",
   "notFound": "Introuvable",
   "title": {
@@ -54,7 +54,14 @@
     "offlineDisabled": "Reçu indisponible hors ligne.",
     "demoDisabledTitle": "Importation désactivée en mode démo",
     "demoDisabledBody": "Dans la version complète, vous pouvez importer directement un reçu numérisé. Cette fonctionnalité est désactivée ici pour la démonstration.",
-    "demoDisabledTooltip": "Importation de reçu disponible seulement dans la version complète."
+    "demoDisabledTooltip": "Importation de reçu disponible seulement dans la version complète.",
+    "alreadyReported": "Scan déjà signalé",
+    "reportAria": "Signaler un problème avec ce scan",
+    "reportBtn": "Signaler un problème",
+    "reportError": "Une erreur est survenue lors de l'envoi du signalement. Veuillez réessayer plus tard.",
+    "reportPrompt": "Décrivez brièvement le problème avec ce scan (par exemple : montant incorrect, lignes incorrectes, etc.).",
+    "reportThanks": "Merci, le scan a été signalé. Cela nous aide à améliorer l'OCR.",
+    "reportedOnLabel": "Signale le"
   },
   "modal": {
     "title": "Ajouter un item à la facture",

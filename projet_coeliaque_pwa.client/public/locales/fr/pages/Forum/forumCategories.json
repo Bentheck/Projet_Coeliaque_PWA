@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "Forum",
   "subtitle": "Choisissez une catégorie pour voir les discussions.",
   "errors": {
@@ -14,5 +14,9 @@
     "threads_other": "{{count}} sujets",
     "membersOnly": "Réservé aux membres",
     "adminOnly": "Sujets créés par l’administration seulement"
+  },
+  "mod": {
+    "deleteCategoryConfirm": "Supprimer cette catégorie ?",
+    "deleteCategoryFailed": "Impossible de supprimer cette catégorie."
   }
 }

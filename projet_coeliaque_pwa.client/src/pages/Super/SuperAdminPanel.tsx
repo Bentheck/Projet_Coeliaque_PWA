@@ -1,5 +1,6 @@
 ﻿// PATH: src/pages/Super/SuperAdminPanel.tsx
 import React, { useEffect, useState } from "react";
+import { Button, Modal } from "react-bootstrap";
 
 /**
  * Wrapper around fetch() that always includes credentials,
@@ -138,6 +139,7 @@ type AuditLogEntry = {
     target: string | null;
     ipAddress: string | null;
     detailsSummary: string | null;
+    detailsJson: string | null;
 };
 
 type AuditLogPage = {
@@ -158,6 +160,8 @@ type ReportedScanRow = {
     reportCount: number;
     lastReportUtc: string | null;
     lastReason: string | null;
+    isResolved: boolean;
+    resolvedUtc: string | null;
 };
 
 type TabKey =
@@ -201,6 +205,15 @@ function formatUtc(iso: string | null | undefined): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleString();
+}
+
+function prettifyJson(raw: string | null | undefined): string {
+    if (!raw) return "";
+    try {
+        return JSON.stringify(JSON.parse(raw), null, 2);
+    } catch {
+        return raw;
+    }
 }
 
 // ------------------------
@@ -274,11 +287,13 @@ const SuperAdminPanel: React.FC = () => {
     const [logFilterTarget, setLogFilterTarget] = useState("");
     const [logFilterFrom, setLogFilterFrom] = useState("");
     const [logFilterTo, setLogFilterTo] = useState("");
+    const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
 
     // ---- Reported scans tab ----
     const [reportedScans, setReportedScans] = useState<ReportedScanRow[]>([]);
     const [reportedLoading, setReportedLoading] = useState(false);
     const [reportedLoadedOnce, setReportedLoadedOnce] = useState(false);
+    const [resolvingScanId, setResolvingScanId] = useState<number | null>(null);
 
     // ------------------------
     // Loaders
@@ -355,18 +370,28 @@ const SuperAdminPanel: React.FC = () => {
         }
     };
 
-    const loadLogs = async (page: number, pageSize: number) => {
+    const loadLogs = async (
+        page: number,
+        pageSize: number,
+        overrides?: {
+            actor?: string;
+            action?: string;
+            target?: string;
+            from?: string;
+            to?: string;
+        }
+    ) => {
         setLogsLoading(true);
         try {
             const params = new URLSearchParams();
             params.set("Page", String(page));
             params.set("PageSize", String(pageSize));
 
-            const actor = logFilterActor.trim();
-            const action = logFilterAction.trim();
-            const target = logFilterTarget.trim();
-            const fromIso = fromDateInputToStartOfDayUtcIso(logFilterFrom);
-            const toIso = fromDateInputToEndOfDayUtcIso(logFilterTo);
+            const actor = (overrides?.actor ?? logFilterActor).trim();
+            const action = (overrides?.action ?? logFilterAction).trim();
+            const target = (overrides?.target ?? logFilterTarget).trim();
+            const fromIso = fromDateInputToStartOfDayUtcIso(overrides?.from ?? logFilterFrom);
+            const toIso = fromDateInputToEndOfDayUtcIso(overrides?.to ?? logFilterTo);
 
             if (actor) params.set("Actor", actor);
             if (action) params.set("Action", action);
@@ -909,6 +934,22 @@ const SuperAdminPanel: React.FC = () => {
         await loadLogs(1, logsPageSize);
     };
 
+    const onLogsResetFilters = async () => {
+        setLogFilterActor("");
+        setLogFilterAction("");
+        setLogFilterTarget("");
+        setLogFilterFrom("");
+        setLogFilterTo("");
+        setLogsPage(1);
+        await loadLogs(1, logsPageSize, {
+            actor: "",
+            action: "",
+            target: "",
+            from: "",
+            to: "",
+        });
+    };
+
     const onLogsPageChange = async (delta: number) => {
         const next = logsPage + delta;
         const maxPage =
@@ -978,6 +1019,23 @@ const SuperAdminPanel: React.FC = () => {
 
     const downloadScanText = (scanId: number) => {
         window.open(`/api/super/receipts/scan/${scanId}/text`, "_blank");
+    };
+
+    const toggleReportedScanResolved = async (row: ReportedScanRow) => {
+        setResolvingScanId(row.scanId);
+        try {
+            await fetchJSON(`/api/super/receipts/scan/${row.scanId}/resolve`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ resolved: !row.isResolved }),
+            });
+            await loadReportedScans();
+        } catch (e) {
+            console.error(e);
+            alert("Échec de la mise à jour du statut traité.");
+        } finally {
+            setResolvingScanId(null);
+        }
     };
 
     // ------------------------
@@ -2186,6 +2244,7 @@ const SuperAdminPanel: React.FC = () => {
                                             <th>Année</th>
                                             <th>Magasin</th>
                                             <th>Rapports</th>
+                                            <th>Traité</th>
                                             <th>Dernière raison</th>
                                             <th>Actions</th>
                                         </tr>
@@ -2205,6 +2264,34 @@ const SuperAdminPanel: React.FC = () => {
                                                     <td>{row.year ?? "—"}</td>
                                                     <td>{row.storeName || ""}</td>
                                                     <td>{row.reportCount}</td>
+                                                    <td>
+                                                        <button
+                                                            type="button"
+                                                            className={`btn btn-sm ${row.isResolved ? "btn-success" : "btn-outline-success"}`}
+                                                            disabled={resolvingScanId === row.scanId}
+                                                            onClick={() => toggleReportedScanResolved(row)}
+                                                            title={row.isResolved ? "Marquer non traité" : "Marquer traité"}
+                                                        >
+                                                            {resolvingScanId === row.scanId ? (
+                                                                <span className="spinner-border spinner-border-sm" />
+                                                            ) : row.isResolved ? (
+                                                                <>
+                                                                    <i className="bi bi-check2-circle me-1" />
+                                                                    Oui
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <i className="bi bi-circle me-1" />
+                                                                    Non
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        {row.resolvedUtc && (
+                                                            <div className="small text-muted mt-1">
+                                                                {formatUtc(row.resolvedUtc)}
+                                                            </div>
+                                                        )}
+                                                    </td>
                                                     <td style={{ maxWidth: "260px" }}>
                                                         {reason ? (
                                                             <span title={reason}>
@@ -2287,6 +2374,18 @@ const SuperAdminPanel: React.FC = () => {
                                         }
                                     />
                                 </label>
+                                <div className="d-flex flex-wrap gap-1">
+                                    {["SuperAdmin.", "SuperReceiptScans.", "Forum.", "Membership."].map((preset) => (
+                                        <button
+                                            key={preset}
+                                            type="button"
+                                            className="btn btn-sm btn-outline-secondary"
+                                            onClick={() => setLogFilterAction(preset)}
+                                        >
+                                            {preset}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             <div className="col-md-3">
                                 <label className="form-label small">
@@ -2328,14 +2427,24 @@ const SuperAdminPanel: React.FC = () => {
                         </div>
 
                         <div className="mb-3 d-flex justify-content-between align-items-center">
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-outline-primary"
-                                disabled={logsLoading}
-                                onClick={onLogsSearch}
-                            >
-                                {logsLoading ? "Recherche..." : "Rechercher"}
-                            </button>
+                            <div className="d-flex align-items-center gap-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary"
+                                    disabled={logsLoading}
+                                    onClick={onLogsSearch}
+                                >
+                                    {logsLoading ? "Recherche..." : "Rechercher"}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary"
+                                    disabled={logsLoading}
+                                    onClick={onLogsResetFilters}
+                                >
+                                    Réinitialiser
+                                </button>
+                            </div>
                             <div className="d-flex align-items-center gap-2 small">
                                 <span>Page size</span>
                                 <select
@@ -2373,6 +2482,7 @@ const SuperAdminPanel: React.FC = () => {
                                             <th>Cible</th>
                                             <th>IP</th>
                                             <th>Détails</th>
+                                            <th />
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2385,7 +2495,18 @@ const SuperAdminPanel: React.FC = () => {
                                                 <td>{log.action}</td>
                                                 <td>{log.target}</td>
                                                 <td>{log.ipAddress}</td>
-                                                <td>{log.detailsSummary}</td>
+                                                <td className="small text-break" style={{ maxWidth: "420px" }}>
+                                                    {log.detailsSummary || "—"}
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-secondary"
+                                                        onClick={() => setSelectedLog(log)}
+                                                    >
+                                                        Voir
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -2426,6 +2547,40 @@ const SuperAdminPanel: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <Modal
+                show={selectedLog !== null}
+                onHide={() => setSelectedLog(null)}
+                size="lg"
+                centered
+            >
+                <Modal.Header closeButton>
+                    <Modal.Title>Détails du log</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {selectedLog && (
+                        <div className="vstack gap-2">
+                            <div><b>Date:</b> {formatUtc(selectedLog.timestampUtc)}</div>
+                            <div><b>Acteur:</b> {selectedLog.actorDisplayName || selectedLog.actorUserId || "—"}</div>
+                            <div><b>Action:</b> <code>{selectedLog.action}</code></div>
+                            <div><b>Cible:</b> {selectedLog.target || "—"}</div>
+                            <div><b>IP:</b> {selectedLog.ipAddress || "—"}</div>
+                            <label className="form-label mb-1"><b>JSON complet</b></label>
+                            <textarea
+                                className="form-control font-monospace"
+                                rows={16}
+                                readOnly
+                                value={prettifyJson(selectedLog.detailsJson)}
+                            />
+                        </div>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setSelectedLog(null)}>
+                        Fermer
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </div>
     );
 };

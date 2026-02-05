@@ -225,10 +225,12 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public async Task<IActionResult> GenerateReport(int annee)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
 
             var groupedFactureItems = await _db.FactureItems
                 .Include(fi => fi.Facture)
-                .Where(fi => fi.Facture.UserId == userId && fi.Facture.Annee == annee)
+                .Where(fi => fi.Facture != null && fi.Facture.UserId == userId && fi.Facture.Annee == annee)
                 .GroupBy(fi => new { fi.Item, fi.TypeItem, fi.PoidsUnite, fi.Prix, fi.PoidsValeur })
                 .Select(g => new
                 {
@@ -242,7 +244,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 .ToListAsync();
 
             var productComparisons = await _db.ProductComparisons
-                .Where(pc => pc.ComparatifYear.Annee == annee && pc.ComparatifYear.UserId == userId)
+                .Where(pc => pc.ComparatifYear != null && pc.ComparatifYear.Annee == annee && pc.ComparatifYear.UserId == userId)
                 .ToListAsync();
 
             var reportRows = new List<ProductComparisonRowDto>();
@@ -255,7 +257,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 var (sg100, unitLabel) = UnitConversionHelper.GetPricePer100(
                     factureGroup.Prix,
                     factureGroup.PoidsValeur,
-                    factureGroup.PoidsUnite
+                    factureGroup.PoidsUnite ?? string.Empty
                 );
 
                 var (ag100, _) = matchingComparison == null
@@ -263,7 +265,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     : UnitConversionHelper.GetPricePer100(
                         matchingComparison.Prix,
                         matchingComparison.PoidsValeur,
-                        matchingComparison.PoidsUnite
+                        matchingComparison.PoidsUnite ?? string.Empty
                     );
 
                 var diffPer100 = sg100 - ag100;
@@ -303,7 +305,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     NomSansGluten = factureGroup.Item ?? "",
                     QuantiteSansGluten = factureGroup.QuantiteTotale,
                     FormatSansGluten = factureGroup.PoidsValeur,
-                    UniteSansGluten = factureGroup.PoidsUnite,
+                    UniteSansGluten = factureGroup.PoidsUnite ?? string.Empty,
                     PrixSansGluten = factureGroup.Prix,
 
                     MarqueAvecGluten = matchingComparison?.Marque,
