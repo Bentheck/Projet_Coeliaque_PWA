@@ -1,6 +1,7 @@
 ﻿// PATH: Projet_Coeliaque_PWA.Server/Controllers/SuperAuditController.cs
 using System;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -49,6 +50,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             // short summary derived from DetailsJson
             public string? DetailsSummary { get; set; }
+
+            // raw details JSON for full inspection in UI
+            public string? DetailsJson { get; set; }
         }
 
         public sealed class AuditLogPageDto
@@ -171,8 +175,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 Action = x.log.Action ?? "",
                 Target = x.log.Target,
 
-                IpAddress = null, // not tracked in AdminAuditLog
-                DetailsSummary = BuildDetailsSummary(x.log)
+                IpAddress = TryExtractIpAddress(x.log.DetailsJson),
+                DetailsSummary = BuildDetailsSummary(x.log.DetailsJson),
+                DetailsJson = x.log.DetailsJson
             }).ToArray();
 
             var result = new AuditLogPageDto
@@ -202,19 +207,92 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         }
 
         /// <summary>
-        /// Produces a short textual summary of DetailsJson.
-        /// Currently returns the raw JSON truncated to 200 chars.
+        /// Produces a compact textual summary of details JSON.
+        /// Understands the envelope shape used by AuditLogService:
+        /// { context: {...}, data: {...} }
         /// </summary>
-        private static string? BuildDetailsSummary(AdminAuditLog log)
+        private static string? BuildDetailsSummary(string? detailsJson)
         {
-            if (string.IsNullOrWhiteSpace(log.DetailsJson))
+            if (string.IsNullOrWhiteSpace(detailsJson))
                 return null;
 
-            const int max = 200;
-            var s = log.DetailsJson.Trim();
-            if (s.Length <= max) return s;
+            try
+            {
+                using var doc = JsonDocument.Parse(detailsJson);
+                var root = doc.RootElement;
 
-            return s.Substring(0, max) + "…";
+                // Prefer the "data" object if present; otherwise summarize root.
+                var summarySource = root;
+                if (root.ValueKind == JsonValueKind.Object &&
+                    root.TryGetProperty("data", out var data) &&
+                    data.ValueKind == JsonValueKind.Object)
+                {
+                    summarySource = data;
+                }
+
+                if (summarySource.ValueKind == JsonValueKind.Object)
+                {
+                    var pairs = summarySource.EnumerateObject()
+                        .Take(4)
+                        .Select(p => $"{p.Name}={JsonValueToSingleLine(p.Value)}");
+                    var summary = string.Join(" | ", pairs);
+                    if (!string.IsNullOrWhiteSpace(summary))
+                        return Truncate(summary, 280);
+                }
+
+                return Truncate(detailsJson.Trim(), 280);
+            }
+            catch
+            {
+                return Truncate(detailsJson.Trim(), 280);
+            }
+        }
+
+        private static string? TryExtractIpAddress(string? detailsJson)
+        {
+            if (string.IsNullOrWhiteSpace(detailsJson))
+                return null;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(detailsJson);
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                    return null;
+
+                if (!root.TryGetProperty("context", out var ctx) || ctx.ValueKind != JsonValueKind.Object)
+                    return null;
+
+                if (!ctx.TryGetProperty("IpAddress", out var ipEl))
+                    return null;
+
+                return ipEl.ValueKind == JsonValueKind.String ? ipEl.GetString() : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string JsonValueToSingleLine(JsonElement value)
+        {
+            return value.ValueKind switch
+            {
+                JsonValueKind.String => value.GetString() ?? "",
+                JsonValueKind.Number => value.ToString(),
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                JsonValueKind.Null => "null",
+                _ => Truncate(value.ToString(), 80)
+            };
+        }
+
+        private static string Truncate(string value, int max)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return value;
+
+            return value.Length <= max ? value : value.Substring(0, max) + "…";
         }
     }
 }

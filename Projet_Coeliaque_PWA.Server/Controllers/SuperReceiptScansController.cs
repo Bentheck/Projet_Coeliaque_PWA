@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 
 using Projet_Coeliaque_PWA.Server.Data;
+using Projet_Coeliaque_PWA.Server.Services;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -29,11 +31,13 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
     public sealed class SuperReceiptScansController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
+        private readonly IAuditLogService _audit;
         private readonly FileExtensionContentTypeProvider _contentTypeProvider = new();
 
-        public SuperReceiptScansController(ApplicationDbContext db)
+        public SuperReceiptScansController(ApplicationDbContext db, IAuditLogService audit)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
+            _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         }
 
         // --------------------------------------------------------------------
@@ -51,6 +55,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             public int ReportCount { get; set; }
             public DateTime? LastReportUtc { get; set; }
             public string? LastReason { get; set; }
+            public bool IsResolved { get; set; }
+            public DateTime? ResolvedUtc { get; set; }
         }
 
         // --------------------------------------------------------------------
@@ -87,11 +93,59 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     // In the new model there is at most one "report" per scan.
                     ReportCount = 1,
                     LastReportUtc = s.ReportedUtc,
-                    LastReason = s.ReportReason
+                    LastReason = s.ReportReason,
+                    IsResolved = s.IsReportResolved,
+                    ResolvedUtc = s.ReportResolvedUtc
                 })
                 .ToListAsync();
 
+            await _audit.LogAsync(
+                User,
+                "SuperReceiptScans.ListReported",
+                "ReportedScans",
+                new { Count = rows.Count });
+
             return rows;
+        }
+
+        // --------------------------------------------------------------------
+        // POST /api/super/receipts/scan/{scanId}/resolve
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Marks a reported scan as resolved/unresolved.
+        /// </summary>
+        [HttpPost("scan/{scanId:int}/resolve")]
+        public async Task<IActionResult> SetReportedScanResolved(
+            int scanId,
+            [FromBody] ResolveScanRequest request)
+        {
+            var scan = await _db.ReceiptScans.FirstOrDefaultAsync(s => s.Id == scanId);
+            if (scan is null)
+                return NotFound($"ReceiptScan {scanId} not found.");
+
+            if (!scan.IsReported)
+                return BadRequest("This scan is not currently reported.");
+
+            var resolved = request.Resolved;
+            var currentUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            scan.IsReportResolved = resolved;
+            scan.ReportResolvedUtc = resolved ? DateTime.UtcNow : null;
+            scan.ReportResolvedByUserId = resolved ? currentUserId : null;
+
+            await _db.SaveChangesAsync();
+            await _audit.LogAsync(
+                User,
+                resolved ? "SuperReceiptScans.MarkResolved" : "SuperReceiptScans.MarkUnresolved",
+                scanId.ToString(),
+                new { scan.FactureId, scan.Year, resolved });
+
+            return NoContent();
+        }
+
+        public sealed class ResolveScanRequest
+        {
+            public bool Resolved { get; set; }
         }
 
         // --------------------------------------------------------------------
@@ -128,6 +182,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             var fileName = Path.GetFileName(fullPath);
+            await _audit.LogAsync(
+                User,
+                "SuperReceiptScans.DownloadImage",
+                scanId.ToString(),
+                new { fileName, scan.FactureId, scan.Year });
 
             // Let browser display inline but still offer filename
             return PhysicalFile(fullPath, contentType, fileName);
@@ -172,6 +231,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var text = await System.IO.File.ReadAllTextAsync(textPath);
             var bytes = System.Text.Encoding.UTF8.GetBytes(text);
             var fileName = Path.GetFileName(textPath);
+            await _audit.LogAsync(
+                User,
+                "SuperReceiptScans.DownloadText",
+                scanId.ToString(),
+                new { fileName, scan.FactureId, scan.Year });
 
             const string contentType = "text/plain; charset=utf-8";
             return File(bytes, contentType, fileName);

@@ -19,4 +19,8 @@
     public DateTime? ReportedUtc { get; set; }
     public string? ReportReason { get; set; }
     public string? ReportedByUserId { get; set; }
+
+    public bool IsReportResolved { get; set; }
+    public DateTime? ReportResolvedUtc { get; set; }
+    public string? ReportResolvedByUserId { get; set; }
 }

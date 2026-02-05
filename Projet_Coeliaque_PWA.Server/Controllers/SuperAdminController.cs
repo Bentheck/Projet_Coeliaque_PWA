@@ -29,6 +29,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         private readonly UserManager<IdentityUser> _um;
         private readonly IEmailSender _emailSender;
         private readonly IConfiguration _config;
+        private readonly IAuditLogService _audit;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SuperAdminController"/>.
@@ -37,12 +38,14 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             ApplicationDbContext db,
             UserManager<IdentityUser> um,
             IEmailSender emailSender,
-            IConfiguration config)
+            IConfiguration config,
+            IAuditLogService audit)
         {
             _db = db;
             _um = um;
             _emailSender = emailSender;
             _config = config;
+            _audit = audit;
         }
 
         private static string Display(IdentityUser u) => u.UserName ?? u.Email ?? "Utilisateur";
@@ -94,6 +97,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             _db.ForumAdmins.Add(new ForumAdmin { UserId = user.Id, AddedUtc = DateTime.UtcNow });
             await _db.SaveChangesAsync();
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.ForumAdmin.Add",
+                user.Id,
+                new { user.Email, PerformedBy = CurrentUserIdOrNull() });
             return CreatedAtAction(nameof(ListForumAdmins), new { id = user.Id }, new { userId = user.Id });
         }
 
@@ -110,6 +118,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (rec == null) return NotFound();
             _db.ForumAdmins.Remove(rec);
             await _db.SaveChangesAsync();
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.ForumAdmin.Remove",
+                userId,
+                new { PerformedBy = CurrentUserIdOrNull() });
             return NoContent();
         }
 
@@ -155,6 +168,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var res = await _um.AddToRoleAsync(user, "Admin");
             if (!res.Succeeded) return Problem(string.Join("; ", res.Errors.Select(e => e.Description)), statusCode: 500);
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.IdentityAdmin.Add",
+                user.Id,
+                new { user.Email, PerformedBy = CurrentUserIdOrNull() });
 
             return CreatedAtAction(nameof(ListIdentityAdmins), new { id = user.Id }, new { userId = user.Id });
         }
@@ -173,6 +191,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             var res = await _um.RemoveFromRoleAsync(user, "Admin");
             if (!res.Succeeded) return Problem(string.Join("; ", res.Errors.Select(e => e.Description)), statusCode: 500);
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.IdentityAdmin.Remove",
+                user.Id,
+                new { user.Email, PerformedBy = CurrentUserIdOrNull() });
 
             return NoContent();
         }
@@ -299,6 +322,20 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
 
             await _db.SaveChangesAsync();
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.Membership.Upsert",
+                userId,
+                new
+                {
+                    input.Active,
+                    input.StartDateUtc,
+                    input.EndDateUtc,
+                    ResultStartDateUtc = m.StartDate,
+                    ResultEndDateUtc = m.EndDate,
+                    ResultIsActive = m.IsActive,
+                    PerformedBy = CurrentUserIdOrNull()
+                });
             return Ok(new MembershipDto(userId, m.StartDate, m.EndDate, m.IsActive));
         }
 
@@ -440,6 +477,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     string.Join("; ", result.Errors.Select(e => e.Description)),
                     statusCode: 500
                 );
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.Tester.Add",
+                user.Id,
+                new { user.Email, PerformedBy = CurrentUserIdOrNull() });
 
             return CreatedAtAction(nameof(ListTesters), new { id = user.Id }, new { userId = user.Id });
         }
@@ -460,6 +502,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                     string.Join("; ", result.Errors.Select(e => e.Description)),
                     statusCode: 500
                 );
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.Tester.Remove",
+                user.Id,
+                new { user.Email, PerformedBy = CurrentUserIdOrNull() });
 
             return NoContent();
         }
@@ -526,6 +573,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                             statusCode: 500
                         );
                 }
+                await _audit.LogAsync(
+                    User,
+                    "SuperAdmin.TesterInvite.RoleGranted",
+                    existingUser.Id,
+                    new
+                    {
+                        Email = existingUser.Email,
+                        RequestedEmail = emailRaw,
+                        PerformedBy = CurrentUserIdOrNull()
+                    });
 
                 return Ok(new { mode = "roleGranted", userId = existingUser.Id });
             }
@@ -554,6 +611,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
                 await _db.SaveChangesAsync();
                 await SendTesterInviteEmail(emailRaw, newRawToken, input.Lang);
+                await _audit.LogAsync(
+                    User,
+                    "SuperAdmin.TesterInvite.Refreshed",
+                    existingInvite.Id.ToString(),
+                    new
+                    {
+                        Email = emailRaw,
+                        existingInvite.ExpiresUtc,
+                        Lang = input.Lang,
+                        PerformedBy = CurrentUserIdOrNull()
+                    });
 
                 return Ok(new
                 {
@@ -580,6 +648,17 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             await _db.SaveChangesAsync();
 
             await SendTesterInviteEmail(emailRaw, rawToken, input.Lang);
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.TesterInvite.Created",
+                invite.Id.ToString(),
+                new
+                {
+                    Email = emailRaw,
+                    invite.ExpiresUtc,
+                    Lang = input.Lang,
+                    PerformedBy = CurrentUserIdOrNull()
+                });
 
             return Ok(new
             {
@@ -610,6 +689,16 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             invite.RevokedByUserId = CurrentUserIdOrNull();
 
             await _db.SaveChangesAsync();
+            await _audit.LogAsync(
+                User,
+                "SuperAdmin.TesterInvite.Revoked",
+                invite.Id.ToString(),
+                new
+                {
+                    invite.Email,
+                    invite.RevokedUtc,
+                    invite.RevokedByUserId
+                });
             return Ok(new { ok = true });
         }
 
