@@ -5,20 +5,44 @@
 
 	<url>
 		<loc>https://servicescoeliaque.ca/</loc>
+		<lastmod>2026-03-20</lastmod>
 		<changefreq>weekly</changefreq>
 		<priority>1.0</priority>
 	</url>
 
 	<url>
 		<loc>https://servicescoeliaque.ca/faq</loc>
+		<lastmod>2026-03-20</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 
 	<url>
 		<loc>https://servicescoeliaque.ca/contact</loc>
+		<lastmod>2026-03-20</lastmod>
 		<changefreq>yearly</changefreq>
 		<priority>0.6</priority>
+	</url>
+
+	<url>
+		<loc>https://servicescoeliaque.ca/terms</loc>
+		<lastmod>2026-03-20</lastmod>
+		<changefreq>yearly</changefreq>
+		<priority>0.4</priority>
+	</url>
+
+	<url>
+		<loc>https://servicescoeliaque.ca/privacy</loc>
+		<lastmod>2026-03-20</lastmod>
+		<changefreq>yearly</changefreq>
+		<priority>0.4</priority>
+	</url>
+
+	<url>
+		<loc>https://servicescoeliaque.ca/disclaimer</loc>
+		<lastmod>2026-03-20</lastmod>
+		<changefreq>yearly</changefreq>
+		<priority>0.4</priority>
 	</url>
 
 </urlset>

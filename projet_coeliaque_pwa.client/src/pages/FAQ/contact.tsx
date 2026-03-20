@@ -2,54 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthContext";
-
-/* ------------------------------------------------------------------ */
-/* Minimal SEO helpers (no dependency)                                 */
-/* ------------------------------------------------------------------ */
-
-function upsertMetaByName(name: string, content: string) {
-    if (typeof document === "undefined") return;
-    let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
-    if (!el) {
-        el = document.createElement("meta");
-        el.setAttribute("name", name);
-        document.head.appendChild(el);
-    }
-    el.setAttribute("content", content);
-}
-
-function upsertMetaByProperty(property: string, content: string) {
-    if (typeof document === "undefined") return;
-    let el = document.querySelector<HTMLMetaElement>(
-        `meta[property="${property}"]`
-    );
-    if (!el) {
-        el = document.createElement("meta");
-        el.setAttribute("property", property);
-        document.head.appendChild(el);
-    }
-    el.setAttribute("content", content);
-}
-
-function upsertLinkRel(rel: string, href: string) {
-    if (typeof document === "undefined") return;
-    let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
-    if (!el) {
-        el = document.createElement("link");
-        el.setAttribute("rel", rel);
-        document.head.appendChild(el);
-    }
-    el.setAttribute("href", href);
-}
-
-function setCanonicalToCurrentUrl() {
-    if (typeof window === "undefined") return;
-    upsertLinkRel("canonical", window.location.href);
-}
-
-function setRobots(content: string) {
-    upsertMetaByName("robots", content);
-}
+import { useSeo } from "../../seo/useSeo";
 
 type ContactKind = "support" | "info" | "feedback";
 
@@ -78,29 +31,13 @@ export default function ContactPage() {
     const { t, i18n } = useTranslation("pages/FAQ/contact");
     const { user } = useAuth() as any;
 
-    // ✅ SEO (FR/EN) without Helmet
-    useEffect(() => {
-        if (typeof document === "undefined") return;
-
-        document.documentElement.lang = "fr-ca";
-        setCanonicalToCurrentUrl();
-        setRobots("index, follow");
-
-        const title = "Contact — Services Cœliaque";
-        const description =
-            "Contactez Services Cœliaque pour toute question, suggestion ou demande de soutien.";
-
-        document.title = title;
-        upsertMetaByName("description", description);
-
-        upsertMetaByProperty("og:title", title);
-        upsertMetaByProperty("og:description", description);
-        upsertMetaByProperty("og:type", "website");
-
-        if (typeof window !== "undefined") {
-            upsertMetaByProperty("og:url", window.location.href);
-        }
-    }, []);
+    useSeo({
+        title: "Contact — Services Cœliaque",
+        description:
+            "Contactez Services Cœliaque pour toute question, suggestion ou demande de soutien.",
+        canonicalPath: "/contact",
+        lang: "fr-ca",
+    });
 
     const [kind, setKind] = useState<ContactKind>("support");
     const [email, setEmail] = useState<string>("");

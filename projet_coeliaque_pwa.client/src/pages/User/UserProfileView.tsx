@@ -5,6 +5,7 @@ import { fetchJSON } from "../../lib/api";
 import type { UserProfileDto } from "../../lib/types";
 import { useAuth } from "../../components/AuthContext";
 import { useTranslation } from "react-i18next";
+import { useSeo } from "../../seo/useSeo";
 
 const PLACEHOLDER = "https://via.placeholder.com/96x96?text=👤";
 
@@ -17,6 +18,14 @@ const UserProfileView: React.FC = () => {
     const [p, setP] = useState<UserProfileDto | null>(null);
     const [err, setErr] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const profileName = p?.displayName || t("fallback.user");
+
+    useSeo({
+        title: `${profileName} | Services Cœliaque`,
+        description: "Profil utilisateur sur Services Cœliaque.",
+        robots: "noindex, follow",
+        canonicalPath: userId ? `/u/${userId}` : undefined,
+    });
 
     useEffect(() => {
         let alive = true;
@@ -57,7 +66,7 @@ const UserProfileView: React.FC = () => {
     const isMe = !!(me?.id && userId && me.id === userId);
     const avatarSrc = (isMe ? me?.avatarUrl : p.avatarUrl) || PLACEHOLDER;
 
-    const displayName = p.displayName || t("fallback.user");
+    const displayName = profileName;
     const joined = p.joinedUtc ? new Date(p.joinedUtc).toLocaleDateString("fr-CA") : "—";
 
     return (

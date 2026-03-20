@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useSeo } from "../../seo/useSeo";
 
 type FullSection = {
     title: string;
@@ -22,6 +23,14 @@ export default function DisclaimerPage() {
     const title =
         (tFull(`${version}.title`) as string) ||
         (tPage("page.title") as string);
+
+    useSeo({
+        title: "Avis de non-responsabilité — Services Cœliaque",
+        description:
+            "Consultez l'avis de non-responsabilité et les informations importantes de Services Cœliaque.",
+        canonicalPath: "/disclaimer",
+        lang: "fr-ca",
+    });
 
 
     const sections = useMemo(() => {

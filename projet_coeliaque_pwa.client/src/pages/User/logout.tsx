@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../components/AuthContext";
 import { useTranslation } from "react-i18next";
 import { clearOfflineData } from "../../offline/clearOfflineData";
+import { useSeo } from "../../seo/useSeo";
 
 /**
  * Logout page
@@ -17,6 +18,13 @@ export default function Logout() {
     const navigate = useNavigate();
     const { refresh } = useAuth();
     const { t } = useTranslation("pages/User/logout");
+
+    useSeo({
+        title: "Déconnexion | Services Cœliaque",
+        description: "Déconnexion de votre compte Services Cœliaque.",
+        robots: "noindex, follow",
+        canonicalPath: "/logout",
+    });
 
     useEffect(() => {
         (async () => {
