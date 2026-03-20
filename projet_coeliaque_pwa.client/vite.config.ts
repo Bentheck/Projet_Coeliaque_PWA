@@ -49,6 +49,11 @@ export default defineConfig({
                 target,
                 secure: false,
                 changeOrigin: true
+            },
+            '^/recipe-images/': {
+                target,
+                secure: false,
+                changeOrigin: true
             }
         },
         port: parseInt(env.DEV_SERVER_PORT || '52960'),

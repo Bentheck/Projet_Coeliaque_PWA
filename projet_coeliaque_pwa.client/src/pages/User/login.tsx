@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../components/AuthContext";
 import { useTranslation } from "react-i18next";
 import { clearOfflineData } from "../../offline/clearOfflineData";
+import { useSeo } from "../../seo/useSeo";
 
 type ApiError = { errorCode?: string; error?: string; message?: string };
 
@@ -26,6 +27,13 @@ export default function Login() {
     const isConfirmed = searchParams.get("confirmed") === "1";
     const isBadUser = searchParams.get("confirmedbaduser") === "1";
     const isConfirmError = searchParams.get("confirmederror") === "1";
+
+    useSeo({
+        title: `${t("title")} | Services Cœliaque`,
+        description: "Accédez à votre compte Services Cœliaque.",
+        robots: "noindex, follow",
+        canonicalPath: "/login",
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

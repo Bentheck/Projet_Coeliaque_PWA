@@ -14,57 +14,9 @@ import type {
 } from "../../offline/db";
 
 import { useTranslation } from "react-i18next";
+import { useSeo } from "../../seo/useSeo";
 
 import "../../styles/faq.css";
-
-/* ------------------------------------------------------------------ */
-/* Minimal SEO helpers (no dependency)                                 */
-/* ------------------------------------------------------------------ */
-
-function upsertMetaByName(name: string, content: string) {
-    if (typeof document === "undefined") return;
-    let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
-    if (!el) {
-        el = document.createElement("meta");
-        el.setAttribute("name", name);
-        document.head.appendChild(el);
-    }
-    el.setAttribute("content", content);
-}
-
-function upsertMetaByProperty(property: string, content: string) {
-    if (typeof document === "undefined") return;
-    let el = document.querySelector<HTMLMetaElement>(
-        `meta[property="${property}"]`
-    );
-    if (!el) {
-        el = document.createElement("meta");
-        el.setAttribute("property", property);
-        document.head.appendChild(el);
-    }
-    el.setAttribute("content", content);
-}
-
-function upsertLinkRel(rel: string, href: string) {
-    if (typeof document === "undefined") return;
-    let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
-    if (!el) {
-        el = document.createElement("link");
-        el.setAttribute("rel", rel);
-        document.head.appendChild(el);
-    }
-    el.setAttribute("href", href);
-}
-
-function setCanonicalToCurrentPath() {
-    if (typeof window === "undefined") return;
-    const canonical = `${window.location.origin}${window.location.pathname}`;
-    upsertLinkRel("canonical", canonical);
-}
-
-function setRobots(content: string) {
-    upsertMetaByName("robots", content);
-}
 
 /* -------------------------------------------
    Helpers
@@ -176,37 +128,39 @@ export function FaqPage({ className = "" }: { className?: string }) {
         [filtered]
     );
 
-    // ✅ SEO: FORCE FRENCH (index French, same URL i18n)
-    // This must NOT depend on uiLang. Keep it deterministic for crawlers.
-    useEffect(() => {
-        if (typeof document === "undefined") return;
+    const faqStructuredData = useMemo(() => {
+        const questions = (tree ?? [])
+            .flatMap((category) => category.questions)
+            .filter((question) => question.question && question.answerHtml)
+            .slice(0, 20)
+            .map((question) => ({
+                "@type": "Question",
+                name: question.question,
+                acceptedAnswer: {
+                    "@type": "Answer",
+                    text: stripHtml(question.answerHtml || ""),
+                },
+            }));
 
-        // Stable French SEO
-        document.documentElement.lang = "fr-ca";
-        setCanonicalToCurrentPath();
-        setRobots("index, follow");
-
-        const title = "FAQ — Services Cœliaque | Questions fréquentes";
-        const description =
-            "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.";
-
-        document.title = title;
-        upsertMetaByName("description", description);
-
-        upsertMetaByProperty("og:title", title);
-        upsertMetaByProperty("og:description", description);
-        upsertMetaByProperty("og:type", "website");
-        upsertMetaByProperty("og:site_name", "Services Cœliaque");
-        upsertMetaByProperty("og:locale", "fr_CA");
-        upsertMetaByProperty("og:locale:alternate", "en_CA");
-
-        if (typeof window !== "undefined") {
-            upsertMetaByProperty(
-                "og:url",
-                `${window.location.origin}${window.location.pathname}`
-            );
+        if (questions.length === 0) {
+            return null;
         }
-    }, []);
+
+        return {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: questions,
+        };
+    }, [tree]);
+
+    useSeo({
+        title: "FAQ — Services Cœliaque | Questions fréquentes",
+        description:
+            "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.",
+        canonicalPath: "/faq",
+        lang: "fr-ca",
+        structuredData: faqStructuredData,
+    });
 
     const showSeoFallback = (!tree || tree.length === 0) && !isSyncing;
 

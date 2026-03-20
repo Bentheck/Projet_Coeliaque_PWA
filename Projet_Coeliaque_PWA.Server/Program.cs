@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.FileProviders;
 using System.Globalization;
 using System.Net;
 using System.Threading.RateLimiting;
@@ -272,6 +273,16 @@ namespace Projet_Coeliaque_PWA.Server
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+            var recipeImagesPath = app.Configuration["Recipes:ImagesBasePath"];
+            if (!string.IsNullOrWhiteSpace(recipeImagesPath))
+            {
+                Directory.CreateDirectory(recipeImagesPath);
+                app.UseStaticFiles(new StaticFileOptions
+                {
+                    FileProvider = new PhysicalFileProvider(recipeImagesPath),
+                    RequestPath = "/recipe-images"
+                });
+            }
 
             app.UseRouting();
             app.UseSession();

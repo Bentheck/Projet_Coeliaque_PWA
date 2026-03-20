@@ -1,6 +1,7 @@
 ﻿import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useSeo } from "../../seo/useSeo";
 
 type ApiError = { errorCode?: string; identityErrors?: string[]; message?: string; error?: string };
 
@@ -17,6 +18,14 @@ export default function ResetPassword() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [ok, setOk] = useState(false);
+
+    useSeo({
+        title: `${t("title")} | Services Cœliaque`,
+        description:
+            "Réinitialisez le mot de passe de votre compte Services Cœliaque.",
+        robots: "noindex, follow",
+        canonicalPath: "/reset-password",
+    });
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();

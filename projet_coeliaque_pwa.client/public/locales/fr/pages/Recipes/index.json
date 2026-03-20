@@ -1,0 +1,50 @@
+{
+  "title": "Mes recettes",
+  "subtitle": "Bibliothèque privée de recettes pour votre abonnement.",
+  "loading": "Chargement des recettes...",
+  "actions": {
+    "new": "Nouvelle recette",
+    "search": "Rechercher",
+    "advanced": "Avancé",
+    "view": "Voir",
+    "edit": "Modifier",
+    "favorite": "Favori",
+    "unfavorite": "Retirer des favoris"
+  },
+  "search": {
+    "keywordPlaceholder": "Rechercher titre, description, ingrédient...",
+    "sortRelevance": "Pertinence",
+    "sortNewest": "Plus récentes",
+    "sortTime": "Temps total le plus court"
+  },
+  "filters": {
+    "include": "Inclure les ingrédients",
+    "includePlaceholder": "Tapez un ingrédient puis sélectionnez-le",
+    "exclude": "Exclure les ingrédients",
+    "excludePlaceholder": "Exclure les recettes contenant...",
+    "alias": "alias : {{alias}}",
+    "maxTime": "Temps total max (minutes)",
+    "maxTimePlaceholder": "Exemple : 45",
+    "requireAll": "Exiger tous les ingrédients inclus",
+    "favoritesFirst": "Afficher les favoris d’abord",
+    "tabsAria": "Onglets de recettes",
+    "tabAll": "Toutes les recettes",
+    "tabFavorites": "Favoris"
+  },
+  "results": {
+    "count_one": "{{count}} recette",
+    "count_other": "{{count}} recettes"
+  },
+  "card": {
+    "totalTime": "Total : {{value}}",
+    "servings": "Portions : {{value}}"
+  },
+  "empty": {
+    "title": "Aucune recette trouvée",
+    "subtitle": "Créez votre première recette privée ou ajustez vos filtres."
+  },
+  "errors": {
+    "loadFailed": "Impossible de charger les recettes.",
+    "favoriteFailed": "Impossible de mettre à jour le favori."
+  }
+}

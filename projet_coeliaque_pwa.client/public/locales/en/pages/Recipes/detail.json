@@ -1,0 +1,34 @@
+{
+  "loading": "Loading recipe...",
+  "noDescription": "No description",
+  "actions": {
+    "back": "Back to recipes",
+    "edit": "Edit",
+    "delete": "Delete",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite"
+  },
+  "meta": {
+    "prep": "Prep: {{value}}",
+    "cook": "Cook: {{value}}",
+    "total": "Total: {{value}}",
+    "servings": "Servings: {{value}}"
+  },
+  "sections": {
+    "ingredients": "Ingredients",
+    "instructions": "Instructions",
+    "similar": "Similar recipes"
+  },
+  "similar": {
+    "empty": "No similar recipes yet.",
+    "score": "{{ingredients}} shared ingredients, {{tags}} shared tags"
+  },
+  "confirmDelete": "Delete recipe \"{{title}}\"?",
+  "errors": {
+    "invalidId": "Invalid recipe id.",
+    "notFound": "Recipe not found.",
+    "loadFailed": "Could not load recipe.",
+    "deleteFailed": "Could not delete recipe.",
+    "favoriteFailed": "Could not update favorite status."
+  }
+}

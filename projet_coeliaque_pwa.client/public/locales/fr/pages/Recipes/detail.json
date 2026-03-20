@@ -1,0 +1,34 @@
+{
+  "loading": "Chargement de la recette...",
+  "noDescription": "Aucune description",
+  "actions": {
+    "back": "Retour aux recettes",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "favorite": "Favori",
+    "unfavorite": "Retirer des favoris"
+  },
+  "meta": {
+    "prep": "Préparation : {{value}}",
+    "cook": "Cuisson : {{value}}",
+    "total": "Total : {{value}}",
+    "servings": "Portions : {{value}}"
+  },
+  "sections": {
+    "ingredients": "Ingrédients",
+    "instructions": "Instructions",
+    "similar": "Recettes similaires"
+  },
+  "similar": {
+    "empty": "Aucune recette similaire pour le moment.",
+    "score": "{{ingredients}} ingrédients partagés, {{tags}} tags partagés"
+  },
+  "confirmDelete": "Supprimer la recette \"{{title}}\" ?",
+  "errors": {
+    "invalidId": "Identifiant de recette invalide.",
+    "notFound": "Recette introuvable.",
+    "loadFailed": "Impossible de charger la recette.",
+    "deleteFailed": "Impossible de supprimer la recette.",
+    "favoriteFailed": "Impossible de mettre à jour le favori."
+  }
+}

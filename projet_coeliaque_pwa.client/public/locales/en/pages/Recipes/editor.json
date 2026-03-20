@@ -1,0 +1,65 @@
+{
+  "titleCreate": "Create recipe",
+  "titleEdit": "Edit recipe",
+  "loading": "Loading recipe...",
+  "actions": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "create": "Create recipe",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "remove": "Remove"
+  },
+  "fields": {
+    "title": "Title",
+    "description": "Description",
+    "prepTime": "Prep time (min)",
+    "cookTime": "Cook time (min)",
+    "servings": "Servings",
+    "imageUrl": "Image URL"
+  },
+  "image": {
+    "urlLabel": "Image URL",
+    "urlPlaceholder": "https://example.com/recipe.jpg",
+    "urlHelp": "Paste an image URL or upload a file.",
+    "uploadLabel": "Upload image",
+    "chooseFile": "Choose file",
+    "upload": "Upload",
+    "uploading": "Uploading...",
+    "clear": "Clear image",
+    "uploaded": "Upload complete.",
+    "errors": {
+      "tooLarge": "Image is too large (max {{maxMb}} MB).",
+      "invalidType": "Only JPG, PNG, or WebP images are supported.",
+      "uploadFailed": "Could not upload image."
+    }
+  },
+  "ingredients": {
+    "title": "Ingredients",
+    "searchPlaceholder": "Search ingredients (or type custom)",
+    "addCustom": "Add custom ingredient",
+    "empty": "Add at least one ingredient.",
+    "quantity": "Qty",
+    "unit": "Unit",
+    "note": "Note",
+    "alias": "alias: {{alias}}",
+    "removeAria": "Remove ingredient {{index}}"
+  },
+  "instructions": {
+    "title": "Instructions",
+    "add": "Add step",
+    "placeholder": "Step {{index}}"
+  },
+  "tags": {
+    "title": "Tags",
+    "placeholder": "Add a tag",
+    "add": "Add"
+  },
+  "errors": {
+    "loadFailed": "Could not load the recipe.",
+    "saveFailed": "Could not save the recipe.",
+    "titleRequired": "Title must be at least 3 characters.",
+    "ingredientRequired": "At least one ingredient is required.",
+    "instructionRequired": "At least one instruction step is required."
+  }
+}

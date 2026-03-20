@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { getSiteStatus, type SiteStatusDto } from "../lib/api";
 import { useAuth } from "../components/AuthContext";
 import { useTranslation } from "react-i18next";
+import { useSeo } from "../seo/useSeo";
 
 const SiteClosed: React.FC = () => {
     const { t } = useTranslation("pages/siteClosed");
@@ -66,6 +67,13 @@ const SiteClosed: React.FC = () => {
                 break;
         }
     }
+
+    useSeo({
+        title: `${title} | Services Cœliaque`,
+        description: message,
+        robots: "noindex, follow",
+        canonicalPath: "/site-closed",
+    });
 
     return (
         <div className="site-closed-page d-flex align-items-center justify-content-center min-vh-100">

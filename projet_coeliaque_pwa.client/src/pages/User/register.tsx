@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import HelpBubble from "../../components/HelpBubble";
 import FieldErrorBubble from "../../components/FieldErrorBubble";
 import { getRegisterConfig } from "../../lib/api";
+import { useSeo } from "../../seo/useSeo";
 
 type ApiRegisterError = {
     errorCode?: string;
@@ -66,6 +67,13 @@ export default function Register() {
     const DISCLAIMER_VERSION = (tDisc("currentVersion") as string) || "v1";
     const PRIVACY_VERSION = (tPrivacy("currentVersion") as string) || "v1";
     const TOS_VERSION = (tTos("currentVersion") as string) || "v1";
+
+    useSeo({
+        title: `${t("title")} | Services Cœliaque`,
+        description: "Créez votre compte Services Cœliaque.",
+        robots: "noindex, follow",
+        canonicalPath: "/register",
+    });
 
     const disclaimerBaseKey = `${DISCLAIMER_VERSION}`;
     const privacyBaseKey = `${PRIVACY_VERSION}`;

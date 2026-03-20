@@ -1,6 +1,7 @@
 ﻿import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useSeo } from "../../seo/useSeo";
 
 type FullSection = {
     title: string;
@@ -17,6 +18,14 @@ export default function TermsOfServicePage() {
 
     const title = tFull(`${version}.title`) as string;
     const subtitle = tFull(`${version}.subtitle`, { defaultValue: "" }) as string;
+
+    useSeo({
+        title: "Conditions d'utilisation — Services Cœliaque",
+        description:
+            "Consultez les conditions d'utilisation de Services Cœliaque.",
+        canonicalPath: "/terms",
+        lang: "fr-ca",
+    });
 
     const sections = useMemo(() => {
         const v = tFull(`${version}.sections`, { returnObjects: true }) as unknown;

@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useSeo } from "../../seo/useSeo";
 
 type FullSection = {
     title: string;
@@ -24,6 +25,14 @@ export default function PrivacyPage() {
     }) as string;
 
     const subtitle = tLegal(`${version}.subtitle`, { defaultValue: "" }) as string;
+
+    useSeo({
+        title: "Politique de confidentialité — Services Cœliaque",
+        description:
+            "Consultez la politique de confidentialité de Services Cœliaque.",
+        canonicalPath: "/privacy",
+        lang: "fr-ca",
+    });
 
     const sections = useMemo(() => {
         const v = tLegal(`${version}.sections`, { returnObjects: true }) as unknown;
