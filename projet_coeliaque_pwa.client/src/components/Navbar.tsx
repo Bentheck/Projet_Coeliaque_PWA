@@ -128,6 +128,8 @@ export default function Navbar() {
         status?.modules?.Rapports?.canAccessCurrentUser ?? true;
     const canListeEpicerie =
         status?.modules?.ListeEpicerie?.canAccessCurrentUser ?? true;
+    const canRecipes =
+        status?.modules?.Recipes?.canAccessCurrentUser ?? true;
 
     const isLoggedIn = !!user;
 
@@ -272,6 +274,39 @@ export default function Navbar() {
                                                 to="/liste-epicerie/edit"
                                             >
                                                 {t("menu.grocery.newList")}
+                                            </Link>
+                                        </li>
+                                    </ul>
+                                </li>
+                            )}
+
+                            {canRecipes && (
+                                <li className="nav-item dropdown">
+                                    <a
+                                        className="nav-link dropdown-toggle"
+                                        href="#"
+                                        id="recipesDropdown"
+                                        role="button"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                    >
+                                        <i className="bi bi-journal-richtext me-1"></i>{" "}
+                                        {t("menu.recipes._")}
+                                    </a>
+                                    <ul
+                                        className="dropdown-menu"
+                                        aria-labelledby="recipesDropdown"
+                                    >
+                                        <li>
+                                            <Link className="dropdown-item" to="/recipes">
+                                                <i className="bi bi-search me-2"></i>
+                                                {t("menu.recipes.search")}
+                                            </Link>
+                                        </li>
+                                        <li>
+                                            <Link className="dropdown-item" to="/recipes/new">
+                                                <i className="bi bi-plus-circle me-2"></i>
+                                                {t("menu.recipes.new")}
                                             </Link>
                                         </li>
                                     </ul>

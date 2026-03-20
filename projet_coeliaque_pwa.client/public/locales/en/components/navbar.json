@@ -22,6 +22,11 @@
       "openIndex": "Open Index",
       "newList": "New List"
     },
+    "recipes": {
+      "_": "Recipes",
+      "search": "My recipes",
+      "new": "New recipe"
+    },
     "forum": {
       "_": "Forum",
       "categories": "Categories",

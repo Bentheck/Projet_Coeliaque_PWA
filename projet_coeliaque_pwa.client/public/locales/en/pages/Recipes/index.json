@@ -1,0 +1,50 @@
+{
+  "title": "My recipes",
+  "subtitle": "Private recipe library for your subscriber account.",
+  "loading": "Loading recipes...",
+  "actions": {
+    "new": "New recipe",
+    "search": "Search",
+    "advanced": "Advanced",
+    "view": "View",
+    "edit": "Edit",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite"
+  },
+  "search": {
+    "keywordPlaceholder": "Search title, description, ingredient...",
+    "sortRelevance": "Relevance",
+    "sortNewest": "Newest",
+    "sortTime": "Fastest total time"
+  },
+  "filters": {
+    "include": "Include ingredients",
+    "includePlaceholder": "Type an ingredient and select it",
+    "exclude": "Exclude ingredients",
+    "excludePlaceholder": "Exclude recipes containing...",
+    "alias": "alias: {{alias}}",
+    "maxTime": "Max total time (minutes)",
+    "maxTimePlaceholder": "Example: 45",
+    "requireAll": "Require all included ingredients",
+    "favoritesFirst": "Show favorites first",
+    "tabsAria": "Recipe tabs",
+    "tabAll": "All recipes",
+    "tabFavorites": "Favorites"
+  },
+  "results": {
+    "count_one": "{{count}} recipe",
+    "count_other": "{{count}} recipes"
+  },
+  "card": {
+    "totalTime": "Total: {{value}}",
+    "servings": "Servings: {{value}}"
+  },
+  "empty": {
+    "title": "No recipes found",
+    "subtitle": "Create your first private recipe or adjust your filters."
+  },
+  "errors": {
+    "loadFailed": "Could not load recipes.",
+    "favoriteFailed": "Could not update favorite status."
+  }
+}

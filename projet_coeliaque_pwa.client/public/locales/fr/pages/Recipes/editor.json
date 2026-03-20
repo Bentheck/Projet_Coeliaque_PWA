@@ -1,0 +1,65 @@
+{
+  "titleCreate": "Créer une recette",
+  "titleEdit": "Modifier la recette",
+  "loading": "Chargement de la recette...",
+  "actions": {
+    "back": "Retour",
+    "cancel": "Annuler",
+    "create": "Créer la recette",
+    "save": "Enregistrer",
+    "saving": "Enregistrement...",
+    "remove": "Retirer"
+  },
+  "fields": {
+    "title": "Titre",
+    "description": "Description",
+    "prepTime": "Temps de préparation (min)",
+    "cookTime": "Temps de cuisson (min)",
+    "servings": "Portions",
+    "imageUrl": "URL de l’image"
+  },
+  "image": {
+    "urlLabel": "URL de l'image",
+    "urlPlaceholder": "https://exemple.com/recette.jpg",
+    "urlHelp": "Collez une URL ou televersez un fichier.",
+    "uploadLabel": "Televerser une image",
+    "chooseFile": "Choisir un fichier",
+    "upload": "Televerser",
+    "uploading": "Televersement...",
+    "clear": "Retirer l'image",
+    "uploaded": "Image televersee.",
+    "errors": {
+      "tooLarge": "Image trop volumineuse (max {{maxMb}} MB).",
+      "invalidType": "Seuls les formats JPG, PNG ou WebP sont acceptes.",
+      "uploadFailed": "Impossible de televerser l'image."
+    }
+  },
+  "ingredients": {
+    "title": "Ingrédients",
+    "searchPlaceholder": "Rechercher un ingrédient (ou en créer un)",
+    "addCustom": "Ajouter ingrédient personnalisé",
+    "empty": "Ajoutez au moins un ingrédient.",
+    "quantity": "Qté",
+    "unit": "Unité",
+    "note": "Note",
+    "alias": "alias : {{alias}}",
+    "removeAria": "Retirer l’ingrédient {{index}}"
+  },
+  "instructions": {
+    "title": "Instructions",
+    "add": "Ajouter une étape",
+    "placeholder": "Étape {{index}}"
+  },
+  "tags": {
+    "title": "Tags",
+    "placeholder": "Ajouter un tag",
+    "add": "Ajouter"
+  },
+  "errors": {
+    "loadFailed": "Impossible de charger la recette.",
+    "saveFailed": "Impossible d’enregistrer la recette.",
+    "titleRequired": "Le titre doit contenir au moins 3 caractères.",
+    "ingredientRequired": "Au moins un ingrédient est requis.",
+    "instructionRequired": "Au moins une étape est requise."
+  }
+}

@@ -43,6 +43,16 @@ namespace Projet_Coeliaque_PWA.Server.Data
         // OLD MODEL REMOVED:
         // public DbSet<ReceiptScanReport> ReceiptScanReports { get; set; } = null!;
 
+        // Recipes (private, subscriber-only)
+        public DbSet<Recipe> Recipes => Set<Recipe>();
+        public DbSet<Ingredient> Ingredients => Set<Ingredient>();
+        public DbSet<IngredientAlias> IngredientAliases => Set<IngredientAlias>();
+        public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
+        public DbSet<Tag> Tags => Set<Tag>();
+        public DbSet<RecipeTag> RecipeTags => Set<RecipeTag>();
+        public DbSet<RecipeFavorite> RecipeFavorites => Set<RecipeFavorite>();
+        public DbSet<RecipeCreateLog> RecipeCreateLogs => Set<RecipeCreateLog>();
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
 
@@ -263,6 +273,114 @@ namespace Projet_Coeliaque_PWA.Server.Data
 
                 b.Property(x => x.IsReportResolved)
                     .HasDefaultValue(false);
+            });
+
+            // ---------- Recipes ----------
+            modelBuilder.Entity<Recipe>(b =>
+            {
+                b.Property(x => x.OwnerUserId).IsRequired();
+                b.Property(x => x.Title).IsRequired().HasMaxLength(200);
+                b.Property(x => x.Slug).IsRequired().HasMaxLength(220);
+                b.Property(x => x.Description).HasMaxLength(4000);
+                b.Property(x => x.InstructionsJson).IsRequired().HasColumnType("jsonb");
+                b.Property(x => x.ImageUrl).HasMaxLength(2048);
+
+                b.HasIndex(x => new { x.OwnerUserId, x.Slug }).IsUnique();
+                b.HasIndex(x => new { x.OwnerUserId, x.UpdatedAt })
+                    .IsDescending(false, true);
+
+                b.HasOne(x => x.OwnerUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.OwnerUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Ingredient>(b =>
+            {
+                b.Property(x => x.Name).IsRequired().HasMaxLength(128);
+                b.Property(x => x.NormalizedName).IsRequired().HasMaxLength(128);
+
+                b.HasIndex(x => x.Name);
+                b.HasIndex(x => x.NormalizedName).IsUnique();
+            });
+
+            modelBuilder.Entity<IngredientAlias>(b =>
+            {
+                b.Property(x => x.Alias).IsRequired().HasMaxLength(128);
+                b.Property(x => x.NormalizedAlias).IsRequired().HasMaxLength(128);
+
+                b.HasIndex(x => x.Alias);
+                b.HasIndex(x => x.NormalizedAlias).IsUnique();
+
+                b.HasOne(x => x.Ingredient)
+                    .WithMany(x => x.Aliases)
+                    .HasForeignKey(x => x.IngredientId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<RecipeIngredient>(b =>
+            {
+                b.HasKey(x => new { x.RecipeId, x.IngredientId });
+
+                b.Property(x => x.Quantity).HasPrecision(10, 2);
+                b.Property(x => x.Unit).HasMaxLength(32);
+                b.Property(x => x.Note).HasMaxLength(256);
+
+                b.HasIndex(x => new { x.IngredientId, x.RecipeId });
+                b.HasIndex(x => new { x.RecipeId, x.SortOrder });
+
+                b.HasOne(x => x.Recipe)
+                    .WithMany(x => x.Ingredients)
+                    .HasForeignKey(x => x.RecipeId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(x => x.Ingredient)
+                    .WithMany(x => x.Recipes)
+                    .HasForeignKey(x => x.IngredientId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Tag>(b =>
+            {
+                b.Property(x => x.Name).IsRequired().HasMaxLength(64);
+                b.Property(x => x.NormalizedName).IsRequired().HasMaxLength(64);
+                b.Property(x => x.Type).HasMaxLength(32);
+
+                b.HasIndex(x => x.NormalizedName).IsUnique();
+            });
+
+            modelBuilder.Entity<RecipeTag>(b =>
+            {
+                b.HasKey(x => new { x.RecipeId, x.TagId });
+
+                b.HasOne(x => x.Recipe)
+                    .WithMany(x => x.Tags)
+                    .HasForeignKey(x => x.RecipeId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(x => x.Tag)
+                    .WithMany(x => x.Recipes)
+                    .HasForeignKey(x => x.TagId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<RecipeFavorite>(b =>
+            {
+                b.HasKey(x => new { x.UserId, x.RecipeId });
+
+                b.HasIndex(x => x.RecipeId);
+
+                b.HasOne(x => x.Recipe)
+                    .WithMany(x => x.Favorites)
+                    .HasForeignKey(x => x.RecipeId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<RecipeCreateLog>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.Property(x => x.UserId).IsRequired();
+                b.HasIndex(x => new { x.UserId, x.CreatedAt });
             });
         }
     }

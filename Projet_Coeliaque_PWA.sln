@@ -7,6 +7,8 @@ Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "projet_coeliaque_pwa.client
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Projet_Coeliaque_PWA.Server", "Projet_Coeliaque_PWA.Server\Projet_Coeliaque_PWA.Server.csproj", "{EBD6CB98-F8CB-4E91-BE46-01514DDD0F43}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Projet_Coeliaque_PWA.Server.Tests", "Projet_Coeliaque_PWA.Server.Tests\Projet_Coeliaque_PWA.Server.Tests.csproj", "{43C4A022-DA2D-4D44-B4B2-2DF8F8F50A59}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
@@ -28,6 +30,10 @@ Global
 		{EBD6CB98-F8CB-4E91-BE46-01514DDD0F43}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EBD6CB98-F8CB-4E91-BE46-01514DDD0F43}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EBD6CB98-F8CB-4E91-BE46-01514DDD0F43}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43C4A022-DA2D-4D44-B4B2-2DF8F8F50A59}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43C4A022-DA2D-4D44-B4B2-2DF8F8F50A59}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43C4A022-DA2D-4D44-B4B2-2DF8F8F50A59}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43C4A022-DA2D-4D44-B4B2-2DF8F8F50A59}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

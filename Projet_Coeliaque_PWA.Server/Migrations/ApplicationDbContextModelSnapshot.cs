@@ -901,6 +901,70 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.ToTable("ForumThreadVotes");
                 });
 
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Ingredient", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("Ingredients");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.IngredientAlias", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Alias")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("IngredientId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NormalizedAlias")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Alias");
+
+                    b.HasIndex("IngredientId");
+
+                    b.HasIndex("NormalizedAlias")
+                        .IsUnique();
+
+                    b.ToTable("IngredientAliases");
+                });
+
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ProductComparison", b =>
                 {
                     b.Property<int>("Id")
@@ -941,6 +1005,156 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.ToTable("ProductComparisons");
                 });
 
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Recipe", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CookTimeMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("InstructionsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("PrepTimeMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Servings")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(220)
+                        .HasColumnType("character varying(220)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("TotalTimeMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "Slug")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId", "UpdatedAt")
+                        .IsDescending(false, true);
+
+                    b.ToTable("Recipes");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.RecipeCreateLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("RecipeCreateLogs");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.RecipeFavorite", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("RecipeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "RecipeId");
+
+                    b.HasIndex("RecipeId");
+
+                    b.ToTable("RecipeFavorites");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.RecipeIngredient", b =>
+                {
+                    b.Property<int>("RecipeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IngredientId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<decimal?>("Quantity")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("RecipeId", "IngredientId");
+
+                    b.HasIndex("IngredientId", "RecipeId");
+
+                    b.HasIndex("RecipeId", "SortOrder");
+
+                    b.ToTable("RecipeIngredients");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.RecipeTag", b =>
+                {
+                    b.Property<int>("RecipeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("RecipeId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("RecipeTags");
+                });
+
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.SavedReport", b =>
                 {
                     b.Property<int>("Id")
@@ -972,6 +1186,39 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SavedReports");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Tag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("Tags");
                 });
 
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.TesterInvite", b =>
@@ -1417,6 +1664,17 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.IngredientAlias", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.Ingredient", "Ingredient")
+                        .WithMany("Aliases")
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Ingredient");
+                });
+
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.ProductComparison", b =>
                 {
                     b.HasOne("Projet_Coeliaque_PWA.Server.Models.ComparatifYear", "ComparatifYear")
@@ -1426,6 +1684,66 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                         .IsRequired();
 
                     b.Navigation("ComparatifYear");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Recipe", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OwnerUser");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.RecipeFavorite", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.Recipe", "Recipe")
+                        .WithMany("Favorites")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.RecipeIngredient", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.Ingredient", "Ingredient")
+                        .WithMany("Recipes")
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.Recipe", "Recipe")
+                        .WithMany("Ingredients")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Ingredient");
+
+                    b.Navigation("Recipe");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.RecipeTag", b =>
+                {
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.Recipe", "Recipe")
+                        .WithMany("Tags")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Projet_Coeliaque_PWA.Server.Models.Tag", "Tag")
+                        .WithMany("Recipes")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
+
+                    b.Navigation("Tag");
                 });
 
             modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.UserProfile", b =>
@@ -1478,6 +1796,27 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Navigation("Posts");
 
                     b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Ingredient", b =>
+                {
+                    b.Navigation("Aliases");
+
+                    b.Navigation("Recipes");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Recipe", b =>
+                {
+                    b.Navigation("Favorites");
+
+                    b.Navigation("Ingredients");
+
+                    b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("Projet_Coeliaque_PWA.Server.Models.Tag", b =>
+                {
+                    b.Navigation("Recipes");
                 });
 #pragma warning restore 612, 618
         }

@@ -19,6 +19,9 @@ import RapportsDisplay from "./pages/Comparatif/RapportsDisplay";
 import ListeEpicerieIndex from "./pages/ListeEpicerie/ListesEpicerieIndex";
 import ListeEpicerieEdit from "./pages/ListeEpicerie/ListeEpicerieEdit";
 import ListeEpicerieView from "./pages/ListeEpicerie/ListeEpicerieView";
+import RecipesIndex from "./pages/Recipes/RecipesIndex";
+import RecipeEditor from "./pages/Recipes/RecipeEditor";
+import RecipeDetail from "./pages/Recipes/RecipeDetail";
 
 // Forum
 import ForumCategories from "./pages/Forum/ForumCategories";
@@ -231,6 +234,47 @@ export default function App() {
                                 <AuthGuard>
                                     <MembershipGuard>
                                         <ListeEpicerieView />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+
+                        <Route
+                            path="/recipes"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <RecipesIndex />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/recipes/new"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <RecipeEditor />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/recipes/:id/edit"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <RecipeEditor />
+                                    </MembershipGuard>
+                                </AuthGuard>
+                            }
+                        />
+                        <Route
+                            path="/recipes/:id"
+                            element={
+                                <AuthGuard>
+                                    <MembershipGuard>
+                                        <RecipeDetail />
                                     </MembershipGuard>
                                 </AuthGuard>
                             }
