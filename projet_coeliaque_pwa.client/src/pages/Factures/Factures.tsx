@@ -22,6 +22,10 @@ import {
     removeFacture,
     type Facture as IFacture,
 } from "../../offline/db";
+import {
+    getUploadErrorMessage,
+    prepareReceiptUploadFile,
+} from "../../utils/receiptUpload";
 import "../../styles/factures-index.css";
 
 const LIST_KEY = "factures/all";
@@ -371,8 +375,9 @@ const Factures: React.FC = () => {
         setError(null);
 
         try {
+            const uploadFile = await prepareReceiptUploadFile(f);
             const form = new FormData();
-            form.append("file", f);
+            form.append("file", uploadFile);
 
             const res = await fetch("/api/factures/scan-parse-receipt", {
                 method: "POST",
@@ -380,7 +385,14 @@ const Factures: React.FC = () => {
                 body: form,
             });
 
-            if (!res.ok) throw new Error(await res.text());
+            if (!res.ok) {
+                throw new Error(
+                    await getUploadErrorMessage(
+                        res,
+                        ts("errors.receiptTooLarge")
+                    )
+                );
+            }
             const parsed = (await res.json()) as ScanParseResponse;
 
             const draft: Omit<Facture, "id"> = {
@@ -392,7 +404,7 @@ const Factures: React.FC = () => {
 
             const mapped = mapImportDtosToDetailsItems(parsed.items ?? []);
 
-            setScanFile(f);
+            setScanFile(uploadFile);
             setScanDraft(draft);
             setPendingImportedItems(mapped);
             setScanConfirmOpen(true);

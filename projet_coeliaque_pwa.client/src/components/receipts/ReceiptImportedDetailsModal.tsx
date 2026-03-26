@@ -4,6 +4,7 @@ import { Modal, Button, Form, Table } from "react-bootstrap";
 import CreatableSelect from "react-select/creatable";
 import type { SingleValue } from "react-select";
 import { useTranslation } from "react-i18next";
+import LocalizedNumberInput from "../forms/LocalizedNumberInput";
 
 export interface ReceiptImportedDetailsItem {
     id?: number;
@@ -45,7 +46,13 @@ export default function ReceiptImportedDetailsModal({
     onCancel,
     onConfirm,
 }: ReceiptImportedDetailsModalProps) {
-    const { t } = useTranslation("components/ReceiptImportedDetailsModal");
+    const { t, i18n } = useTranslation("components/ReceiptImportedDetailsModal");
+    const decimalSeparator =
+        (i18n.resolvedLanguage || i18n.language || "en")
+            .toLowerCase()
+            .startsWith("fr")
+            ? ","
+            : ".";
 
     const [localItems, setLocalItems] = useState<LocalRow[]>(
         (items ?? []).map((it) => ({ ...it, _selected: true }))
@@ -271,18 +278,16 @@ export default function ReceiptImportedDetailsModal({
 
                                             {/* Quantité */}
                                             <td>
-                                                <Form.Control
-                                                    type="number"
-                                                    min={0}
-                                                    step={1}
+                                                <LocalizedNumberInput
+                                                    className="form-control"
+                                                    allowDecimal={false}
+                                                    decimalSeparator={decimalSeparator}
                                                     value={row.quantite}
-                                                    onChange={(e) =>
+                                                    onValueChange={(value) =>
                                                         handleItemFieldChange(
                                                             index,
                                                             "quantite",
-                                                            Number(
-                                                                e.target.value
-                                                            ) || 0
+                                                            value
                                                         )
                                                     }
                                                 />
@@ -290,18 +295,15 @@ export default function ReceiptImportedDetailsModal({
 
                                             {/* Prix */}
                                             <td>
-                                                <Form.Control
-                                                    type="number"
-                                                    step="0.01"
-                                                    min={0}
+                                                <LocalizedNumberInput
+                                                    className="form-control"
+                                                    decimalSeparator={decimalSeparator}
                                                     value={row.prix}
-                                                    onChange={(e) =>
+                                                    onValueChange={(value) =>
                                                         handleItemFieldChange(
                                                             index,
                                                             "prix",
-                                                            Number(
-                                                                e.target.value
-                                                            ) || 0
+                                                            value
                                                         )
                                                     }
                                                 />
@@ -309,18 +311,15 @@ export default function ReceiptImportedDetailsModal({
 
                                             {/* Poids */}
                                             <td>
-                                                <Form.Control
-                                                    type="number"
-                                                    step="0.01"
-                                                    min={0}
+                                                <LocalizedNumberInput
+                                                    className="form-control"
+                                                    decimalSeparator={decimalSeparator}
                                                     value={row.poidsValeur}
-                                                    onChange={(e) =>
+                                                    onValueChange={(value) =>
                                                         handleItemFieldChange(
                                                             index,
                                                             "poidsValeur",
-                                                            Number(
-                                                                e.target.value
-                                                            ) || 0
+                                                            value
                                                         )
                                                     }
                                                     isInvalid={

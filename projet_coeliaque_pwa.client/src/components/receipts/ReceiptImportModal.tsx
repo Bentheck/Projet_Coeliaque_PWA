@@ -2,6 +2,10 @@
 import { useState, useCallback } from "react";
 import { Modal, Button, Form, Alert, Spinner, Table } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
+import {
+    getUploadErrorMessage,
+    prepareReceiptUploadFile,
+} from "../../utils/receiptUpload";
 
 export interface ReceiptImportItem {
     id?: number;
@@ -93,8 +97,9 @@ export default function ReceiptImportModal({
         setError(null);
 
         try {
+            const uploadFile = await prepareReceiptUploadFile(file);
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", uploadFile);
             formData.append("factureId", String(factureId));
             formData.append("year", String(year));
             formData.append("storeName", storeName ?? "");
@@ -106,8 +111,12 @@ export default function ReceiptImportModal({
             });
 
             if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `HTTP ${res.status}`);
+                throw new Error(
+                    await getUploadErrorMessage(
+                        res,
+                        t("errors.receiptTooLarge")
+                    )
+                );
             }
 
             const json = (await res.json()) as ReceiptScanResponse;

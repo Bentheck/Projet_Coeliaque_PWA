@@ -50,7 +50,8 @@
     "unexpectedMissingId": "Unexpected response: missing id.",
     "saveFailed": "Error while saving.",
     "deleteFailed": "Error while deleting.",
-    "invalidDate": "Invalid date. Expected format: YYYY-MM-DD."
+    "invalidDate": "Invalid date. Expected format: YYYY-MM-DD.",
+    "receiptTooLarge": "The receipt photo is too large. Try a smaller or tighter photo, then try again."
   },
   "demo": {
     "return": "Return to demo mode",

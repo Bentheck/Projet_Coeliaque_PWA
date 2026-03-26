@@ -15,6 +15,7 @@ import ReceiptImportedDetailsModal, {
     mapImportDtosToDetailsItems,
 } from "../../components/receipts/ReceiptImportedDetailsModal";
 import ReceiptViewerModal from "../../components/receipts/ReceiptViewerModal";
+import LocalizedNumberInput from "../../components/forms/LocalizedNumberInput";
 
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/themes/material_blue.css";
@@ -114,6 +115,7 @@ export default function FactureEdit() {
 
     const lang = (i18n.resolvedLanguage || i18n.language || "en").toLowerCase().split("-")[0];
     const isFrench = lang === "fr";
+    const decimalSeparator = isFrench ? "," : ".";
 
     const fpRef = useRef<any>(null);
     const cachedFacture = useLiveQuery(() => getFacture(factureId), [factureId]);
@@ -288,12 +290,7 @@ export default function FactureEdit() {
         const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
         setModalForm((prev) => ({
             ...prev,
-            [name]:
-                type === "checkbox"
-                    ? !!checked
-                    : name === "quantite" || name === "prix" || name === "poidsValeur"
-                        ? Number(value)
-                        : value,
+            [name]: type === "checkbox" ? !!checked : value,
         }));
     }
 
@@ -744,29 +741,27 @@ export default function FactureEdit() {
                                                 </td>
 
                                                 <td>
-                                                    <input
+                                                    <LocalizedNumberInput
                                                         className="form-control rounded-2"
-                                                        type="number"
-                                                        step="0.01"
+                                                        decimalSeparator={decimalSeparator}
                                                         value={item.prix}
-                                                        onChange={(e) =>
-                                                            handleItemChange(i, "prix", +e.target.value)
+                                                        onValueChange={(value) =>
+                                                            handleItemChange(i, "prix", value)
                                                         }
                                                         placeholder={t("placeholders.prix")}
                                                     />
                                                 </td>
 
                                                 <td>
-                                                    <input
+                                                    <LocalizedNumberInput
                                                         className="form-control rounded-2"
-                                                        type="number"
-                                                        step="0.01"
+                                                        decimalSeparator={decimalSeparator}
                                                         value={item.poidsValeur}
-                                                        onChange={(e) =>
+                                                        onValueChange={(value) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "poidsValeur",
-                                                                +e.target.value
+                                                                value
                                                             )
                                                         }
                                                         placeholder={t("placeholders.poids")}
@@ -797,15 +792,16 @@ export default function FactureEdit() {
                                                 </td>
 
                                                 <td>
-                                                    <input
+                                                    <LocalizedNumberInput
                                                         className="form-control rounded-2"
-                                                        type="number"
+                                                        allowDecimal={false}
+                                                        decimalSeparator={decimalSeparator}
                                                         value={item.quantite}
-                                                        onChange={(e) =>
+                                                        onValueChange={(value) =>
                                                             handleItemChange(
                                                                 i,
                                                                 "quantite",
-                                                                +e.target.value
+                                                                value
                                                             )
                                                         }
                                                         placeholder={t(
@@ -924,16 +920,15 @@ export default function FactureEdit() {
                                                         <label className="form-label small mb-0">
                                                             {t("table.prix")}
                                                         </label>
-                                                        <input
+                                                        <LocalizedNumberInput
                                                             className="form-control form-control-sm rounded-2"
-                                                            type="number"
-                                                            step="0.01"
+                                                            decimalSeparator={decimalSeparator}
                                                             value={item.prix}
-                                                            onChange={(e) =>
+                                                            onValueChange={(value) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "prix",
-                                                                    +e.target.value
+                                                                    value
                                                                 )
                                                             }
                                                             placeholder={t(
@@ -946,16 +941,15 @@ export default function FactureEdit() {
                                                         <label className="form-label small mb-0">
                                                             {t("table.poids")}
                                                         </label>
-                                                        <input
+                                                        <LocalizedNumberInput
                                                             className="form-control form-control-sm rounded-2"
-                                                            type="number"
-                                                            step="0.01"
+                                                            decimalSeparator={decimalSeparator}
                                                             value={item.poidsValeur}
-                                                            onChange={(e) =>
+                                                            onValueChange={(value) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "poidsValeur",
-                                                                    +e.target.value
+                                                                    value
                                                                 )
                                                             }
                                                             placeholder={t(
@@ -996,15 +990,16 @@ export default function FactureEdit() {
                                                         <label className="form-label small mb-0">
                                                             {t("table.quantite")}
                                                         </label>
-                                                        <input
+                                                        <LocalizedNumberInput
                                                             className="form-control form-control-sm rounded-2"
-                                                            type="number"
+                                                            allowDecimal={false}
+                                                            decimalSeparator={decimalSeparator}
                                                             value={item.quantite}
-                                                            onChange={(e) =>
+                                                            onValueChange={(value) =>
                                                                 handleItemChange(
                                                                     i,
                                                                     "quantite",
-                                                                    +e.target.value
+                                                                    value
                                                                 )
                                                             }
                                                             placeholder={t(
@@ -1147,12 +1142,18 @@ export default function FactureEdit() {
                                         <Form.Label className="fw-bold">
                                             {t("modal.step2.quantity")}
                                         </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            name="quantite"
+                                        <LocalizedNumberInput
+                                            className="form-control"
                                             required
+                                            allowDecimal={false}
+                                            decimalSeparator={decimalSeparator}
                                             value={modalForm.quantite}
-                                            onChange={handleModalChange}
+                                            onValueChange={(value) =>
+                                                setModalForm((prev) => ({
+                                                    ...prev,
+                                                    quantite: value,
+                                                }))
+                                            }
                                         />
                                     </Col>
 
@@ -1160,13 +1161,17 @@ export default function FactureEdit() {
                                         <Form.Label className="fw-bold">
                                             {t("modal.step2.unitPrice")}
                                         </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            name="prix"
+                                        <LocalizedNumberInput
+                                            className="form-control"
                                             required
+                                            decimalSeparator={decimalSeparator}
                                             value={modalForm.prix}
-                                            onChange={handleModalChange}
+                                            onValueChange={(value) =>
+                                                setModalForm((prev) => ({
+                                                    ...prev,
+                                                    prix: value,
+                                                }))
+                                            }
                                         />
                                     </Col>
                                 </Row>
@@ -1176,13 +1181,17 @@ export default function FactureEdit() {
                                         <Form.Label className="fw-bold">
                                             {t("modal.step2.weight")}
                                         </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            name="poidsValeur"
+                                        <LocalizedNumberInput
+                                            className="form-control"
                                             required
+                                            decimalSeparator={decimalSeparator}
                                             value={modalForm.poidsValeur}
-                                            onChange={handleModalChange}
+                                            onValueChange={(value) =>
+                                                setModalForm((prev) => ({
+                                                    ...prev,
+                                                    poidsValeur: value,
+                                                }))
+                                            }
                                         />
                                     </Col>
 

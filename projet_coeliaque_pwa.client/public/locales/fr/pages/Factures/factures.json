@@ -50,7 +50,8 @@
     "unexpectedMissingId": "Réponse inattendue : id manquant.",
     "saveFailed": "Erreur lors de l’enregistrement.",
     "deleteFailed": "Erreur lors de la suppression.",
-    "invalidDate": "Date invalide. Format attendu : AAAA-MM-JJ."
+    "invalidDate": "Date invalide. Format attendu : AAAA-MM-JJ.",
+    "receiptTooLarge": "La photo du reçu est trop volumineuse. Prenez une photo plus légère ou plus rapprochée, puis réessayez."
   },
   "demo": {
     "return": "Retour au mode démo",

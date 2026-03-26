@@ -27,6 +27,7 @@
     "hint": "Choose a file, then click “Analyze receipt” to extract the items."
   },
   "errors": {
-    "generic": "Something went wrong."
+    "generic": "Something went wrong.",
+    "receiptTooLarge": "The receipt photo is too large. Try a smaller or tighter photo, then try again."
   }
 }

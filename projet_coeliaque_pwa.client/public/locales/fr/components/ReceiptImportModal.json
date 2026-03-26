@@ -27,6 +27,7 @@
     "hint": "Choisissez un fichier, puis cliquez sur « Analyser le reçu » pour extraire les articles."
   },
   "errors": {
-    "generic": "Une erreur est survenue."
+    "generic": "Une erreur est survenue.",
+    "receiptTooLarge": "La photo du reçu est trop volumineuse. Prenez une photo plus légère ou plus rapprochée, puis réessayez."
   }
 }
