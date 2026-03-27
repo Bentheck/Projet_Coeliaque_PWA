@@ -1,6 +1,6 @@
 {
-  "title": "My recipes",
-  "subtitle": "Private recipe library for your subscriber account.",
+  "title": "Recipe book",
+  "subtitle": "Shared community recipes, plus any private recipes you keep for yourself.",
   "loading": "Loading recipes...",
   "actions": {
     "new": "New recipe",
@@ -36,12 +36,15 @@
     "count_other": "{{count}} recipes"
   },
   "card": {
+    "shared": "Shared",
+    "private": "Private",
+    "yours": "Your recipe",
     "totalTime": "Total: {{value}}",
     "servings": "Servings: {{value}}"
   },
   "empty": {
     "title": "No recipes found",
-    "subtitle": "Create your first private recipe or adjust your filters."
+    "subtitle": "Create a recipe, or adjust your filters to explore the communal recipe book."
   },
   "errors": {
     "loadFailed": "Could not load recipes.",

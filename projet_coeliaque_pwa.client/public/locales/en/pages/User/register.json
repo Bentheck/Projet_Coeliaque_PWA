@@ -65,6 +65,16 @@
   },
   "legal": {
     "accept": "Accept",
-    "decline": "Decline"
+    "decline": "Decline",
+    "reviewTitle": "Before creating your account",
+    "intro": "Review each legal document below. Scroll to the end of each section to enable its checkbox, then confirm all three to finish creating your account.",
+    "reviewHint": "All three boxes must be checked to continue.",
+    "finish": "Finish registration",
+    "finishSubmitting": "Finishing registration...",
+    "sections": {
+      "disclaimer": "I understand and accept the disclaimer.",
+      "privacy": "I have read and accept the Privacy Policy.",
+      "tos": "I have read and accept the Terms of Service."
+    }
   }
 }

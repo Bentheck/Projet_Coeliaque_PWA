@@ -130,18 +130,33 @@ const RecipeDetail: React.FC = () => {
                 <div>
                     <h1 className="h3 mb-1">{recipe.title}</h1>
                     <div className="text-muted small">{recipe.description || t("noDescription")}</div>
+                    <div className="d-flex flex-wrap gap-2 mt-2">
+                        <span className={`badge ${recipe.isPrivate ? "text-bg-warning" : "text-bg-success"}`}>
+                            {recipe.isPrivate ? t("visibility.private") : t("visibility.shared")}
+                        </span>
+                        {recipe.isOwner ? (
+                            <span className="badge text-bg-light">{t("visibility.yours")}</span>
+                        ) : null}
+                    </div>
+                    <div className="text-muted small mt-2">
+                        {recipe.isPrivate ? t("visibility.privateHelp") : t("visibility.sharedHelp")}
+                    </div>
                 </div>
                 <div className="d-flex gap-2">
                     <button type="button" className="btn btn-outline-secondary" onClick={toggleFavorite}>
                         <i className={`bi ${recipe.isFavorite ? "bi-star-fill text-warning" : "bi-star"} me-1`} />
                         {recipe.isFavorite ? t("actions.unfavorite") : t("actions.favorite")}
                     </button>
-                    <Link to={`/recipes/${recipe.id}/edit`} className="btn btn-primary">
-                        {t("actions.edit")}
-                    </Link>
-                    <button type="button" className="btn btn-outline-danger" onClick={removeRecipe}>
-                        {t("actions.delete")}
-                    </button>
+                    {recipe.isOwner ? (
+                        <Link to={`/recipes/${recipe.id}/edit`} className="btn btn-primary">
+                            {t("actions.edit")}
+                        </Link>
+                    ) : null}
+                    {recipe.isOwner ? (
+                        <button type="button" className="btn btn-outline-danger" onClick={removeRecipe}>
+                            {t("actions.delete")}
+                        </button>
+                    ) : null}
                 </div>
             </div>
 

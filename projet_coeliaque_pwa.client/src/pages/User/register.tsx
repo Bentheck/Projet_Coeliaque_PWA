@@ -50,8 +50,6 @@ function getPasswordStrength(password: string): Strength {
     return "strong";
 }
 
-type GateStep = "disclaimer" | "privacy" | "tos" | null;
-
 export default function Register() {
     const location = useLocation();
 
@@ -158,8 +156,7 @@ export default function Register() {
     const [confirmTouched, setConfirmTouched] = useState(false);
     const [confirmPasteBlocked, setConfirmPasteBlocked] = useState(false);
 
-    // 3-step gate: disclaimer -> privacy -> tos
-    const [gateStep, setGateStep] = useState<GateStep>(null);
+    const [gateOpen, setGateOpen] = useState(false);
 
     const [disclaimerAtBottom, setDisclaimerAtBottom] = useState(false);
     const [privacyAtBottom, setPrivacyAtBottom] = useState(false);
@@ -172,9 +169,6 @@ export default function Register() {
     // Invite-token gating flag from backend config
     const [requireInviteToken, setRequireInviteToken] =
         useState<boolean>(false);
-
-    // Used so Accept can continue same submit flow
-    const pendingSubmitRef = useRef(false);
 
     const disclaimerScrollRef = useRef<HTMLDivElement | null>(null);
     const privacyScrollRef = useRef<HTMLDivElement | null>(null);
@@ -292,46 +286,38 @@ export default function Register() {
         };
     }, []);
 
-    // ---------------- Gate modal boot/reset on open ----------------
     useEffect(() => {
-        if (!gateStep) return;
+        if (!gateOpen) return;
 
-        if (gateStep === "disclaimer") setDisclaimerAtBottom(false);
-        if (gateStep === "privacy") setPrivacyAtBottom(false);
-        if (gateStep === "tos") setTosAtBottom(false);
+        setDisclaimerAtBottom(false);
+        setPrivacyAtBottom(false);
+        setTosAtBottom(false);
 
         const id = window.setTimeout(() => {
-            if (gateStep === "disclaimer") {
-                const el = disclaimerScrollRef.current;
+            const scrollAreas = [
+                [disclaimerScrollRef.current, setDisclaimerAtBottom],
+                [privacyScrollRef.current, setPrivacyAtBottom],
+                [tosScrollRef.current, setTosAtBottom],
+            ] as const;
+
+            for (const [el, setAtBottom] of scrollAreas) {
                 if (el) el.scrollTop = 0;
-                recomputeAtBottom(el, setDisclaimerAtBottom);
-            }
-            if (gateStep === "privacy") {
-                const el = privacyScrollRef.current;
-                if (el) el.scrollTop = 0;
-                recomputeAtBottom(el, setPrivacyAtBottom);
-            }
-            if (gateStep === "tos") {
-                const el = tosScrollRef.current;
-                if (el) el.scrollTop = 0;
-                recomputeAtBottom(el, setTosAtBottom);
+                recomputeAtBottom(el, setAtBottom);
             }
         }, 0);
 
         return () => window.clearTimeout(id);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gateStep]);
+    }, [gateOpen]);
 
     useEffect(() => {
-        if (!gateStep) return;
+        if (!gateOpen) return;
 
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") closeGateAsDeclined();
         };
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gateStep]);
+    }, [gateOpen]);
 
     const validateFields = () => {
         const newErrors: FieldErrors = {};
@@ -565,29 +551,8 @@ export default function Register() {
         }
     };
 
-    const openFirstRequiredGate = () => {
-        if (!disclaimerAccepted) return setGateStep("disclaimer");
-        if (!privacyAccepted) return setGateStep("privacy");
-        if (!tosAccepted) return setGateStep("tos");
-        setGateStep(null);
-    };
-
-    // Continue submit after last gate accepted (defensively re-validate)
-    useEffect(() => {
-        if (!pendingSubmitRef.current) return;
-        if (!(disclaimerAccepted && privacyAccepted && tosAccepted)) return;
-
-        const { newErrors } = validateFields();
-        if (Object.keys(newErrors).length > 0) {
-            pendingSubmitRef.current = false;
-            setFieldErrors(newErrors);
-            return;
-        }
-
-        pendingSubmitRef.current = false;
-        void doRegister();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [disclaimerAccepted, privacyAccepted, tosAccepted, requireInviteToken, inviteToken]);
+    const allLegalAccepted =
+        disclaimerAccepted && privacyAccepted && tosAccepted;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -598,153 +563,120 @@ export default function Register() {
         const { newErrors } = validateFields();
 
         if (Object.keys(newErrors).length > 0) {
-            pendingSubmitRef.current = false;
             setFieldErrors(newErrors);
             return;
         }
 
-        // 2) Then gate
-        if (!(disclaimerAccepted && privacyAccepted && tosAccepted)) {
-            pendingSubmitRef.current = true;
-            openFirstRequiredGate();
+        if (!allLegalAccepted) {
+            setGateOpen(true);
             return;
         }
 
-        // 3) Then register
         await doRegister();
     };
 
-    // Modal actions
     const closeGateAsDeclined = () => {
-        pendingSubmitRef.current = false;
-        setGateStep(null);
+        setGateOpen(false);
         setDisclaimerAtBottom(false);
         setPrivacyAtBottom(false);
         setTosAtBottom(false);
     };
 
-    const acceptCurrentGate = () => {
-        if (gateStep === "disclaimer") {
-            if (!disclaimerAtBottom) return;
-            setDisclaimerAccepted(true);
-            if (!privacyAccepted) setGateStep("privacy");
-            else if (!tosAccepted) setGateStep("tos");
-            else setGateStep(null);
-            return;
-        }
-
-        if (gateStep === "privacy") {
-            if (!privacyAtBottom) return;
-            setPrivacyAccepted(true);
-            if (!tosAccepted) setGateStep("tos");
-            else setGateStep(null);
-            return;
-        }
-
-        if (gateStep === "tos") {
-            if (!tosAtBottom) return;
-            setTosAccepted(true);
-            setGateStep(null);
-            return;
-        }
+    const finishRegistrationFromGate = async () => {
+        if (submitting || !allLegalAccepted) return;
+        setGateOpen(false);
+        await doRegister();
     };
 
-    const currentTitle =
-        gateStep === "disclaimer"
-            ? disclaimerTitle
-            : gateStep === "privacy"
-                ? privacyTitle
-                : gateStep === "tos"
-                    ? tosTitle
-                    : "";
-
-    const currentLead =
-        gateStep === "disclaimer"
-            ? disclaimerLead
-            : gateStep === "privacy"
-                ? privacyLead
-                : gateStep === "tos"
-                    ? tosLead
-                    : "";
-
-    const currentParagraphs =
-        gateStep === "disclaimer"
-            ? disclaimerParagraphs
-            : gateStep === "privacy"
-                ? privacyParagraphs
-                : gateStep === "tos"
-                    ? tosParagraphs
-                    : [];
-
-    const currentScrollRef =
-        gateStep === "disclaimer"
-            ? disclaimerScrollRef
-            : gateStep === "privacy"
-                ? privacyScrollRef
-                : tosScrollRef;
-
-    const currentAtBottom =
-        gateStep === "disclaimer"
-            ? disclaimerAtBottom
-            : gateStep === "privacy"
-                ? privacyAtBottom
-                : gateStep === "tos"
-                    ? tosAtBottom
-                    : false;
-
-    const currentAcceptLabel =
-        gateStep === "disclaimer"
-            ? ((tDisc(`${disclaimerBaseKey}.accept`, {
-                defaultValue: "Accept",
-            }) as string) || "Accept")
-            : gateStep === "privacy"
-                ? ((tPrivacy(`${privacyBaseKey}.accept`, {
-                    defaultValue: "Accept",
-                }) as string) || "Accept")
-                : gateStep === "tos"
-                    ? ((tTos(`${tosBaseKey}.accept`, {
-                        defaultValue: "Accept",
-                    }) as string) || "Accept")
-                    : ((t("legal.accept", {
-                        defaultValue: "Accept",
-                    }) as string) || "Accept");
-
-    const currentDeclineLabel =
-        gateStep === "disclaimer"
-            ? ((tDisc(`${disclaimerBaseKey}.decline`, {
-                defaultValue: "Decline",
-            }) as string) || "Decline")
-            : gateStep === "privacy"
-                ? ((tPrivacy(`${privacyBaseKey}.decline`, {
-                    defaultValue: "Decline",
-                }) as string) || "Decline")
-                : gateStep === "tos"
-                    ? ((tTos(`${tosBaseKey}.decline`, {
-                        defaultValue: "Decline",
-                    }) as string) || "Decline")
-                    : ((t("legal.decline", {
-                        defaultValue: "Decline",
-                    }) as string) || "Decline");
-
-    const currentViewFullHref =
-        gateStep === "disclaimer"
-            ? "/legal/disclaimer"
-            : gateStep === "privacy"
-                ? "/legal/privacy"
-                : "/legal/tos";
-
-    const currentViewFullLabel =
-        gateStep === "disclaimer"
-            ? ((tDisc("actions.viewFull", {
-                defaultValue: "View full disclaimer",
-            }) as string) || "View full disclaimer")
-            : gateStep === "privacy"
-                ? ((tPrivacy("actions.viewFull", {
+    const legalSections = [
+        {
+            key: "disclaimer",
+            title: disclaimerTitle,
+            lead: disclaimerLead,
+            paragraphs: disclaimerParagraphs,
+            scrollRef: disclaimerScrollRef,
+            atBottom: disclaimerAtBottom,
+            setAtBottom: setDisclaimerAtBottom,
+            accepted: disclaimerAccepted,
+            setAccepted: setDisclaimerAccepted,
+            scrollHint:
+                ((tDisc(`${disclaimerBaseKey}.scrollHint`, {
+                    defaultValue: "",
+                }) as string) || ""),
+            scrollOk:
+                ((tDisc(`${disclaimerBaseKey}.scrollOk`, {
+                    defaultValue: "",
+                }) as string) || ""),
+            viewFullHref: "/legal/disclaimer",
+            viewFullLabel:
+                ((tDisc("actions.viewFull", {
+                    defaultValue: "View full disclaimer",
+                }) as string) || "View full disclaimer"),
+            agreementLabel:
+                ((t("legal.sections.disclaimer", {
+                    defaultValue: "I understand and accept the disclaimer.",
+                }) as string) ||
+                    "I understand and accept the disclaimer."),
+        },
+        {
+            key: "privacy",
+            title: privacyTitle,
+            lead: privacyLead,
+            paragraphs: privacyParagraphs,
+            scrollRef: privacyScrollRef,
+            atBottom: privacyAtBottom,
+            setAtBottom: setPrivacyAtBottom,
+            accepted: privacyAccepted,
+            setAccepted: setPrivacyAccepted,
+            scrollHint:
+                ((tPrivacy(`${privacyBaseKey}.scrollHint`, {
+                    defaultValue: "",
+                }) as string) || ""),
+            scrollOk:
+                ((tPrivacy(`${privacyBaseKey}.scrollOk`, {
+                    defaultValue: "",
+                }) as string) || ""),
+            viewFullHref: "/legal/privacy",
+            viewFullLabel:
+                ((tPrivacy("actions.viewFull", {
                     defaultValue: "View full privacy policy",
-                }) as string) || "View full privacy policy")
-                : ((tTos("actions.viewFull", {
+                }) as string) || "View full privacy policy"),
+            agreementLabel:
+                ((t("legal.sections.privacy", {
+                    defaultValue: "I have read and accept the Privacy Policy.",
+                }) as string) ||
+                    "I have read and accept the Privacy Policy."),
+        },
+        {
+            key: "tos",
+            title: tosTitle,
+            lead: tosLead,
+            paragraphs: tosParagraphs,
+            scrollRef: tosScrollRef,
+            atBottom: tosAtBottom,
+            setAtBottom: setTosAtBottom,
+            accepted: tosAccepted,
+            setAccepted: setTosAccepted,
+            scrollHint:
+                ((tTos(`${tosBaseKey}.scrollHint`, {
+                    defaultValue: "",
+                }) as string) || ""),
+            scrollOk:
+                ((tTos(`${tosBaseKey}.scrollOk`, {
+                    defaultValue: "",
+                }) as string) || ""),
+            viewFullHref: "/legal/tos",
+            viewFullLabel:
+                ((tTos("actions.viewFull", {
                     defaultValue: "View full terms of service",
-                }) as string) || "View full terms of service");
+                }) as string) || "View full terms of service"),
+            agreementLabel:
+                ((t("legal.sections.tos", {
+                    defaultValue: "I have read and accept the Terms of Service.",
+                }) as string) ||
+                    "I have read and accept the Terms of Service."),
+        },
+    ];
 
     if (registered) {
         return (
@@ -772,14 +704,14 @@ export default function Register() {
 
     return (
         <>
-            {/* 3-STEP LEGAL GATE MODAL (one at a time) */}
-            {gateStep && (
+            {/* Combined legal review modal */}
+            {gateOpen && (
                 <div
                     className="position-fixed top-0 start-0 w-100 h-100"
                     style={{ zIndex: 1050 }}
                     role="dialog"
                     aria-modal="true"
-                    aria-labelledby="legal-step-title"
+                    aria-labelledby="legal-review-title"
                 >
                     <div
                         className="position-absolute top-0 start-0 w-100 h-100 bg-dark"
@@ -788,119 +720,185 @@ export default function Register() {
                         aria-hidden="true"
                     />
 
-                    <div className="position-relative d-flex align-items-center justify-content-center w-100 h-100 p-3">
-                        <div
-                            className="card w-100"
-                            style={{ maxWidth: 720 }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="card-header">
-                                <h3
-                                    id="legal-step-title"
-                                    className="h5 mb-0"
-                                >
-                                    {currentTitle}
-                                </h3>
-                            </div>
-
-                            <div className="card-body">
-                                {currentLead ? (
-                                    <p className="text-muted mb-2">
-                                        {currentLead}
-                                    </p>
-                                ) : null}
-
-                                <div className="d-flex justify-content-end mb-2">
-                                    <Link
-                                        to={currentViewFullHref}
-                                        className="small"
+                    <div className="position-relative w-100 h-100 overflow-auto p-3">
+                        <div className="d-flex align-items-start justify-content-center min-vh-100 py-4">
+                            <div
+                                className="card w-100"
+                                style={{ maxWidth: 920 }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="card-header">
+                                    <h3
+                                        id="legal-review-title"
+                                        className="h5 mb-1"
                                     >
-                                        {currentViewFullLabel}
-                                    </Link>
+                                        {t("legal.reviewTitle", {
+                                            defaultValue:
+                                                "Before creating your account",
+                                        })}
+                                    </h3>
+                                    <p className="text-muted small mb-0">
+                                        {t("legal.intro", {
+                                            defaultValue:
+                                                "Review each legal document below. Scroll to the end of each section to enable its checkbox, then confirm all three to finish creating your account.",
+                                        })}
+                                    </p>
                                 </div>
 
                                 <div
-                                    ref={currentScrollRef as any}
-                                    onScroll={() => {
-                                        if (gateStep === "disclaimer") {
-                                            recomputeAtBottom(
-                                                disclaimerScrollRef.current,
-                                                setDisclaimerAtBottom
-                                            );
-                                        } else if (gateStep === "privacy") {
-                                            recomputeAtBottom(
-                                                privacyScrollRef.current,
-                                                setPrivacyAtBottom
-                                            );
-                                        } else if (gateStep === "tos") {
-                                            recomputeAtBottom(
-                                                tosScrollRef.current,
-                                                setTosAtBottom
-                                            );
-                                        }
-                                    }}
-                                    className="border rounded p-3"
+                                    className="card-body"
                                     style={{
-                                        maxHeight: 360,
+                                        maxHeight: "calc(100vh - 240px)",
                                         overflowY: "auto",
-                                        background:
-                                            "var(--color-surface, #fff)",
                                     }}
                                 >
-                                    {currentParagraphs.map((p, idx) => (
-                                        <p key={idx}>{p}</p>
-                                    ))}
+                                    <div className="d-flex flex-column gap-3">
+                                        {legalSections.map((section) => {
+                                            const checkboxId = `legal-${section.key}`;
+                                            const canToggle =
+                                                section.accepted ||
+                                                section.atBottom;
 
-                                    <div className="text-muted small mt-3">
-                                        {currentAtBottom
-                                            ? gateStep === "disclaimer"
-                                                ? (tDisc(
-                                                    `${disclaimerBaseKey}.scrollOk`,
-                                                    { defaultValue: "" }
-                                                ) as string)
-                                                : gateStep === "privacy"
-                                                    ? (tPrivacy(
-                                                        `${privacyBaseKey}.scrollOk`,
-                                                        { defaultValue: "" }
-                                                    ) as string)
-                                                    : (tTos(
-                                                        `${tosBaseKey}.scrollOk`,
-                                                        { defaultValue: "" }
-                                                    ) as string)
-                                            : gateStep === "disclaimer"
-                                                ? (tDisc(
-                                                    `${disclaimerBaseKey}.scrollHint`,
-                                                    { defaultValue: "" }
-                                                ) as string)
-                                                : gateStep === "privacy"
-                                                    ? (tPrivacy(
-                                                        `${privacyBaseKey}.scrollHint`,
-                                                        { defaultValue: "" }
-                                                    ) as string)
-                                                    : (tTos(
-                                                        `${tosBaseKey}.scrollHint`,
-                                                        { defaultValue: "" }
-                                                    ) as string)}
+                                            return (
+                                                <section
+                                                    key={section.key}
+                                                    className="border rounded p-3"
+                                                >
+                                                    <div className="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-2 mb-2">
+                                                        <div>
+                                                            <h4 className="h6 mb-1">
+                                                                {section.title}
+                                                            </h4>
+                                                            {section.lead ? (
+                                                                <p className="text-muted small mb-0">
+                                                                    {section.lead}
+                                                                </p>
+                                                            ) : null}
+                                                        </div>
+
+                                                        <Link
+                                                            to={section.viewFullHref}
+                                                            className="small"
+                                                        >
+                                                            {section.viewFullLabel}
+                                                        </Link>
+                                                    </div>
+
+                                                    <div
+                                                        ref={section.scrollRef}
+                                                        onScroll={() =>
+                                                            recomputeAtBottom(
+                                                                section.scrollRef.current,
+                                                                section.setAtBottom
+                                                            )
+                                                        }
+                                                        className="border rounded p-3 mb-3"
+                                                        style={{
+                                                            maxHeight: 180,
+                                                            overflowY: "auto",
+                                                            background:
+                                                                "var(--color-surface, #fff)",
+                                                        }}
+                                                    >
+                                                        {section.paragraphs.map(
+                                                            (paragraph, idx) => (
+                                                                <p key={idx}>
+                                                                    {paragraph}
+                                                                </p>
+                                                            )
+                                                        )}
+                                                    </div>
+
+                                                    <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                                                        <div
+                                                            className={`small ${
+                                                                canToggle
+                                                                    ? "text-success"
+                                                                    : "text-muted"
+                                                            }`}
+                                                        >
+                                                            {canToggle
+                                                                ? section.scrollOk
+                                                                : section.scrollHint}
+                                                        </div>
+
+                                                        <div className="form-check m-0">
+                                                            <input
+                                                                id={checkboxId}
+                                                                className="form-check-input"
+                                                                type="checkbox"
+                                                                checked={section.accepted}
+                                                                onChange={(e) =>
+                                                                    section.setAccepted(
+                                                                        e.target.checked
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    submitting ||
+                                                                    !canToggle
+                                                                }
+                                                            />
+                                                            <label
+                                                                className={
+                                                                    "form-check-label" +
+                                                                    (!canToggle
+                                                                        ? " text-muted"
+                                                                        : "")
+                                                                }
+                                                                htmlFor={checkboxId}
+                                                            >
+                                                                {section.agreementLabel}
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </section>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="card-footer d-flex justify-content-end gap-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-secondary"
-                                    onClick={closeGateAsDeclined}
-                                >
-                                    {currentDeclineLabel}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    onClick={acceptCurrentGate}
-                                    disabled={!currentAtBottom}
-                                >
-                                    {currentAcceptLabel}
-                                </button>
+                                <div className="card-footer d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+                                    <div className="small text-muted">
+                                        {t("legal.reviewHint", {
+                                            defaultValue:
+                                                "All three boxes must be checked to continue.",
+                                        })}
+                                    </div>
+
+                                    <div className="d-flex justify-content-end gap-2">
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-secondary"
+                                            onClick={closeGateAsDeclined}
+                                            disabled={submitting}
+                                        >
+                                            {t("legal.decline", {
+                                                defaultValue: "Decline",
+                                            })}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                void finishRegistrationFromGate();
+                                            }}
+                                            disabled={
+                                                submitting ||
+                                                !allLegalAccepted
+                                            }
+                                        >
+                                            {submitting
+                                                ? t("legal.finishSubmitting", {
+                                                    defaultValue:
+                                                        "Finishing registration...",
+                                                })
+                                                : t("legal.finish", {
+                                                    defaultValue:
+                                                        "Finish registration",
+                                                })}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

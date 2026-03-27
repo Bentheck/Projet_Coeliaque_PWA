@@ -8,6 +8,13 @@
     "favorite": "Favori",
     "unfavorite": "Retirer des favoris"
   },
+  "visibility": {
+    "shared": "Partagee",
+    "private": "Privee",
+    "yours": "Votre recette",
+    "sharedHelp": "Cette recette est visible dans le carnet de recettes commun.",
+    "privateHelp": "Cette recette n'est visible que par vous."
+  },
   "meta": {
     "prep": "Préparation : {{value}}",
     "cook": "Cuisson : {{value}}",

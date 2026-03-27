@@ -65,6 +65,16 @@
   },
   "legal": {
     "accept": "Accepter",
-    "decline": "Refuser"
+    "decline": "Refuser",
+    "reviewTitle": "Avant de cr\u00e9er votre compte",
+    "intro": "Lisez les trois documents juridiques ci-dessous. Faites d\u00e9filer chaque section jusqu'\u00e0 la fin pour activer sa case, puis confirmez les trois pour terminer la cr\u00e9ation du compte.",
+    "reviewHint": "Les trois cases doivent \u00eatre coch\u00e9es pour continuer.",
+    "finish": "Terminer l'inscription",
+    "finishSubmitting": "Finalisation...",
+    "sections": {
+      "disclaimer": "Je comprends et j'accepte l'avis de non-responsabilit\u00e9.",
+      "privacy": "J'ai lu et j'accepte la politique de confidentialit\u00e9.",
+      "tos": "J'ai lu et j'accepte les conditions d'utilisation."
+    }
   }
 }
