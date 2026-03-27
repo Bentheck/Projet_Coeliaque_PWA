@@ -1,6 +1,6 @@
 {
-  "title": "Mes recettes",
-  "subtitle": "Bibliothèque privée de recettes pour votre abonnement.",
+  "title": "Carnet de recettes",
+  "subtitle": "Recettes partagees par la communaute, plus vos recettes privees.",
   "loading": "Chargement des recettes...",
   "actions": {
     "new": "Nouvelle recette",
@@ -36,12 +36,15 @@
     "count_other": "{{count}} recettes"
   },
   "card": {
+    "shared": "Partagee",
+    "private": "Privee",
+    "yours": "Votre recette",
     "totalTime": "Total : {{value}}",
     "servings": "Portions : {{value}}"
   },
   "empty": {
     "title": "Aucune recette trouvée",
-    "subtitle": "Créez votre première recette privée ou ajustez vos filtres."
+    "subtitle": "Creez une recette ou ajustez vos filtres pour explorer le carnet commun."
   },
   "errors": {
     "loadFailed": "Impossible de charger les recettes.",

@@ -39,6 +39,8 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
 
         [MaxLength(2048)]
         public string? ImageUrl { get; set; }
+
+        public bool IsPrivate { get; set; }
     }
 
     public sealed class RecipeIngredientDto
@@ -66,6 +68,8 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public bool IsFavorite { get; set; }
+        public bool IsPrivate { get; set; }
+        public bool IsOwner { get; set; }
         public List<RecipeIngredientDto> Ingredients { get; set; } = new();
         public List<string> Tags { get; set; } = new();
     }
@@ -83,6 +87,8 @@ namespace Projet_Coeliaque_PWA.Server.DTOs
         public string? ImageUrl { get; set; }
         public DateTime UpdatedAt { get; set; }
         public bool IsFavorite { get; set; }
+        public bool IsPrivate { get; set; }
+        public bool IsOwner { get; set; }
         public int RelevanceScore { get; set; }
         public List<string> Ingredients { get; set; } = new();
         public List<string> Tags { get; set; } = new();

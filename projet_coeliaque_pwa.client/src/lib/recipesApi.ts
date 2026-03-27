@@ -25,6 +25,7 @@ export type UpsertRecipeInput = {
     cookTimeMinutes?: number | null;
     servings?: number | null;
     imageUrl?: string | null;
+    isPrivate: boolean;
 };
 
 export type RecipeIngredient = {
@@ -50,6 +51,8 @@ export type Recipe = {
     createdAt: string;
     updatedAt: string;
     isFavorite: boolean;
+    isPrivate: boolean;
+    isOwner: boolean;
     ingredients: RecipeIngredient[];
     tags: string[];
 };
@@ -66,6 +69,8 @@ export type RecipeCard = {
     imageUrl?: string | null;
     updatedAt: string;
     isFavorite: boolean;
+    isPrivate: boolean;
+    isOwner: boolean;
     relevanceScore: number;
     ingredients: string[];
     tags: string[];

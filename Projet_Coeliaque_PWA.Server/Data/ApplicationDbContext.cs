@@ -43,7 +43,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
         // OLD MODEL REMOVED:
         // public DbSet<ReceiptScanReport> ReceiptScanReports { get; set; } = null!;
 
-        // Recipes (private, subscriber-only)
+        // Recipes (shared by default, subscriber-only access)
         public DbSet<Recipe> Recipes => Set<Recipe>();
         public DbSet<Ingredient> Ingredients => Set<Ingredient>();
         public DbSet<IngredientAlias> IngredientAliases => Set<IngredientAlias>();
@@ -59,6 +59,18 @@ namespace Projet_Coeliaque_PWA.Server.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<IdentityUserLogin<string>>(b =>
+            {
+                b.Property(x => x.LoginProvider).HasMaxLength(128);
+                b.Property(x => x.ProviderKey).HasMaxLength(128);
+            });
+
+            modelBuilder.Entity<IdentityUserToken<string>>(b =>
+            {
+                b.Property(x => x.LoginProvider).HasMaxLength(128);
+                b.Property(x => x.Name).HasMaxLength(128);
+            });
 
             // ---------- Facture ----------
             modelBuilder.Entity<Facture>()
@@ -284,6 +296,7 @@ namespace Projet_Coeliaque_PWA.Server.Data
                 b.Property(x => x.Description).HasMaxLength(4000);
                 b.Property(x => x.InstructionsJson).IsRequired().HasColumnType("jsonb");
                 b.Property(x => x.ImageUrl).HasMaxLength(2048);
+                b.Property(x => x.IsPrivate).HasDefaultValue(false);
 
                 b.HasIndex(x => new { x.OwnerUserId, x.Slug }).IsUnique();
                 b.HasIndex(x => new { x.OwnerUserId, x.UpdatedAt })

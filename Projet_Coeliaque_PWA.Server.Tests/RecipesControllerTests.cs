@@ -17,7 +17,7 @@ namespace Projet_Coeliaque_PWA.Server.Tests
     public sealed class RecipesControllerTests
     {
         [Fact]
-        public async Task GetById_ReturnsNotFound_WhenRecipeBelongsToAnotherUser()
+        public async Task GetById_ReturnsNotFound_WhenRecipeBelongsToAnotherUserAndIsPrivate()
         {
             var dbName = Guid.NewGuid().ToString("N");
             await using var db = CreateDb(dbName);
@@ -25,6 +25,7 @@ namespace Projet_Coeliaque_PWA.Server.Tests
             var recipe = new Recipe
             {
                 OwnerUserId = "owner-a",
+                IsPrivate = true,
                 Title = "Owned recipe",
                 Slug = "owned-recipe",
                 InstructionsJson = "[\"step\"]",
@@ -41,6 +42,38 @@ namespace Projet_Coeliaque_PWA.Server.Tests
             var response = await controller.GetById(recipe.Id);
 
             Assert.IsType<NotFoundResult>(response.Result);
+        }
+
+        [Fact]
+        public async Task GetById_ReturnsSharedRecipe_WhenRecipeBelongsToAnotherUser()
+        {
+            var dbName = Guid.NewGuid().ToString("N");
+            await using var db = CreateDb(dbName);
+
+            var recipe = new Recipe
+            {
+                OwnerUserId = "owner-a",
+                IsPrivate = false,
+                Title = "Community recipe",
+                Slug = "community-recipe",
+                InstructionsJson = "[\"step\"]",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            db.Recipes.Add(recipe);
+            await db.SaveChangesAsync();
+
+            var controller = new RecipesController(db);
+            SetUser(controller, "owner-b");
+
+            var response = await controller.GetById(recipe.Id);
+
+            var ok = Assert.IsType<OkObjectResult>(response.Result);
+            var dto = Assert.IsType<RecipeDto>(ok.Value);
+            Assert.Equal(recipe.Id, dto.Id);
+            Assert.False(dto.IsPrivate);
+            Assert.False(dto.IsOwner);
         }
 
         [Fact]
@@ -130,6 +163,73 @@ namespace Projet_Coeliaque_PWA.Server.Tests
 
             var item = Assert.Single(dto.Items);
             Assert.Equal(recipeKeep.Id, item.Id);
+        }
+
+        [Fact]
+        public async Task Search_IncludesSharedRecipesButExcludesPrivateRecipesFromOtherUsers()
+        {
+            var dbName = Guid.NewGuid().ToString("N");
+            await using var db = CreateDb(dbName);
+
+            var now = DateTime.UtcNow;
+
+            var ownPrivate = new Recipe
+            {
+                OwnerUserId = "owner-a",
+                IsPrivate = true,
+                Title = "My private recipe",
+                Slug = "my-private-recipe",
+                InstructionsJson = "[\"step\"]",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            var sharedOther = new Recipe
+            {
+                OwnerUserId = "owner-b",
+                IsPrivate = false,
+                Title = "Shared recipe",
+                Slug = "shared-recipe",
+                InstructionsJson = "[\"step\"]",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            var privateOther = new Recipe
+            {
+                OwnerUserId = "owner-c",
+                IsPrivate = true,
+                Title = "Hidden recipe",
+                Slug = "hidden-recipe",
+                InstructionsJson = "[\"step\"]",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(ownPrivate, sharedOther, privateOther);
+            await db.SaveChangesAsync();
+
+            var controller = new RecipesController(db);
+            SetUser(controller, "owner-a");
+
+            var response = await controller.Search(
+                q: null,
+                includeIngredientIds: null,
+                excludeIngredientIds: null,
+                requireAll: true,
+                page: 1,
+                pageSize: 20,
+                sort: "newest",
+                maxTotalTime: null,
+                favoritesOnly: false,
+                favoritesFirst: false);
+
+            var ok = Assert.IsType<OkObjectResult>(response.Result);
+            var dto = Assert.IsType<RecipeSearchResponseDto>(ok.Value);
+
+            Assert.Contains(dto.Items, x => x.Id == ownPrivate.Id && x.IsPrivate && x.IsOwner);
+            Assert.Contains(dto.Items, x => x.Id == sharedOther.Id && !x.IsPrivate && !x.IsOwner);
+            Assert.DoesNotContain(dto.Items, x => x.Id == privateOther.Id);
         }
 
         [Fact]

@@ -8,6 +8,13 @@
     "favorite": "Favorite",
     "unfavorite": "Unfavorite"
   },
+  "visibility": {
+    "shared": "Shared",
+    "private": "Private",
+    "yours": "Your recipe",
+    "sharedHelp": "This recipe is visible to everyone in the communal recipe book.",
+    "privateHelp": "This recipe is visible only to you."
+  },
   "meta": {
     "prep": "Prep: {{value}}",
     "cook": "Cook: {{value}}",
