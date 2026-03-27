@@ -19,6 +19,20 @@
     },
     "offlineHint": "Works offline: keep using your invoices, price comparisons, grocery lists and more even without an internet connection."
   },
+  "promotionOffer": {
+    "badge": "Welcome offer",
+    "loading": "Loading your offer...",
+    "fallbackTitle": "Enjoy {{days}} free days to try Services Coeliaque",
+    "fallbackBody": "Activate your trial period to explore invoices, grocery lists and reports before choosing your subscription.",
+    "duration": "{{days}} days of membership included",
+    "expires": "Offer available until {{date}}",
+    "claim": "Activate my free week",
+    "claiming": "Activating...",
+    "claimFailed": "Unable to activate this offer right now.",
+    "success": "Your free trial is active until {{date}}.",
+    "successNoDate": "Your free trial is active.",
+    "secondary": "View membership"
+  },
   "features": {
     "calculator": {
       "title": "Calculate your tax deduction",

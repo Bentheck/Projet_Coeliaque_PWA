@@ -36,6 +36,8 @@ namespace Projet_Coeliaque_PWA.Server.Data
         public DbSet<TesterInvite> TesterInvites => Set<TesterInvite>();
         public DbSet<AppSiteStatus> SiteStatuses { get; set; } = null!;
         public DbSet<AppFeatureFlag> FeatureFlags { get; set; } = null!;
+        public DbSet<PromotionEvent> PromotionEvents => Set<PromotionEvent>();
+        public DbSet<PromotionEventClaim> PromotionEventClaims => Set<PromotionEventClaim>();
         public DbSet<AdminAuditLog> AdminAuditLogs { get; set; } = null!;
 
         // Scanned Receipts
@@ -260,6 +262,44 @@ namespace Projet_Coeliaque_PWA.Server.Data
 
                 b.HasIndex(x => x.Email);
                 b.HasIndex(x => x.TokenHash).IsUnique();
+            });
+
+            // ---------- PromotionEvent ----------
+            modelBuilder.Entity<PromotionEvent>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.Property(x => x.Name)
+                    .IsRequired()
+                    .HasMaxLength(120);
+
+                b.Property(x => x.Type)
+                    .HasConversion<string>()
+                    .HasMaxLength(64);
+
+                b.Property(x => x.MembershipDurationDays)
+                    .HasDefaultValue(7);
+
+                b.Property(x => x.PublicTitleFr).HasMaxLength(200);
+                b.Property(x => x.PublicTitleEn).HasMaxLength(200);
+                b.Property(x => x.PublicDescriptionFr).HasMaxLength(4000);
+                b.Property(x => x.PublicDescriptionEn).HasMaxLength(4000);
+
+                b.HasIndex(x => new { x.Type, x.IsEnabled });
+                b.HasIndex(x => new { x.IsEnabled, x.StartsUtc, x.EndsUtc });
+            });
+
+            modelBuilder.Entity<PromotionEventClaim>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.Property(x => x.UserId)
+                    .IsRequired();
+
+                b.HasIndex(x => new { x.PromotionEventId, x.UserId })
+                    .IsUnique();
+
+                b.HasIndex(x => x.UserId);
             });
 
             // ---------- ReceiptScan (simple flags, no separate report table) ----------

@@ -19,6 +19,20 @@
     },
     "offlineHint": "Fonctionne hors ligne : continuez d’utiliser vos factures, comparatifs, listes d’épicerie et plus encore même sans Internet."
   },
+  "promotionOffer": {
+    "badge": "Offre de bienvenue",
+    "loading": "Chargement de l'offre...",
+    "fallbackTitle": "Profitez de {{days}} jours gratuits pour essayer Services Coeliaque",
+    "fallbackBody": "Activez votre période d'essai pour explorer les factures, les listes d'épicerie et les rapports avant de choisir votre abonnement.",
+    "duration": "{{days}} jours d'abonnement offerts",
+    "expires": "Offre disponible jusqu'au {{date}}",
+    "claim": "Activer ma semaine gratuite",
+    "claiming": "Activation...",
+    "claimFailed": "Impossible d'activer l'offre en ce moment.",
+    "success": "Votre essai gratuit est activé jusqu'au {{date}}.",
+    "successNoDate": "Votre essai gratuit est activé.",
+    "secondary": "Voir l'abonnement"
+  },
   "features": {
     "calculator": {
       "title": "Calculer votre crédit d’impôt",
