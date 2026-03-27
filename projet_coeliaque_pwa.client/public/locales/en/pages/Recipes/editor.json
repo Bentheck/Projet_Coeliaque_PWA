@@ -13,10 +13,16 @@
   "fields": {
     "title": "Title",
     "description": "Description",
+    "visibility": "Visibility",
     "prepTime": "Prep time (min)",
     "cookTime": "Cook time (min)",
     "servings": "Servings",
     "imageUrl": "Image URL"
+  },
+  "visibility": {
+    "privateLabel": "Keep this recipe private",
+    "privateHelp": "Private recipes are visible only to you.",
+    "sharedHelp": "Shared by default. Everyone can see this recipe in the communal recipe book."
   },
   "image": {
     "urlLabel": "Image URL",

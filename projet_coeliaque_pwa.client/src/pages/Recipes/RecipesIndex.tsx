@@ -431,9 +431,19 @@ const RecipesIndex: React.FC = () => {
                                         />
                                     ) : null}
                                     <div className="d-flex justify-content-between align-items-start gap-2">
-                                        <h2 className="h5 mb-1">
-                                            <Link to={`/recipes/${recipe.id}`}>{recipe.title}</Link>
-                                        </h2>
+                                        <div>
+                                            <h2 className="h5 mb-1">
+                                                <Link to={`/recipes/${recipe.id}`}>{recipe.title}</Link>
+                                            </h2>
+                                            <div className="d-flex flex-wrap gap-2 mb-2">
+                                                <span className={`badge ${recipe.isPrivate ? "text-bg-warning" : "text-bg-success"}`}>
+                                                    {recipe.isPrivate ? t("card.private") : t("card.shared")}
+                                                </span>
+                                                {recipe.isOwner ? (
+                                                    <span className="badge text-bg-light">{t("card.yours")}</span>
+                                                ) : null}
+                                            </div>
+                                        </div>
                                         <button
                                             type="button"
                                             className="btn btn-sm btn-outline-secondary"
@@ -475,9 +485,11 @@ const RecipesIndex: React.FC = () => {
                                         <Link to={`/recipes/${recipe.id}`} className="btn btn-outline-secondary w-100">
                                             {t("actions.view")}
                                         </Link>
-                                        <Link to={`/recipes/${recipe.id}/edit`} className="btn btn-primary w-100">
-                                            {t("actions.edit")}
-                                        </Link>
+                                        {recipe.isOwner ? (
+                                            <Link to={`/recipes/${recipe.id}/edit`} className="btn btn-primary w-100">
+                                                {t("actions.edit")}
+                                            </Link>
+                                        ) : null}
                                     </div>
                                 </div>
                             </div>

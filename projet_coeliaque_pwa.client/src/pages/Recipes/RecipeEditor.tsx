@@ -44,6 +44,7 @@ const RecipeEditor: React.FC = () => {
     const [cookTime, setCookTime] = useState("");
     const [servings, setServings] = useState("");
     const [imageUrl, setImageUrl] = useState("");
+    const [isPrivate, setIsPrivate] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [imageUploading, setImageUploading] = useState(false);
@@ -62,6 +63,7 @@ const RecipeEditor: React.FC = () => {
     useEffect(() => {
         if (!isEdit || !recipeId || Number.isNaN(recipeId)) {
             setLoading(false);
+            setIsPrivate(false);
             setImageFile(null);
             setImagePreview(null);
             setImageUploadError(null);
@@ -83,6 +85,7 @@ const RecipeEditor: React.FC = () => {
                 setCookTime(recipe.cookTimeMinutes ? String(recipe.cookTimeMinutes) : "");
                 setServings(recipe.servings ? String(recipe.servings) : "");
                 setImageUrl(recipe.imageUrl ?? "");
+                setIsPrivate(recipe.isPrivate);
                 setImageFile(null);
                 setImagePreview(null);
                 setImageUploadError(null);
@@ -274,6 +277,7 @@ const RecipeEditor: React.FC = () => {
             cookTimeMinutes: cookTime.trim() ? Number(cookTime) : null,
             servings: servings.trim() ? Number(servings) : null,
             imageUrl: imageUrl.trim() || null,
+            isPrivate,
         };
     };
 
@@ -369,6 +373,24 @@ const RecipeEditor: React.FC = () => {
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                 />
+                            </div>
+                            <div className="col-12">
+                                <label className="form-label d-block">{t("fields.visibility")}</label>
+                                <div className="form-check">
+                                    <input
+                                        id="recipe-private"
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        checked={isPrivate}
+                                        onChange={(e) => setIsPrivate(e.target.checked)}
+                                    />
+                                    <label htmlFor="recipe-private" className="form-check-label">
+                                        {t("visibility.privateLabel")}
+                                    </label>
+                                </div>
+                                <div className="form-text">
+                                    {isPrivate ? t("visibility.privateHelp") : t("visibility.sharedHelp")}
+                                </div>
                             </div>
                             <div className="col-6 col-lg-3">
                                 <label className="form-label">{t("fields.prepTime")}</label>

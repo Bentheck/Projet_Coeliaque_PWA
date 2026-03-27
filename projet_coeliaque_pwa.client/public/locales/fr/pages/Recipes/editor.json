@@ -13,10 +13,16 @@
   "fields": {
     "title": "Titre",
     "description": "Description",
+    "visibility": "Visibilite",
     "prepTime": "Temps de préparation (min)",
     "cookTime": "Temps de cuisson (min)",
     "servings": "Portions",
     "imageUrl": "URL de l’image"
+  },
+  "visibility": {
+    "privateLabel": "Garder cette recette privee",
+    "privateHelp": "Les recettes privees ne sont visibles que par vous.",
+    "sharedHelp": "Par defaut, la recette est partagee dans le carnet de recettes commun."
   },
   "image": {
     "urlLabel": "URL de l'image",

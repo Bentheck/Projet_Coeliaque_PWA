@@ -17,7 +17,7 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.23")
+                .HasAnnotation("ProductVersion", "8.0.25")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1030,6 +1030,11 @@ namespace Projet_Coeliaque_PWA.Server.Migrations
                     b.Property<string>("InstructionsJson")
                         .IsRequired()
                         .HasColumnType("jsonb");
+
+                    b.Property<bool>("IsPrivate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("OwnerUserId")
                         .IsRequired()

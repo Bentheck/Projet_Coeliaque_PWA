@@ -36,6 +36,11 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
         private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+        private IQueryable<Recipe> AccessibleRecipesQuery(string userId)
+        {
+            return _db.Recipes.Where(r => !r.IsPrivate || r.OwnerUserId == userId);
+        }
+
         [HttpGet("search")]
         [ProducesResponseType(typeof(RecipeSearchResponseDto), StatusCodes.Status200OK)]
         public async Task<ActionResult<RecipeSearchResponseDto>> Search(
@@ -64,9 +69,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var hasKeyword = !string.IsNullOrWhiteSpace(keyword);
             var sortKey = NormalizeSort(sort, hasKeyword);
 
-            var recipes = await _db.Recipes
+            var recipes = await AccessibleRecipesQuery(userId)
                 .AsNoTracking()
-                .Where(r => r.OwnerUserId == userId)
                 .Include(r => r.Ingredients)
                     .ThenInclude(ri => ri.Ingredient)
                         .ThenInclude(i => i.Aliases)
@@ -97,7 +101,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var cards = indexed
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(x => ToCardDto(x.item))
+                .Select(x => ToCardDto(x.item, userId!))
                 .ToList();
 
             return Ok(new RecipeSearchResponseDto
@@ -119,9 +123,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (string.IsNullOrWhiteSpace(userId))
                 return Unauthorized();
 
-            var recipe = await _db.Recipes
+            var recipe = await AccessibleRecipesQuery(userId)
                 .AsNoTracking()
-                .Where(r => r.Id == id && r.OwnerUserId == userId)
+                .Where(r => r.Id == id)
                 .Include(r => r.Ingredients)
                     .ThenInclude(ri => ri.Ingredient)
                 .Include(r => r.Tags)
@@ -180,6 +184,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 TotalTimeMinutes = ComputeTotalTime(dto.PrepTimeMinutes, dto.CookTimeMinutes),
                 Servings = dto.Servings,
                 ImageUrl = TrimOrNull(dto.ImageUrl),
+                IsPrivate = dto.IsPrivate,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -197,9 +202,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             await _db.SaveChangesAsync(ct);
 
-            var created = await _db.Recipes
+            var created = await AccessibleRecipesQuery(userId)
                 .AsNoTracking()
-                .Where(r => r.Id == recipe.Id && r.OwnerUserId == userId)
+                .Where(r => r.Id == recipe.Id)
                 .Include(r => r.Ingredients)
                     .ThenInclude(ri => ri.Ingredient)
                 .Include(r => r.Tags)
@@ -246,6 +251,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             recipe.TotalTimeMinutes = ComputeTotalTime(dto.PrepTimeMinutes, dto.CookTimeMinutes);
             recipe.Servings = dto.Servings;
             recipe.ImageUrl = TrimOrNull(dto.ImageUrl);
+            recipe.IsPrivate = dto.IsPrivate;
             recipe.UpdatedAt = DateTime.UtcNow;
 
             _db.RecipeIngredients.RemoveRange(recipe.Ingredients);
@@ -290,9 +296,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (string.IsNullOrWhiteSpace(userId))
                 return Unauthorized();
 
-            var exists = await _db.Recipes
+            var exists = await AccessibleRecipesQuery(userId)
                 .AsNoTracking()
-                .AnyAsync(r => r.Id == id && r.OwnerUserId == userId, ct);
+                .AnyAsync(r => r.Id == id, ct);
 
             if (!exists)
                 return NotFound();
@@ -323,9 +329,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (string.IsNullOrWhiteSpace(userId))
                 return Unauthorized();
 
-            var exists = await _db.Recipes
+            var exists = await AccessibleRecipesQuery(userId)
                 .AsNoTracking()
-                .AnyAsync(r => r.Id == id && r.OwnerUserId == userId, ct);
+                .AnyAsync(r => r.Id == id, ct);
 
             if (!exists)
                 return NotFound();
@@ -353,9 +359,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
             if (take < 1 || take > 20) take = 6;
 
-            var target = await _db.Recipes
+            var target = await AccessibleRecipesQuery(userId)
                 .AsNoTracking()
-                .Where(r => r.Id == id && r.OwnerUserId == userId)
+                .Where(r => r.Id == id)
                 .Include(r => r.Ingredients)
                 .Include(r => r.Tags)
                 .FirstOrDefaultAsync(ct);
@@ -366,9 +372,9 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             var targetIngredientIds = target.Ingredients.Select(i => i.IngredientId).ToHashSet();
             var targetTagIds = target.Tags.Select(t => t.TagId).ToHashSet();
 
-            var candidates = await _db.Recipes
+            var candidates = await AccessibleRecipesQuery(userId)
                 .AsNoTracking()
-                .Where(r => r.OwnerUserId == userId && r.Id != id)
+                .Where(r => r.Id != id)
                 .Include(r => r.Ingredients)
                 .Include(r => r.Tags)
                 .ToListAsync(ct);
@@ -641,7 +647,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             };
         }
 
-        private static RecipeCardDto ToCardDto(SearchProjection projection)
+        private static RecipeCardDto ToCardDto(SearchProjection projection, string userId)
         {
             var recipe = projection.Recipe;
             return new RecipeCardDto
@@ -657,6 +663,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 ImageUrl = recipe.ImageUrl,
                 UpdatedAt = recipe.UpdatedAt,
                 IsFavorite = projection.IsFavorite,
+                IsPrivate = recipe.IsPrivate,
+                IsOwner = recipe.OwnerUserId == userId,
                 RelevanceScore = projection.RelevanceScore,
                 Ingredients = projection.IngredientNames.Take(4).ToList(),
                 Tags = projection.TagNames.Take(6).ToList()
@@ -680,6 +688,8 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
                 CreatedAt = recipe.CreatedAt,
                 UpdatedAt = recipe.UpdatedAt,
                 IsFavorite = recipe.Favorites.Any(f => f.UserId == userId),
+                IsPrivate = recipe.IsPrivate,
+                IsOwner = recipe.OwnerUserId == userId,
                 Ingredients = recipe.Ingredients
                     .OrderBy(i => i.SortOrder)
                     .Select(i => new RecipeIngredientDto
