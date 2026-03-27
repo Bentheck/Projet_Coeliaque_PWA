@@ -17,7 +17,7 @@
     "weak": "Weak",
     "medium": "Medium",
     "strong": "Strong",
-    "hint": "Use at least 8 characters with a mix of letters, numbers and symbols."
+    "hint": "Use at least 6 characters with uppercase, lowercase, a number, and a symbol."
   },
   "passwordToggle": {
     "show": "Show password",
@@ -45,8 +45,14 @@
     "missingDisplayName": "Display name is required.",
     "displayNameTooLong": "Display name must be at most 40 characters.",
     "displayNameTaken": "This display name is already taken.",
+    "invalidEmail": "Please enter a valid email address.",
     "passwordMismatch": "The passwords do not match.",
     "passwordRequired": "Password and confirmation are required.",
+    "passwordTooShort": "Password must be at least 6 characters long.",
+    "passwordRequiresLower": "Password must include at least one lowercase letter.",
+    "passwordRequiresUpper": "Password must include at least one uppercase letter.",
+    "passwordRequiresDigit": "Password must include at least one number.",
+    "passwordRequiresNonAlphanumeric": "Password must include at least one symbol.",
     "disclaimerRequired": "You must accept the disclaimer to create an account.",
     "emailTaken": "This email is already in use.",
     "inviteRequired": "An invite code is required to create an account at this time.",
@@ -57,7 +63,7 @@
   },
   "help": {
     "displayNameAria": "Help about the display name",
-    "password": "Use a strong password with a mix of letters, numbers, and symbols.",
+    "password": "Use a password with uppercase, lowercase, a number, and a symbol.",
     "passwordAria": "Help about password requirements",
     "confirmPassword": "Retype the same password to confirm it.",
     "confirmPasswordAria": "Help about confirming the password",

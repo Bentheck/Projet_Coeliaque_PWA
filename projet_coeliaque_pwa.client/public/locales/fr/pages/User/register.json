@@ -17,7 +17,7 @@
     "weak": "Faible",
     "medium": "Moyenne",
     "strong": "Forte",
-    "hint": "Utilisez au moins 8 caractères avec un mélange de lettres, chiffres et symboles."
+    "hint": "Utilisez au moins 6 caractères avec une majuscule, une minuscule, un chiffre et un symbole."
   },
   "passwordToggle": {
     "show": "Afficher le mot de passe",
@@ -45,8 +45,14 @@
     "missingDisplayName": "Le nom affiché est requis.",
     "displayNameTooLong": "Le nom affiché doit contenir au plus 40 caractères.",
     "displayNameTaken": "Ce nom affiché est déjà utilisé.",
+    "invalidEmail": "Veuillez saisir une adresse courriel valide.",
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "passwordRequired": "Le mot de passe et sa confirmation sont requis.",
+    "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères.",
+    "passwordRequiresLower": "Le mot de passe doit contenir au moins une lettre minuscule.",
+    "passwordRequiresUpper": "Le mot de passe doit contenir au moins une lettre majuscule.",
+    "passwordRequiresDigit": "Le mot de passe doit contenir au moins un chiffre.",
+    "passwordRequiresNonAlphanumeric": "Le mot de passe doit contenir au moins un symbole.",
     "disclaimerRequired": "Vous devez accepter l’avis de non-responsabilité pour créer un compte.",
     "emailTaken": "Ce courriel est déjà utilisé.",
     "inviteRequired": "Un code d’invitation est requis pour créer un compte pour le moment.",
@@ -57,7 +63,7 @@
   },
   "help": {
     "displayNameAria": "Aide sur le nom affiché",
-    "password": "Utilisez un mot de passe difficile à deviner, avec un mélange de lettres, chiffres et symboles.",
+    "password": "Utilisez un mot de passe avec une majuscule, une minuscule, un chiffre et un symbole.",
     "passwordAria": "Aide sur les exigences du mot de passe",
     "confirmPassword": "Retapez le même mot de passe pour le confirmer.",
     "confirmPasswordAria": "Aide sur la confirmation du mot de passe",

@@ -32,6 +32,11 @@ type FieldErrors = {
     confirmPassword?: string;
 };
 
+type MappedFieldError = {
+    field: "email" | "password";
+    message: string;
+};
+
 function getPasswordStrength(password: string): Strength {
     const pw = password || "";
     if (!pw) return null;
@@ -48,6 +53,110 @@ function getPasswordStrength(password: string): Strength {
     if (length < 6 || categories <= 1) return "weak";
     if (length < 10 || categories === 2) return "medium";
     return "strong";
+}
+
+function getPasswordRequirementError(
+    password: string,
+    t: (key: string, options?: Record<string, unknown>) => unknown
+): string | null {
+    if (!password) return null;
+
+    if (password.length < 6) {
+        return t("errors.passwordTooShort", {
+            defaultValue: "Password must be at least 6 characters long.",
+        }) as string;
+    }
+
+    if (!/[a-z]/.test(password)) {
+        return t("errors.passwordRequiresLower", {
+            defaultValue: "Password must include at least one lowercase letter.",
+        }) as string;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+        return t("errors.passwordRequiresUpper", {
+            defaultValue: "Password must include at least one uppercase letter.",
+        }) as string;
+    }
+
+    if (!/\d/.test(password)) {
+        return t("errors.passwordRequiresDigit", {
+            defaultValue: "Password must include at least one number.",
+        }) as string;
+    }
+
+    if (!/[^a-zA-Z0-9]/.test(password)) {
+        return t("errors.passwordRequiresNonAlphanumeric", {
+            defaultValue: "Password must include at least one symbol.",
+        }) as string;
+    }
+
+    return null;
+}
+
+function mapIdentityCodeToFieldError(
+    code: string,
+    t: (key: string, options?: Record<string, unknown>) => unknown,
+    emailTakenMsg: string
+): MappedFieldError | null {
+    switch (code.trim().toLowerCase()) {
+        case "duplicateemail":
+        case "duplicateusername":
+            return { field: "email", message: emailTakenMsg };
+
+        case "invalidemail":
+            return {
+                field: "email",
+                message: t("errors.invalidEmail", {
+                    defaultValue: "Please enter a valid email address.",
+                }) as string,
+            };
+
+        case "passwordtooshort":
+            return {
+                field: "password",
+                message: t("errors.passwordTooShort", {
+                    defaultValue: "Password must be at least 6 characters long.",
+                }) as string,
+            };
+
+        case "passwordrequireslower":
+            return {
+                field: "password",
+                message: t("errors.passwordRequiresLower", {
+                    defaultValue:
+                        "Password must include at least one lowercase letter.",
+                }) as string,
+            };
+
+        case "passwordrequiresupper":
+            return {
+                field: "password",
+                message: t("errors.passwordRequiresUpper", {
+                    defaultValue:
+                        "Password must include at least one uppercase letter.",
+                }) as string,
+            };
+
+        case "passwordrequiresdigit":
+            return {
+                field: "password",
+                message: t("errors.passwordRequiresDigit", {
+                    defaultValue: "Password must include at least one number.",
+                }) as string,
+            };
+
+        case "passwordrequiresnonalphanumeric":
+            return {
+                field: "password",
+                message: t("errors.passwordRequiresNonAlphanumeric", {
+                    defaultValue: "Password must include at least one symbol.",
+                }) as string,
+            };
+
+        default:
+            return null;
+    }
 }
 
 export default function Register() {
@@ -345,6 +454,11 @@ export default function Register() {
             newErrors.confirmPassword = t(
                 "errors.passwordMismatch"
             ) as string;
+        } else {
+            const passwordRuleError = getPasswordRequirementError(password, t);
+            if (passwordRuleError) {
+                newErrors.password = passwordRuleError;
+            }
         }
 
         if (requireInviteToken && !trimmedInviteToken) {
@@ -503,15 +617,16 @@ export default function Register() {
                 .filter(Boolean);
 
             if (identityCodes.length) {
-                const set = new Set(
-                    identityCodes.map((c) => c.toLowerCase())
-                );
-
-                const hasDuplicateEmail = set.has("duplicateemail");
-                const hasDuplicateUserName = set.has("duplicateusername");
-
-                if (hasDuplicateEmail || hasDuplicateUserName) {
-                    serverFieldErrors.email = emailTakenMsg;
+                for (const identityCode of identityCodes) {
+                    const mapped = mapIdentityCodeToFieldError(
+                        identityCode,
+                        t,
+                        emailTakenMsg
+                    );
+                    if (!mapped) continue;
+                    if (!serverFieldErrors[mapped.field]) {
+                        serverFieldErrors[mapped.field] = mapped.message;
+                    }
                 }
 
                 if (
@@ -521,8 +636,7 @@ export default function Register() {
                     !serverFieldErrors.confirmPassword &&
                     !serverFieldErrors.inviteToken
                 ) {
-                    serverFieldErrors.global =
-                        identityCodes[0] || globalMsg;
+                    serverFieldErrors.global = globalMsg;
                 }
             } else {
                 if (data?.message) globalMsg = String(data.message);
