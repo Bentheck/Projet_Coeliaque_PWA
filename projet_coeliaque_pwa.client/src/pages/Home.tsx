@@ -12,6 +12,8 @@ import {
     detectPlatform,
     type PlatformKind,
 } from "../lib/browserPlatform";
+import WelcomePromotionCard from "../components/WelcomePromotionCard";
+import useWelcomePromotionOffer from "../hooks/useWelcomePromotionOffer";
 
 type WelcomePromotionOffer = {
     id: string;

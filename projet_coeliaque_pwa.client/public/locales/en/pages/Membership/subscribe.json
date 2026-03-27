@@ -20,5 +20,18 @@
   "price": {
     "label": "Subscription price",
     "value": "15 $ + taxes per year"
+  },
+  "promotionOffer": {
+    "badge": "Welcome offer",
+    "loading": "Loading your offer...",
+    "fallbackTitle": "Enjoy {{days}} free days to try Services Coeliaque",
+    "fallbackBody": "Activate your trial period to explore invoices, grocery lists and reports before choosing your subscription.",
+    "duration": "{{days}} days of membership included",
+    "expires": "Offer available until {{date}}",
+    "claim": "Activate my free week",
+    "claiming": "Activating...",
+    "claimFailed": "Unable to activate this offer right now.",
+    "success": "Your free trial is active until {{date}}.",
+    "successNoDate": "Your free trial is active."
   }
 }

@@ -1,6 +1,8 @@
 ﻿// PATH: src/pages/Membership/Subscribe.tsx
 import React from "react";
 import { useTranslation } from "react-i18next";
+import WelcomePromotionCard from "../../components/WelcomePromotionCard";
+import useWelcomePromotionOffer from "../../hooks/useWelcomePromotionOffer";
 
 /**
  * We no longer need stripe.js for redirect; we use session.url directly.
@@ -8,9 +10,21 @@ import { useTranslation } from "react-i18next";
  */
 
 const Subscribe: React.FC = () => {
-    const { t } = useTranslation("pages/Membership/subscribe");
+    const { t, i18n } = useTranslation("pages/Membership/subscribe");
     const [loading, setLoading] = React.useState(false);
     const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine);
+    const [welcomeOfferSuccess, setWelcomeOfferSuccess] = React.useState<
+        string | null
+    >(null);
+    const {
+        isLoggedIn,
+        hasActiveMembership,
+        welcomeOffer,
+        loadingWelcomeOffer,
+        claimingWelcomeOffer,
+        claimWelcomeOffer,
+    } = useWelcomePromotionOffer();
+    const uiLocale = i18n.language?.startsWith("fr") ? "fr-CA" : "en-CA";
 
     React.useEffect(() => {
         const on = () => setIsOnline(true);
@@ -90,8 +104,85 @@ const Subscribe: React.FC = () => {
         }
     };
 
+    const offerTitle = welcomeOffer
+        ? i18n.language?.startsWith("fr")
+            ? welcomeOffer.publicTitleFr ||
+              t("promotionOffer.fallbackTitle", {
+                  days: welcomeOffer.membershipDurationDays,
+              })
+            : welcomeOffer.publicTitleEn ||
+              t("promotionOffer.fallbackTitle", {
+                  days: welcomeOffer.membershipDurationDays,
+              })
+        : "";
+
+    const offerDescription = welcomeOffer
+        ? i18n.language?.startsWith("fr")
+            ? welcomeOffer.publicDescriptionFr ||
+              t("promotionOffer.fallbackBody", {
+                  days: welcomeOffer.membershipDurationDays,
+              })
+            : welcomeOffer.publicDescriptionEn ||
+              t("promotionOffer.fallbackBody", {
+                  days: welcomeOffer.membershipDurationDays,
+              })
+        : "";
+
+    const formattedOfferEndDate =
+        welcomeOffer?.endsUtc != null
+            ? new Date(welcomeOffer.endsUtc).toLocaleDateString(uiLocale)
+            : null;
+
+    const handleClaimWelcomeOffer = async () => {
+        const result = await claimWelcomeOffer();
+        if (!result.ok) {
+            alert(result.error ?? t("promotionOffer.claimFailed"));
+            return;
+        }
+
+        const formattedEndDate = result.membershipEndUtc
+            ? new Date(result.membershipEndUtc).toLocaleDateString(uiLocale)
+            : null;
+
+        setWelcomeOfferSuccess(
+            formattedEndDate
+                ? t("promotionOffer.success", {
+                      date: formattedEndDate,
+                  })
+                : t("promotionOffer.successNoDate")
+        );
+    };
+
     return (
         <div className="container py-4">
+            {welcomeOfferSuccess && (
+                <div className="alert alert-success mb-4">
+                    {welcomeOfferSuccess}
+                </div>
+            )}
+
+            {isLoggedIn && !hasActiveMembership ? (
+                <WelcomePromotionCard
+                    loading={loadingWelcomeOffer}
+                    offer={welcomeOffer}
+                    claiming={claimingWelcomeOffer}
+                    title={offerTitle}
+                    description={offerDescription}
+                    formattedEndDate={formattedOfferEndDate}
+                    loadingLabel={t("promotionOffer.loading")}
+                    badgeLabel={t("promotionOffer.badge")}
+                    durationLabel={t("promotionOffer.duration", {
+                        days: welcomeOffer?.membershipDurationDays ?? 0,
+                    })}
+                    expiresLabel={t("promotionOffer.expires", {
+                        date: formattedOfferEndDate ?? "",
+                    })}
+                    claimLabel={t("promotionOffer.claim")}
+                    claimingLabel={t("promotionOffer.claiming")}
+                    onClaim={() => void handleClaimWelcomeOffer()}
+                />
+            ) : null}
+
             <div className="card card--accent shadow-sm border-accent-primary">
                 <div className="card-body">
                     <h1 className="h4 mb-3">{t("title")}</h1>
