@@ -13,6 +13,17 @@ import {
     type PlatformKind,
 } from "../lib/browserPlatform";
 
+type WelcomePromotionOffer = {
+    id: string;
+    type: string;
+    membershipDurationDays: number;
+    endsUtc: string | null;
+    publicTitleFr: string | null;
+    publicTitleEn: string | null;
+    publicDescriptionFr: string | null;
+    publicDescriptionEn: string | null;
+};
+
 /** Track online/offline */
 function useOnlineStatus() {
     const [online, setOnline] = React.useState<boolean>(
@@ -34,13 +45,22 @@ function useOnlineStatus() {
 }
 
 const Home: React.FC = () => {
-    const { t } = useTranslation("pages/home");
+    const { t, i18n } = useTranslation("pages/home");
     const isOnline = useOnlineStatus();
-    const { user, membershipStatus } = useAuth();
+    const { user, membershipStatus, refresh } = useAuth();
 
     const [status, setStatus] = React.useState<OfflineStatus>(null);
     const [deadlineMs, setDeadlineMs] = React.useState<number | null>(null);
     const [now, setNow] = React.useState<number>(Date.now());
+    const [welcomeOffer, setWelcomeOffer] =
+        React.useState<WelcomePromotionOffer | null>(null);
+    const [loadingWelcomeOffer, setLoadingWelcomeOffer] =
+        React.useState(false);
+    const [claimingWelcomeOffer, setClaimingWelcomeOffer] =
+        React.useState(false);
+    const [welcomeOfferSuccess, setWelcomeOfferSuccess] = React.useState<
+        string | null
+    >(null);
 
     // Platform detection for install-card text
     const [platform, setPlatform] =
@@ -107,6 +127,7 @@ const Home: React.FC = () => {
     //  - SW says "ok" (TTL still valid)
     const isLoggedIn = !!user;
     const hasActiveMembership = membershipStatus === "Active";
+    const uiLocale = i18n.language?.startsWith("fr") ? "fr-CA" : "en-CA";
     const showCountdown =
         !isOnline && isLoggedIn && !!status && status.ok === true;
 
@@ -155,8 +176,159 @@ const Home: React.FC = () => {
         heroSubtitle = t("welcome.loggedInNoMembershipSubtitle");
     }
 
+    React.useEffect(() => {
+        if (!isLoggedIn || hasActiveMembership) {
+            setWelcomeOffer(null);
+            setLoadingWelcomeOffer(false);
+            return;
+        }
+
+        let cancelled = false;
+        const ac = new AbortController();
+        setLoadingWelcomeOffer(true);
+
+        (async () => {
+            try {
+                const res = await fetch(
+                    "/api/membership/promotions/welcome-offer",
+                    {
+                        credentials: "include",
+                        signal: ac.signal,
+                    }
+                );
+
+                if (cancelled) return;
+
+                if (res.status === 204) {
+                    setWelcomeOffer(null);
+                    return;
+                }
+
+                if (!res.ok) {
+                    setWelcomeOffer(null);
+                    return;
+                }
+
+                const data =
+                    (await res.json()) as WelcomePromotionOffer | null;
+                setWelcomeOffer(data);
+            } catch (error) {
+                if ((error as Error).name !== "AbortError") {
+                    console.error(error);
+                }
+
+                if (!cancelled) {
+                    setWelcomeOffer(null);
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingWelcomeOffer(false);
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+            ac.abort();
+        };
+    }, [hasActiveMembership, isLoggedIn]);
+
+    const claimWelcomeOffer = async () => {
+        if (!welcomeOffer || claimingWelcomeOffer) return;
+
+        setClaimingWelcomeOffer(true);
+        try {
+            const res = await fetch(
+                `/api/membership/promotions/claim/${encodeURIComponent(
+                    welcomeOffer.id
+                )}`,
+                {
+                    method: "POST",
+                    credentials: "include",
+                }
+            );
+
+            if (!res.ok) {
+                let errorMessage = t("promotionOffer.claimFailed");
+
+                try {
+                    const raw = await res.text();
+                    if (raw) {
+                        const parsed = JSON.parse(raw) as { error?: string };
+                        if (parsed?.error) {
+                            errorMessage = parsed.error;
+                        }
+                    }
+                } catch {
+                    // Ignore parsing issues and keep translated fallback
+                }
+
+                alert(errorMessage);
+                return;
+            }
+
+            const data = (await res.json()) as {
+                membershipEndUtc?: string | null;
+            };
+
+            const formattedEndDate = data?.membershipEndUtc
+                ? new Date(data.membershipEndUtc).toLocaleDateString(uiLocale)
+                : null;
+
+            setWelcomeOfferSuccess(
+                formattedEndDate
+                    ? t("promotionOffer.success", {
+                          date: formattedEndDate,
+                      })
+                    : t("promotionOffer.successNoDate")
+            );
+            setWelcomeOffer(null);
+            refresh();
+        } catch (error) {
+            console.error(error);
+            alert(t("promotionOffer.claimFailed"));
+        } finally {
+            setClaimingWelcomeOffer(false);
+        }
+    };
+
+    const offerTitle = welcomeOffer
+        ? i18n.language?.startsWith("fr")
+            ? welcomeOffer.publicTitleFr ||
+              t("promotionOffer.fallbackTitle", {
+                  days: welcomeOffer.membershipDurationDays,
+              })
+            : welcomeOffer.publicTitleEn ||
+              t("promotionOffer.fallbackTitle", {
+                  days: welcomeOffer.membershipDurationDays,
+              })
+        : "";
+
+    const offerDescription = welcomeOffer
+        ? i18n.language?.startsWith("fr")
+            ? welcomeOffer.publicDescriptionFr ||
+              t("promotionOffer.fallbackBody", {
+                  days: welcomeOffer.membershipDurationDays,
+              })
+            : welcomeOffer.publicDescriptionEn ||
+              t("promotionOffer.fallbackBody", {
+                  days: welcomeOffer.membershipDurationDays,
+              })
+        : "";
+
+    const formattedOfferEndDate =
+        welcomeOffer?.endsUtc != null
+            ? new Date(welcomeOffer.endsUtc).toLocaleDateString(uiLocale)
+            : null;
+
     return (
         <div className="container my-4 my-md-5">
+            {welcomeOfferSuccess && (
+                <div className="alert alert-success mb-4">
+                    {welcomeOfferSuccess}
+                </div>
+            )}
+
             {/* TOP CARD: HERO + FEATURE CARDS + OFFLINE TIMER */}
             <div className="card section-highlight-primary mb-4">
                 <div className="card-body py-4 py-md-5">
@@ -360,6 +532,79 @@ const Home: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {isLoggedIn &&
+                !hasActiveMembership &&
+                (loadingWelcomeOffer || welcomeOffer) && (
+                    <div className="card card--tinted mb-4 shadow-sm border-0 section-highlight-mint border-accent-primary">
+                        <div className="card-body py-4">
+                            {loadingWelcomeOffer && !welcomeOffer ? (
+                                <div className="d-flex align-items-center gap-2">
+                                    <span className="spinner-border spinner-border-sm" />
+                                    <span>{t("promotionOffer.loading")}</span>
+                                </div>
+                            ) : welcomeOffer ? (
+                                <div className="row align-items-center g-3">
+                                    <div className="col-lg-8">
+                                        <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                            <span className="badge bg-success">
+                                                {t("promotionOffer.badge")}
+                                            </span>
+                                            <span className="small text-muted">
+                                                {t("promotionOffer.duration", {
+                                                    days: welcomeOffer.membershipDurationDays,
+                                                })}
+                                            </span>
+                                        </div>
+                                        <h2 className="h4 mb-2">
+                                            {offerTitle}
+                                        </h2>
+                                        <p className="text-muted mb-2">
+                                            {offerDescription}
+                                        </p>
+                                        {formattedOfferEndDate && (
+                                            <p className="small text-muted mb-0">
+                                                {t("promotionOffer.expires", {
+                                                    date: formattedOfferEndDate,
+                                                })}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="col-lg-4">
+                                        <div className="d-flex flex-column gap-2">
+                                            <button
+                                                type="button"
+                                                className="btn btn-success btn-lg"
+                                                disabled={
+                                                    claimingWelcomeOffer
+                                                }
+                                                onClick={() =>
+                                                    void claimWelcomeOffer()
+                                                }
+                                            >
+                                                {claimingWelcomeOffer
+                                                    ? t(
+                                                          "promotionOffer.claiming"
+                                                      )
+                                                    : t(
+                                                          "promotionOffer.claim"
+                                                      )}
+                                            </button>
+                                            <Link
+                                                to="/subscribe"
+                                                className="btn btn-outline-primary"
+                                            >
+                                                {t(
+                                                    "promotionOffer.secondary"
+                                                )}
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                )}
 
             {/* INSTALL-HELP CARD – ONLY FOR LOGGED-IN + ACTIVE MEMBERSHIP */}
             {isLoggedIn && hasActiveMembership && (

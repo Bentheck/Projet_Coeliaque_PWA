@@ -1,6 +1,7 @@
 ﻿// PATH: src/pages/Super/SuperAdminPanel.tsx
 import React, { useEffect, useState } from "react";
 import { Button, Modal } from "react-bootstrap";
+import PromotionEventsAdminSection from "./PromotionEventsAdminSection";
 
 /**
  * Wrapper around fetch() that always includes credentials,
@@ -166,6 +167,7 @@ type ReportedScanRow = {
 
 type TabKey =
     | "site"
+    | "promotions"
     | "membership"
     | "admins"
     | "testers"
@@ -1059,6 +1061,15 @@ const SuperAdminPanel: React.FC = () => {
                 <li className="nav-item">
                     <button
                         type="button"
+                        className={`nav-link ${activeTab === "promotions" ? "active" : ""}`}
+                        onClick={() => setActiveTab("promotions")}
+                    >
+                        Promotions
+                    </button>
+                </li>
+                <li className="nav-item">
+                    <button
+                        type="button"
                         className={`nav-link ${activeTab === "membership" ? "active" : ""
                             }`}
                         onClick={() => setActiveTab("membership")}
@@ -1521,6 +1532,9 @@ const SuperAdminPanel: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* ---------------- PROMOTIONS TAB ---------------- */}
+            {activeTab === "promotions" && <PromotionEventsAdminSection />}
 
             {/* ---------------- MEMBERSHIP TAB ---------------- */}
             {activeTab === "membership" && (
