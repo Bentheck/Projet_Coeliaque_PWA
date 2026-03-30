@@ -2,7 +2,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthContext";
+import {
+    getAlternatePublicOgLocale,
+    getLocalizedPublicPath,
+    getPublicAlternates,
+    getPublicHtmlLang,
+    getPublicOgLocale,
+    type PublicLocale,
+} from "../../seo/publicSeo";
+import { createPublicBreadcrumbStructuredData } from "../../seo/publicStructuredData";
+import { usePrerenderPageReady } from "../../seo/prerender";
 import { useSeo } from "../../seo/useSeo";
+import { usePublicLocaleSync } from "../../seo/usePublicLocale";
 
 type ContactKind = "support" | "info" | "feedback";
 
@@ -27,16 +38,51 @@ function formatKb(bytes: number) {
     return `${Math.round(bytes / 1024)} KB`;
 }
 
-export default function ContactPage() {
+type ContactPageProps = {
+    publicLocale?: PublicLocale;
+};
+
+export default function ContactPage({ publicLocale }: ContactPageProps) {
     const { t, i18n } = useTranslation("pages/FAQ/contact");
     const { user } = useAuth() as any;
+    const resolvedLocale = usePublicLocaleSync(publicLocale);
+    const canonicalPath = getLocalizedPublicPath(resolvedLocale, "/contact");
+    const htmlLang = getPublicHtmlLang(resolvedLocale);
+    const localeSyncReady =
+        i18n.resolvedLanguage?.startsWith(resolvedLocale) ||
+        i18n.language?.startsWith(resolvedLocale) ||
+        false;
+    const structuredData = createPublicBreadcrumbStructuredData(
+        resolvedLocale,
+        t("title"),
+        "/contact"
+    );
 
     useSeo({
-        title: "Contact — Services Cœliaque",
+        title:
+            resolvedLocale === "en"
+                ? "Contact — Services Cœliaque"
+                : "Contact — Services Cœliaque",
         description:
-            "Contactez Services Cœliaque pour toute question, suggestion ou demande de soutien.",
-        canonicalPath: "/contact",
-        lang: "fr-ca",
+            resolvedLocale === "en"
+                ? "Contact Services Cœliaque for questions, feedback, or support requests."
+                : "Contactez Services Cœliaque pour toute question, suggestion ou demande de soutien.",
+        canonicalPath,
+        alternates: getPublicAlternates("/contact"),
+        lang: htmlLang,
+        locale: getPublicOgLocale(resolvedLocale),
+        alternateLocale: getAlternatePublicOgLocale(resolvedLocale),
+        structuredData,
+    });
+
+    usePrerenderPageReady({
+        routeId: canonicalPath,
+        ready: localeSyncReady,
+        canonicalPath,
+        alternates: getPublicAlternates("/contact"),
+        htmlLang,
+        requiredSelector: '[data-public-page="contact"]',
+        structuredDataType: "BreadcrumbList",
     });
 
     const [kind, setKind] = useState<ContactKind>("support");
@@ -207,7 +253,7 @@ export default function ContactPage() {
     };
 
     return (
-        <div className="container py-3">
+        <div className="container py-3" data-public-page="contact">
             <h1 className="h4 mb-2">{t("title")}</h1>
             <p className="text-muted mb-4">{t("intro")}</p>
 

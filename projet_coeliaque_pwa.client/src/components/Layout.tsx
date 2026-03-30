@@ -6,10 +6,17 @@ import { Link } from "react-router-dom";
 
 import { useAuth } from "./AuthContext";
 import { useSiteStatus } from "../hooks/useSiteStatus";
+import {
+    getLocalizedPublicPath,
+    normalizePublicLocale,
+} from "../seo/publicSeo";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-    const { t } = useTranslation("components/layout");
+    const { t, i18n } = useTranslation("components/layout");
     const year = new Date().getFullYear();
+    const publicLocale = normalizePublicLocale(
+        i18n.resolvedLanguage ?? i18n.language
+    );
 
     const { user } = useAuth();
     const { status } = useSiteStatus();
@@ -36,15 +43,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="container text-center">
                     {/* Legal links */}
                     <div className="mb-1 small">
-                        <Link to="/disclaimer" className="text-muted mx-2">
+                        <Link
+                            to={getLocalizedPublicPath(
+                                publicLocale,
+                                "/disclaimer"
+                            )}
+                            className="text-muted mx-2"
+                        >
                             {t("footer.disclaimer")}
                         </Link>
                         ·
-                        <Link to="/terms" className="text-muted mx-2">
+                        <Link
+                            to={getLocalizedPublicPath(publicLocale, "/terms")}
+                            className="text-muted mx-2"
+                        >
                             {t("footer.terms")}
                         </Link>
                         ·
-                        <Link to="/privacy" className="text-muted mx-2">
+                        <Link
+                            to={getLocalizedPublicPath(publicLocale, "/privacy")}
+                            className="text-muted mx-2"
+                        >
                             {t("footer.privacy")}
                         </Link>
                     </div>

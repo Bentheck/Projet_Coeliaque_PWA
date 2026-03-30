@@ -14,7 +14,17 @@ import type {
 } from "../../offline/db";
 
 import { useTranslation } from "react-i18next";
+import {
+    getAlternatePublicOgLocale,
+    getLocalizedPublicPath,
+    getPublicAlternates,
+    getPublicHtmlLang,
+    getPublicOgLocale,
+    type PublicLocale,
+} from "../../seo/publicSeo";
+import { usePrerenderPageReady } from "../../seo/prerender";
 import { useSeo } from "../../seo/useSeo";
+import { usePublicLocaleSync } from "../../seo/usePublicLocale";
 
 import "../../styles/faq.css";
 
@@ -67,9 +77,22 @@ function getUiLang(i18nLang?: string): UiLang {
  * Public FAQ Page (offline-first, Dexie-backed)
  * =========================================== */
 
-export function FaqPage({ className = "" }: { className?: string }) {
+export function FaqPage({
+    className = "",
+    publicLocale,
+}: {
+    className?: string;
+    publicLocale?: PublicLocale;
+}) {
     const { t, i18n } = useTranslation("pages/FAQ/faq");
-    const uiLang = getUiLang(i18n.language);
+    const resolvedLocale = usePublicLocaleSync(publicLocale);
+    const uiLang = getUiLang(i18n.resolvedLanguage ?? i18n.language);
+    const canonicalPath = getLocalizedPublicPath(resolvedLocale, "/faq");
+    const htmlLang = getPublicHtmlLang(resolvedLocale);
+    const localeSyncReady =
+        i18n.resolvedLanguage?.startsWith(resolvedLocale) ||
+        i18n.language?.startsWith(resolvedLocale) ||
+        false;
 
     const [q, setQ] = useState("");
     const [tree, setTree] = useState<FaqCategoryDto[] | null>(null);
@@ -154,18 +177,43 @@ export function FaqPage({ className = "" }: { className?: string }) {
     }, [tree]);
 
     useSeo({
-        title: "FAQ — Services Cœliaque | Questions fréquentes",
+        title:
+            resolvedLocale === "en"
+                ? "FAQ — Services Cœliaque | Frequently asked questions"
+                : "FAQ — Services Cœliaque | Questions fréquentes",
         description:
-            "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.",
-        canonicalPath: "/faq",
-        lang: "fr-ca",
+            resolvedLocale === "en"
+                ? "Answers to common questions about Services Cœliaque: accounts, memberships, comparisons, receipts, and reports."
+                : "Réponses aux questions fréquentes sur Services Cœliaque : compte, abonnements, comparatifs, factures et rapports.",
+        canonicalPath,
+        alternates: getPublicAlternates("/faq"),
+        lang: htmlLang,
+        locale: getPublicOgLocale(resolvedLocale),
+        alternateLocale: getAlternatePublicOgLocale(resolvedLocale),
         structuredData: faqStructuredData,
+    });
+
+    usePrerenderPageReady({
+        routeId: canonicalPath,
+        ready:
+            localeSyncReady &&
+            !isSyncing &&
+            (tree?.length ?? 0) > 0 &&
+            faqStructuredData != null,
+        canonicalPath,
+        alternates: getPublicAlternates("/faq"),
+        htmlLang,
+        requiredSelector: '[data-public-page="faq"]',
+        structuredDataType: "FAQPage",
     });
 
     const showSeoFallback = (!tree || tree.length === 0) && !isSyncing;
 
     return (
-        <section className={`faq-page ${className}`.trim()}>
+        <section
+            className={`faq-page ${className}`.trim()}
+            data-public-page="faq"
+        >
             {/* Header / search in an accent card */}
             <div className="card card--accent mb-4 faq-header-card">
                 <div className="card-body">
@@ -202,22 +250,37 @@ export function FaqPage({ className = "" }: { className?: string }) {
             {/* ✅ Static French fallback to avoid Soft 404 when data hasn't loaded yet */}
             {showSeoFallback && (
                 <section className="faq-seo-fallback mb-4">
-                    <h2 className="h5 mb-2">Questions fréquentes</h2>
+                    <h2 className="h5 mb-2">
+                        {resolvedLocale === "en"
+                            ? "Frequently asked questions"
+                            : "Questions fréquentes"}
+                    </h2>
                     <p className="mb-2">
-                        Cette foire aux questions regroupe les réponses aux
-                        questions les plus fréquentes concernant Services
-                        Cœliaque, l’utilisation de la plateforme, les
-                        comparatifs, les factures et les rapports.
+                        {resolvedLocale === "en"
+                            ? "This FAQ gathers answers to the most common questions about Services Cœliaque, platform usage, comparisons, receipts, and reports."
+                            : "Cette foire aux questions regroupe les réponses aux questions les plus fréquentes concernant Services Cœliaque, l’utilisation de la plateforme, les comparatifs, les factures et les rapports."}
                     </p>
                     <ul className="mb-2">
-                        <li>À quoi sert Services Cœliaque&nbsp;?</li>
-                        <li>Comment fonctionnent les comparatifs&nbsp;?</li>
-                        <li>Les données sont-elles accessibles hors ligne&nbsp;?</li>
-                        <li>Comment contacter le support&nbsp;?</li>
+                        {resolvedLocale === "en" ? (
+                            <>
+                                <li>What is Services Cœliaque for?</li>
+                                <li>How do the comparison tools work?</li>
+                                <li>Can I access my data offline?</li>
+                                <li>How do I contact support?</li>
+                            </>
+                        ) : (
+                            <>
+                                <li>À quoi sert Services Cœliaque&nbsp;?</li>
+                                <li>Comment fonctionnent les comparatifs&nbsp;?</li>
+                                <li>Les données sont-elles accessibles hors ligne&nbsp;?</li>
+                                <li>Comment contacter le support&nbsp;?</li>
+                            </>
+                        )}
                     </ul>
                     <p className="mb-0">
-                        Le contenu détaillé de la FAQ s’affiche automatiquement
-                        dès que les données sont chargées.
+                        {resolvedLocale === "en"
+                            ? "Detailed FAQ content appears automatically as soon as the data finishes loading."
+                            : "Le contenu détaillé de la FAQ s’affiche automatiquement dès que les données sont chargées."}
                     </p>
                 </section>
             )}

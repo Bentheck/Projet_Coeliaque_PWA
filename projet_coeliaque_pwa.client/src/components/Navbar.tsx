@@ -1,10 +1,15 @@
 ﻿// PATH: src/components/Navbar.tsx
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "./ThemeContext";
 import { useSiteStatus } from "../hooks/useSiteStatus";
+import {
+    getLocalizedPublicPath,
+    getLocalizedPublicPathForPathname,
+    normalizePublicLocale,
+} from "../seo/publicSeo";
 
 /** Small hook to track connectivity */
 function useOnlineStatus() {
@@ -75,6 +80,8 @@ export default function Navbar() {
     const isOnline = useOnlineStatus();
     const { resolvedTheme, toggleTheme } = useTheme();
     const { status } = useSiteStatus();
+    const location = useLocation();
+    const navigate = useNavigate();
 
     const [atTop, setAtTop] = useState(true);
 
@@ -108,9 +115,22 @@ export default function Navbar() {
     const currentLang = i18n.language?.startsWith("fr") ? "fr" : "en";
     const nextLang = currentLang === "fr" ? "en" : "fr";
     const currentLangLabel = nextLang.toUpperCase();
+    const publicLocale = normalizePublicLocale(
+        i18n.resolvedLanguage ?? i18n.language
+    );
 
     const handleSwitchLanguage = () => {
-        i18n.changeLanguage(nextLang);
+        const localizedTarget = getLocalizedPublicPathForPathname(
+            location.pathname,
+            normalizePublicLocale(nextLang)
+        );
+
+        if (localizedTarget) {
+            navigate(`${localizedTarget}${location.search}${location.hash}`);
+            return;
+        }
+
+        void i18n.changeLanguage(nextLang);
     };
 
     const languageTitle =
@@ -135,10 +155,13 @@ export default function Navbar() {
 
     return (
         <nav className={navClassName}>
-            {/* navbar-inner = actual pill that changes size/shape */}
+                {/* navbar-inner = actual pill that changes size/shape */}
             <div className="navbar-inner">
                 <div className="container">
-                    <Link className="navbar-brand" to="/">
+                    <Link
+                        className="navbar-brand"
+                        to={getLocalizedPublicPath(publicLocale, "/")}
+                    >
                         {t("brand")}
                     </Link>
 
@@ -411,7 +434,10 @@ export default function Navbar() {
                                     <li>
                                         <Link
                                             className="dropdown-item"
-                                            to="/faq"
+                                            to={getLocalizedPublicPath(
+                                                publicLocale,
+                                                "/faq"
+                                            )}
                                         >
                                             <i className="bi bi-journal-text me-2"></i>{" "}
                                             {t("menu.help.faq")}
@@ -420,7 +446,10 @@ export default function Navbar() {
                                     <li>
                                         <Link
                                             className="dropdown-item"
-                                            to="/contact"
+                                            to={getLocalizedPublicPath(
+                                                publicLocale,
+                                                "/contact"
+                                            )}
                                         >
                                             <i className="bi bi-envelope me-2"></i>{" "}
                                             {t("menu.help.contact")}

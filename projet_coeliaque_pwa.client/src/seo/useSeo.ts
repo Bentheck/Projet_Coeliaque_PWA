@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+import type { SeoAlternateLink } from "./publicSeo";
 
 type JsonLdValue = Record<string, unknown> | Array<Record<string, unknown>>;
 
@@ -7,6 +8,7 @@ type SeoOptions = {
     description?: string;
     robots?: string;
     canonicalPath?: string;
+    alternates?: SeoAlternateLink[];
     lang?: string;
     ogType?: string;
     imagePath?: string;
@@ -16,10 +18,14 @@ type SeoOptions = {
     structuredData?: JsonLdValue | null;
 };
 
-const DEFAULT_SITE_URL = "https://servicescoeliaque.ca";
-const DEFAULT_SITE_NAME = "Services Cœliaque";
+export const DEFAULT_SITE_URL = "https://servicescoeliaque.ca";
+const DEFAULT_SITE_NAME = "Services C\u0153liaque";
 const DEFAULT_IMAGE_PATH = "/icons/icon-512.png";
-const STRUCTURED_DATA_ID = "app-seo-structured-data";
+export const APP_SEO_STRUCTURED_DATA_ID = "app-seo-structured-data";
+const SEO_ALTERNATE_ATTR = "data-seo-alternate";
+
+const useHeadEffect =
+    typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 function removeIfPresent(selector: string) {
     if (typeof document === "undefined") return;
@@ -86,10 +92,30 @@ function toAbsoluteUrl(pathOrUrl?: string) {
         return pathOrUrl;
     }
 
-    const origin =
-        typeof window !== "undefined" ? window.location.origin : DEFAULT_SITE_URL;
+    return new URL(pathOrUrl, DEFAULT_SITE_URL).toString();
+}
 
-    return new URL(pathOrUrl, origin).toString();
+function setAlternates(alternates?: SeoAlternateLink[]) {
+    if (typeof document === "undefined") return;
+
+    document
+        .querySelectorAll<HTMLLinkElement>(
+            `link[rel="alternate"][${SEO_ALTERNATE_ATTR}]`
+        )
+        .forEach((el) => el.remove());
+
+    if (!alternates?.length) {
+        return;
+    }
+
+    alternates.forEach(({ href, hrefLang }) => {
+        const el = document.createElement("link");
+        el.setAttribute("rel", "alternate");
+        el.setAttribute("href", toAbsoluteUrl(href) ?? href);
+        el.setAttribute("hreflang", hrefLang);
+        el.setAttribute(SEO_ALTERNATE_ATTR, "true");
+        document.head.appendChild(el);
+    });
 }
 
 function getCanonicalUrl(canonicalPath?: string) {
@@ -109,6 +135,7 @@ export function useSeo({
     description,
     robots = "index, follow",
     canonicalPath,
+    alternates,
     lang,
     ogType = "website",
     imagePath = DEFAULT_IMAGE_PATH,
@@ -117,7 +144,7 @@ export function useSeo({
     alternateLocale = "en_CA",
     structuredData,
 }: SeoOptions) {
-    useEffect(() => {
+    useHeadEffect(() => {
         if (typeof document === "undefined") return;
 
         const canonicalUrl = getCanonicalUrl(canonicalPath);
@@ -137,6 +164,7 @@ export function useSeo({
         setMetaByName("twitter:image", imageUrl);
 
         setCanonical(canonicalUrl);
+        setAlternates(alternates);
 
         setMetaByProperty("og:title", title);
         setMetaByProperty("og:description", description);
@@ -147,14 +175,15 @@ export function useSeo({
         setMetaByProperty("og:locale", locale);
         setMetaByProperty("og:locale:alternate", alternateLocale);
 
-        const existingStructuredData = document.getElementById(STRUCTURED_DATA_ID);
+        const existingStructuredData =
+            document.getElementById(APP_SEO_STRUCTURED_DATA_ID);
         if (structuredData) {
             const script =
                 existingStructuredData ??
                 (() => {
                     const next = document.createElement("script");
                     next.type = "application/ld+json";
-                    next.id = STRUCTURED_DATA_ID;
+                    next.id = APP_SEO_STRUCTURED_DATA_ID;
                     document.head.appendChild(next);
                     return next;
                 })();
@@ -165,6 +194,7 @@ export function useSeo({
         }
     }, [
         alternateLocale,
+        alternates,
         canonicalPath,
         description,
         imagePath,
@@ -176,4 +206,10 @@ export function useSeo({
         structuredData,
         title,
     ]);
+}
+
+export function useRobotsDirective(robots: string) {
+    useHeadEffect(() => {
+        setMetaByName("robots", robots);
+    }, [robots]);
 }

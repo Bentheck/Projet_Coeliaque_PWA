@@ -9,7 +9,7 @@
    - Offline outbox for writes
    ========================= */
 
-const APP_VERSION = "v1.0.31"; // ✅ bump on each deploy that should invalidate SW
+const APP_VERSION = "v1.0.32"; // ✅ bump on each deploy that should invalidate SW
 const PRECACHE = `precache-${APP_VERSION}`;
 const RUNTIME = "runtime";
 const API_CACHE_PREFIX = "api-runtime";
@@ -24,7 +24,6 @@ let OFFLINE_MAX_AGE_MS = OFFLINE_MAX_AGE_MS_DEFAULT;
 
 /* ------- Precache ------- */
 const PRECACHE_URLS = [
-    "/",
     "/index.html",
     "/manifest.webmanifest",
     "/offline.html",
@@ -37,6 +36,43 @@ const NAV_DENYLIST = [/^\/forum(\/.*)?$/i, /^\/subscribe(\/.*)?$/i];
 
 /* ✅ SPA navigation cache key (single entry) */
 const NAV_HTML_KEY = "/index.html";
+const PRERENDERED_PUBLIC_PATHS = new Set([
+    "/fr",
+    "/en",
+    "/fr/faq",
+    "/en/faq",
+    "/fr/contact",
+    "/en/contact",
+    "/fr/terms",
+    "/en/terms",
+    "/fr/privacy",
+    "/en/privacy",
+    "/fr/disclaimer",
+    "/en/disclaimer",
+]);
+const SERVER_REDIRECT_PATHS = new Set([
+    "/",
+    "/faq",
+    "/faq/calculateur",
+    "/contact",
+    "/terms",
+    "/privacy",
+    "/disclaimer",
+    "/legal/disclaimer",
+    "/legal/privacy",
+    "/legal/tos",
+]);
+
+function normalizePathname(pathname) {
+    if (!pathname || pathname === "/") return "/";
+    return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
+function createHtmlRequest(pathname) {
+    return new Request(new URL(pathname, self.location.origin).toString(), {
+        headers: { Accept: "text/html" },
+    });
+}
 
 /* =========================
    API ROUTE PATTERNS (kebab + PascalCase)
@@ -287,12 +323,49 @@ self.addEventListener("fetch", (event) => {
 
     /* Navigations */
     if (req.mode === "navigate") {
-        if (pathIsDenied(url.pathname)) {
+        const normalizedPath = normalizePathname(url.pathname);
+
+        if (pathIsDenied(normalizedPath)) {
             event.respondWith((async () => {
                 try { return (await event.preloadResponse) || (await fetch(req)); }
                 catch {
                     const prec = await caches.open(PRECACHE);
                     return (await prec.match("/offline.html")) || new Response("", { status: 503 });
+                }
+            })());
+            return;
+        }
+
+        if (SERVER_REDIRECT_PATHS.has(normalizedPath)) {
+            return;
+        }
+
+        if (PRERENDERED_PUBLIC_PATHS.has(normalizedPath)) {
+            event.respondWith((async () => {
+                const run = await caches.open(RUNTIME);
+                const prec = await caches.open(PRECACHE);
+                const cacheKey = createHtmlRequest(normalizedPath);
+
+                try {
+                    const preload = await event.preloadResponse;
+                    if (preload) {
+                        await run.put(cacheKey, preload.clone());
+                        await bumpLastOnline();
+                        return preload;
+                    }
+
+                    const fresh = await fetch(req);
+                    if (fresh.ok) {
+                        await run.put(cacheKey, fresh.clone());
+                        await bumpLastOnline();
+                    }
+                    return fresh;
+                } catch {
+                    return (
+                        (await run.match(cacheKey)) ||
+                        (await prec.match("/offline.html")) ||
+                        new Response("", { status: 503 })
+                    );
                 }
             })());
             return;
