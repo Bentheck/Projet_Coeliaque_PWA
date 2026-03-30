@@ -11,6 +11,10 @@ import { useTranslation } from "react-i18next";
 import HelpBubble from "../../components/HelpBubble";
 import FieldErrorBubble from "../../components/FieldErrorBubble";
 import { getRegisterConfig } from "../../lib/api";
+import {
+    getLocalizedPublicPath,
+    normalizePublicLocale,
+} from "../../seo/publicSeo";
 import { useSeo } from "../../seo/useSeo";
 
 type ApiRegisterError = {
@@ -54,7 +58,10 @@ export default function Register() {
     const location = useLocation();
 
     // Register form strings
-    const { t } = useTranslation("pages/User/register");
+    const { t, i18n } = useTranslation("pages/User/register");
+    const publicLocale = normalizePublicLocale(
+        i18n.resolvedLanguage ?? i18n.language
+    );
 
     // Legal strings (versioned)
     const { t: tDisc } = useTranslation("legal/disclaimer");
@@ -607,7 +614,7 @@ export default function Register() {
                 ((tDisc(`${disclaimerBaseKey}.scrollOk`, {
                     defaultValue: "",
                 }) as string) || ""),
-            viewFullHref: "/legal/disclaimer",
+            viewFullHref: getLocalizedPublicPath(publicLocale, "/disclaimer"),
             viewFullLabel:
                 ((tDisc("actions.viewFull", {
                     defaultValue: "View full disclaimer",
@@ -636,7 +643,7 @@ export default function Register() {
                 ((tPrivacy(`${privacyBaseKey}.scrollOk`, {
                     defaultValue: "",
                 }) as string) || ""),
-            viewFullHref: "/legal/privacy",
+            viewFullHref: getLocalizedPublicPath(publicLocale, "/privacy"),
             viewFullLabel:
                 ((tPrivacy("actions.viewFull", {
                     defaultValue: "View full privacy policy",
@@ -665,7 +672,7 @@ export default function Register() {
                 ((tTos(`${tosBaseKey}.scrollOk`, {
                     defaultValue: "",
                 }) as string) || ""),
-            viewFullHref: "/legal/tos",
+            viewFullHref: getLocalizedPublicPath(publicLocale, "/terms"),
             viewFullLabel:
                 ((tTos("actions.viewFull", {
                     defaultValue: "View full terms of service",
@@ -683,7 +690,8 @@ export default function Register() {
             <div className="card p-4 mx-auto my-5 auth-card">
                 <h2 className="mb-2">{t("successTitle")}</h2>
                 <div className="alert alert-success mb-0">
-                    {t("successMsg")}
+                    <div>{t("successMsg")}</div>
+                    <div className="mt-2 small">{t("deliveryNote")}</div>
                 </div>
             </div>
         );

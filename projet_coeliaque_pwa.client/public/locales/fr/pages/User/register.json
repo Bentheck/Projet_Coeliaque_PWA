@@ -12,6 +12,7 @@
   "defaultError": "Impossible de créer votre compte. Réessayez.",
   "successTitle": "Encore une étape !",
   "successMsg": "Nous vous avons envoyé un lien de confirmation. Vérifiez votre boîte de réception.",
+  "deliveryNote": "Vérifiez aussi vos courriels indésirables. La réception peut prendre jusqu'à 5 minutes.",
   "strength": {
     "label": "Solidité du mot de passe : {{level}}",
     "weak": "Faible",

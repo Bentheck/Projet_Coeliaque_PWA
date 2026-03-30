@@ -1,37 +1,76 @@
-﻿// src/pages/Legal/Disclaimer.tsx
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+    getAlternatePublicOgLocale,
+    getLocalizedPublicPath,
+    getPublicAlternates,
+    getPublicHtmlLang,
+    getPublicOgLocale,
+    type PublicLocale,
+} from "../../seo/publicSeo";
+import { createPublicBreadcrumbStructuredData } from "../../seo/publicStructuredData";
+import { usePrerenderPageReady } from "../../seo/prerender";
 import { useSeo } from "../../seo/useSeo";
+import { usePublicLocaleSync } from "../../seo/usePublicLocale";
 
 type FullSection = {
     title: string;
     paragraphs: string[];
 };
 
-export default function DisclaimerPage() {
-    // Page-level chrome (back button, generic errors)
-    const { t: tPage } = useTranslation("pages/Legal/disclaimer");
+type DisclaimerPageProps = {
+    publicLocale?: PublicLocale;
+};
 
-    // FULL legal content (authoritative, versioned)
+export default function DisclaimerPage({
+    publicLocale,
+}: DisclaimerPageProps) {
+    const { t: tPage, i18n } = useTranslation("pages/Legal/disclaimer");
     const { t: tFull } = useTranslation("legal/disclaimer_full");
-
+    const resolvedLocale = usePublicLocaleSync(publicLocale);
     const navigate = useNavigate();
-
     const version = tFull("currentVersion", { defaultValue: "v1" }) as string;
-
     const title =
         (tFull(`${version}.title`) as string) ||
         (tPage("page.title") as string);
+    const canonicalPath = getLocalizedPublicPath(resolvedLocale, "/disclaimer");
+    const htmlLang = getPublicHtmlLang(resolvedLocale);
+    const localeSyncReady =
+        i18n.resolvedLanguage?.startsWith(resolvedLocale) ||
+        i18n.language?.startsWith(resolvedLocale) ||
+        false;
 
     useSeo({
-        title: "Avis de non-responsabilité — Services Cœliaque",
+        title:
+            resolvedLocale === "en"
+                ? "Disclaimer \u2014 Services C\u0153liaque"
+                : "Avis de non-responsabilit\u00e9 \u2014 Services C\u0153liaque",
         description:
-            "Consultez l'avis de non-responsabilité et les informations importantes de Services Cœliaque.",
-        canonicalPath: "/disclaimer",
-        lang: "fr-ca",
+            resolvedLocale === "en"
+                ? "Read the Services C\u0153liaque disclaimer and important information."
+                : "Consultez l'avis de non-responsabilit\u00e9 et les informations importantes de Services C\u0153liaque.",
+        canonicalPath,
+        alternates: getPublicAlternates("/disclaimer"),
+        lang: htmlLang,
+        locale: getPublicOgLocale(resolvedLocale),
+        alternateLocale: getAlternatePublicOgLocale(resolvedLocale),
+        structuredData: createPublicBreadcrumbStructuredData(
+            resolvedLocale,
+            title,
+            "/disclaimer"
+        ),
     });
 
+    usePrerenderPageReady({
+        routeId: canonicalPath,
+        ready: localeSyncReady,
+        canonicalPath,
+        alternates: getPublicAlternates("/disclaimer"),
+        htmlLang,
+        requiredSelector: '[data-public-page="disclaimer"]',
+        structuredDataType: "BreadcrumbList",
+    });
 
     const sections = useMemo(() => {
         const v = tFull(`${version}.sections`, {
@@ -41,7 +80,11 @@ export default function DisclaimerPage() {
     }, [tFull, version]);
 
     return (
-        <div className="container py-3" style={{ maxWidth: 920 }}>
+        <div
+            className="container py-3"
+            style={{ maxWidth: 920 }}
+            data-public-page="disclaimer"
+        >
             <div className="d-flex align-items-center gap-2 mb-3">
                 <button
                     type="button"
@@ -64,7 +107,7 @@ export default function DisclaimerPage() {
                             <h2 className="h6 mb-2">{section.title}</h2>
 
                             {Array.isArray(section.paragraphs) &&
-                                section.paragraphs.length ? (
+                            section.paragraphs.length ? (
                                 section.paragraphs.map((p, pIdx) => (
                                     <p
                                         key={pIdx}

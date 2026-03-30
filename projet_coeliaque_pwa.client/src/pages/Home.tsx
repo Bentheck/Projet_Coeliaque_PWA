@@ -12,8 +12,10 @@ import {
     detectPlatform,
     type PlatformKind,
 } from "../lib/browserPlatform";
-import WelcomePromotionCard from "../components/WelcomePromotionCard";
-import useWelcomePromotionOffer from "../hooks/useWelcomePromotionOffer";
+import {
+    getLocalizedPublicPath,
+    normalizePublicLocale,
+} from "../seo/publicSeo";
 
 /** Track online/offline */
 function useOnlineStatus() {
@@ -119,6 +121,9 @@ const Home: React.FC = () => {
     //  - logged in
     //  - SW says "ok" (TTL still valid)
     const uiLocale = i18n.language?.startsWith("fr") ? "fr-CA" : "en-CA";
+    const publicLocale = normalizePublicLocale(
+        i18n.resolvedLanguage ?? i18n.language
+    );
     const showCountdown =
         !isOnline && isLoggedIn && !!status && status.ok === true;
 
@@ -217,7 +222,7 @@ const Home: React.FC = () => {
             : null;
 
     return (
-        <div className="container my-4 my-md-5">
+        <div className="container my-4 my-md-5" data-public-page="home">
             {welcomeOfferSuccess && (
                 <div className="alert alert-success mb-4">
                     {welcomeOfferSuccess}
@@ -323,7 +328,10 @@ const Home: React.FC = () => {
                                             {t("hero.cta.subscribe")}
                                         </Link>
                                         <Link
-                                            to="/faq"
+                                            to={getLocalizedPublicPath(
+                                                publicLocale,
+                                                "/faq"
+                                            )}
                                             className="btn btn-outline-primary btn-lg"
                                         >
                                             <i className="bi bi-journal-text me-2" />
@@ -689,7 +697,10 @@ const Home: React.FC = () => {
 
                             <div className="mt-3 d-flex flex-wrap gap-2">
                                 <Link
-                                    to="/faq"
+                                    to={getLocalizedPublicPath(
+                                        publicLocale,
+                                        "/faq"
+                                    )}
                                     className="btn btn-outline-secondary btn-sm"
                                 >
                                     <i className="bi bi-journal-text me-1" />

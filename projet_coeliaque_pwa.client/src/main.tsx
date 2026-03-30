@@ -11,6 +11,7 @@ import { initSWHeartbeat } from "./swOfflineStatus";
 import "./i18n";
 import { DemoTourProvider } from "./demo/DemoTourContext";
 import { ThemeProvider } from "./components/ThemeContext";
+import { shouldDisableServiceWorker } from "./seo/prerender";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
@@ -25,7 +26,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 
 // Service Worker registration + heartbeat + outbox drainer
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && !shouldDisableServiceWorker()) {
     window.addEventListener("load", () => {
         navigator.serviceWorker
             .register("/sw.js", { scope: "/" })

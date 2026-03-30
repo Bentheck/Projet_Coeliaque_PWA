@@ -4,6 +4,8 @@ import "./styles/app-theme.css";
 import "./styles/bubbles.css";
 
 import Layout from "./components/Layout";
+import DemoSeoLayout from "./components/DemoSeoLayout";
+import LocalizedPublicRedirect from "./components/LocalizedPublicRedirect";
 // OLD: import Home from "./pages/Home";
 import RootHome from "./pages/RootHome";
 
@@ -91,58 +93,65 @@ export default function App() {
                 <GlobalOfflineGuard />
                 <Layout>
                     <Routes>
-                        {/* ROOT — runtime switch between PrelaunchHome and Home */}
-                        <Route path="/" element={<RootHome />} />
+                        {/* Public entry points */}
+                        <Route
+                            path="/"
+                            element={<LocalizedPublicRedirect path="/" />}
+                        />
+                        <Route
+                            path="/fr"
+                            element={<RootHome publicLocale="fr" />}
+                        />
+                        <Route
+                            path="/en"
+                            element={<RootHome publicLocale="en" />}
+                        />
 
                         {/* Site closed (global gate / 403 handler redirect) */}
                         <Route path="/site-closed" element={<SiteClosed />} />
 
                         {/* ================= DEMO (offline Dexie-only) ================= */}
-                        <Route path="/demo" element={<DemoHome />} />
+                        <Route path="/demo" element={<DemoSeoLayout />}>
+                            <Route index element={<DemoHome />} />
 
-                        {/* Demo Factures */}
-                        <Route
-                            path="/demo/factures"
-                            element={<DemoFactures />}
-                        />
-                        <Route
-                            path="/demo/factures/:id"
-                            element={<DemoFactureEdit />}
-                        />
+                            {/* Demo Factures */}
+                            <Route path="factures" element={<DemoFactures />} />
+                            <Route
+                                path="factures/:id"
+                                element={<DemoFactureEdit />}
+                            />
 
-                        {/* Demo Comparatif (index + edit) */}
-                        <Route
-                            path="/demo/comparatif"
-                            element={<DemoComparatifIndex />}
-                        />
-                        <Route
-                            path="/demo/comparatif/:id"
-                            element={<DemoComparatifEdit />}
-                        />
+                            {/* Demo Comparatif (index + edit) */}
+                            <Route
+                                path="comparatif"
+                                element={<DemoComparatifIndex />}
+                            />
+                            <Route
+                                path="comparatif/:id"
+                                element={<DemoComparatifEdit />}
+                            />
 
-                        {/* Demo Rapports */}
-                        <Route
-                            path="/demo/rapports"
-                            element={<DemoRapports />}
-                        />
-                        <Route
-                            path="/demo/rapports/:annee"
-                            element={<DemoRapportsDisplay />}
-                        />
+                            {/* Demo Rapports */}
+                            <Route path="rapports" element={<DemoRapports />} />
+                            <Route
+                                path="rapports/:annee"
+                                element={<DemoRapportsDisplay />}
+                            />
 
-                        {/* Demo Liste d’épicerie */}
-                        <Route
-                            path="/demo/liste-epicerie"
-                            element={<DemoListesEpicerieIndex />}
-                        />
-                        <Route
-                            path="/demo/liste-epicerie/edit/:id?"
-                            element={<DemoListeEpicerieEdit />}
-                        />
-                        <Route
-                            path="/demo/liste-epicerie/view/:id"
-                            element={<DemoListeEpicerieView />}
-                        />
+                            {/* Demo Liste d’épicerie */}
+                            <Route
+                                path="liste-epicerie"
+                                element={<DemoListesEpicerieIndex />}
+                            />
+                            <Route
+                                path="liste-epicerie/edit/:id?"
+                                element={<DemoListeEpicerieEdit />}
+                            />
+                            <Route
+                                path="liste-epicerie/view/:id"
+                                element={<DemoListeEpicerieView />}
+                            />
+                        </Route>
 
                         {/* ================= REAL APP (API + membership) ================ */}
                         <Route
@@ -364,13 +373,35 @@ export default function App() {
                             }
                         />
 
-                        {/* FAQ - contact */}
-                        <Route path="/faq" element={<FaqPublic />} />
+                        {/* Public content */}
+                        <Route
+                            path="/faq"
+                            element={<LocalizedPublicRedirect path="/faq" />}
+                        />
                         <Route
                             path="/faq/calculateur"
-                            element={<FaqPublic />}
+                            element={<LocalizedPublicRedirect path="/faq" />}
                         />
-                        <Route path="/contact" element={<ContactPage />} />
+                        <Route
+                            path="/contact"
+                            element={<LocalizedPublicRedirect path="/contact" />}
+                        />
+                        <Route
+                            path="/fr/faq"
+                            element={<FaqPublic publicLocale="fr" />}
+                        />
+                        <Route
+                            path="/en/faq"
+                            element={<FaqPublic publicLocale="en" />}
+                        />
+                        <Route
+                            path="/fr/contact"
+                            element={<ContactPage publicLocale="fr" />}
+                        />
+                        <Route
+                            path="/en/contact"
+                            element={<ContactPage publicLocale="en" />}
+                        />
 
                         {/* User */}
                         <Route path="/u/:userId" element={<UserProfileView />} />
@@ -435,23 +466,56 @@ export default function App() {
                         {/* Legal */}
                         <Route
                             path="/legal/disclaimer"
-                            element={<DisclaimerPage />}
+                            element={
+                                <LocalizedPublicRedirect path="/disclaimer" />
+                            }
                         />
                         <Route
                             path="/legal/tos"
-                            element={<TermsOfServicePage />}
+                            element={<LocalizedPublicRedirect path="/terms" />}
                         />
                         <Route
                             path="/legal/privacy"
-                            element={<PrivacyPage />}
+                            element={<LocalizedPublicRedirect path="/privacy" />}
                         />
-
                         <Route
                             path="/disclaimer"
-                            element={<DisclaimerPage />}
+                            element={
+                                <LocalizedPublicRedirect path="/disclaimer" />
+                            }
                         />
-                        <Route path="/terms" element={<TermsOfServicePage />} />
-                        <Route path="/privacy" element={<PrivacyPage />} />
+                        <Route
+                            path="/terms"
+                            element={<LocalizedPublicRedirect path="/terms" />}
+                        />
+                        <Route
+                            path="/privacy"
+                            element={<LocalizedPublicRedirect path="/privacy" />}
+                        />
+                        <Route
+                            path="/fr/disclaimer"
+                            element={<DisclaimerPage publicLocale="fr" />}
+                        />
+                        <Route
+                            path="/en/disclaimer"
+                            element={<DisclaimerPage publicLocale="en" />}
+                        />
+                        <Route
+                            path="/fr/terms"
+                            element={<TermsOfServicePage publicLocale="fr" />}
+                        />
+                        <Route
+                            path="/en/terms"
+                            element={<TermsOfServicePage publicLocale="en" />}
+                        />
+                        <Route
+                            path="/fr/privacy"
+                            element={<PrivacyPage publicLocale="fr" />}
+                        />
+                        <Route
+                            path="/en/privacy"
+                            element={<PrivacyPage publicLocale="en" />}
+                        />
 
                         {/* 404 */}
                         <Route path="*" element={<NotFound />} />

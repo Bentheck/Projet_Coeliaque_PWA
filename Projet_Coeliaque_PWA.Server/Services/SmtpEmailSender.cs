@@ -8,11 +8,16 @@ namespace Projet_Coeliaque_PWA.Server.Services
     public sealed class SmtpEmailSender : IEmailSender
     {
         private readonly SmtpEmailOptions _opt;
+        private readonly IAuditLogService _audit;
         private readonly ILogger<SmtpEmailSender> _logger;
 
-        public SmtpEmailSender(IOptions<SmtpEmailOptions> opt, ILogger<SmtpEmailSender> logger)
+        public SmtpEmailSender(
+            IOptions<SmtpEmailOptions> opt,
+            IAuditLogService audit,
+            ILogger<SmtpEmailSender> logger)
         {
             _opt = opt.Value;
+            _audit = audit;
             _logger = logger;
         }
 
@@ -40,66 +45,65 @@ namespace Projet_Coeliaque_PWA.Server.Services
             if (string.IsNullOrWhiteSpace(toEmail))
                 throw new ArgumentException("toEmail is required.", nameof(toEmail));
 
-            if (string.IsNullOrWhiteSpace(_opt.FromEmail))
-                throw new InvalidOperationException("SMTP FromEmail is not configured.");
-
-            var message = new MimeMessage();
-
-            // From: can be an alias (must exist in Workspace Gmail "Send mail as")
-            var from = new MailboxAddress(_opt.FromName ?? "", _opt.FromEmail);
-
-            // Sender: authenticated mailbox (often must match Username)
-            var sender = new MailboxAddress(_opt.FromName ?? "", _opt.Username);
-
-            message.From.Clear();
-            message.From.Add(from);
-            message.Sender = sender;
-
-            // Reply-To:
-            // - Contact form: reply to user
-            // - Default: reply to From alias
-            message.ReplyTo.Clear();
-            if (!string.IsNullOrWhiteSpace(replyToEmail))
-            {
-                message.ReplyTo.Add(new MailboxAddress(replyToName ?? replyToEmail, replyToEmail));
-            }
-            else
-            {
-                message.ReplyTo.Add(from);
-            }
-
-            message.To.Clear();
-            message.To.Add(MailboxAddress.Parse(toEmail));
-            message.Subject = subject ?? "";
-
-            var builder = new BodyBuilder
-            {
-                HtmlBody = htmlMessage ?? ""
-            };
-
-            // Attachments (images from contact form)
-            if (attachments != null && attachments.Count > 0)
-            {
-                foreach (var att in attachments)
-                {
-                    if (att == null) continue;
-                    if (att.Content == null || att.Content.Length == 0) continue;
-
-                    var fileName = string.IsNullOrWhiteSpace(att.FileName) ? "attachment" : att.FileName;
-                    var contentType = string.IsNullOrWhiteSpace(att.ContentType)
-                        ? "application/octet-stream"
-                        : att.ContentType;
-
-                    builder.Attachments.Add(fileName, att.Content, ContentType.Parse(contentType));
-                }
-            }
-
-            message.Body = builder.ToMessageBody();
-
-            using var client = new SmtpClient();
-
             try
             {
+                if (string.IsNullOrWhiteSpace(_opt.FromEmail))
+                    throw new InvalidOperationException("SMTP FromEmail is not configured.");
+
+                var message = new MimeMessage();
+
+                // From: can be an alias (must exist in Workspace Gmail "Send mail as")
+                var from = new MailboxAddress(_opt.FromName ?? "", _opt.FromEmail);
+
+                // Sender: authenticated mailbox (often must match Username)
+                var sender = new MailboxAddress(_opt.FromName ?? "", _opt.Username);
+
+                message.From.Clear();
+                message.From.Add(from);
+                message.Sender = sender;
+
+                // Reply-To:
+                // - Contact form: reply to user
+                // - Default: reply to From alias
+                message.ReplyTo.Clear();
+                if (!string.IsNullOrWhiteSpace(replyToEmail))
+                {
+                    message.ReplyTo.Add(new MailboxAddress(replyToName ?? replyToEmail, replyToEmail));
+                }
+                else
+                {
+                    message.ReplyTo.Add(from);
+                }
+
+                message.To.Clear();
+                message.To.Add(MailboxAddress.Parse(toEmail));
+                message.Subject = subject ?? "";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = htmlMessage ?? ""
+                };
+
+                // Attachments (images from contact form)
+                if (attachments != null && attachments.Count > 0)
+                {
+                    foreach (var att in attachments)
+                    {
+                        if (att == null) continue;
+                        if (att.Content == null || att.Content.Length == 0) continue;
+
+                        var fileName = string.IsNullOrWhiteSpace(att.FileName) ? "attachment" : att.FileName;
+                        var contentType = string.IsNullOrWhiteSpace(att.ContentType)
+                            ? "application/octet-stream"
+                            : att.ContentType;
+
+                        builder.Attachments.Add(fileName, att.Content, ContentType.Parse(contentType));
+                    }
+                }
+
+                message.Body = builder.ToMessageBody();
+
+                using var client = new SmtpClient();
                 client.CheckCertificateRevocation = true;
 
                 var secure = _opt.UseStartTls
@@ -113,6 +117,21 @@ namespace Projet_Coeliaque_PWA.Server.Services
             }
             catch (Exception ex)
             {
+                await _audit.LogSystemAsync(
+                    "Email.SMTP.Failed",
+                    target: toEmail,
+                    details: new
+                    {
+                        Subject = subject,
+                        Host = _opt.Host,
+                        Port = _opt.Port,
+                        UseStartTls = _opt.UseStartTls,
+                        FromEmail = _opt.FromEmail,
+                        ReplyToEmail = replyToEmail,
+                        AttachmentCount = attachments?.Count ?? 0,
+                        ExceptionType = ex.GetType().FullName,
+                        ex.Message
+                    });
                 _logger.LogError(ex, "SMTP email send failed (To={ToEmail}, Subject={Subject})", toEmail, subject);
                 throw;
             }

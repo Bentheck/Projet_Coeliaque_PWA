@@ -2,19 +2,41 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+    getAlternatePublicOgLocale,
+    getLocalizedPublicPath,
+    getPublicAlternates,
+    getPublicHtmlLang,
+    getPublicOgLocale,
+    type PublicLocale,
+} from "../../seo/publicSeo";
+import { createPublicBreadcrumbStructuredData } from "../../seo/publicStructuredData";
+import { usePrerenderPageReady } from "../../seo/prerender";
 import { useSeo } from "../../seo/useSeo";
+import { usePublicLocaleSync } from "../../seo/usePublicLocale";
 
 type FullSection = {
     title: string;
     paragraphs: string[];
 };
 
-export default function PrivacyPage() {
+type PrivacyPageProps = {
+    publicLocale?: PublicLocale;
+};
+
+export default function PrivacyPage({ publicLocale }: PrivacyPageProps) {
     // Page UI strings
-    const { t: tPage } = useTranslation("pages/Legal/privacy");
+    const { t: tPage, i18n } = useTranslation("pages/Legal/privacy");
 
     // Full legal content
     const { t: tLegal } = useTranslation("legal/privacy_full");
+    const resolvedLocale = usePublicLocaleSync(publicLocale);
+    const canonicalPath = getLocalizedPublicPath(resolvedLocale, "/privacy");
+    const htmlLang = getPublicHtmlLang(resolvedLocale);
+    const localeSyncReady =
+        i18n.resolvedLanguage?.startsWith(resolvedLocale) ||
+        i18n.language?.startsWith(resolvedLocale) ||
+        false;
 
     const navigate = useNavigate();
 
@@ -27,11 +49,34 @@ export default function PrivacyPage() {
     const subtitle = tLegal(`${version}.subtitle`, { defaultValue: "" }) as string;
 
     useSeo({
-        title: "Politique de confidentialité — Services Cœliaque",
+        title:
+            resolvedLocale === "en"
+                ? "Privacy Policy — Services Cœliaque"
+                : "Politique de confidentialité — Services Cœliaque",
         description:
-            "Consultez la politique de confidentialité de Services Cœliaque.",
-        canonicalPath: "/privacy",
-        lang: "fr-ca",
+            resolvedLocale === "en"
+                ? "Read the Services Cœliaque privacy policy."
+                : "Consultez la politique de confidentialité de Services Cœliaque.",
+        canonicalPath,
+        alternates: getPublicAlternates("/privacy"),
+        lang: htmlLang,
+        locale: getPublicOgLocale(resolvedLocale),
+        alternateLocale: getAlternatePublicOgLocale(resolvedLocale),
+        structuredData: createPublicBreadcrumbStructuredData(
+            resolvedLocale,
+            title,
+            "/privacy"
+        ),
+    });
+
+    usePrerenderPageReady({
+        routeId: canonicalPath,
+        ready: localeSyncReady,
+        canonicalPath,
+        alternates: getPublicAlternates("/privacy"),
+        htmlLang,
+        requiredSelector: '[data-public-page="privacy"]',
+        structuredDataType: "BreadcrumbList",
     });
 
     const sections = useMemo(() => {
@@ -40,7 +85,11 @@ export default function PrivacyPage() {
     }, [tLegal, version]);
 
     return (
-        <div className="container py-3" style={{ maxWidth: 920 }}>
+        <div
+            className="container py-3"
+            style={{ maxWidth: 920 }}
+            data-public-page="privacy"
+        >
             <div className="d-flex align-items-center gap-2 mb-2">
                 <button
                     type="button"

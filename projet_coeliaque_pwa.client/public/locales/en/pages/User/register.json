@@ -12,6 +12,7 @@
   "defaultError": "Could not create your account. Please try again.",
   "successTitle": "Almost there!",
   "successMsg": "We’ve sent you a confirmation link. Please check your inbox.",
+  "deliveryNote": "Please check your spam or junk folder too. Delivery can take up to 5 minutes.",
   "strength": {
     "label": "Password strength: {{level}}",
     "weak": "Weak",

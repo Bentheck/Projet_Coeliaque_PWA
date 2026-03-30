@@ -11,6 +11,7 @@
     "text": "Your email is not confirmed.",
     "resendBtn": "Resend confirmation link",
     "resendSuccess": "A new confirmation link has been sent to your email address.",
+    "deliveryNote": "Please check your spam or junk folder too. Delivery can take up to 5 minutes.",
     "resendFail": "Could not send the link. Please try again later.",
     "resendError": "An error occurred. Please try again later."
   },
