@@ -10,6 +10,10 @@ import React, {
 import { useTranslation } from "react-i18next";
 import { warmAfterLogin } from "../swUser";
 import { onUpdateReady, hasUpdate, applyUpdate } from "../swUpdates";
+import {
+    getLocalizedPublicPath,
+    normalizePublicLocale,
+} from "../seo/publicSeo";
 
 type AuthUser = {
     id?: string;
@@ -105,7 +109,7 @@ type GateStep = "disclaimer" | "privacy" | "tos" | null;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // Gate UI strings
-    const { t: tPage } = useTranslation("pages/Legal/disclaimer");
+    const { t: tPage, i18n } = useTranslation("pages/Legal/disclaimer");
 
     // Legal content (versioned)
     const { t: tDisclaimer } = useTranslation("legal/disclaimer");
@@ -323,7 +327,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         gateStep === "disclaimer" ? discAtBottom : gateStep === "privacy" ? privacyAtBottom : tosAtBottom;
 
     const currentViewHref =
-        gateStep === "disclaimer" ? "/legal/disclaimer" : gateStep === "privacy" ? "/legal/privacy" : "/legal/tos";
+        gateStep === "disclaimer"
+            ? getLocalizedPublicPath(
+                  normalizePublicLocale(i18n.resolvedLanguage ?? i18n.language),
+                  "/disclaimer"
+              )
+            : gateStep === "privacy"
+              ? getLocalizedPublicPath(
+                    normalizePublicLocale(
+                        i18n.resolvedLanguage ?? i18n.language
+                    ),
+                    "/privacy"
+                )
+              : getLocalizedPublicPath(
+                    normalizePublicLocale(
+                        i18n.resolvedLanguage ?? i18n.language
+                    ),
+                    "/terms"
+                );
 
     // Accept enabled strictly for current modal only
     const canAccept =

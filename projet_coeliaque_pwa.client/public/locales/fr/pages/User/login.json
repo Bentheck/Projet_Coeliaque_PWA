@@ -11,6 +11,7 @@
     "text": "Votre adresse courriel n'est pas confirmée.",
     "resendBtn": "Renvoyer le lien de confirmation",
     "resendSuccess": "Un nouveau lien de confirmation a été envoyé à votre adresse courriel.",
+    "deliveryNote": "Vérifiez aussi vos courriels indésirables. La réception peut prendre jusqu'à 5 minutes.",
     "resendFail": "Impossible d'envoyer le lien. Réessayez plus tard.",
     "resendError": "Une erreur est survenue. Réessayez plus tard."
   },

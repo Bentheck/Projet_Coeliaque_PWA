@@ -151,6 +151,9 @@ export default function Login() {
                         {t("unconfirmed.resendBtn")}
                     </button>
                     {resendMsg && <div className="mt-2">{resendMsg}</div>}
+                    <div className="mt-2 small">
+                        {t("unconfirmed.deliveryNote")}
+                    </div>
                 </div>
             ) : (
                 error && (
