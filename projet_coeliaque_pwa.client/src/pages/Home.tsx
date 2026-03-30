@@ -16,6 +16,8 @@ import {
     getLocalizedPublicPath,
     normalizePublicLocale,
 } from "../seo/publicSeo";
+import WelcomePromotionCard from "../components/WelcomePromotionCard";
+import useWelcomePromotionOffer from "../hooks/useWelcomePromotionOffer";
 
 /** Track online/offline */
 function useOnlineStatus() {
