@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 using Projet_Coeliaque_PWA.Server.Data;
 using Projet_Coeliaque_PWA.Server.Services;
+using Projet_Coeliaque_PWA.Server.Services.Receipts;
 
 namespace Projet_Coeliaque_PWA.Server.Controllers
 {
@@ -38,6 +40,40 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
             _audit = audit ?? throw new ArgumentNullException(nameof(audit));
+        }
+
+        private static void SafeDeleteScanFiles(string? storagePath)
+        {
+            if (string.IsNullOrWhiteSpace(storagePath))
+                return;
+
+            try
+            {
+                if (System.IO.File.Exists(storagePath))
+                    System.IO.File.Delete(storagePath);
+
+                var dir = Path.GetDirectoryName(storagePath);
+                if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
+                    Directory.Delete(dir, recursive: true);
+            }
+            catch
+            {
+                // best effort cleanup only
+            }
+        }
+
+        private static void MarkScanAsReported(
+            ReceiptScan scan,
+            string? reportedByUserId,
+            string reason)
+        {
+            scan.IsReported = true;
+            scan.ReportedUtc = DateTime.UtcNow;
+            scan.ReportedByUserId = reportedByUserId;
+            scan.IsReportResolved = false;
+            scan.ReportResolvedUtc = null;
+            scan.ReportResolvedByUserId = null;
+            scan.ReportReason = reason;
         }
 
         // --------------------------------------------------------------------
@@ -146,6 +182,120 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
         public sealed class ResolveScanRequest
         {
             public bool Resolved { get; set; }
+        }
+
+        public sealed class BackfillZeroItemReportsResponse
+        {
+            public int ExaminedCount { get; set; }
+            public int ReportedCount { get; set; }
+            public int SkippedCount { get; set; }
+        }
+
+        // --------------------------------------------------------------------
+        // POST /api/super/receipts/backfill-zero-item-reports
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Retroactively flags old completed scans whose stored OCR payload maps
+        /// to zero receipt items with the current mapper logic.
+        /// </summary>
+        [HttpPost("backfill-zero-item-reports")]
+        public async Task<ActionResult<BackfillZeroItemReportsResponse>> BackfillZeroItemReports()
+        {
+            var currentUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var candidates = await _db.ReceiptScans
+                .Where(s => s.Status == "done" && !s.IsReported && !string.IsNullOrWhiteSpace(s.ParsedJson))
+                .OrderBy(s => s.Id)
+                .ToListAsync();
+
+            var response = new BackfillZeroItemReportsResponse();
+
+            foreach (var scan in candidates)
+            {
+                response.ExaminedCount++;
+
+                ReceiptParsed? parsed;
+                try
+                {
+                    parsed = JsonSerializer.Deserialize<ReceiptParsed>(scan.ParsedJson!);
+                }
+                catch
+                {
+                    response.SkippedCount++;
+                    continue;
+                }
+
+                if (parsed is null)
+                {
+                    response.SkippedCount++;
+                    continue;
+                }
+
+                var items = ReceiptImportMapper.MapParsedToImportItems(parsed);
+                if (items.Count != 0)
+                    continue;
+
+                MarkScanAsReported(
+                    scan,
+                    currentUserId,
+                    "Automatically reported retroactively: OCR returned 0 items.");
+                response.ReportedCount++;
+            }
+
+            if (response.ReportedCount > 0)
+                await _db.SaveChangesAsync();
+
+            await _audit.LogAsync(
+                User,
+                "SuperReceiptScans.BackfillZeroItemReports",
+                "ReportedScans",
+                new
+                {
+                    response.ExaminedCount,
+                    response.ReportedCount,
+                    response.SkippedCount
+                });
+
+            return Ok(response);
+        }
+
+        // --------------------------------------------------------------------
+        // DELETE /api/super/receipts/scan/{scanId}
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Deletes a reported scan and its stored files, but only after it has
+        /// been marked as resolved/treated by a super-admin.
+        /// </summary>
+        [HttpDelete("scan/{scanId:int}")]
+        public async Task<IActionResult> DeleteReportedScan(int scanId)
+        {
+            var scan = await _db.ReceiptScans.FirstOrDefaultAsync(s => s.Id == scanId);
+            if (scan is null)
+                return NotFound($"ReceiptScan {scanId} not found.");
+
+            if (!scan.IsReported)
+                return BadRequest("This scan is not currently reported.");
+
+            if (!scan.IsReportResolved)
+                return BadRequest("This scan must be marked as resolved before deletion.");
+
+            var storagePath = scan.StoragePath;
+            var factureId = scan.FactureId;
+            var year = scan.Year;
+
+            SafeDeleteScanFiles(storagePath);
+            _db.ReceiptScans.Remove(scan);
+            await _db.SaveChangesAsync();
+
+            await _audit.LogAsync(
+                User,
+                "SuperReceiptScans.DeleteResolved",
+                scanId.ToString(),
+                new { factureId, year });
+
+            return NoContent();
         }
 
         // --------------------------------------------------------------------

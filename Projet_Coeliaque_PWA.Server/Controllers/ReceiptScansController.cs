@@ -156,6 +156,22 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             }
         }
 
+        private static void MarkScanAsReported(
+            ReceiptScan scan,
+            string? reportedByUserId,
+            string? reason)
+        {
+            scan.IsReported = true;
+            scan.ReportedUtc = DateTime.UtcNow;
+            scan.ReportedByUserId = reportedByUserId;
+            scan.IsReportResolved = false;
+            scan.ReportResolvedUtc = null;
+            scan.ReportResolvedByUserId = null;
+
+            if (!string.IsNullOrWhiteSpace(reason))
+                scan.ReportReason = reason.Trim();
+        }
+
         // -----------------------------
         // API endpoints
         // -----------------------------
@@ -385,6 +401,15 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
 
                 var items = ReceiptImportMapper.MapParsedToImportItems(parsed);
 
+                if (items.Count == 0)
+                {
+                    MarkScanAsReported(
+                        scan,
+                        UserId,
+                        "Automatically reported: OCR returned 0 items.");
+                    await _db.SaveChangesAsync(ct);
+                }
+
                 return Ok(new ReceiptScanAnalyzeResponseDto
                 {
                     ScanId = scan.Id,
@@ -543,15 +568,7 @@ namespace Projet_Coeliaque_PWA.Server.Controllers
             if (scan is null)
                 return NotFound();
 
-            scan.IsReported = true;
-            scan.ReportedUtc = DateTime.UtcNow;
-            scan.ReportedByUserId = UserId;
-            scan.IsReportResolved = false;
-            scan.ReportResolvedUtc = null;
-            scan.ReportResolvedByUserId = null;
-
-            if (!string.IsNullOrWhiteSpace(request.Reason))
-                scan.ReportReason = request.Reason.Trim();
+            MarkScanAsReported(scan, UserId, request.Reason);
 
             await _db.SaveChangesAsync(ct);
 
