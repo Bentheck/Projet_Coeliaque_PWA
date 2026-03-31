@@ -165,6 +165,12 @@ type ReportedScanRow = {
     resolvedUtc: string | null;
 };
 
+type BackfillZeroItemReportsResponse = {
+    examinedCount: number;
+    reportedCount: number;
+    skippedCount: number;
+};
+
 type TabKey =
     | "site"
     | "promotions"
@@ -296,6 +302,8 @@ const SuperAdminPanel: React.FC = () => {
     const [reportedLoading, setReportedLoading] = useState(false);
     const [reportedLoadedOnce, setReportedLoadedOnce] = useState(false);
     const [resolvingScanId, setResolvingScanId] = useState<number | null>(null);
+    const [deletingScanId, setDeletingScanId] = useState<number | null>(null);
+    const [backfillingReportedScans, setBackfillingReportedScans] = useState(false);
 
     // ------------------------
     // Loaders
@@ -1037,6 +1045,60 @@ const SuperAdminPanel: React.FC = () => {
             alert("Échec de la mise à jour du statut traité.");
         } finally {
             setResolvingScanId(null);
+        }
+    };
+
+    const deleteReportedScan = async (row: ReportedScanRow) => {
+        if (!row.isResolved) return;
+
+        const confirmed = window.confirm(
+            `Supprimer définitivement ce scan traité?\n\n` +
+            `Le reçu joint et ses fichiers OCR seront supprimés, et il ne sera plus rattaché à la facture.`
+        );
+        if (!confirmed) return;
+
+        setDeletingScanId(row.scanId);
+        try {
+            await fetchJSON(`/api/super/receipts/scan/${row.scanId}`, {
+                method: "DELETE",
+            });
+            await loadReportedScans();
+        } catch (e) {
+            console.error(e);
+            alert("Échec de la suppression du scan traité.");
+        } finally {
+            setDeletingScanId(null);
+        }
+    };
+
+    const backfillZeroItemReports = async () => {
+        const confirmed = window.confirm(
+            `Retroactively report old completed scans whose OCR currently maps to 0 items?`
+        );
+        if (!confirmed) return;
+
+        setBackfillingReportedScans(true);
+        try {
+            const result = await fetchJSON<BackfillZeroItemReportsResponse>(
+                "/api/super/receipts/backfill-zero-item-reports",
+                {
+                    method: "POST",
+                }
+            );
+
+            await loadReportedScans();
+
+            alert(
+                `Backfill complete.\n\n` +
+                `Examined: ${result.examinedCount}\n` +
+                `Newly reported: ${result.reportedCount}\n` +
+                `Skipped: ${result.skippedCount}`
+            );
+        } catch (e) {
+            console.error(e);
+            alert("Échec du rétro-signalement des scans à 0 item.");
+        } finally {
+            setBackfillingReportedScans(false);
         }
     };
 
@@ -2230,14 +2292,26 @@ const SuperAdminPanel: React.FC = () => {
                 <div className="card">
                     <div className="card-header d-flex justify-content-between align-items-center">
                         <span>Scans de reçus signalés</span>
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-outline-secondary"
-                            disabled={reportedLoading}
-                            onClick={loadReportedScans}
-                        >
-                            {reportedLoading ? "Rafraîchissement..." : "Rafraîchir"}
-                        </button>
+                        <div className="d-flex gap-2">
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-outline-warning"
+                                disabled={backfillingReportedScans || reportedLoading}
+                                onClick={backfillZeroItemReports}
+                            >
+                                {backfillingReportedScans
+                                    ? "Rétro-signalement..."
+                                    : "Signaler anciens scans vides"}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary"
+                                disabled={reportedLoading || backfillingReportedScans}
+                                onClick={loadReportedScans}
+                            >
+                                {reportedLoading ? "Rafraîchissement..." : "Rafraîchir"}
+                            </button>
+                        </div>
                     </div>
                     <div className="card-body">
                         {reportedLoading && !reportedLoadedOnce && (
@@ -2344,6 +2418,20 @@ const SuperAdminPanel: React.FC = () => {
                                                             >
                                                                 Texte
                                                             </button>
+                                                            {row.isResolved && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-outline-danger"
+                                                                    disabled={deletingScanId === row.scanId}
+                                                                    onClick={() => deleteReportedScan(row)}
+                                                                >
+                                                                    {deletingScanId === row.scanId ? (
+                                                                        <span className="spinner-border spinner-border-sm" />
+                                                                    ) : (
+                                                                        "Supprimer"
+                                                                    )}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>

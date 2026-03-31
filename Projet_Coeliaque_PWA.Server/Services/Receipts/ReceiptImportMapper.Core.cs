@@ -13,9 +13,11 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
     /// <see cref="ReceiptImportItemDto"/> lines that the client can present and edit.
     ///
     /// Pipeline:
-    ///   1) Generic pre-processing of lines (stop at SOUS-TOTAL, drop obvious garbage).
-    ///   2) Store-specific profiles (SAQ, IGA, Super C, Walmart, Maxi).
-    ///   3) Fallback generic mapper (one line = one DTO).
+    ///   1) Generic line cleanup (drop obvious garbage).
+    ///   2) Store-specific profiles (SAQ, IGA, Super C, Walmart, Maxi),
+    ///      which stop at the first SOUS-TOTAL / SUBTOTAL marker.
+    ///   3) Fallback generic mapper (one line = one DTO), which keeps lines
+    ///      even after SOUS-TOTAL / SUBTOTAL markers.
     /// </summary>
     public static partial class ReceiptImportMapper
     {
@@ -59,14 +61,14 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
         }
 
         // ============================================================
-        // GENERIC MAPPER (KEEP EVERYTHING UP TO SOUS-TOTAL)
+        // GENERIC MAPPER (KEEP ALL CLEANED LINES)
         // ============================================================
         private static IReadOnlyList<ReceiptImportItemDto> MapGeneric(ReceiptParsed parsed)
         {
             var result = new List<ReceiptImportItemDto>();
 
-            // Generic profile: pre-filtered lines for all stores
-            var lines = GetGenericPreprocessedLines(parsed);
+            // Fallback behavior: keep cleaned OCR lines even after subtotal markers.
+            var lines = GetGenericPreprocessedLines(parsed, stopAtFirstSubtotal: false);
 
             foreach (var line in lines)
             {
@@ -112,10 +114,7 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
                 var text = ((line.Item ?? line.RawText) ?? string.Empty).Trim();
                 var lower = text.ToLowerInvariant();
 
-                if (lower.StartsWith("sous-total") ||
-                    lower.StartsWith("sous total") ||
-                    lower.StartsWith("subtotal") ||
-                    lower.StartsWith("sub-total"))
+                if (IsSubtotalMarker(lower))
                 {
                     break;
                 }
@@ -127,21 +126,28 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
         }
 
         /// <summary>
-        /// Generic "profile 0" applied to *all* stores:
-        /// - cut at SOUS-TOTAL / SUBTOTAL;
-        /// - remove blank lines and pure "*****" separators.
+        /// Generic cleanup applied before mapping:
+        /// - optionally cut at SOUS-TOTAL / SUBTOTAL;
+        /// - remove blank lines, subtotal marker rows, and pure "*****" separators.
         ///
         /// Store-specific profiles then operate on the result.
         /// </summary>
-        private static IReadOnlyList<ReceiptParsedLine> GetGenericPreprocessedLines(ReceiptParsed parsed)
+        private static IReadOnlyList<ReceiptParsedLine> GetGenericPreprocessedLines(
+            ReceiptParsed parsed,
+            bool stopAtFirstSubtotal = true)
         {
-            var upToSubtotal = GetLinesUpToFirstSubtotal(parsed);
+            var sourceLines = stopAtFirstSubtotal
+                ? GetLinesUpToFirstSubtotal(parsed)
+                : parsed.Lines ?? Array.Empty<ReceiptParsedLine>();
             var list = new List<ReceiptParsedLine>();
 
-            foreach (var line in upToSubtotal)
+            foreach (var line in sourceLines)
             {
                 var text = ((line.Item ?? line.RawText) ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(text))
+                    continue;
+
+                if (IsSubtotalMarker(text.ToLowerInvariant()))
                     continue;
 
                 var trimmed = text.Trim();
@@ -153,6 +159,14 @@ namespace Projet_Coeliaque_PWA.Server.Services.Receipts
             }
 
             return list;
+        }
+
+        private static bool IsSubtotalMarker(string lower)
+        {
+            return lower.StartsWith("sous-total") ||
+                   lower.StartsWith("sous total") ||
+                   lower.StartsWith("subtotal") ||
+                   lower.StartsWith("sub-total");
         }
 
         // ============================================================
