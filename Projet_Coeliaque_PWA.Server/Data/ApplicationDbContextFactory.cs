@@ -2,6 +2,7 @@ using System.IO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using Projet_Coeliaque_PWA.Server.Configuration;
 
 namespace Projet_Coeliaque_PWA.Server.Data
 {
@@ -20,11 +21,18 @@ namespace Projet_Coeliaque_PWA.Server.Data
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(basePath)
                 .AddJsonFile("appsettings.json", optional: true)
-                .AddJsonFile("appsettings.Development.json", optional: true)
-                .AddEnvironmentVariables()
-                .Build();
+                .AddJsonFile("appsettings.Development.json", optional: true);
 
-            var connectionString = configuration.GetConnectionString("DefaultConnection")
+            var environmentName =
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ??
+                Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+
+            AppConfigurationPaths.AddSharedJsonFiles(configuration, basePath, environmentName);
+            configuration.AddEnvironmentVariables();
+
+            var builtConfiguration = configuration.Build();
+
+            var connectionString = builtConfiguration.GetConnectionString("DefaultConnection")
                 ?? "Host=localhost;Database=projet_coeliaque_pwa_design_time;Username=postgres;Password=postgres";
 
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();

@@ -19,6 +19,7 @@ using Projet_Coeliaque_PWA.Server.Services.Email;
 using Projet_Coeliaque_PWA.Server.Filters;
 using Projet_Coeliaque_PWA.Server.Infrastructure;
 using Projet_Coeliaque_PWA.Server.Services.Receipts;
+using Projet_Coeliaque_PWA.Server.Configuration;
 
 namespace Projet_Coeliaque_PWA.Server
 {
@@ -27,6 +28,15 @@ namespace Projet_Coeliaque_PWA.Server
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            AppConfigurationPaths.AddSharedJsonFiles(
+                builder.Configuration,
+                builder.Environment.ContentRootPath,
+                builder.Environment.EnvironmentName);
+            builder.Configuration.AddEnvironmentVariables();
+            if (args.Length > 0)
+            {
+                builder.Configuration.AddCommandLine(args);
+            }
 
             // Stripe
             Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
