@@ -9,7 +9,7 @@
    - Offline outbox for writes
    ========================= */
 
-const APP_VERSION = "v1.0.32"; // ✅ bump on each deploy that should invalidate SW
+const APP_VERSION = "v1.0.33"; // ✅ bump on each deploy that should invalidate SW
 const PRECACHE = `precache-${APP_VERSION}`;
 const RUNTIME = "runtime";
 const API_CACHE_PREFIX = "api-runtime";
@@ -32,7 +32,16 @@ const PRECACHE_URLS = [
 ];
 
 /* ------- Navigation denylist (force network if possible; fallback offline page) ------- */
-const NAV_DENYLIST = [/^\/forum(\/.*)?$/i, /^\/subscribe(\/.*)?$/i];
+const NAV_DENYLIST = [
+    /^\/forum(\/.*)?$/i,
+    /^\/subscribe(\/.*)?$/i,
+    // Auth pages should require a live network path instead of a stale cached shell.
+    /^\/login\/?$/i,
+    /^\/register\/?$/i,
+    /^\/forgot-password\/?$/i,
+    /^\/reset-password\/?$/i,
+    /^\/logout\/?$/i,
+];
 
 /* ✅ SPA navigation cache key (single entry) */
 const NAV_HTML_KEY = "/index.html";

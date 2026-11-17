@@ -60,7 +60,13 @@
     "myProfile": "Mon profil",
     "editProfile": "Éditer mon profil",
     "membership": "Abonnement",
-    "logout": "Se déconnecter"
+    "logout": "Se déconnecter",
+    "logoutConfirm": {
+      "title": "Se déconnecter ?",
+      "body": "Voulez-vous vraiment vous déconnecter de votre compte ?",
+      "cancel": "Annuler",
+      "confirm": "Se déconnecter"
+    }
   },
   "auth": {
     "login": "Connexion",

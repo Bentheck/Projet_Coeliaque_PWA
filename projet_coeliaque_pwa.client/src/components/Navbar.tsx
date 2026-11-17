@@ -1,6 +1,7 @@
 ﻿// PATH: src/components/Navbar.tsx
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Modal } from "react-bootstrap";
 import { useAuth } from "./AuthContext";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "./ThemeContext";
@@ -34,6 +35,7 @@ function OfflineAwareLink({
     children,
     isOnline,
     disabledTitle,
+    onClick,
     onBlockedClick,
 }: {
     to: string;
@@ -41,6 +43,7 @@ function OfflineAwareLink({
     children: React.ReactNode;
     isOnline: boolean;
     disabledTitle?: string;
+    onClick?: React.MouseEventHandler<HTMLAnchorElement>;
     onBlockedClick?: () => void;
 }) {
     const { t } = useTranslation("components/navbar");
@@ -49,7 +52,7 @@ function OfflineAwareLink({
 
     if (isOnline) {
         return (
-            <Link to={to} className={combined}>
+            <Link to={to} className={combined} onClick={onClick}>
                 {children}
             </Link>
         );
@@ -64,9 +67,12 @@ function OfflineAwareLink({
             onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onBlockedClick
-                    ? onBlockedClick()
-                    : alert(t("offline.genericAlert"));
+                if (onBlockedClick) {
+                    onBlockedClick();
+                    return;
+                }
+
+                alert(t("offline.genericAlert"));
             }}
         >
             {children}
@@ -84,6 +90,7 @@ export default function Navbar() {
     const navigate = useNavigate();
 
     const [atTop, setAtTop] = useState(true);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -138,6 +145,19 @@ export default function Navbar() {
             ? t("language.switchToEn")
             : t("language.switchToFr");
 
+    const handleOpenLogoutConfirm = () => {
+        setShowLogoutConfirm(true);
+    };
+
+    const handleCloseLogoutConfirm = () => {
+        setShowLogoutConfirm(false);
+    };
+
+    const handleConfirmLogout = () => {
+        setShowLogoutConfirm(false);
+        navigate("/logout");
+    };
+
     // --- Site / module status (for menu gating) ---
     // Default to TRUE if status or module info is missing, to preserve old behaviour.
     const canFactures =
@@ -154,10 +174,11 @@ export default function Navbar() {
     const isLoggedIn = !!user;
 
     return (
-        <nav className={navClassName}>
+        <>
+            <nav className={navClassName}>
                 {/* navbar-inner = actual pill that changes size/shape */}
-            <div className="navbar-inner">
-                <div className="container">
+                <div className="navbar-inner">
+                    <div className="container">
                     <Link
                         className="navbar-brand"
                         to={getLocalizedPublicPath(publicLocale, "/")}
@@ -631,6 +652,10 @@ export default function Navbar() {
                                                     disabledTitle={t(
                                                         "offline.unavailable"
                                                     )}
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        handleOpenLogoutConfirm();
+                                                    }}
                                                 >
                                                     <i className="bi bi-box-arrow-right me-2"></i>{" "}
                                                     {t("userMenu.logout")}
@@ -665,8 +690,39 @@ export default function Navbar() {
                             )}
                         </ul>
                     </div>
+                    </div>
                 </div>
-            </div>
-        </nav>
+            </nav>
+            <Modal
+                show={showLogoutConfirm}
+                onHide={handleCloseLogoutConfirm}
+                centered
+            >
+                <Modal.Header closeButton>
+                    <Modal.Title>
+                        {t("userMenu.logoutConfirm.title")}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p className="mb-0">{t("userMenu.logoutConfirm.body")}</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary rounded-pill px-4"
+                        onClick={handleCloseLogoutConfirm}
+                    >
+                        {t("userMenu.logoutConfirm.cancel")}
+                    </button>
+                    <button
+                        type="button"
+                        className="btn btn-danger rounded-pill px-4"
+                        onClick={handleConfirmLogout}
+                    >
+                        {t("userMenu.logoutConfirm.confirm")}
+                    </button>
+                </Modal.Footer>
+            </Modal>
+        </>
     );
 }
